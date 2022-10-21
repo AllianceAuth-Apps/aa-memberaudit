@@ -129,7 +129,7 @@
         });
 
         /* Assets */
-        $('#tab_assets').DataTable({
+        var assetTable = $('#tab_assets').DataTable({
             ajax: {
                 url: "{% url 'memberaudit:character_assets_data' character.pk %}",
                 dataSrc: 'data',
@@ -223,6 +223,7 @@
                 );
             }
         });
+       $('#tab_assets').find('[aria-label="Name"]').click(function() { assetTable.order( [[0, "asc"], [1, "asc"], [2, "asc"]] ).draw(); });
 
         $('#modalCharacterAssetContainer').on('show.bs.modal', function (event) {
             const button = $(event.relatedTarget)
