@@ -6,7 +6,7 @@ Test auth_hooks
 from http import HTTPStatus
 
 # Django
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from app_utils.testing import create_fake_user
