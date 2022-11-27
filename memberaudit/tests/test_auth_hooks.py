@@ -57,7 +57,7 @@ class TestHooks(TestCase):
 
         response = self.client.get(reverse("memberaudit:index"))
 
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertContains(response, self.html_menu, html=True)
 
     @modify_settings(MEMBERAUDIT_APP_NAME="これが監査です")
@@ -82,7 +82,7 @@ class TestHooks(TestCase):
             </li>
         """
 
-        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
         self.assertContains(response, MEMBERAUDIT_APP_NAME, html=True)
         self.assertContains(response, "koregajian-cha-desu", html=True)
         self.assertContains(response, expected_html_menu, html=True)
