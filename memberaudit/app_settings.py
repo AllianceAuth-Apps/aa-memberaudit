@@ -1,3 +1,5 @@
+import unidecode
+
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 
@@ -8,7 +10,9 @@ MEMBERAUDIT_APP_NAME = clean_setting(
 )
 """Name of this app as shown in the Auth sidebar and page titles."""
 
-MEMBERAUDIT_BASE_URL = slugify(MEMBERAUDIT_APP_NAME, allow_unicode=True)
+MEMBERAUDIT_BASE_URL = slugify(
+    unidecode.unidecode(MEMBERAUDIT_APP_NAME), allow_unicode=True
+)
 
 
 MEMBERAUDIT_BULK_METHODS_BATCH_SIZE = clean_setting(

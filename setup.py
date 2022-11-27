@@ -46,5 +46,6 @@ setup(
         "humanize",
         "dj-datatables-view",
         "bleach",
+        "unidecode",
     ],
 )
