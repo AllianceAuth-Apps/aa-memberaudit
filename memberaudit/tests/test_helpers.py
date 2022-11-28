@@ -9,7 +9,11 @@ from app_utils.testing import (
     create_user_from_evecharacter,
 )
 
-from ..helpers import clear_users_from_group, filter_groups_available_to_user
+from ..helpers import (
+    clear_users_from_group,
+    filter_groups_available_to_user,
+    get_unidecoded_slug,
+)
 from .testdata.load_entities import load_entities
 
 
@@ -76,3 +80,39 @@ class TestHelpers(TestCase):
         self.assertSetEqual(
             {group_2.pk}, set(user_1002.groups.values_list("pk", flat=True))
         )
+
+    def test_get_unidecoded_slug_with_default_app_name(self):
+        """Test get_unidecoded_slug with default app name"""
+
+        # given
+        app_name = "Member Audit"
+
+        # when
+        app_url_slug = get_unidecoded_slug(app_name)
+
+        # then
+        expected_app_url_slug = "member-audit"
+        self.assertEqual(app_url_slug, expected_app_url_slug)
+
+    def test_get_unidecoded_slug_with_no_app_name(self):
+        """Test get_unidecoded_slug with no app name"""
+
+        # when
+        app_url_slug = get_unidecoded_slug()
+
+        # then
+        expected_app_url_slug = "member-audit"
+        self.assertEqual(app_url_slug, expected_app_url_slug)
+
+    def test_get_unidecoded_slug_with_custom_app_name(self):
+        """Test get_unidecoded_slug with custom app name"""
+
+        # given
+        app_name = "これが監査です"
+
+        # when
+        app_url_slug = get_unidecoded_slug(app_name)
+
+        # then
+        expected_app_url_slug = "koregajian-cha-desu"
+        self.assertEqual(app_url_slug, expected_app_url_slug)
