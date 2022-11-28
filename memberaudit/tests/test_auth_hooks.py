@@ -4,15 +4,12 @@ Test auth_hooks
 
 # Standard Library
 from http import HTTPStatus
-from unittest import mock
 
 # Django
 from django.test import TestCase
 from django.urls import reverse
 
 from app_utils.testing import create_fake_user
-
-from memberaudit.helpers import get_unidecoded_slug
 
 
 class TestHooks(TestCase):
@@ -57,37 +54,6 @@ class TestHooks(TestCase):
 
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, self.html_menu, html=True)
-
-    @mock.patch("memberaudit.app_settings.MEMBERAUDIT_APP_NAME", "これが監査です")
-    @mock.patch(
-        "memberaudit.app_settings.MEMBERAUDIT_BASE_URL",
-        get_unidecoded_slug("これが監査です"),
-    )
-    def test_render_hook_success_with_custom_app_name(self):
-        """
-        Test should show the link to the app in the navigation to user with access with
-        a custom app name. これが監査です is Japanese for "This is the audit". This
-        should result in "koregajian-cha-desu" as app slug
-        :return:
-        :rtype:
-        """
-
-        self.client.force_login(self.user_1002)
-
-        response = self.client.get(reverse("authentication:dashboard"))
-
-        # expected_custom_html_menu = """
-        #     <li>
-        #         <a class href="/koregajian-cha-desu/">
-        #             <i class="far fa-address-card fa-fw fa-fw"></i> これが監査です
-        #         </a>
-        #     </li>
-        # """
-
-        self.assertEqual(response.status_code, HTTPStatus.OK)
-        # self.assertContains(response, "これが監査です")  # Link name
-        self.assertContains(response, "/koregajian-cha-desu/")  # Link slug
-        # self.assertContains(response, expected_custom_html_menu, html=True)
 
     def test_render_hook_fail(self):
         """
