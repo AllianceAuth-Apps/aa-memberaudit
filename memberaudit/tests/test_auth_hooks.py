@@ -4,12 +4,15 @@ Test auth_hooks
 
 # Standard Library
 from http import HTTPStatus
+from unittest import mock
 
 # Django
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.urls import reverse
 
 from app_utils.testing import create_fake_user
+
+from memberaudit.helpers import get_unidecoded_slug
 
 
 class TestHooks(TestCase):
