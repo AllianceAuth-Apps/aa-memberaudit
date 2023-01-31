@@ -3,15 +3,15 @@ stages:
 - test
 - deploy
 
-services:
-  - mysql:5.7
+# services:
+#   - mysql:5.7
 
-variables:
-  MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-  MYSQL_DATABASE: "test_tox_allianceauth"
-  MYSQL_USER: "runner"
-  MYSQL_PASSWORD: "runner"
-  MYSQL_HOST: mysql
+# variables:
+#   MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+#   MYSQL_DATABASE: "test_tox_allianceauth"
+#   MYSQL_USER: "runner"
+#   MYSQL_PASSWORD: "runner"
+#   MYSQL_HOST: mysql
 
 
 before_script:

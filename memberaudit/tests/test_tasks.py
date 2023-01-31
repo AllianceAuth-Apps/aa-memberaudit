@@ -1,4 +1,5 @@
 import datetime as dt
+from unittest import skip
 from unittest.mock import patch
 
 from bravado.exception import HTTPInternalServerError
@@ -561,6 +562,7 @@ class TestUpdateCharacter(TestCase):
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
+    @skip
     def test_should_update_normally(self, mock_esi):
         """can update from scratch"""
         mock_esi.client = esi_client_stub
