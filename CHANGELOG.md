@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.4.2] - 2023-01-31
+
+### Changed
+
+- Reverted back to SQLite for tox tests
+
+### Fixed
+
+- Applied workaround for chained task priority
+
 ## [2.4.1] - 2022-11-05
 
 ### Fixed

@@ -205,15 +205,15 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 force_update,
                 self.request.parent_id,
                 self.request.id,
-            ),
+            ).set(priority=DEFAULT_TASK_PRIORITY),
             update_character_section.si(
                 character.pk,
                 Character.UpdateSection.SKILL_SETS,
                 force_update,
                 self.request.parent_id,
                 self.request.id,
-            ),
-        ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+            ).set(priority=DEFAULT_TASK_PRIORITY),
+        ).delay()
     if character.is_shared:
         check_character_consistency.apply_async(
             kwargs={"character_pk": character.pk},
@@ -343,10 +343,12 @@ def update_character_assets(
         parent_task_id=parent_task_id,
     )
     chain(
-        assets_build_list_from_esi.s(character.pk, force_update),
-        assets_preload_objects.s(character.pk),
-        assets_create_parents.s(character.pk),
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        assets_build_list_from_esi.s(character.pk, force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        assets_preload_objects.s(character.pk).set(priority=DEFAULT_TASK_PRIORITY),
+        assets_create_parents.s(character.pk).set(priority=DEFAULT_TASK_PRIORITY),
+    ).delay()
 
 
 @shared_task(**TASK_ESI_KWARGS)
@@ -574,12 +576,22 @@ def update_character_mails(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
     chain(
-        update_character_mailing_lists.si(character.pk, force_update=force_update),
-        update_character_mail_labels.si(character.pk, force_update=force_update),
-        update_character_mail_headers.si(character.pk, force_update=force_update),
-        update_character_mail_bodies.si(character.pk),
-        update_unresolved_eve_entities.si(character.pk, section),
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        update_character_mailing_lists.si(character.pk, force_update=force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_character_mail_labels.si(character.pk, force_update=force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_character_mail_headers.si(character.pk, force_update=force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_character_mail_bodies.si(character.pk).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_unresolved_eve_entities.si(character.pk, section).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+    ).delay()
 
 
 @shared_task(**TASK_ESI_KWARGS)
@@ -692,10 +704,16 @@ def update_character_contacts(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
     chain(
-        update_character_contact_labels.si(character.pk, force_update=force_update),
-        update_character_contacts_2.si(character.pk, force_update=force_update),
-        update_unresolved_eve_entities.si(character.pk, section, last_in_chain=True),
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        update_character_contact_labels.si(character.pk, force_update=force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_character_contacts_2.si(character.pk, force_update=force_update).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_unresolved_eve_entities.si(
+            character.pk, section, last_in_chain=True
+        ).set(priority=DEFAULT_TASK_PRIORITY),
+    ).delay()
 
 
 @shared_task(**TASK_ESI_KWARGS)
@@ -754,11 +772,19 @@ def update_character_contracts(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
     chain(
-        update_character_contract_headers.si(character.pk, force_update=force_update),
-        update_character_contracts_items.si(character.pk),
-        update_character_contracts_bids.si(character.pk),
-        update_unresolved_eve_entities.si(character.pk, section, last_in_chain=True),
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        update_character_contract_headers.si(
+            character.pk, force_update=force_update
+        ).set(priority=DEFAULT_TASK_PRIORITY),
+        update_character_contracts_items.si(character.pk).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_character_contracts_bids.si(character.pk).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_unresolved_eve_entities.si(
+            character.pk, section, last_in_chain=True
+        ).set(priority=DEFAULT_TASK_PRIORITY),
+    ).delay()
 
 
 @shared_task(**TASK_ESI_KWARGS)
@@ -874,9 +900,13 @@ def update_character_wallet_journal(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
     chain(
-        update_character_wallet_journal_entries.si(character.pk),
-        update_unresolved_eve_entities.si(character.pk, section, last_in_chain=True),
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        update_character_wallet_journal_entries.si(character.pk).set(
+            priority=DEFAULT_TASK_PRIORITY
+        ),
+        update_unresolved_eve_entities.si(
+            character.pk, section, last_in_chain=True
+        ).set(priority=DEFAULT_TASK_PRIORITY),
+    ).delay()
 
 
 @shared_task(**TASK_ESI_KWARGS)
@@ -1018,18 +1048,20 @@ def delete_character(character_pk) -> None:
 def export_data(user_pk: int = None) -> None:
     """Export data to files."""
     tasks = [
-        _export_data_for_topic.si(topic) for topic in data_exporters.DataExporter.topics
+        _export_data_for_topic.si(topic).set(priority=DEFAULT_TASK_PRIORITY)
+        for topic in data_exporters.DataExporter.topics
     ]
     if user_pk:
         tasks.append(_export_data_inform_user.si(user_pk))
-    chain(tasks).apply_async(priority=DEFAULT_TASK_PRIORITY)
+    chain(tasks).delay()
 
 
 @shared_task(**TASK_DEFAULT_KWARGS)
 def export_data_for_topic(topic: str, user_pk: int) -> str:
     chain(
-        _export_data_for_topic.si(topic), _export_data_inform_user.si(user_pk, topic)
-    ).apply_async(priority=DEFAULT_TASK_PRIORITY)
+        _export_data_for_topic.si(topic).set(priority=DEFAULT_TASK_PRIORITY),
+        _export_data_inform_user.si(user_pk, topic).set(priority=DEFAULT_TASK_PRIORITY),
+    ).delay()
 
 
 @shared_task(**{**TASK_DEFAULT_KWARGS, **{"base": QueueOnce}})

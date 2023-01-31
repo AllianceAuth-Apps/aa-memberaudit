@@ -267,16 +267,16 @@ DEBUG = False
 INSTALLED_APPS += ["eveuniverse", "memberaudit"]
 
 # Enter credentials to use MySQL/MariaDB. Comment out to use sqlite3
-DATABASES["default"] = {
-    "ENGINE": "django.db.backends.mysql",
-    "NAME": "tox_allianceauth",
-    "USER": os.environ["MYSQL_USER"],
-    "PASSWORD": os.environ["MYSQL_PASSWORD"],
-    "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
-    "PORT": "3306",  # os.environ.get("MYSQL_PORT", "3306"),
-    "OPTIONS": {"charset": "utf8mb4"},
-    "TEST": {"CHARSET": "utf8mb4"},
-}
+# DATABASES["default"] = {
+#     "ENGINE": "django.db.backends.mysql",
+#     "NAME": "tox_allianceauth",
+#     "USER": os.environ["MYSQL_USER"],
+#     "PASSWORD": os.environ["MYSQL_PASSWORD"],
+#     "HOST": os.environ.get("MYSQL_HOST", "127.0.0.1"),
+#     "PORT": "3306",  # os.environ.get("MYSQL_PORT", "3306"),
+#     "OPTIONS": {"charset": "utf8mb4"},
+#     "TEST": {"CHARSET": "utf8mb4"},
+# }
 
 # Register an application at https://developers.eveonline.com for Authentication
 # & API Access and fill out these settings. Be sure to set the callback URL

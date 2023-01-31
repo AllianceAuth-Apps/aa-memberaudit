@@ -733,6 +733,14 @@ class TestCharacterUpdateCorporationHistory(
         obj = self.character_1001.corporation_history.get(record_id=500)
         self.assertEqual(obj.corporation, self.corporation_2001)
 
+    def test_should_handle_empty_response(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        self.character_1002.update_corporation_history()
+        # then
+        self.assertEqual(self.character_1001.corporation_history.count(), 0)
+
 
 @patch(MODELS_PATH + ".character.esi")
 class TestCharacterUpdateImplants(CharacterUpdateTestDataMixin, NoSocketsTestCase):
