@@ -70,7 +70,7 @@ def update_all_characters(self, force_update: bool = False) -> None:
         logger.info(f"Update statistics: {stats}")
 
     characters_with_owners = Character.objects.filter(
-        eve_character__character_ownership__isnull=False
+        eve_character__character_ownership__isnull=False, is_disabled=False
     ).values_list("pk", flat=True)
     for character_pk in characters_with_owners:
         update_character.apply_async(
