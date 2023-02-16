@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.5.0] - TBD
+
+### Added
+
+- Filter with counts for "last update ok" on characters admin page
+
 ## [2.4.2] - 2023-01-31
 
 ### Changed

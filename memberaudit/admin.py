@@ -121,6 +121,31 @@ class SyncStatusAdminInline(admin.TabularInline):
         return False
 
 
+class CharacterStatusOkListFilter(admin.SimpleListFilter):
+    title = "last update ok"
+    parameter_name = "last_update_ok"
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        yes_count = qs.filter(is_last_update_ok=True).count()
+        no_count = qs.filter(is_last_update_ok=False).count()
+        unknown_count = qs.filter(is_last_update_ok=None).count()
+        return (
+            ("yes", f"yes ({yes_count})"),
+            ("no", f"no ({no_count})"),
+            ("unknown", f"unknown ({unknown_count})"),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == "yes":
+            return queryset.filter(is_last_update_ok=True)
+        if self.value() == "no":
+            return queryset.filter(is_last_update_ok=False)
+        if self.value() == "unknown":
+            return queryset.filter(is_last_update_ok=None)
+        return queryset
+
+
 @admin.register(Character)
 class CharacterAdmin(admin.ModelAdmin):
     class Media:
@@ -142,6 +167,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "_character",
     )
     list_filter = (
+        CharacterStatusOkListFilter,
         "created_at",
         "eve_character__character_ownership__user__profile__state",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
