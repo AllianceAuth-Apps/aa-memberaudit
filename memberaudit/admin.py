@@ -293,6 +293,8 @@ class CharacterAdmin(admin.ModelAdmin):
         "update_assets",
         "update_location",
         "update_online_status",
+        "enable_characters",
+        "disable_characters",
     ]
 
     @admin.display(description="Delete selected characters")
@@ -359,6 +361,18 @@ class CharacterAdmin(admin.ModelAdmin):
                 request,
                 f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
             )
+
+    @admin.display(description=("Enable selected characters"))
+    def enable_characters(self, request, queryset):
+        pks = list(queryset.values_list("pk", flat=True))
+        queryset.filter(pk__in=pks).update(is_disabled=False)
+        self.message_user(request, f"Enabled {len(pks)} characters.")
+
+    @admin.display(description=("Disable selected characters"))
+    def disable_characters(self, request, queryset):
+        pks = list(queryset.values_list("pk", flat=True))
+        queryset.filter(pk__in=pks).update(is_disabled=True)
+        self.message_user(request, f"Disabled {len(pks)} characters.")
 
     inlines = (SyncStatusAdminInline,)
 
