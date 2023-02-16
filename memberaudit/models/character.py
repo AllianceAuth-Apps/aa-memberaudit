@@ -145,6 +145,9 @@ class Character(models.Model):
         default=False,
         help_text="Shared characters can be viewed by recruiters",
     )
+    is_disabled = models.BooleanField(
+        default=False, help_text="Disabled characters are no longer updated from ESI."
+    )
     mailing_lists = models.ManyToManyField("MailEntity", related_name="characters")
 
     objects = CharacterManager()

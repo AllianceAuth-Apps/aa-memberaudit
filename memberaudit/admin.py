@@ -158,6 +158,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "_state",
         "_organization",
         "created_at",
+        "_enabled",
         "_last_update_at",
         "_last_update_ok",
         "_missing_sections",
@@ -168,6 +169,7 @@ class CharacterAdmin(admin.ModelAdmin):
     )
     list_filter = (
         CharacterStatusOkListFilter,
+        "is_disabled",
         "created_at",
         "eve_character__character_ownership__user__profile__state",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
@@ -229,6 +231,10 @@ class CharacterAdmin(admin.ModelAdmin):
     @admin.display(ordering="eve_character__character_name")
     def _character(self, obj) -> str:
         return str(obj.eve_character)
+
+    @admin.display(ordering="is_disabled", boolean=True)
+    def _enabled(self, obj) -> bool:
+        return not obj.is_disabled
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character"
