@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Filter with counts for "last update ok" on characters admin page
+- Ability to disable sync for characters, e.g. which no longer have a valid token
 
 ## [2.4.2] - 2023-01-31
 
