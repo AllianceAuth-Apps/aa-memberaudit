@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Ability to disable sync for characters, e.g. which no longer have a valid token
 - Filter with counts for state incl. filtering characters without main
 - Automatically disable characters which no longer have an owner
+- Characters are re-enabled when user adds them again
 
 ## [2.4.2] - 2023-01-31
 

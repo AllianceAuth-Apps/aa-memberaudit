@@ -103,6 +103,24 @@ class TestAddCharacter(TestCase):
             Character.objects.filter(eve_character__character_id=1001).exists()
         )
 
+    def test_should_reenable_disabled_character(self, mock_tasks, mock_messages):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        character_1001.is_disabled = True
+        character_1001.save()
+        user = character_1001.character_ownership.user
+        token = user.token_set.get(character_id=1001)
+        # when
+        response = self._add_character(user, token)
+        # then
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("memberaudit:launcher"))
+        self.assertTrue(mock_tasks.update_character.delay.called)
+        self.assertTrue(mock_tasks.update_compliance_groups_for_user.delay.called)
+        self.assertTrue(mock_messages.success.called)
+        character_1001.refresh_from_db()
+        self.assertFalse(character_1001.is_disabled)
+
 
 @patch(MODULE_PATH + ".messages")
 @patch(MODULE_PATH + ".tasks")
