@@ -135,6 +135,12 @@ class Character(models.Model):
         UpdateSection.ATTRIBUTES: 3,
     }
 
+    class UpdateStatus(models.TextChoices):
+        DISABLED = "disabled", _("disabled")
+        ISSUE = "issue", _("issue")
+        OK = "ok", _("ok")
+        UNKNOWN = "unknown", _("unknown")
+
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
         EveCharacter, related_name="memberaudit_character", on_delete=models.CASCADE

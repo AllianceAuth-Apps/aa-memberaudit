@@ -6,12 +6,14 @@ from django.utils.timezone import now
 from allianceauth.eveonline.models import EveAllianceInfo
 from allianceauth.tests.auth_utils import AuthUtils
 
-from ...models import Character, CharacterUpdateStatus
+from memberaudit.models import Character, CharacterUpdateStatus
+
+from ..testdata.factories import create_character_update_status
 from ..testdata.load_entities import load_entities
 from ..utils import add_memberaudit_character_to_user, create_memberaudit_character
 
 
-class TestCharacterManager(TestCase):
+class TestCharacterQuerySet(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -48,6 +50,56 @@ class TestCharacterManager(TestCase):
             obj.character_ownership.character.character_id for obj in result
         }
         self.assertSetEqual(character_ids, set())
+
+
+class TestCharacterQuerySetUpdateStatus(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    def test_should_annotate_ok(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            create_character_update_status(character, section=section)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+
+    def test_should_annotate_issue(self):
+        # given
+        character = create_memberaudit_character(1001)
+        create_character_update_status(
+            character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.ISSUE)
+
+    def test_should_annotate_unknown(self):
+        # given
+        create_memberaudit_character(1001)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.UNKNOWN)
+
+    def test_should_annotate_disabled(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.is_disabled = True
+        character.save()
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.DISABLED)
 
 
 class TestCharacterManagerUserHasScope(TestCase):
