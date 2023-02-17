@@ -2,7 +2,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.db.models import Case, Count, Max, Prefetch, Q, Value, When
+from django.db.models import Max, Prefetch
 from django.forms.models import BaseInlineFormSet
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
@@ -121,28 +121,27 @@ class SyncStatusAdminInline(admin.TabularInline):
         return False
 
 
-class CharacterStatusOkListFilter(admin.SimpleListFilter):
-    title = "last update ok"
-    parameter_name = "last_update_ok"
+class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
+    title = "update status"
+    parameter_name = "update_status"
 
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
-        yes_count = qs.filter(is_last_update_ok=True).count()
-        no_count = qs.filter(is_last_update_ok=False).count()
-        unknown_count = qs.filter(is_last_update_ok=None).count()
-        return (
-            ("yes", f"yes ({yes_count})"),
-            ("no", f"no ({no_count})"),
-            ("unknown", f"unknown ({unknown_count})"),
+        counts = []
+        for status in Character.UpdateStatus:
+            counts.append((status, qs.filter(update_status=status.value).count()))
+        result = tuple(
+            [
+                (status.value, status.label.title() + f" ({count:,})")
+                for status, count in counts
+            ]
         )
+        return result
 
     def queryset(self, request, queryset):
-        if self.value() == "yes":
-            return queryset.filter(is_last_update_ok=True)
-        if self.value() == "no":
-            return queryset.filter(is_last_update_ok=False)
-        if self.value() == "unknown":
-            return queryset.filter(is_last_update_ok=None)
+        for value in Character.UpdateStatus.values:
+            if self.value() == value:
+                return queryset.filter(update_status=value)
         return queryset
 
 
@@ -185,7 +184,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "created_at",
         "_enabled",
         "_last_update_at",
-        "_last_update_ok",
+        "_update_status",
         "_missing_sections",
     )
     list_display_links = (
@@ -193,7 +192,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "_character",
     )
     list_filter = (
-        CharacterStatusOkListFilter,
+        CharacterUpdateStatusListFilter,
         "is_disabled",
         "created_at",
         "eve_character__character_ownership__user__profile__state",
@@ -216,27 +215,10 @@ class CharacterAdmin(admin.ModelAdmin):
 
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset(*args, **kwargs)
-        num_sections_total = len(Character.UpdateSection.choices)
         return (
             qs.prefetch_related("update_status_set")
             .annotate(last_update_at=Max("update_status_set__finished_at"))
-            .annotate(
-                num_sections_ok=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=True)
-                )
-            )
-            .annotate(
-                num_sections_failed=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=False)
-                )
-            )
-            .annotate(
-                is_last_update_ok=Case(
-                    When(num_sections_failed__gt=0, then=False),
-                    When(num_sections_ok=num_sections_total, then=True),
-                    default=Value(None),
-                )
-            )
+            .annotate_update_status()
         )
 
     def get_actions(self, request):
@@ -294,9 +276,18 @@ class CharacterAdmin(admin.ModelAdmin):
         except AttributeError:
             return None
 
-    @admin.display(boolean=True, ordering="is_last_update_ok")
-    def _last_update_ok(self, obj):
-        return obj.is_last_update_ok
+    @admin.display(ordering="update_status")
+    def _update_status(self, obj):
+        color_map = {
+            Character.UpdateStatus.OK: "green",
+            Character.UpdateStatus.INCOMPLETE: "yellow",
+            Character.UpdateStatus.ERROR: "red",
+        }
+        if color := color_map.get(obj.update_status):
+            return format_html(
+                '<span style="color: {};">{}</span>', color, obj.update_status
+            )
+        return obj.update_status
 
     @admin.display(ordering="last_update_at")
     def _last_update_at(self, obj):

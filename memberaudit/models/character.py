@@ -136,10 +136,10 @@ class Character(models.Model):
     }
 
     class UpdateStatus(models.TextChoices):
-        DISABLED = "disabled", _("disabled")
-        ISSUE = "issue", _("issue")
         OK = "ok", _("ok")
-        UNKNOWN = "unknown", _("unknown")
+        INCOMPLETE = "incomplete", _("incomplete")
+        ERROR = "error", _("error")
+        DISABLED = "disabled", _("disabled")
 
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(

@@ -79,7 +79,7 @@ class TestCharacterQuerySetUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.ISSUE)
+        self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
 
     def test_should_annotate_unknown(self):
         # given
@@ -88,7 +88,7 @@ class TestCharacterQuerySetUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.UNKNOWN)
+        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
 
     def test_should_annotate_disabled(self):
         # given

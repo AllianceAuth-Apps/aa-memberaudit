@@ -53,13 +53,13 @@ class CharacterQuerySet(models.QuerySet):
                 update_status=Case(
                     When(is_disabled=True, then=Value(UpdateStatus.DISABLED.value)),
                     When(
-                        num_sections_failed__gt=0, then=Value(UpdateStatus.ISSUE.value)
+                        num_sections_failed__gt=0, then=Value(UpdateStatus.ERROR.value)
                     ),
                     When(
                         num_sections_ok=num_sections_total,
                         then=Value(UpdateStatus.OK.value),
                     ),
-                    default=Value(UpdateStatus.UNKNOWN.value),
+                    default=Value(UpdateStatus.INCOMPLETE.value),
                 )
             )
         )
