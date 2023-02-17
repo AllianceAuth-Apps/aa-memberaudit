@@ -52,7 +52,7 @@ class TestCharacterQuerySet(TestCase):
         self.assertSetEqual(character_ids, set())
 
 
-class TestCharacterQuerySetUpdateStatus(TestCase):
+class TestCharacterAnnotateUpdateStatus(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()

@@ -6,7 +6,10 @@ from django.db.models import Max, Prefetch
 from django.forms.models import BaseInlineFormSet
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveType
+
+from allianceauth.authentication.models import State
 
 from . import tasks
 from .constants import EveCategoryId
@@ -122,6 +125,8 @@ class SyncStatusAdminInline(admin.TabularInline):
 
 
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
+    """Custom filter for update status with counts."""
+
     title = "update status"
     parameter_name = "update_status"
 
@@ -145,29 +150,34 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
         return queryset
 
 
-# class CharacterStateListFilter(admin.SimpleListFilter):
-#     title = "state"
-#     parameter_name = "state_plus"
+class CharacterStateListFilter(admin.SimpleListFilter):
+    """Custom state filter to include filtering of characters without main."""
 
-#     def lookups(self, request, model_admin):
-#         qs = model_admin.get_queryset(request)
-#         yes_count = qs.filter(is_last_update_ok=True).count()
-#         no_count = qs.filter(is_last_update_ok=False).count()
-#         unknown_count = qs.filter(is_last_update_ok=None).count()
-#         return (
-#             ("yes", f"yes ({yes_count})"),
-#             ("no", f"no ({no_count})"),
-#             ("unknown", f"unknown ({unknown_count})"),
-#         )
+    title = "state"
+    parameter_name = "state"
+    _NO_MAIN_KEY = "_NO_MAIN"
 
-#     def queryset(self, request, queryset):
-#         if self.value() == "yes":
-#             return queryset.filter(is_last_update_ok=True)
-#         if self.value() == "no":
-#             return queryset.filter(is_last_update_ok=False)
-#         if self.value() == "unknown":
-#             return queryset.filter(is_last_update_ok=None)
-#         return queryset
+    def __init__(self, *args, **kwargs) -> None:
+        self._states = State.objects.order_by("-priority").values_list(
+            "name", flat=True
+        )
+        super().__init__(*args, **kwargs)
+
+    def lookups(self, request, model_admin):
+        result = [(name, name) for name in self._states]
+        result.append((self._NO_MAIN_KEY, _("(No main)")))
+        return result
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == self._NO_MAIN_KEY:
+            return queryset.filter(eve_character__character_ownership__isnull=True)
+        for name in self._states:
+            if value == name:
+                return queryset.filter(
+                    eve_character__character_ownership__user__profile__state__name=name
+                )
+        return queryset
 
 
 @admin.register(Character)
@@ -194,8 +204,8 @@ class CharacterAdmin(admin.ModelAdmin):
     list_filter = (
         CharacterUpdateStatusListFilter,
         "is_disabled",
+        CharacterStateListFilter,
         "created_at",
-        "eve_character__character_ownership__user__profile__state",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
     )
     list_select_related = (
@@ -260,7 +270,7 @@ class CharacterAdmin(admin.ModelAdmin):
         try:
             return str(obj.user.profile.state)
         except AttributeError:
-            return ""
+            return None
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character__corporation_name"
