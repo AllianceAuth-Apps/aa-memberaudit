@@ -164,8 +164,22 @@ class CharacterStateListFilter(admin.SimpleListFilter):
         super().__init__(*args, **kwargs)
 
     def lookups(self, request, model_admin):
-        result = [(name, name) for name in self._states]
-        result.append((self._NO_MAIN_KEY, _("(No main)")))
+        qs = model_admin.get_queryset(request)
+        counts = []
+        for name in self._states:
+            counts.append(
+                (
+                    name,
+                    qs.filter(
+                        eve_character__character_ownership__user__profile__state__name=name
+                    ).count(),
+                )
+            )
+        result = [(name, name + f" ({count:,})") for name, count in counts]
+        count_no_main = qs.filter(
+            eve_character__character_ownership__isnull=True
+        ).count()
+        result.append((self._NO_MAIN_KEY, _("No main") + f" ({count_no_main:,})"))
         return result
 
     def queryset(self, request, queryset):
