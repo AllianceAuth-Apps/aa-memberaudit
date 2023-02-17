@@ -10,6 +10,7 @@ from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
 
+from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
@@ -40,6 +41,7 @@ from memberaudit.tasks import (
 )
 
 from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
+from .testdata.factories import create_character
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -854,3 +856,19 @@ class TestUpdateAllCharacters(TestCase):
             for o in mock_update_character.apply_async.call_args_list
         }
         self.assertSetEqual(called_pks, {character_1001.pk, character_1002.pk})
+
+    def test_should_disable_orphaned_characters(
+        self, mock_update_character, mock_retry_esi
+    ):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        eve_character_1002 = EveCharacter.objects.get(character_id=1002)
+        character_1002 = create_character(eve_character_1002)
+        # when
+        update_all_characters()
+        # then
+        self.assertTrue(mock_retry_esi.called)
+        character_1001.refresh_from_db()
+        self.assertFalse(character_1001.is_disabled)
+        character_1002.refresh_from_db()
+        self.assertTrue(character_1002.is_disabled)

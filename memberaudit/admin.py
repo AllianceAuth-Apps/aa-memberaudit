@@ -303,15 +303,15 @@ class CharacterAdmin(admin.ModelAdmin):
     @admin.display(ordering="update_status")
     def _update_status(self, obj):
         color_map = {
-            Character.UpdateStatus.OK: "green",
+            Character.UpdateStatus.DISABLED: "grey",
             Character.UpdateStatus.INCOMPLETE: "yellow",
             Character.UpdateStatus.ERROR: "red",
         }
         if color := color_map.get(obj.update_status):
             return format_html(
-                '<span style="color: {};">{}</span>', color, obj.update_status
+                '<span style="color: {};">{}</span>', color, obj.update_status.title()
             )
-        return obj.update_status
+        return obj.update_status.title()
 
     @admin.display(ordering="last_update_at")
     def _last_update_at(self, obj):
