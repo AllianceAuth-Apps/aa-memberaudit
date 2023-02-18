@@ -70,9 +70,14 @@ def update_all_characters(self, force_update: bool = False) -> None:
         logger.info(f"Update statistics: {stats}")
 
     # disable characters without owner
-    Character.objects.filter(eve_character__character_ownership__isnull=True).update(
-        is_disabled=True
+    orphaned_characters = Character.objects.filter(
+        eve_character__character_ownership__isnull=True
     )
+    if orphaned_count := orphaned_characters.count() > 0:
+        orphaned_characters.update(is_disabled=True)
+        logger.info(
+            "Disabled %d characters which do not belong to a user.", orphaned_count
+        )
     # start sync for all enabled characters
     enabled_characters = Character.objects.filter(is_disabled=False).values_list(
         "pk", flat=True
