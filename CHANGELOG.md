@@ -7,20 +7,21 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.5.0] - TBD
+## [2.5.0] - 2023-02-23
 
 ### Added
 
 - General
-  - Automatically disable characters which no longer have an owner
-  - Disabled characters are re-enabled when user adds them again
+  - Characters can be disabled and enabled. Disabled characters are not updated.
+  - Characters which no longer have an owner are disabled automatically
+  - Disabled characters are automatically re-enabled when user adds them again
 
 - Admin page for characters
   - Ability to manually disable (and re-enable) sync for characters
   - New column "Update Status" for characters on the admin page giving better information:
     - OK: Update complete and successful
-    - In Progress: Update has not completed yet and is most likely ongoing
-    - Incomplete: Some sections are missing completely. This is most likely an issue.
+    - In Progress: Update is currently ongoing
+    - Incomplete: Some sections are missing completely. This is usually an issue.
     - Error: An error occurred during the update
     - Disabled: Sync for this character was disabled
   - New filter with counts for update status
