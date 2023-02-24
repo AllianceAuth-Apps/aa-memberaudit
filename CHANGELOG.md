@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - New column "Update Status" for characters on the admin page giving better information:
     - OK: Update complete and successful
     - In Progress: Update has not completed yet and is most likely ongoing
+    - Incomplete: Some sections are missing completely. This is most likely an issue.
     - Error: An error occurred during the update
     - Disabled: Sync for this character was disabled
   - New filter with counts for update status

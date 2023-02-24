@@ -69,7 +69,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
 
-    def test_should_annotate_issue(self):
+    def test_should_annotate_error(self):
         # given
         character = create_memberaudit_character(1001)
         create_character_update_status(
@@ -81,9 +81,32 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
 
-    def test_should_annotate_unknown(self):
+    def test_should_annotate_incomplete(self):
         # given
-        create_memberaudit_character(1001)
+        character = create_memberaudit_character(1001)
+        sections_to_update = [
+            obj
+            for obj in Character.UpdateSection
+            if obj != Character.UpdateSection.ASSETS
+        ]
+        for section in sections_to_update:
+            create_character_update_status(character, section=section)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
+
+    def test_should_annotate_in_progress(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            if section == Character.UpdateSection.ASSETS:
+                create_character_update_status(
+                    character, section=section, is_success=None
+                )
+            else:
+                create_character_update_status(character, section=section)
         # when
         qs = Character.objects.annotate_update_status()
         # then

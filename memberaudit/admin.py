@@ -305,8 +305,9 @@ class CharacterAdmin(admin.ModelAdmin):
     @admin.display(ordering="update_status")
     def _update_status(self, obj):
         css_class_map = {
-            Character.UpdateStatus.DISABLED: "text-muted",
+            Character.UpdateStatus.INCOMPLETE: "text-warning",
             Character.UpdateStatus.ERROR: "text-danger",
+            Character.UpdateStatus.DISABLED: "text-muted",
         }
         label = Character.UpdateStatus(obj.update_status).label.title()
         if css_class := css_class_map.get(obj.update_status):

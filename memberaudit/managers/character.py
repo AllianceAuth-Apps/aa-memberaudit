@@ -39,7 +39,8 @@ class CharacterQuerySet(models.QuerySet):
         num_sections_total = len(self.model.UpdateSection.choices)
         UpdateStatus = self.model.UpdateStatus
         return (
-            self.annotate(
+            self.annotate(num_sections_total=Count("update_status_set"))
+            .annotate(
                 num_sections_ok=Count(
                     "update_status_set", filter=Q(update_status_set__is_success=True)
                 )
@@ -58,6 +59,10 @@ class CharacterQuerySet(models.QuerySet):
                     When(
                         num_sections_ok=num_sections_total,
                         then=Value(UpdateStatus.OK.value),
+                    ),
+                    When(
+                        num_sections_total__lt=num_sections_total,
+                        then=Value(UpdateStatus.INCOMPLETE.value),
                     ),
                     default=Value(UpdateStatus.IN_PROGRESS.value),
                 )

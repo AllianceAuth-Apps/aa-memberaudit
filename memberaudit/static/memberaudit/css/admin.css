@@ -4,6 +4,10 @@
     color: var(--error-fg)
 }
 
+.text-warning {
+    color: var(--accent)
+}
+
 .text-muted {
     color: var(--close-button-hover-bg)
 }
