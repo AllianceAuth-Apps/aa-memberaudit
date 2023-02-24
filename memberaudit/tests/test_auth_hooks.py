@@ -52,7 +52,7 @@ class TestHooks(TestCase):
 
         response = self.client.get(reverse("authentication:dashboard"))
 
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertContains(response, self.html_menu, html=True)
 
     def test_render_hook_fail(self):
