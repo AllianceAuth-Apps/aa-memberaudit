@@ -27,6 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   - New filter with counts for update status
   - "No Main" added to State filter and also now showing counts
 
+### Changed
+
+- Drops support for Alliance Auth < 3.0.0 / Django 3
+
 ## [2.4.2] - 2023-01-31
 
 ### Changed

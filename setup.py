@@ -27,7 +27,7 @@ setup(
     classifiers=[
         "Environment :: Web Environment",
         "Framework :: Django",
-        "Framework :: Django :: 3.2",
+        "Framework :: Django :: 4.0",
         "Intended Audience :: End Users/Desktop",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
@@ -40,9 +40,9 @@ setup(
     ],
     python_requires="~=3.8",
     install_requires=[
-        "allianceauth>=2.9",
-        "django-eveuniverse>=0.18",
-        "allianceauth-app-utils>=1.14.2",
+        "allianceauth>=3",
+        "django-eveuniverse>=0.19",
+        "allianceauth-app-utils>=1.15",
         "humanize",
         "dj-datatables-view",
         "bleach",
