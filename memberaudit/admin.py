@@ -308,11 +308,10 @@ class CharacterAdmin(admin.ModelAdmin):
             Character.UpdateStatus.DISABLED: "text-muted",
             Character.UpdateStatus.ERROR: "text-danger",
         }
+        label = Character.UpdateStatus(obj.update_status).label.title()
         if css_class := css_class_map.get(obj.update_status):
-            return format_html(
-                '<span class="{}">{}</span>', css_class, obj.update_status.title()
-            )
-        return obj.update_status.title()
+            return format_html('<span class="{}">{}</span>', css_class, label)
+        return label
 
     @admin.display(ordering="last_update_at")
     def _last_update_at(self, obj):

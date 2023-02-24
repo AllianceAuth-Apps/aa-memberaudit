@@ -11,11 +11,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Filter with counts for "last update ok" on characters admin page
-- Ability to disable sync for characters, e.g. which no longer have a valid token
-- Filter with counts for state incl. filtering characters without main
-- Automatically disable characters which no longer have an owner
-- Characters are re-enabled when user adds them again
+- General
+  - Automatically disable characters which no longer have an owner
+  - Disabled characters are re-enabled when user adds them again
+
+- Admin page for characters
+  - Ability to manually disable (and re-enable) sync for characters
+  - New column "Update Status" for characters on the admin page giving better information:
+    - OK: Update complete and successful
+    - In Progress: Update has not completed yet and is most likely ongoing
+    - Error: An error occurred during the update
+    - Disabled: Sync for this character was disabled
+  - New filter with counts for update status
+  - "No Main" added to State filter and also now showing counts
 
 ## [2.4.2] - 2023-01-31
 

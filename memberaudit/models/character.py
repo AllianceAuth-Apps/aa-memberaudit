@@ -137,7 +137,7 @@ class Character(models.Model):
 
     class UpdateStatus(models.TextChoices):
         OK = "ok", _("ok")
-        INCOMPLETE = "incomplete", _("incomplete")
+        IN_PROGRESS = "in_progress", _("in progress")
         ERROR = "error", _("error")
         DISABLED = "disabled", _("disabled")
 

@@ -59,7 +59,7 @@ class CharacterQuerySet(models.QuerySet):
                         num_sections_ok=num_sections_total,
                         then=Value(UpdateStatus.OK.value),
                     ),
-                    default=Value(UpdateStatus.INCOMPLETE.value),
+                    default=Value(UpdateStatus.IN_PROGRESS.value),
                 )
             )
         )

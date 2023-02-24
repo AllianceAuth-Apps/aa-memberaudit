@@ -88,7 +88,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
+        self.assertEqual(obj.update_status, Character.UpdateStatus.IN_PROGRESS)
 
     def test_should_annotate_disabled(self):
         # given
