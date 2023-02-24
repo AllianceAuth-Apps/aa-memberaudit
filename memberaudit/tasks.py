@@ -69,10 +69,20 @@ def update_all_characters(self, force_update: bool = False) -> None:
         stats = CharacterUpdateStatus.objects.statistics()
         logger.info(f"Update statistics: {stats}")
 
-    characters_with_owners = Character.objects.filter(
-        eve_character__character_ownership__isnull=False
-    ).values_list("pk", flat=True)
-    for character_pk in characters_with_owners:
+    # disable characters without owner
+    orphaned_characters = Character.objects.filter(
+        eve_character__character_ownership__isnull=True
+    )
+    if orphaned_count := orphaned_characters.count() > 0:
+        orphaned_characters.update(is_disabled=True)
+        logger.info(
+            "Disabled %d characters which do not belong to a user.", orphaned_count
+        )
+    # start sync for all enabled characters
+    enabled_characters = Character.objects.filter(is_disabled=False).values_list(
+        "pk", flat=True
+    )
+    for character_pk in enabled_characters:
         update_character.apply_async(
             kwargs={"character_pk": character_pk, "force_update": force_update},
             priority=DEFAULT_TASK_PRIORITY,

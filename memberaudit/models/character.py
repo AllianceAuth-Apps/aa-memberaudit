@@ -135,6 +135,13 @@ class Character(models.Model):
         UpdateSection.ATTRIBUTES: 3,
     }
 
+    class UpdateStatus(models.TextChoices):
+        OK = "ok", _("ok")
+        IN_PROGRESS = "in_progress", _("in progress")
+        INCOMPLETE = "incomplete", _("incomplete")
+        ERROR = "error", _("error")
+        DISABLED = "disabled", _("disabled")
+
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
         EveCharacter, related_name="memberaudit_character", on_delete=models.CASCADE
@@ -144,6 +151,9 @@ class Character(models.Model):
     is_shared = models.BooleanField(
         default=False,
         help_text="Shared characters can be viewed by recruiters",
+    )
+    is_disabled = models.BooleanField(
+        default=False, help_text="Disabled characters are no longer updated from ESI."
     )
     mailing_lists = models.ManyToManyField("MailEntity", related_name="characters")
 

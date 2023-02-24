@@ -6,12 +6,14 @@ from django.utils.timezone import now
 from allianceauth.eveonline.models import EveAllianceInfo
 from allianceauth.tests.auth_utils import AuthUtils
 
-from ...models import Character, CharacterUpdateStatus
+from memberaudit.models import Character, CharacterUpdateStatus
+
+from ..testdata.factories import create_character_update_status
 from ..testdata.load_entities import load_entities
 from ..utils import add_memberaudit_character_to_user, create_memberaudit_character
 
 
-class TestCharacterManager(TestCase):
+class TestCharacterQuerySet(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -48,6 +50,79 @@ class TestCharacterManager(TestCase):
             obj.character_ownership.character.character_id for obj in result
         }
         self.assertSetEqual(character_ids, set())
+
+
+class TestCharacterAnnotateUpdateStatus(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    def test_should_annotate_ok(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            create_character_update_status(character, section=section)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+
+    def test_should_annotate_error(self):
+        # given
+        character = create_memberaudit_character(1001)
+        create_character_update_status(
+            character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
+
+    def test_should_annotate_incomplete(self):
+        # given
+        character = create_memberaudit_character(1001)
+        sections_to_update = [
+            obj
+            for obj in Character.UpdateSection
+            if obj != Character.UpdateSection.ASSETS
+        ]
+        for section in sections_to_update:
+            create_character_update_status(character, section=section)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
+
+    def test_should_annotate_in_progress(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            if section == Character.UpdateSection.ASSETS:
+                create_character_update_status(
+                    character, section=section, is_success=None
+                )
+            else:
+                create_character_update_status(character, section=section)
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.IN_PROGRESS)
+
+    def test_should_annotate_disabled(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.is_disabled = True
+        character.save()
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.DISABLED)
 
 
 class TestCharacterManagerUserHasScope(TestCase):

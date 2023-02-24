@@ -1,15 +1,18 @@
 import datetime as dt
 from unittest.mock import patch
 
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 from django_webtest import WebTest
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.esi import EsiStatus
 
-from ..models import (
+from memberaudit import tasks
+from memberaudit.models import (
+    Character,
     CharacterAsset,
     CharacterContract,
     CharacterContractItem,
@@ -18,6 +21,7 @@ from ..models import (
     Location,
     MailEntity,
 )
+
 from .testdata.esi_client_stub import esi_client_stub
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
@@ -29,6 +33,7 @@ from .utils import (
     create_user_from_evecharacter_with_access,
 )
 
+MANAGERS_PATH = "memberaudit.managers"
 MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
 
@@ -315,3 +320,31 @@ class TestUICharacterViewer(WebTest):
         )
         self.assertEqual(mail_details.status_code, 200)
         self.assertIn(body_text, mail_details.text)
+
+
+@patch(
+    TASKS_PATH + ".Character.objects.get_cached",
+    lambda pk, timeout: Character.objects.get(pk=pk),
+)
+@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
+@patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+@patch(MODELS_PATH + ".character.esi")
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestTasksE2E(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+
+    def test_should_update_all_characters(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        character_1001 = create_memberaudit_character(1001)
+        # when
+        tasks.update_all_characters()
+        # then
+        self.assertTrue(character_1001.is_update_status_ok())

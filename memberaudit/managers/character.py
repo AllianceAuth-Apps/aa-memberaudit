@@ -3,7 +3,18 @@ from math import floor
 
 from django.contrib.auth.models import Permission, User
 from django.db import models
-from django.db.models import Avg, Count, ExpressionWrapper, F, Max, Min
+from django.db.models import (
+    Avg,
+    Case,
+    Count,
+    ExpressionWrapper,
+    F,
+    Max,
+    Min,
+    Q,
+    Value,
+    When,
+)
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.services.hooks import get_extension_logger
@@ -23,6 +34,40 @@ class CharacterQuerySet(models.QuerySet):
     def owned_by_user(self, user: User) -> models.QuerySet:
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
+
+    def annotate_update_status(self):
+        num_sections_total = len(self.model.UpdateSection.choices)
+        UpdateStatus = self.model.UpdateStatus
+        return (
+            self.annotate(num_sections_total=Count("update_status_set"))
+            .annotate(
+                num_sections_ok=Count(
+                    "update_status_set", filter=Q(update_status_set__is_success=True)
+                )
+            )
+            .annotate(
+                num_sections_failed=Count(
+                    "update_status_set", filter=Q(update_status_set__is_success=False)
+                )
+            )
+            .annotate(
+                update_status=Case(
+                    When(is_disabled=True, then=Value(UpdateStatus.DISABLED.value)),
+                    When(
+                        num_sections_failed__gt=0, then=Value(UpdateStatus.ERROR.value)
+                    ),
+                    When(
+                        num_sections_ok=num_sections_total,
+                        then=Value(UpdateStatus.OK.value),
+                    ),
+                    When(
+                        num_sections_total__lt=num_sections_total,
+                        then=Value(UpdateStatus.INCOMPLETE.value),
+                    ),
+                    default=Value(UpdateStatus.IN_PROGRESS.value),
+                )
+            )
+        )
 
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):

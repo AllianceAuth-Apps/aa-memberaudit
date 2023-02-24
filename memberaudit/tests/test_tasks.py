@@ -10,12 +10,18 @@ from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
 
+from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
 
-from ..models import Character, CharacterAsset, CharacterUpdateStatus, Location
-from ..tasks import (
+from memberaudit.models import (
+    Character,
+    CharacterAsset,
+    CharacterUpdateStatus,
+    Location,
+)
+from memberaudit.tasks import (
     _export_data_for_topic,
     delete_character,
     export_data,
@@ -33,7 +39,9 @@ from ..tasks import (
     update_market_prices,
     update_structure_esi,
 )
+
 from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
+from .testdata.factories import create_character
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -665,34 +673,6 @@ class TestUpdateCharacter(TestCase):
         self.assertTrue(self.character_1001.is_update_status_ok())
 
 
-@patch(
-    TASKS_PATH + ".Character.objects.get_cached",
-    lambda pk, timeout: Character.objects.get(pk=pk),
-)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
-@patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-@patch(MODELS_PATH + ".character.esi")
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateAllCharacters(TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-
-    def test_normal(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        character_1001 = create_memberaudit_character(1001)
-        # when
-        update_all_characters()
-        # then
-        self.assertTrue(character_1001.is_update_status_ok())
-
-
 @patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi")
@@ -845,3 +825,50 @@ class TestUpdateComplianceGroupDesignations(TestCase):
         update_compliance_groups_for_user(user.pk)
         # then
         self.assertTrue(mock_update_user.called)
+
+
+@patch(TASKS_PATH + ".retry_task_if_esi_is_down")
+@patch(TASKS_PATH + ".update_character")
+class TestUpdateAllCharacters(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+
+    def test_should_update_all_enabled_characters(
+        self, mock_update_character, mock_retry_esi
+    ):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        character_1002 = create_memberaudit_character(1002)
+        character_1003 = create_memberaudit_character(1003)
+        character_1003.is_disabled = True
+        character_1003.save()
+        # when
+        update_all_characters()
+        # then
+        self.assertTrue(mock_retry_esi.called)
+        self.assertTrue(mock_update_character.apply_async.called)
+        called_pks = {
+            o[1]["kwargs"]["character_pk"]
+            for o in mock_update_character.apply_async.call_args_list
+        }
+        self.assertSetEqual(called_pks, {character_1001.pk, character_1002.pk})
+
+    def test_should_disable_orphaned_characters(
+        self, mock_update_character, mock_retry_esi
+    ):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        eve_character_1002 = EveCharacter.objects.get(character_id=1002)
+        character_1002 = create_character(eve_character_1002)
+        # when
+        update_all_characters()
+        # then
+        self.assertTrue(mock_retry_esi.called)
+        character_1001.refresh_from_db()
+        self.assertFalse(character_1001.is_disabled)
+        character_1002.refresh_from_db()
+        self.assertTrue(character_1002.is_disabled)

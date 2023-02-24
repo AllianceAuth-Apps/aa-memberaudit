@@ -101,7 +101,9 @@ def launcher(request) -> HttpResponse:
 def add_character(request, token) -> HttpResponse:
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)
     with transaction.atomic():
-        character, _ = Character.objects.update_or_create(eve_character=eve_character)
+        character, _ = Character.objects.update_or_create(
+            eve_character=eve_character, defaults={"is_disabled": False}
+        )
     tasks.update_character.delay(character_pk=character.pk)
     messages.success(
         request,

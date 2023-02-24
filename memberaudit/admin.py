@@ -2,11 +2,14 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.db.models import Case, Count, Max, Prefetch, Q, Value, When
+from django.db.models import Max, Prefetch
 from django.forms.models import BaseInlineFormSet
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveType
+
+from allianceauth.authentication.models import State
 
 from . import tasks
 from .constants import EveCategoryId
@@ -121,10 +124,82 @@ class SyncStatusAdminInline(admin.TabularInline):
         return False
 
 
+class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
+    """Custom filter for update status with counts."""
+
+    title = "update status"
+    parameter_name = "update_status"
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        counts = []
+        for status in Character.UpdateStatus:
+            counts.append((status, qs.filter(update_status=status.value).count()))
+        result = tuple(
+            [
+                (status.value, status.label.title() + f" ({count:,})")
+                for status, count in counts
+            ]
+        )
+        return result
+
+    def queryset(self, request, queryset):
+        for value in Character.UpdateStatus.values:
+            if self.value() == value:
+                return queryset.filter(update_status=value)
+        return queryset
+
+
+class CharacterStateListFilter(admin.SimpleListFilter):
+    """Custom state filter to include filtering of characters without main."""
+
+    title = "state"
+    parameter_name = "state"
+    _NO_MAIN_KEY = "_NO_MAIN"
+
+    def __init__(self, *args, **kwargs) -> None:
+        self._states = State.objects.order_by("-priority").values_list(
+            "name", flat=True
+        )
+        super().__init__(*args, **kwargs)
+
+    def lookups(self, request, model_admin):
+        qs = model_admin.get_queryset(request)
+        counts = []
+        for name in self._states:
+            counts.append(
+                (
+                    name,
+                    qs.filter(
+                        eve_character__character_ownership__user__profile__state__name=name
+                    ).count(),
+                )
+            )
+        result = [(name, name + f" ({count:,})") for name, count in counts]
+        count_no_main = qs.filter(
+            eve_character__character_ownership__isnull=True
+        ).count()
+        result.append((self._NO_MAIN_KEY, _("No main") + f" ({count_no_main:,})"))
+        return result
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == self._NO_MAIN_KEY:
+            return queryset.filter(eve_character__character_ownership__isnull=True)
+        for name in self._states:
+            if value == name:
+                return queryset.filter(
+                    eve_character__character_ownership__user__profile__state__name=name
+                )
+        return queryset
+
+
 @admin.register(Character)
 class CharacterAdmin(admin.ModelAdmin):
     class Media:
-        css = {"all": ("authentication/css/admin.css",)}
+        css = {
+            "all": ("authentication/css/admin.css", "memberaudit/css/admin.css"),
+        }
 
     list_display = (
         "_character_pic",
@@ -133,8 +208,9 @@ class CharacterAdmin(admin.ModelAdmin):
         "_state",
         "_organization",
         "created_at",
+        "_enabled",
         "_last_update_at",
-        "_last_update_ok",
+        "_update_status",
         "_missing_sections",
     )
     list_display_links = (
@@ -142,8 +218,10 @@ class CharacterAdmin(admin.ModelAdmin):
         "_character",
     )
     list_filter = (
+        CharacterUpdateStatusListFilter,
+        "is_disabled",
+        CharacterStateListFilter,
         "created_at",
-        "eve_character__character_ownership__user__profile__state",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
     )
     list_select_related = (
@@ -163,27 +241,10 @@ class CharacterAdmin(admin.ModelAdmin):
 
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset(*args, **kwargs)
-        num_sections_total = len(Character.UpdateSection.choices)
         return (
             qs.prefetch_related("update_status_set")
             .annotate(last_update_at=Max("update_status_set__finished_at"))
-            .annotate(
-                num_sections_ok=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=True)
-                )
-            )
-            .annotate(
-                num_sections_failed=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=False)
-                )
-            )
-            .annotate(
-                is_last_update_ok=Case(
-                    When(num_sections_failed__gt=0, then=False),
-                    When(num_sections_ok=num_sections_total, then=True),
-                    default=Value(None),
-                )
-            )
+            .annotate_update_status()
         )
 
     def get_actions(self, request):
@@ -204,6 +265,10 @@ class CharacterAdmin(admin.ModelAdmin):
     def _character(self, obj) -> str:
         return str(obj.eve_character)
 
+    @admin.display(ordering="is_disabled", boolean=True)
+    def _enabled(self, obj) -> bool:
+        return not obj.is_disabled
+
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character"
     )
@@ -221,7 +286,7 @@ class CharacterAdmin(admin.ModelAdmin):
         try:
             return str(obj.user.profile.state)
         except AttributeError:
-            return ""
+            return None
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character__corporation_name"
@@ -237,9 +302,17 @@ class CharacterAdmin(admin.ModelAdmin):
         except AttributeError:
             return None
 
-    @admin.display(boolean=True, ordering="is_last_update_ok")
-    def _last_update_ok(self, obj):
-        return obj.is_last_update_ok
+    @admin.display(ordering="update_status")
+    def _update_status(self, obj):
+        css_class_map = {
+            Character.UpdateStatus.INCOMPLETE: "text-warning",
+            Character.UpdateStatus.ERROR: "text-danger",
+            Character.UpdateStatus.DISABLED: "text-muted",
+        }
+        label = Character.UpdateStatus(obj.update_status).label.title()
+        if css_class := css_class_map.get(obj.update_status):
+            return format_html('<span class="{}">{}</span>', css_class, label)
+        return label
 
     @admin.display(ordering="last_update_at")
     def _last_update_at(self, obj):
@@ -261,6 +334,8 @@ class CharacterAdmin(admin.ModelAdmin):
         "update_assets",
         "update_location",
         "update_online_status",
+        "enable_characters",
+        "disable_characters",
     ]
 
     @admin.display(description="Delete selected characters")
@@ -327,6 +402,18 @@ class CharacterAdmin(admin.ModelAdmin):
                 request,
                 f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
             )
+
+    @admin.display(description=("Enable selected characters"))
+    def enable_characters(self, request, queryset):
+        pks = list(queryset.values_list("pk", flat=True))
+        queryset.filter(pk__in=pks).update(is_disabled=False)
+        self.message_user(request, f"Enabled {len(pks)} characters.")
+
+    @admin.display(description=("Disable selected characters"))
+    def disable_characters(self, request, queryset):
+        pks = list(queryset.values_list("pk", flat=True))
+        queryset.filter(pk__in=pks).update(is_disabled=True)
+        self.message_user(request, f"Disabled {len(pks)} characters.")
 
     inlines = (SyncStatusAdminInline,)
 
