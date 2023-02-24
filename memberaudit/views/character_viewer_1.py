@@ -415,7 +415,6 @@ def character_asset_container_data(
 def character_attribute_data(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
-
     try:
         character_attributes = character.attributes
     except ObjectDoesNotExist:

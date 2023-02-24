@@ -434,7 +434,6 @@ def character_skill_sets_data(
 def character_skill_set_details(
     request, character_pk: int, character: Character, skill_set_pk: int
 ) -> HttpResponse:
-
     skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
     skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
         skill_set_id=skill_set_pk

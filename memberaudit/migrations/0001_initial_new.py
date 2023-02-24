@@ -8,7 +8,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     replaces = [
         ("memberaudit", "0001_initial"),
         ("memberaudit", "0002_add_share_permission"),
