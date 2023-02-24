@@ -1,7 +1,10 @@
 from typing import Optional
 
+import unidecode
+
 from django.contrib.auth.models import User
 from django.db import models
+from django.utils.text import slugify
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
@@ -66,3 +69,14 @@ def clear_users_from_group(group):
     # TODO: Refactor once Auth issue is fixed
     for user in group.user_set.all():
         user.groups.remove(group)
+
+
+def get_unidecoded_slug(app_name: str = "Member Audit") -> str:
+    """Get an unidecoded slug from a string
+
+    :param app_name:
+    :type app_name:
+    :return:
+    :rtype:
+    """
+    return slugify(unidecode.unidecode(app_name), allow_unicode=True)
