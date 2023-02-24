@@ -197,7 +197,9 @@ class CharacterStateListFilter(admin.SimpleListFilter):
 @admin.register(Character)
 class CharacterAdmin(admin.ModelAdmin):
     class Media:
-        css = {"all": ("authentication/css/admin.css",)}
+        css = {
+            "all": ("authentication/css/admin.css", "memberaudit/css/admin.css"),
+        }
 
     list_display = (
         "_character_pic",
@@ -302,14 +304,13 @@ class CharacterAdmin(admin.ModelAdmin):
 
     @admin.display(ordering="update_status")
     def _update_status(self, obj):
-        color_map = {
-            Character.UpdateStatus.DISABLED: "grey",
-            Character.UpdateStatus.INCOMPLETE: "yellow",
-            Character.UpdateStatus.ERROR: "red",
+        css_class_map = {
+            Character.UpdateStatus.DISABLED: "text-muted",
+            Character.UpdateStatus.ERROR: "text-danger",
         }
-        if color := color_map.get(obj.update_status):
+        if css_class := css_class_map.get(obj.update_status):
             return format_html(
-                '<span style="color: {};">{}</span>', color, obj.update_status.title()
+                '<span class="{}">{}</span>', css_class, obj.update_status.title()
             )
         return obj.update_status.title()
 

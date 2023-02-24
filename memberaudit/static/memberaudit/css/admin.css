@@ -1,0 +1,9 @@
+/* Styles for admin pages of Member Audit */
+
+.text-danger {
+    color: var(--error-fg)
+}
+
+.text-muted {
+    color: var(--close-button-hover-bg)
+}
