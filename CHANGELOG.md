@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.5.0] - 2023-02-23
 
+>**Important**:<br>This release requires Alliance Auth 3+. Please make sure to upgrade to Alliance Auth 3+ in case you have not yet done so.
+
 ### Added
 
 - General
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Drops support for Alliance Auth < 3.0.0 / Django 3
+- Base URL now generates a proper slug when a custom app name is used that contains non-Latin characters, e.g. Korean (!67) - @ppfeufer
 
 ## [2.4.2] - 2023-01-31
 
