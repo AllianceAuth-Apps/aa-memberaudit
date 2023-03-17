@@ -95,6 +95,22 @@ MEMBERAUDIT_DATA_RETENTION_LIMIT = clean_setting(
 Minimum is 7 day.
 """
 
+MEMBERAUDIT_TASKS_HIGH_PRIORITY = clean_setting(
+    "MEMBERAUDIT_TASKS_HIGH_PRIORITY", default_value=3, min_value=1, max_value=9
+)
+"""Priority for high priority tasks, e.g. user requests an action."""
+
+MEMBERAUDIT_TASKS_NORMAL_PRIORITY = clean_setting(
+    "MEMBERAUDIT_TASKS_NORMAL_PRIORITY", default_value=5, min_value=1, max_value=9
+)
+"""Priority for normal tasks, e.g. updating characters."""
+
+MEMBERAUDIT_TASKS_LOW_PRIORITY = clean_setting(
+    "MEMBERAUDIT_TASKS_LOW_PRIORITY", default_value=7, min_value=1, max_value=9
+)
+"""Priority for low priority tasks, e.g. updating characters."""
+
+
 ####################
 # Internal settings
 

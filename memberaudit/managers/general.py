@@ -19,6 +19,7 @@ from .. import __title__
 from ..app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
+    MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
 from ..constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
 from ..core.fittings import Fitting
@@ -241,14 +242,13 @@ class LocationManager(models.Manager):
         )
 
     def _structure_update_or_create_esi_async(self, id: int, token: Token):
-        from ..tasks import DEFAULT_TASK_PRIORITY
         from ..tasks import update_structure_esi as task_update_structure_esi
 
         id = int(id)
         location, created = self.get_or_create(id=id)
         task_update_structure_esi.apply_async(
             kwargs={"id": id, "token_pk": token.pk},
-            priority=DEFAULT_TASK_PRIORITY,
+            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
         )
         return location, created
 
@@ -386,7 +386,6 @@ class MailEntityManager(models.Manager):
         return self._update_or_create_esi_async(id=id)
 
     def _update_or_create_esi_async(self, id: int) -> Tuple[models.Model, bool]:
-        from ..tasks import DEFAULT_TASK_PRIORITY
         from ..tasks import update_mail_entity_esi as task_update_mail_entity_esi
 
         id = int(id)
@@ -394,7 +393,7 @@ class MailEntityManager(models.Manager):
             id=id, defaults={"category": self.model.Category.UNKNOWN}
         )
         task_update_mail_entity_esi.apply_async(
-            kwargs={"id": id}, priority=DEFAULT_TASK_PRIORITY
+            kwargs={"id": id}, priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
         )
         return obj, created
 

@@ -13,7 +13,11 @@ from eveuniverse.models import EveSolarSystem, EveType
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
 from app_utils.esi_testing import BravadoResponseStub
-from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
+from app_utils.testing import (
+    create_authgroup,
+    create_user_from_evecharacter,
+    generate_invalid_pk,
+)
 
 from memberaudit.models import (
     Character,
@@ -41,7 +45,7 @@ from memberaudit.tasks import (
 )
 
 from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
-from .testdata.factories import create_character
+from .testdata.factories import create_character, create_compliance_group_designation
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -56,12 +60,28 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(TASKS_PATH + ".update_all_characters")
 @patch(TASKS_PATH + ".update_market_prices")
 class TestRegularUpdates(TestCase):
-    def test_should_run_update_normally(
+    def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
         mock_update_all_characters,
         mock_update_compliance_groups_for_all,
     ):
+        # when
+        run_regular_updates()
+        # then
+        self.assertTrue(mock_update_market_prices.apply_async.called)
+        self.assertTrue(mock_update_all_characters.apply_async.called)
+        self.assertFalse(mock_update_compliance_groups_for_all.apply_async.called)
+
+    def test_should_run_update_for_all_incl_compliance_groups(
+        self,
+        mock_update_market_prices,
+        mock_update_all_characters,
+        mock_update_compliance_groups_for_all,
+    ):
+        # given
+        group = create_authgroup(internal=False)
+        create_compliance_group_designation(group)
         # when
         run_regular_updates()
         # then

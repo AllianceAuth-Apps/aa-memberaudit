@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Added
+
+- Ability to set the default task priorities via settings
+
+### Changed
+
+- Normal priority for most tasks reduced to 7
+
 ## [2.5.0] - 2023-02-23
 
 >**Important**:<br>This release requires Alliance Auth 3+. Please make sure to upgrade to Alliance Auth 3+ in case you have not yet done so.
