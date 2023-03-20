@@ -12,6 +12,7 @@ from eveuniverse.models import EveSolarSystem, EveType
 from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
+from allianceauth.utils.cache import get_redis_client
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import (
@@ -56,6 +57,12 @@ from .utils import create_memberaudit_character
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
+
+
+def clear_celery_once_locks():
+    r = get_redis_client()
+    if keys := r.keys(":?:qo_memberaudit.*"):
+        r.delete(*keys)
 
 
 @patch(TASKS_PATH + ".update_compliance_groups_for_all")
@@ -591,6 +598,7 @@ class TestUpdateCharacter(TestCase):
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
+        clear_celery_once_locks()
 
     @skip  # temporary disabled because it does not work in tox
     def test_should_update_normally(self, mock_esi):
