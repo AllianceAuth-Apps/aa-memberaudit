@@ -61,6 +61,12 @@ TASK_DEFAULTS_ONCE = {**TASK_DEFAULTS, **{"base": QueueOnce}}
 TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 
 
+def _get_task_priority(task_obj) -> Optional[int]:
+    """Return priority of give task or None if not defined."""
+    properties = task_obj.request.get("properties") or {}
+    return properties.get("priority")
+
+
 @shared_task(**TASK_DEFAULTS_ONCE)
 def run_regular_updates() -> None:
     """Main task to be run on a regular basis to keep everything updated and running"""
@@ -97,10 +103,11 @@ def update_all_characters(self, force_update: bool = False) -> None:
     enabled_characters = Character.objects.filter(is_disabled=False).values_list(
         "pk", flat=True
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for character_pk in enabled_characters:
         update_character.apply_async(
             kwargs={"character_pk": character_pk, "force_update": force_update},
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
 
 
@@ -148,6 +155,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             Character.UpdateSection.WALLET_JOURNAL,
         }
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for section in sorted(sections):
         if force_update or character.is_update_section_stale(section):
             update_character_section.apply_async(
@@ -158,7 +166,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                     "root_task_id": self.request.parent_id,
                     "parent_task_id": self.request.id,
                 },
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
 
     if force_update or character.is_update_section_stale(Character.UpdateSection.MAILS):
@@ -169,7 +177,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.CONTACTS
@@ -181,7 +189,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.CONTRACTS
@@ -193,7 +201,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.WALLET_JOURNAL
@@ -204,7 +212,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.ASSETS
@@ -216,7 +224,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     if (
         force_update
@@ -230,19 +238,18 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 force_update,
                 self.request.parent_id,
                 self.request.id,
-            ).set(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY),
+            ).set(priority=priority),
             update_character_section.si(
                 character.pk,
                 Character.UpdateSection.SKILL_SETS,
                 force_update,
                 self.request.parent_id,
                 self.request.id,
-            ).set(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY),
+            ).set(priority=priority),
         ).delay()
     if character.is_shared:
         check_character_consistency.apply_async(
-            kwargs={"character_pk": character.pk},
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            kwargs={"character_pk": character.pk}, priority=priority
         )
     return True
 
@@ -334,7 +341,9 @@ def _log_character_update_success(character: Character, section: str):
 def update_unresolved_eve_entities() -> None:
     """Bulk resolved all unresolved EveEntity objects in database."""
     fetch_esi_status().raise_for_status()
-    unresolved_ids = EveEntity.objects.filter(name="")[:POST_UNIVERSE_NAMES_MAX_ITEMS]
+    unresolved_ids = EveEntity.objects.filter(name="")[
+        :POST_UNIVERSE_NAMES_MAX_ITEMS
+    ].values_list("id", flat=True)
     if unresolved_ids:
         updated_count = EveEntity.objects.update_from_esi_by_id(unresolved_ids)
         logger.info("Updating %d unresolved entities from ESI", updated_count)
@@ -344,9 +353,13 @@ def update_unresolved_eve_entities() -> None:
 
 
 @shared_task(
-    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk", "force_update"]}}}
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "force_update"]}},
+    }
 )
 def update_character_assets(
+    self,
     character_pk: int,
     force_update: bool = False,
     root_task_id: str = None,
@@ -366,16 +379,11 @@ def update_character_assets(
         root_task_id=root_task_id,
         parent_task_id=parent_task_id,
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
-        assets_build_list_from_esi.s(character.pk, force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        assets_preload_objects.s(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        assets_create_parents.s(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        assets_build_list_from_esi.s(character.pk, force_update).set(priority=priority),
+        assets_preload_objects.s(character.pk).set(priority=priority),
+        assets_create_parents.s(character.pk).set(priority=priority),
     ).delay()
 
 
@@ -440,6 +448,7 @@ def assets_create_parents(
 
     assets_flat = {int(x["item_id"]): x for x in asset_list}
     new_assets = list()
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         if cycle == 1:
             character.assets.all().delete()
@@ -487,7 +496,7 @@ def assets_create_parents(
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     else:
         # all parent assets created
@@ -497,7 +506,7 @@ def assets_create_parents(
                     "asset_list": list(assets_flat.values()),
                     "character_pk": character.pk,
                 },
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
         else:
             _log_character_update_success(character, Character.UpdateSection.ASSETS)
@@ -524,6 +533,7 @@ def assets_create_children(
 
     new_assets = list()
     assets_flat = {int(x["item_id"]): x for x in asset_list}
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         parent_asset_ids = set(character.assets.values_list("item_id", flat=True))
         child_asset_ids = {
@@ -568,7 +578,7 @@ def assets_create_children(
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            priority=priority,
         )
     else:
         _log_character_update_success(character, Character.UpdateSection.ASSETS)
@@ -608,22 +618,19 @@ def update_character_mails(
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_mailing_lists.si(character.pk, force_update=force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            priority=priority
         ),
         update_character_mail_labels.si(character.pk, force_update=force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            priority=priority
         ),
         update_character_mail_headers.si(character.pk, force_update=force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            priority=priority
         ),
-        update_character_mail_bodies.si(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        update_unresolved_eve_entities.si().set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        update_character_mail_bodies.si(character.pk).set(priority=priority),
+        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
@@ -705,10 +712,11 @@ def update_character_mail_bodies(self, character_pk: int) -> None:
 
     if mails_without_body_count > 0:
         logger.info("%s: Loading %s mail bodies", character, mails_without_body_count)
+        priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for mail in mails_without_body_qs:
             update_mail_body_esi.apply_async(
                 kwargs={"character_pk": character.pk, "mail_pk": mail.pk},
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
 
     # the last task in the chain logs success (if any)
@@ -719,9 +727,13 @@ def update_character_mail_bodies(self, character_pk: int) -> None:
 
 
 @shared_task(
-    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk", "force_update"]}}}
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "force_update"]}},
+    }
 )
 def update_character_contacts(
+    self,
     character_pk: int,
     force_update: bool = False,
     root_task_id: str = None,
@@ -738,16 +750,15 @@ def update_character_contacts(
     logger.info(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contact_labels.si(character.pk, force_update=force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            priority=priority
         ),
         update_character_contacts_2.si(character.pk, force_update=force_update).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            priority=priority
         ),
-        update_unresolved_eve_entities.si().set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
@@ -790,9 +801,13 @@ def update_character_contacts_2(
 
 
 @shared_task(
-    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk", "force_update"]}}}
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "force_update"]}},
+    }
 )
 def update_character_contracts(
+    self,
     character_pk: int,
     force_update: bool = False,
     root_task_id: str = None,
@@ -809,19 +824,14 @@ def update_character_contracts(
     logger.info(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contract_headers.si(
             character.pk, force_update=force_update
-        ).set(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY),
-        update_character_contracts_items.si(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        update_character_contracts_bids.si(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        update_unresolved_eve_entities.si().set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        ).set(priority=priority),
+        update_character_contracts_items.si(character.pk).set(priority=priority),
+        update_character_contracts_bids.si(character.pk).set(priority=priority),
+        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
@@ -842,8 +852,8 @@ def update_character_contract_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-def update_character_contracts_items(character_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_character_contracts_items(self, character_pk: int):
     """Update items for all contracts of a character"""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -861,10 +871,11 @@ def update_character_contracts_items(character_pk: int):
         logger.info(
             "%s: Starting updating items for %s contracts", character, len(contract_pks)
         )
+        priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for contract_pk in contract_pks:
             update_contract_items_esi.apply_async(
                 kwargs={"character_pk": character.pk, "contract_pk": contract_pk},
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
 
     else:
@@ -882,8 +893,8 @@ def update_contract_items_esi(self, character_pk: int, contract_pk: int):
     character.update_contract_items(contract)
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-def update_character_contracts_bids(character_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_character_contracts_bids(self, character_pk: int):
     """Update bids for all contracts of a character"""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -898,10 +909,11 @@ def update_character_contracts_bids(character_pk: int):
         logger.info(
             "%s: Starting updating bids for %s contracts", character, len(contract_pks)
         )
+        priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for contract_pk in contract_pks:
             update_contract_bids_esi.apply_async(
                 kwargs={"character_pk": character.pk, "contract_pk": contract_pk},
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
 
     else:
@@ -923,9 +935,9 @@ def update_contract_bids_esi(self, character_pk: int, contract_pk: int):
 # special tasks for updating wallet
 
 
-@shared_task(**{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk"]}}})
+@shared_task(**{**TASK_DEFAULTS_BIND_ONCE, **{"once": {"keys": ["character_pk"]}}})
 def update_character_wallet_journal(
-    character_pk: int, root_task_id: str = None, parent_task_id: str = None
+    self, character_pk: int, root_task_id: str = None, parent_task_id: str = None
 ) -> None:
     """Main task for updating wallet journal of a character"""
     character = Character.objects.get_cached(
@@ -938,13 +950,10 @@ def update_character_wallet_journal(
     logger.info(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
-        update_character_wallet_journal_entries.si(character.pk).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
-        update_unresolved_eve_entities.si().set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        update_character_wallet_journal_entries.si(character.pk).set(priority=priority),
+        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
@@ -1033,14 +1042,15 @@ def update_mail_entity_esi(self, id: int, category: str = None):
         raise self.retry(countdown=ex.retry_in)
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-def update_characters_skill_checks(force_update: bool = False) -> None:
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_characters_skill_checks(self, force_update: bool = False) -> None:
     """Start the update of skill checks for all registered characters
 
     Args:
     - force_update: When set to True will always update regardless of stale status
     """
     section = Character.UpdateSection.SKILL_SETS
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for character in Character.objects.all():
         if force_update or character.is_update_section_stale(section):
             update_character_section.apply_async(
@@ -1049,7 +1059,7 @@ def update_characters_skill_checks(force_update: bool = False) -> None:
                     "section": section,
                     "force_update": force_update,
                 },
-                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                priority=priority,
             )
 
 
@@ -1070,11 +1080,12 @@ def delete_character(character_pk) -> None:
     character.delete()
 
 
-@shared_task(**TASK_DEFAULTS)
-def export_data(user_pk: int = None) -> None:
+@shared_task(**TASK_DEFAULTS_BIND)
+def export_data(self, user_pk: int = None) -> None:
     """Export data to files."""
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     tasks = [
-        _export_data_for_topic.si(topic).set(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
+        _export_data_for_topic.si(topic).set(priority=priority)
         for topic in data_exporters.DataExporter.topics
     ]
     if user_pk:
@@ -1082,13 +1093,12 @@ def export_data(user_pk: int = None) -> None:
     chain(tasks).delay()
 
 
-@shared_task(**TASK_DEFAULTS)
-def export_data_for_topic(topic: str, user_pk: int) -> str:
+@shared_task(**TASK_DEFAULTS_BIND)
+def export_data_for_topic(self, topic: str, user_pk: int) -> str:
+    priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
-        _export_data_for_topic.si(topic).set(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY),
-        _export_data_inform_user.si(user_pk, topic).set(
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        ),
+        _export_data_for_topic.si(topic).set(priority=priority),
+        _export_data_inform_user.si(user_pk, topic).set(priority=priority),
     ).delay()
 
 
@@ -1118,13 +1128,14 @@ def _export_data_inform_user(user_pk: int, topic: str = None):
     notify(user=user, title=title, message=message, level="INFO")
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-def update_compliance_groups_for_all():
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_compliance_groups_for_all(self):
     """Update compliance groups for all users."""
     if ComplianceGroupDesignation.objects.exists():
+        priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for user in User.objects.all():
             update_compliance_groups_for_user.apply_async(
-                kwargs={"user_pk": user.pk}, priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+                kwargs={"user_pk": user.pk}, priority=priority
             )
 
 

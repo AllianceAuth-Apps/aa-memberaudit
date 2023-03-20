@@ -928,3 +928,5 @@ class TestUpdateUnresolvedEveEntities(TestCase):
         update_unresolved_eve_entities()
         # then
         self.assertTrue(mock_update_from_esi_by_id.called)
+        args, _ = mock_update_from_esi_by_id.call_args
+        self.assertEqual(list(args[0]), [1])

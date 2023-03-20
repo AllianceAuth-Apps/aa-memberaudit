@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Normal priority for most tasks reduced to 7
+- Child tasks now use inherit their priority from parent tasks, i.e. when doing a character update from the admin page or adding a new character, then all tasks run with higher priority then during regular updates
 
 ## [2.5.0] - 2023-02-23
 
