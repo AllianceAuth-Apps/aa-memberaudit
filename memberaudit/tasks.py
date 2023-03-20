@@ -64,8 +64,8 @@ TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 @shared_task(**TASK_DEFAULTS_ONCE)
 def run_regular_updates() -> None:
     """Main task to be run on a regular basis to keep everything updated and running"""
-    update_market_prices.apply_async(priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY)
-    update_all_characters.apply_async(priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY)
+    update_market_prices.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
+    update_all_characters.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     if ComplianceGroupDesignation.objects.exists():
         update_compliance_groups_for_all.apply_async(
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY

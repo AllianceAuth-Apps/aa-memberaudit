@@ -14,6 +14,7 @@ from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
 from .. import __title__, tasks
+from ..app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
 from ..models import Character, ComplianceGroupDesignation
 from ._common import add_common_context
 
@@ -104,7 +105,10 @@ def add_character(request, token) -> HttpResponse:
         character, _ = Character.objects.update_or_create(
             eve_character=eve_character, defaults={"is_disabled": False}
         )
-    tasks.update_character.delay(character_pk=character.pk)
+    tasks.update_character.apply_async(
+        kwargs={"character_pk": character.pk},
+        priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+    )
     messages.success(
         request,
         format_html(
@@ -114,7 +118,9 @@ def add_character(request, token) -> HttpResponse:
         ),
     )
     if ComplianceGroupDesignation.objects.exists():
-        tasks.update_compliance_groups_for_user.delay(request.user.pk)
+        tasks.update_compliance_groups_for_user.apply_async(
+            args=[request.user.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )
     return redirect("memberaudit:launcher")
 
 
@@ -149,7 +155,9 @@ def remove_character(request, character_pk: int) -> HttpResponse:
             ),
         )
         if ComplianceGroupDesignation.objects.exists():
-            tasks.update_compliance_groups_for_user.delay(request.user.pk)
+            tasks.update_compliance_groups_for_user.apply_async(
+                args=[request.user.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+            )
     else:
         return HttpResponseForbidden(
             f"No permission to remove Character with pk {character_pk}"
