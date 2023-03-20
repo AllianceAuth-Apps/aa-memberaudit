@@ -9,6 +9,7 @@ from django.test import TestCase, override_settings
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
@@ -42,6 +43,7 @@ from memberaudit.tasks import (
     update_mail_entity_esi,
     update_market_prices,
     update_structure_esi,
+    update_unresolved_eve_entities,
 )
 
 from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
@@ -892,3 +894,29 @@ class TestUpdateAllCharacters(TestCase):
         self.assertFalse(character_1001.is_disabled)
         character_1002.refresh_from_db()
         self.assertTrue(character_1002.is_disabled)
+
+
+@patch(TASKS_PATH + ".fetch_esi_status")
+@patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id")
+class TestUpdateUnresolvedEveEntities(TestCase):
+    def test_should_not_attempt_to_update_when_no_unresolved_entities(
+        self, mock_update_from_esi_by_id, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.return_value = None
+        create_eve_entity(id=1, name="alpha")
+        # when
+        update_unresolved_eve_entities()
+        # then
+        self.assertFalse(mock_update_from_esi_by_id.called)
+
+    def test_should_update_unresolved_entities(
+        self, mock_update_from_esi_by_id, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.return_value = None
+        create_eve_entity(id=1)
+        # when
+        update_unresolved_eve_entities()
+        # then
+        self.assertTrue(mock_update_from_esi_by_id.called)
