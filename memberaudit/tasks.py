@@ -72,7 +72,7 @@ def run_regular_updates() -> None:
         )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_all_characters(self, force_update: bool = False) -> None:
     """Start the update of all registered characters
 
@@ -107,7 +107,7 @@ def update_all_characters(self, force_update: bool = False) -> None:
 # Main character update tasks
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character(self, character_pk: int, force_update: bool = False) -> bool:
     """Start respective update tasks for all stale sections of a character
 
@@ -379,7 +379,7 @@ def update_character_assets(
     ).delay()
 
 
-@shared_task(**{**TASK_DEFAULTS_BIND, **{"base": QueueOnce}})
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def assets_build_list_from_esi(
     self, character_pk: int, force_update: bool = False
 ) -> dict:
@@ -627,7 +627,7 @@ def update_character_mails(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mailing_lists(
     self, character_pk: int, force_update: bool = False
 ) -> None:
@@ -644,7 +644,7 @@ def update_character_mailing_lists(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mail_labels(
     self, character_pk: int, force_update: bool = False
 ) -> None:
@@ -661,7 +661,7 @@ def update_character_mail_labels(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mail_headers(
     self, character_pk: int, force_update: bool = False
 ) -> None:
@@ -678,7 +678,7 @@ def update_character_mail_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_mail_body_esi(self, character_pk: int, mail_pk: int):
     """Task for updating the body of a mail from ESI"""
     retry_task_if_esi_is_down(self)
@@ -695,7 +695,7 @@ def update_mail_body_esi(self, character_pk: int, mail_pk: int):
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mail_bodies(self, character_pk: int) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -718,7 +718,9 @@ def update_character_mail_bodies(self, character_pk: int) -> None:
 # special tasks for updating contacts
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(
+    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk", "force_update"]}}}
+)
 def update_character_contacts(
     character_pk: int,
     force_update: bool = False,
@@ -787,7 +789,9 @@ def update_character_contacts_2(
 # special tasks for updating contracts
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(
+    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk", "force_update"]}}}
+)
 def update_character_contracts(
     character_pk: int,
     force_update: bool = False,
@@ -821,7 +825,7 @@ def update_character_contracts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_contract_headers(
     self, character_pk: int, force_update: bool = False
 ) -> bool:
@@ -838,7 +842,7 @@ def update_character_contract_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def update_character_contracts_items(character_pk: int):
     """Update items for all contracts of a character"""
     character = Character.objects.get_cached(
@@ -867,7 +871,7 @@ def update_character_contracts_items(character_pk: int):
         logger.info("%s: No items to update", character)
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_contract_items_esi(self, character_pk: int, contract_pk: int):
     """Task for updating the items of a contract from ESI"""
     retry_task_if_esi_is_down(self)
@@ -878,7 +882,7 @@ def update_contract_items_esi(self, character_pk: int, contract_pk: int):
     character.update_contract_items(contract)
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def update_character_contracts_bids(character_pk: int):
     """Update bids for all contracts of a character"""
     character = Character.objects.get_cached(
@@ -905,7 +909,7 @@ def update_character_contracts_bids(character_pk: int):
     _log_character_update_success(character, Character.UpdateSection.CONTRACTS)
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_contract_bids_esi(self, character_pk: int, contract_pk: int):
     """Task for updating the bids of a contract from ESI"""
     retry_task_if_esi_is_down(self)
@@ -919,7 +923,7 @@ def update_contract_bids_esi(self, character_pk: int, contract_pk: int):
 # special tasks for updating wallet
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["character_pk"]}}})
 def update_character_wallet_journal(
     character_pk: int, root_task_id: str = None, parent_task_id: str = None
 ) -> None:
@@ -944,7 +948,7 @@ def update_character_wallet_journal(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_wallet_journal_entries(self, character_pk: int) -> None:
     retry_task_if_esi_is_down(self)
     character = Character.objects.get_cached(
@@ -962,7 +966,7 @@ def update_character_wallet_journal_entries(self, character_pk: int) -> None:
 # Tasks for other objects
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_market_prices(self):
     """Update market prices from ESI"""
     retry_task_if_esi_is_down(self)
@@ -1049,7 +1053,7 @@ def update_characters_skill_checks(force_update: bool = False) -> None:
             )
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def check_character_consistency(character_pk) -> None:
     """Check consistency of a character."""
     character = Character.objects.get_cached(
