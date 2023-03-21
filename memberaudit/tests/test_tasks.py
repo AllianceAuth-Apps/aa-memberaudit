@@ -13,7 +13,13 @@ from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.utils.cache import get_redis_client
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus, fetch_esi_status
+from app_utils.esi import (
+    EsiDailyDowntime,
+    EsiErrorLimitExceeded,
+    EsiOffline,
+    EsiStatus,
+    fetch_esi_status,
+)
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import (
     create_authgroup,
@@ -896,6 +902,35 @@ class TestUpdateAllCharacters(TestCase):
         self.assertFalse(character_1001.is_disabled)
         character_1002.refresh_from_db()
         self.assertTrue(character_1002.is_disabled)
+
+
+@patch(TASKS_PATH + ".fetch_esi_status")
+class TestAbortMainTaskDuringDailyDowntime(TestCase):
+    @patch(TASKS_PATH + ".update_character")
+    def test_should_abort_update_all_characters(
+        self, mock_update_character, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.side_effect = (
+            EsiDailyDowntime
+        )
+        # when/then
+        update_all_characters()
+        # then
+        self.assertFalse(mock_update_character.apply_async.called)
+
+    @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
+    def test_should_abort_update_market_prices(
+        self, mock_update_from_esi, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.side_effect = (
+            EsiDailyDowntime
+        )
+        # when/then
+        update_market_prices()
+        # then
+        self.assertFalse(mock_update_from_esi.called)
 
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))

@@ -14,7 +14,12 @@ from eveuniverse.models import EveEntity, EveMarketPrice
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, fetch_esi_status
+from app_utils.esi import (
+    EsiDailyDowntime,
+    EsiErrorLimitExceeded,
+    EsiOffline,
+    fetch_esi_status,
+)
 from app_utils.logging import LoggerAddTag
 
 from . import __title__, helpers
@@ -80,7 +85,11 @@ def update_all_characters(self, force_update: bool = False) -> None:
     Args:
     - force_update: When set to True will always update regardless of stale status
     """
-    fetch_esi_status().raise_for_status()
+    try:
+        fetch_esi_status().raise_for_status()
+    except EsiDailyDowntime:
+        logger.info("Daily Downtime detected. Aborting.")
+        return
     if MEMBERAUDIT_LOG_UPDATE_STATS:
         stats = CharacterUpdateStatus.objects.statistics()
         logger.info(f"Update statistics: {stats}")
@@ -973,7 +982,11 @@ def update_character_wallet_journal_entries(self, character_pk: int) -> None:
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_market_prices(self):
     """Update market prices from ESI"""
-    fetch_esi_status().raise_for_status()
+    try:
+        fetch_esi_status().raise_for_status()
+    except EsiDailyDowntime:
+        logger.info("Daily Downtime detected. Aborting.")
+        return
     EveMarketPrice.objects.update_from_esi(
         minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2
     )

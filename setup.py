@@ -42,7 +42,7 @@ setup(
     install_requires=[
         "allianceauth>=3",
         "django-eveuniverse>=0.19",
-        "allianceauth-app-utils>=1.15",
+        "allianceauth-app-utils>=1.16.1",
         "humanize",
         "dj-datatables-view",
         "bleach",
