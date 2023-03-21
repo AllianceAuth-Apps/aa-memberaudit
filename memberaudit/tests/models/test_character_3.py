@@ -10,7 +10,7 @@ from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
 from app_utils.esi import EsiStatus
-from app_utils.esi_testing import BravadoResponseStub
+from app_utils.esi_testing import BravadoResponseStub, build_http_error
 from app_utils.testing import NoSocketsTestCase
 
 from ...core.xml_converter import eve_xml_to_html
@@ -529,6 +529,24 @@ class TestCharacterUpdateLoyalty(CharacterUpdateTestDataMixin, NoSocketsTestCase
         self.character_1001.update_loyalty(force_update=True)
 
         obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        self.assertEqual(obj.loyalty_points, 100)
+
+    def test_should_thread_http_500_as_empty_loyalty_list(self, mock_esi):
+        # given
+        exception = build_http_error(
+            500, '{"error":"Unhandled internal error encountered!"}'
+        )
+        mock_esi.client.Loyalty.get_characters_character_id_loyalty_points.side_effect = (
+            exception
+        )
+        self.character_1001.loyalty_entries.create(
+            corporation=self.corporation_2001, loyalty_points=100
+        )
+        # when
+        self.character_1001.update_loyalty()
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2001)
         self.assertEqual(obj.loyalty_points, 100)
 
 
