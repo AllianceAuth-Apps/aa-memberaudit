@@ -16,8 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Normal priority for most tasks reduced to 7
 - Child tasks now use inherit their priority from parent tasks, i.e. when doing a character update from the admin page or adding a new character, then all tasks run with higher priority then during regular updates
 - Character update tasks are no longer retried automatically when there is an ESI issue. This was causing huge task buildup when ESI was not having problems. Also this should not be needed, since all character updates are automatically repeated every hour or so.
-- Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning
-- Will ignore occasional http 500 for ship endpoint and log warning
+- Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning (#135)
+- Will ignore occasional http 500 for ship endpoint and log warning (#138)
 
 ## [2.5.0] - 2023-02-23
 
