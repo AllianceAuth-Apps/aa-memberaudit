@@ -685,7 +685,7 @@ class Character(models.Model):
             )
         except HTTPInternalServerError as ex:
             # handle the occasional occurring http 500 error from this endpoint
-            logger.info(
+            logger.warning(
                 "%s: Received an HTTP internal server error from this endpoint "
                 "and ignoring it: %s ",
                 self,
@@ -957,10 +957,20 @@ class Character(models.Model):
         from .sections import CharacterShip
 
         logger.info("%s: Fetching ship from ESI", self)
-        ship_info = esi.client.Location.get_characters_character_id_ship(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+        try:
+            ship_info = esi.client.Location.get_characters_character_id_ship(
+                character_id=self.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                self,
+                ex,
+            )
+            return
         CharacterShip.objects.update_for_character(self, ship_info)
 
     @fetch_token_for_character("esi-skills.read_skillqueue.v1")

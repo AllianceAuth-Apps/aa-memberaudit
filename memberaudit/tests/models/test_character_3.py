@@ -18,6 +18,7 @@ from ...models import (
     Character,
     CharacterMail,
     CharacterMailLabel,
+    CharacterShip,
     CharacterSkill,
     CharacterWalletJournalEntry,
     Location,
@@ -594,7 +595,25 @@ class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         # when
         self.character_1001.update_ship()
         # then
-        self.assertEqual(self.character_1001.ship.eve_type, EveType.objects.get(id=603))
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_ignore_error_500(self, mock_esi):
+        # given
+        error_500 = build_http_error(
+            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
+        )
+        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
+            error_500
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        self.character_1001.update_ship()
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
 
