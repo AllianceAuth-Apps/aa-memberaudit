@@ -593,12 +593,12 @@ class CharacterFwStats(models.Model):
         EveFaction, on_delete=models.SET_DEFAULT, default=None, null=True
     )
     highest_rank = models.PositiveSmallIntegerField(default=None, null=True)
-    kills_last_week = models.PositiveIntegerField()
-    kills_total = models.PositiveIntegerField()
-    kills_yesterday = models.PositiveIntegerField()
-    victory_points_last_week = models.PositiveIntegerField()
-    victory_points_total = models.PositiveIntegerField()
-    victory_points_yesterday = models.PositiveIntegerField()
+    kills_last_week = models.PositiveIntegerField(db_index=True)
+    kills_total = models.PositiveIntegerField(db_index=True)
+    kills_yesterday = models.PositiveIntegerField(db_index=True)
+    victory_points_last_week = models.PositiveIntegerField(db_index=True)
+    victory_points_total = models.PositiveIntegerField(db_index=True)
+    victory_points_yesterday = models.PositiveIntegerField(db_index=True)
 
     objects = CharacterFwStatsManager()
 
