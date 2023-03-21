@@ -2,6 +2,7 @@ import datetime as dt
 from typing import Iterable, List, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
+from celery_once import AlreadyQueued
 
 from django.contrib.auth.models import Group, User
 from django.db import models, transaction
@@ -246,10 +247,13 @@ class LocationManager(models.Manager):
 
         id = int(id)
         location, created = self.get_or_create(id=id)
-        task_update_structure_esi.apply_async(
-            kwargs={"id": id, "token_pk": token.pk},
-            priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
-        )
+        try:
+            task_update_structure_esi.apply_async(
+                kwargs={"id": id, "token_pk": token.pk},
+                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )
+        except AlreadyQueued:
+            pass
         return location, created
 
     def structure_update_or_create_esi(self, id: int, token: Token):
@@ -392,9 +396,12 @@ class MailEntityManager(models.Manager):
         obj, created = self.get_or_create(
             id=id, defaults={"category": self.model.Category.UNKNOWN}
         )
-        task_update_mail_entity_esi.apply_async(
-            kwargs={"id": id}, priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
-        )
+        try:
+            task_update_mail_entity_esi.apply_async(
+                kwargs={"id": id}, priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            )
+        except AlreadyQueued:
+            pass
         return obj, created
 
     def update_or_create_from_eve_entity(
