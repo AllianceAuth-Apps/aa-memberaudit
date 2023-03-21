@@ -44,6 +44,7 @@ from ..utils import (
 )
 
 MANAGERS_PATH = "memberaudit.managers.general"
+TASKS_PATH = "memberaudit.tasks"
 
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
@@ -523,7 +524,7 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
         super().setUpClass()
         load_entities()
 
-    @patch("memberaudit.tasks.update_mail_entity_esi")
+    @patch(TASKS_PATH + ".update_mail_entity_esi")
     def test_should_create_new_object_and_try_to_resolve(
         self, mock_task_update_mail_entity_esi
     ):
@@ -853,7 +854,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
 
 
-@patch(MANAGERS_PATH + ".esi")
 class TestLocationManagerAsync(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -878,26 +878,45 @@ class TestLocationManagerAsync(TestCase):
     @override_settings(
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
+    @patch(MANAGERS_PATH + ".esi")
     @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
+        # given
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
-
+        # when
         obj, created = Location.objects.update_or_create_esi_async(
             id=1000000000001, token=self.token
         )
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000001)
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.eve_type)
-
         obj.refresh_from_db()
         self.assertEqual(obj.name, "Amamake - Test Structure Alpha")
         self.assertEqual(obj.eve_solar_system, self.amamake)
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
-
         self.assertTrue(mock_fetch_esi_status.called)  # proofs task was called
+
+    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+    @patch(TASKS_PATH + ".update_structure_esi")
+    def test_should_create_location_and_ignore_already_queued(
+        self, mock_task_update_structure_esi
+    ):
+        # given
+        mock_task_update_structure_esi.apply_async.side_effect = AlreadyQueued(10)
+        # when
+        obj, created = Location.objects.update_or_create_esi_async(
+            id=1000000000001, token=self.token
+        )
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 1000000000001)
+        self.assertIsNone(obj.eve_solar_system)
+        self.assertIsNone(obj.eve_type)
+        self.assertTrue(mock_task_update_structure_esi.apply_async.called)
 
 
 class TestSkillSetManager(NoSocketsTestCase):
