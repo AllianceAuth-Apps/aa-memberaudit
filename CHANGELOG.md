@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Character update tasks are no longer retried automatically when there is an ESI issue. This was causing huge task buildup when ESI was not having problems. Also this should not be needed, since all character updates are automatically repeated every hour or so.
 - Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning (#135)
 - Will ignore occasional http 500 for ship endpoint and log warning (#138)
+- Temporarily disabled corporations tab, since the ESI endpoint is currently not functioning
 
 ## [2.5.0] - 2023-02-23
 
