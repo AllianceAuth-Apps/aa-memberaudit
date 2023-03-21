@@ -1,0 +1,45 @@
+{% load humanize %}
+{% load i18n %}
+
+<div class="row">
+    <div class="col-md-4">
+        <h4>{% translate "General" %}</h4>
+        <dl class="dl-horizontal">
+            <dt>{% translate "Faction" %}</dt>
+            <dd>{{ fw_stats.faction|default:"-" }}</dd>
+
+            <dt>{% translate "Enlisted on" %}</dt>
+            <dd>{{ fw_stats.enlisted_on|default:"-" }}</dd>
+
+            <dt>{% translate "Current rank" %}</dt>
+            <dd>{{ fw_stats.current_rank|default:"-" }}</dd>
+
+            <dt>{% translate "Highest rank" %}</dt>
+            <dd>{{ fw_stats.highest_rank|default:"-" }}</dd>
+        </dl>
+    </div>
+
+    <div class="col-md-4">
+        <h4>{% translate "Kills" %}</h4>
+        <dl class="dl-horizontal">
+            <dt>{% translate "Yesterday" %}</dt>
+            <dd>{{ fw_stats.kills_yesterday|intcomma|default:"-" }}</dd>
+            <dt>{% translate "Last week" %}</dt>
+            <dd>{{ fw_stats.kills_last_week|intcomma|default:"-" }}</dd>
+            <dt>{% translate "Total" %}</dt>
+            <dd>{{ fw_stats.kills_total|intcomma|default:"-" }}</dd>
+        </dl>
+    </div>
+
+    <div class="col-md-4">
+        <h4>{% translate "Victory Points" %}</h4>
+        <dl class="dl-horizontal">
+            <dt>{% translate "Yesterday" %}</dt>
+            <dd>{{ fw_stats.victory_points_yesterday|intcomma|default:"-" }}</dd>
+            <dt>{% translate "Last week" %}</dt>
+            <dd>{{ fw_stats.victory_points_last_week|intcomma|default:"-" }}</dd>
+            <dt>{% translate "Total" %}</dt>
+            <dd>{{ fw_stats.victory_points_total|intcomma|default:"-" }}</dd>
+        </dl>
+    </div>
+</div>

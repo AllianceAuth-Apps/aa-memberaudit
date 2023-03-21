@@ -701,6 +701,24 @@ def character_corporation_history(
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed()
+def character_fw_stats(
+    request, character_pk: int, character: Character
+) -> HttpResponse:
+    try:
+        fw_stats = character.fw_stats
+    except ObjectDoesNotExist:
+        fw_stats = None
+    context = {"fw_stats": fw_stats}
+    return render(
+        request,
+        "memberaudit/partials/character_viewer/tabs/fw_stats_content.html",
+        context,
+    )
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
 def character_implants_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:

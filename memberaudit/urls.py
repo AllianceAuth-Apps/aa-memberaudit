@@ -84,6 +84,11 @@ urlpatterns = [
         name="character_corporation_history",
     ),
     path(
+        "character_fw_stats/<int:character_pk>/",
+        character_viewer_1.character_fw_stats,
+        name="character_fw_stats",
+    ),
+    path(
         "character_implants_data/<int:character_pk>/",
         character_viewer_1.character_implants_data,
         name="character_implants_data",
