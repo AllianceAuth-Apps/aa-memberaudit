@@ -33,6 +33,7 @@ from ..managers.sections import (
     CharacterContractManager,
     CharacterCorporationHistoryManager,
     CharacterDetailsManager,
+    CharacterFwStatsManager,
     CharacterImplantManager,
     CharacterJumpCloneManager,
     CharacterLocationManager,
@@ -577,6 +578,35 @@ class CharacterDetails(models.Model):
     def description_html(self) -> str:
         """returns the description without tags"""
         return mark_safe(eve_xml_to_html(self.description, add_default_style=True))
+
+
+class CharacterFwStats(models.Model):
+    """Faction Warfare statistics of a character"""
+
+    character = models.OneToOneField(
+        Character, on_delete=models.CASCADE, related_name="fw_stats"
+    )
+
+    current_rank = models.PositiveSmallIntegerField(default=None, null=True)
+    enlisted_on = models.DateTimeField(default=None, null=True)
+    faction = models.ForeignKey(
+        EveFaction, on_delete=models.SET_DEFAULT, default=None, null=True
+    )
+    highest_rank = models.PositiveSmallIntegerField(default=None, null=True)
+    kills_last_week = models.PositiveIntegerField()
+    kills_total = models.PositiveIntegerField()
+    kills_yesterday = models.PositiveIntegerField()
+    victory_points_last_week = models.PositiveIntegerField()
+    victory_points_total = models.PositiveIntegerField()
+    victory_points_yesterday = models.PositiveIntegerField()
+
+    objects = CharacterFwStatsManager()
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self) -> str:
+        return str(self.character)
 
 
 class CharacterImplant(models.Model):

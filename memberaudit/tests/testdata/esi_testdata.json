@@ -340,6 +340,26 @@
             }
         }
     },
+    "Faction_Warfare": {
+        "get_characters_character_id_fw_stats": {
+            "1001": {
+                "current_rank": 3,
+                "enlisted_on": "2017-01-02T03:04:05Z",
+                "faction_id": 500001,
+                "highest_rank": 4,
+                "kills": {
+                    "last_week": 893,
+                    "total": 684350,
+                    "yesterday": 136
+                },
+                "victory_points": {
+                    "last_week": 102640,
+                    "total": 52658260,
+                    "yesterday": 15980
+                }
+            }
+        }
+    },
     "Clones": {
         "get_characters_character_id_clones": {
             "1001": {
