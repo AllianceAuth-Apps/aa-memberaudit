@@ -2,6 +2,7 @@ import datetime as dt
 from unittest.mock import MagicMock, patch
 
 from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
+from celery_once import AlreadyQueued
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -10,7 +11,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
-from app_utils.esi import EsiStatus
+from app_utils.esi import EsiStatus, fetch_esi_status
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import (
     NoSocketsTestCase,
@@ -404,7 +405,6 @@ class TestMailEntityManagerAsync(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
-        MailEntity.objects.all().delete()
 
     def test_get_or_create_esi_async_1(self, mock_fetch_esi_status):
         """When entity already exists, return it"""
@@ -514,6 +514,40 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.name, "Bruce Wayne")
 
         self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
+
+
+@patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+class TestMailEntityManagerAsync2(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    @patch("memberaudit.tasks.update_mail_entity_esi")
+    def test_should_create_new_object_and_try_to_resolve(
+        self, mock_task_update_mail_entity_esi
+    ):
+        # when
+        obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
+        self.assertEqual(obj.name, "")
+        self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
+
+    @patch("memberaudit.tasks.update_mail_entity_esi")
+    def test_should_create_new_object_and_try_to_resolve_and_ignore_already_queued(
+        self, mock_task_update_mail_entity_esi
+    ):
+        # given
+        mock_task_update_mail_entity_esi.apply_async.side_effect = AlreadyQueued(10)
+        # when
+        obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
+        self.assertEqual(obj.name, "")
+        self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
 
 
 @patch(MANAGERS_PATH + ".esi")
