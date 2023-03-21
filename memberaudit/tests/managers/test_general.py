@@ -1,5 +1,5 @@
 import datetime as dt
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
 
@@ -268,6 +268,18 @@ class TestMailEntityManager(NoSocketsTestCase):
         self.assertEqual(obj.name, "Dummy")
         # method must not create an EveEntity object for the mailing list
         self.assertFalse(EveEntity.objects.filter(id=9001).exists())
+
+    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(return_value=MagicMock()))
+    def test_update_or_create_esi_4(self):
+        """When entity does not exist and is a mailing list, then create it."""
+        # when
+        with patch(MANAGERS_PATH + ".EveEntity.objects.get_or_create_esi") as m:
+            m.return_value = None, False
+            obj, created = MailEntity.objects.update_or_create_esi(id=9001)
+        # when
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 9001)
+        self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
 
     def test_update_or_create_from_eve_entity_1(self):
         """When entity does not exist, create it from given EveEntity"""
@@ -602,7 +614,9 @@ class TestLocationManager(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(minutes=6)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
+        with patch(
+            "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
+        ):
             Location.objects.create(id=1000000000001)
             obj, _ = Location.objects.get_or_create_esi(
                 id=1000000000001, token=self.token
@@ -618,7 +632,9 @@ class TestLocationManager(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(hours=25)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
+        with patch(
+            "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
+        ):
             Location.objects.create(
                 id=1000000000001,
                 name="Existing Structure",
