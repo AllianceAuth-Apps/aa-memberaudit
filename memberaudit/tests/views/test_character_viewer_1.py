@@ -107,9 +107,22 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
         response = character_attribute_data(request, self.character.pk)
         self.assertEqual(response.status_code, 200)
 
-    def test_character_fw_stats(self):
+
+class TestCharacterFwStats(LoadTestDataMixin, TestCase):
+    def test_should_load_with_stats(self):
         # given
-        create_fw_stats(character=self.character)
+        create_fw_stats(character=self.character).save()
+        request = self.factory.get(
+            reverse("memberaudit:character_fw_stats", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_fw_stats(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+
+    def test_should_load_without_stats(self):
+        # given
         request = self.factory.get(
             reverse("memberaudit:character_fw_stats", args=[self.character.pk])
         )

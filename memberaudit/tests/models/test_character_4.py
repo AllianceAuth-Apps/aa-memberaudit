@@ -651,7 +651,6 @@ class TestCharacterUpdateFwStats(NoSocketsTestCase):
         self.assertEqual(obj.victory_points_yesterday, 15980)
 
     def test_should_update_existing_entries(self, mock_esi):
-        ...
         # given
         mock_esi.client = self.esi_client_stub
         CharacterFwStats.objects.create(
@@ -681,3 +680,59 @@ class TestCharacterUpdateFwStats(NoSocketsTestCase):
         self.assertEqual(obj.victory_points_last_week, 102640)
         self.assertEqual(obj.victory_points_total, 52658260)
         self.assertEqual(obj.victory_points_yesterday, 15980)
+
+    def test_should_add_new_entry_from_scratch_for_unlisted(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Faction_Warfare",
+                "get_characters_character_id_fw_stats",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "kills": {
+                            "last_week": 0,
+                            "total": 684350,
+                            "yesterday": 0,
+                        },
+                        "victory_points": {
+                            "last_week": 0,
+                            "total": 52658260,
+                            "yesterday": 0,
+                        },
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+            self.character_1001.update_fw_stats()
+        # then
+        obj: CharacterFwStats = self.character_1001.fw_stats
+        self.assertIsNone(obj.current_rank)
+        self.assertIsNone(obj.enlisted_on)
+        self.assertIsNone(obj.faction)
+        self.assertIsNone(obj.highest_rank)
+        self.assertEqual(obj.kills_last_week, 0)
+        self.assertEqual(obj.kills_total, 684350)
+        self.assertEqual(obj.kills_yesterday, 0)
+        self.assertEqual(obj.victory_points_last_week, 0)
+        self.assertEqual(obj.victory_points_total, 52658260)
+        self.assertEqual(obj.victory_points_yesterday, 0)
+
+    @patch(MODELS_PATH + ".CharacterFwStats.objects.update_for_character")
+    def test_should_not_update_when_not_changed(
+        self, mock_update_for_character, mock_esi
+    ):
+        # given
+        mock_esi.client = self.esi_client_stub
+        # when
+        with patch(
+            MODELS_PATH + ".Character.has_section_changed"
+        ) as mock_has_section_changed:
+            mock_has_section_changed.return_value = False
+            self.character_1001.update_fw_stats()
+        # then
+        self.assertFalse(mock_update_for_character.called)
