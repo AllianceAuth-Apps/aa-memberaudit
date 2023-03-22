@@ -12,6 +12,7 @@ from eveuniverse.models import EveType
 from allianceauth.authentication.models import State
 
 from . import tasks
+from .app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
 from .constants import EveCategoryId
 from .models import (
     Character,
@@ -24,7 +25,6 @@ from .models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-from .tasks import add_compliant_users_to_group, clear_users_from_group
 
 
 class ComplianceGroupDesignationForm(forms.ModelForm):
@@ -55,11 +55,15 @@ class ComplianceGroupDesignationAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, *args, **kwargs) -> None:
         super().save_model(request, obj, *args, **kwargs)
-        add_compliant_users_to_group.delay(obj.group.pk)
+        tasks.add_compliant_users_to_group.apply_async(
+            args=[obj.group.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )
 
     def delete_queryset(self, request, queryset) -> None:
         for obj in queryset:
-            clear_users_from_group.delay(obj.group.pk)
+            tasks.clear_users_from_group.apply_async(
+                args=[obj.group.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+            )
             obj.delete()
 
     @admin.display(ordering="group__name")
@@ -342,7 +346,10 @@ class CharacterAdmin(admin.ModelAdmin):
     def delete_characters(self, request, queryset):
         if "apply" in request.POST:
             for obj in queryset:
-                tasks.delete_character.delay(character_pk=obj.pk)
+                tasks.delete_character.apply_async(
+                    kwargs={"character_pk": obj.pk},
+                    priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+                )
             self.message_user(
                 request,
                 f"Started deleting {queryset.count()} character(s). "
@@ -361,13 +368,19 @@ class CharacterAdmin(admin.ModelAdmin):
     @admin.display(description="Update selected characters from EVE server")
     def update_characters(self, request, queryset):
         for obj in queryset:
-            tasks.update_character.delay(character_pk=obj.pk, force_update=True)
+            tasks.update_character.apply_async(
+                kwargs={"character_pk": obj.pk, "force_update": True},
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            )
             self.message_user(request, f"Started updating character: {obj}. ")
 
     @admin.display(description="Update assets for selected characters from EVE server")
     def update_assets(self, request, queryset):
         for obj in queryset:
-            tasks.update_character_assets.delay(character_pk=obj.pk, force_update=True)
+            tasks.update_character_assets.apply_async(
+                kwargs={"character_pk": obj.pk, "force_update": True},
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            )
             self.message_user(
                 request, f"Started updating assets for character: {obj}. "
             )
@@ -381,7 +394,10 @@ class CharacterAdmin(admin.ModelAdmin):
     def update_location(self, request, queryset):
         section = Character.UpdateSection.LOCATION
         for obj in queryset:
-            tasks.update_character_section.delay(character_pk=obj.pk, section=section)
+            tasks.update_character_section.apply_async(
+                kwargs={"character_pk": obj.pk, "section": section},
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            )
             self.message_user(
                 request,
                 f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
@@ -397,7 +413,10 @@ class CharacterAdmin(admin.ModelAdmin):
     def update_online_status(self, request, queryset):
         section = Character.UpdateSection.ONLINE_STATUS
         for obj in queryset:
-            tasks.update_character_section.delay(character_pk=obj.pk, section=section)
+            tasks.update_character_section.apply_async(
+                kwargs={"character_pk": obj.pk, "section": section},
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            )
             self.message_user(
                 request,
                 f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
@@ -624,9 +643,13 @@ class SkillSetAdmin(admin.ModelAdmin):
     def save_model(self, request, obj, form, change):
         obj.user = request.user
         super().save_model(request, obj, form, change)
-        tasks.update_characters_skill_checks.delay(force_update=True)
+        tasks.update_characters_skill_checks.apply_async(
+            kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )
 
     def delete_model(self, request, obj):
         obj.user = request.user
         super().delete_model(request, obj)
-        tasks.update_characters_skill_checks.delay(force_update=True)
+        tasks.update_characters_skill_checks.apply_async(
+            kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )

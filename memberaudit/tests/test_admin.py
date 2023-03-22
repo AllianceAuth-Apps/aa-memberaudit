@@ -196,7 +196,7 @@ class TestCharacterAdmin(TestCase):
         # when
         self.modeladmin.update_characters(request, queryset)
         # then
-        self.assertEqual(mock_task_update_character.delay.call_count, 1)
+        self.assertEqual(mock_task_update_character.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
     @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
@@ -224,7 +224,7 @@ class TestCharacterAdmin(TestCase):
         # when
         self.modeladmin.delete_characters(request, queryset)
         # then
-        self.assertEqual(mock_task_delete_character.delay.call_count, 1)
+        self.assertEqual(mock_task_delete_character.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
 
@@ -245,7 +245,7 @@ class TestSkillSetAdmin(TestCase):
         form = self.modeladmin.get_form(request)
         self.modeladmin.save_model(request, ship, form, True)
 
-        self.assertTrue(mock_update_characters_skill_checks.delay.called)
+        self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
 
     @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
     def test_delete_model(self, mock_update_characters_skill_checks):
@@ -253,7 +253,7 @@ class TestSkillSetAdmin(TestCase):
         request = MockRequest(self.user)
         self.modeladmin.delete_model(request, ship)
 
-        self.assertTrue(mock_update_characters_skill_checks.delay.called)
+        self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
 
     # def test_ship_type_filter(self):
     #     class SkillSetAdminTest(SkillSetAdmin):

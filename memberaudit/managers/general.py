@@ -2,6 +2,7 @@ import datetime as dt
 from typing import Iterable, List, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
+from celery_once import AlreadyQueued
 
 from django.contrib.auth.models import Group, User
 from django.db import models, transaction
@@ -19,6 +20,7 @@ from .. import __title__
 from ..app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
+    MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
 from ..constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
 from ..core.fittings import Fitting
@@ -241,15 +243,17 @@ class LocationManager(models.Manager):
         )
 
     def _structure_update_or_create_esi_async(self, id: int, token: Token):
-        from ..tasks import DEFAULT_TASK_PRIORITY
         from ..tasks import update_structure_esi as task_update_structure_esi
 
         id = int(id)
         location, created = self.get_or_create(id=id)
-        task_update_structure_esi.apply_async(
-            kwargs={"id": id, "token_pk": token.pk},
-            priority=DEFAULT_TASK_PRIORITY,
-        )
+        try:
+            task_update_structure_esi.apply_async(
+                kwargs={"id": id, "token_pk": token.pk},
+                priority=MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )
+        except AlreadyQueued:
+            pass
         return location, created
 
     def structure_update_or_create_esi(self, id: int, token: Token):
@@ -386,16 +390,18 @@ class MailEntityManager(models.Manager):
         return self._update_or_create_esi_async(id=id)
 
     def _update_or_create_esi_async(self, id: int) -> Tuple[models.Model, bool]:
-        from ..tasks import DEFAULT_TASK_PRIORITY
         from ..tasks import update_mail_entity_esi as task_update_mail_entity_esi
 
         id = int(id)
         obj, created = self.get_or_create(
             id=id, defaults={"category": self.model.Category.UNKNOWN}
         )
-        task_update_mail_entity_esi.apply_async(
-            kwargs={"id": id}, priority=DEFAULT_TASK_PRIORITY
-        )
+        try:
+            task_update_mail_entity_esi.apply_async(
+                kwargs={"id": id}, priority=MEMBERAUDIT_TASKS_LOW_PRIORITY
+            )
+        except AlreadyQueued:
+            pass
         return obj, created
 
     def update_or_create_from_eve_entity(

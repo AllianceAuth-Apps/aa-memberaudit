@@ -10,7 +10,7 @@ from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
 from app_utils.esi import EsiStatus
-from app_utils.esi_testing import BravadoResponseStub
+from app_utils.esi_testing import BravadoResponseStub, build_http_error
 from app_utils.testing import NoSocketsTestCase
 
 from ...core.xml_converter import eve_xml_to_html
@@ -18,6 +18,7 @@ from ...models import (
     Character,
     CharacterMail,
     CharacterMailLabel,
+    CharacterShip,
     CharacterSkill,
     CharacterWalletJournalEntry,
     Location,
@@ -531,6 +532,24 @@ class TestCharacterUpdateLoyalty(CharacterUpdateTestDataMixin, NoSocketsTestCase
         obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
         self.assertEqual(obj.loyalty_points, 100)
 
+    def test_should_thread_http_500_as_empty_loyalty_list(self, mock_esi):
+        # given
+        exception = build_http_error(
+            500, '{"error":"Unhandled internal error encountered!"}'
+        )
+        mock_esi.client.Loyalty.get_characters_character_id_loyalty_points.side_effect = (
+            exception
+        )
+        self.character_1001.loyalty_entries.create(
+            corporation=self.corporation_2001, loyalty_points=100
+        )
+        # when
+        self.character_1001.update_loyalty()
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2001)
+        self.assertEqual(obj.loyalty_points, 100)
+
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODELS_PATH + ".character.esi")
@@ -576,7 +595,25 @@ class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         # when
         self.character_1001.update_ship()
         # then
-        self.assertEqual(self.character_1001.ship.eve_type, EveType.objects.get(id=603))
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_ignore_error_500(self, mock_esi):
+        # given
+        error_500 = build_http_error(
+            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
+        )
+        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
+            error_500
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        self.character_1001.update_ship()
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
 

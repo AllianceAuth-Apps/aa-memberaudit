@@ -8,7 +8,7 @@ import json
 import os
 from typing import Any, Optional
 
-from bravado.exception import HTTPNotFound
+from bravado.exception import HTTPInternalServerError, HTTPNotFound
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -676,10 +676,22 @@ class Character(models.Model):
     def update_loyalty(self, token: Token, force_update: bool = False):
         """syncs the character's loyalty entries"""
         logger.info("%s: Fetching loyalty entries from ESI", self)
-        loyalty_entries = esi.client.Loyalty.get_characters_character_id_loyalty_points(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+        try:
+            loyalty_entries = (
+                esi.client.Loyalty.get_characters_character_id_loyalty_points(
+                    character_id=self.eve_character.character_id,
+                    token=token.valid_access_token(),
+                ).results()
+            )
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                self,
+                ex,
+            )
+            return
         if MEMBERAUDIT_DEVELOPER_MODE:
             self._store_list_to_disk(loyalty_entries, "loyalty")
 
@@ -945,10 +957,20 @@ class Character(models.Model):
         from .sections import CharacterShip
 
         logger.info("%s: Fetching ship from ESI", self)
-        ship_info = esi.client.Location.get_characters_character_id_ship(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+        try:
+            ship_info = esi.client.Location.get_characters_character_id_ship(
+                character_id=self.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                self,
+                ex,
+            )
+            return
         CharacterShip.objects.update_for_character(self, ship_info)
 
     @fetch_token_for_character("esi-skills.read_skillqueue.v1")

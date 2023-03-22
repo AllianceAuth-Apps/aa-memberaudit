@@ -1,6 +1,6 @@
 import datetime as dt
 from unittest import skip
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from bravado.exception import HTTPInternalServerError
 from celery.exceptions import Retry as CeleryRetry
@@ -9,11 +9,23 @@ from django.test import TestCase, override_settings
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
+from allianceauth.utils.cache import get_redis_client
+from app_utils.esi import (
+    EsiDailyDowntime,
+    EsiErrorLimitExceeded,
+    EsiOffline,
+    EsiStatus,
+    fetch_esi_status,
+)
 from app_utils.esi_testing import BravadoResponseStub
-from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
+from app_utils.testing import (
+    create_authgroup,
+    create_user_from_evecharacter,
+    generate_invalid_pk,
+)
 
 from memberaudit.models import (
     Character,
@@ -38,10 +50,11 @@ from memberaudit.tasks import (
     update_mail_entity_esi,
     update_market_prices,
     update_structure_esi,
+    update_unresolved_eve_entities,
 )
 
 from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
-from .testdata.factories import create_character
+from .testdata.factories import create_character, create_compliance_group_designation
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -52,11 +65,17 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
+def clear_celery_once_locks():
+    r = get_redis_client()
+    if keys := r.keys(":?:qo_memberaudit.*"):
+        r.delete(*keys)
+
+
 @patch(TASKS_PATH + ".update_compliance_groups_for_all")
 @patch(TASKS_PATH + ".update_all_characters")
 @patch(TASKS_PATH + ".update_market_prices")
 class TestRegularUpdates(TestCase):
-    def test_should_run_update_normally(
+    def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
         mock_update_all_characters,
@@ -67,10 +86,26 @@ class TestRegularUpdates(TestCase):
         # then
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
+        self.assertFalse(mock_update_compliance_groups_for_all.apply_async.called)
+
+    def test_should_run_update_for_all_incl_compliance_groups(
+        self,
+        mock_update_market_prices,
+        mock_update_all_characters,
+        mock_update_compliance_groups_for_all,
+    ):
+        # given
+        group = create_authgroup(internal=False)
+        create_compliance_group_designation(group)
+        # when
+        run_regular_updates()
+        # then
+        self.assertTrue(mock_update_market_prices.apply_async.called)
+        self.assertTrue(mock_update_all_characters.apply_async.called)
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
 
 
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestOtherTasks(TestCase):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
     def test_update_market_prices(self, mock_update_from_esi):
@@ -79,7 +114,7 @@ class TestOtherTasks(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True)  # need to ignore exceptions
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterAssets(TestCase):
     @classmethod
@@ -366,7 +401,7 @@ class TestUpdateCharacterAssets(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterMails(TestCase):
@@ -413,7 +448,7 @@ class TestUpdateCharacterMails(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterContacts(TestCase):
@@ -460,7 +495,7 @@ class TestUpdateCharacterContacts(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterContracts(TestCase):
@@ -508,7 +543,7 @@ class TestUpdateCharacterContracts(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterWalletJournal(TestCase):
@@ -555,7 +590,7 @@ class TestUpdateCharacterWalletJournal(TestCase):
 
 
 @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
@@ -569,6 +604,7 @@ class TestUpdateCharacter(TestCase):
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
+        clear_celery_once_locks()
 
     @skip  # temporary disabled because it does not work in tox
     def test_should_update_normally(self, mock_esi):
@@ -673,7 +709,7 @@ class TestUpdateCharacter(TestCase):
         self.assertTrue(self.character_1001.is_update_status_ok())
 
 
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi")
 class TestUpdateStructureEsi(TestCase):
@@ -728,21 +764,21 @@ class TestUpdateMailEntityEsi(TestCase):
             self.fail("Unexpected exception occurred")
 
     def test_esi_status_1(self, mock_update_or_create_esi):
-        """When ESI is offline, then retry"""
+        """When ESI is offline, then abort"""
         mock_update_or_create_esi.side_effect = EsiOffline
 
-        with self.assertRaises(CeleryRetry):
+        with self.assertRaises(EsiOffline):
             update_mail_entity_esi(1001)
 
     def test_esi_status_2(self, mock_update_or_create_esi):
-        """When ESI error limit reached, then retry"""
+        """When ESI error limit reached, then abort"""
         mock_update_or_create_esi.side_effect = EsiErrorLimitExceeded(5)
 
-        with self.assertRaises(CeleryRetry):
+        with self.assertRaises(EsiErrorLimitExceeded):
             update_mail_entity_esi(1001)
 
 
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestUpdateCharactersDoctrines(TestCase):
@@ -827,7 +863,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
         self.assertTrue(mock_update_user.called)
 
 
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down")
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(TASKS_PATH + ".update_character")
 class TestUpdateAllCharacters(TestCase):
     @classmethod
@@ -837,9 +873,7 @@ class TestUpdateAllCharacters(TestCase):
         load_entities()
         load_locations()
 
-    def test_should_update_all_enabled_characters(
-        self, mock_update_character, mock_retry_esi
-    ):
+    def test_should_update_all_enabled_characters(self, mock_update_character):
         # given
         character_1001 = create_memberaudit_character(1001)
         character_1002 = create_memberaudit_character(1002)
@@ -849,7 +883,6 @@ class TestUpdateAllCharacters(TestCase):
         # when
         update_all_characters()
         # then
-        self.assertTrue(mock_retry_esi.called)
         self.assertTrue(mock_update_character.apply_async.called)
         called_pks = {
             o[1]["kwargs"]["character_pk"]
@@ -857,9 +890,7 @@ class TestUpdateAllCharacters(TestCase):
         }
         self.assertSetEqual(called_pks, {character_1001.pk, character_1002.pk})
 
-    def test_should_disable_orphaned_characters(
-        self, mock_update_character, mock_retry_esi
-    ):
+    def test_should_disable_orphaned_characters(self, mock_update_character):
         # given
         character_1001 = create_memberaudit_character(1001)
         eve_character_1002 = EveCharacter.objects.get(character_id=1002)
@@ -867,8 +898,60 @@ class TestUpdateAllCharacters(TestCase):
         # when
         update_all_characters()
         # then
-        self.assertTrue(mock_retry_esi.called)
         character_1001.refresh_from_db()
         self.assertFalse(character_1001.is_disabled)
         character_1002.refresh_from_db()
         self.assertTrue(character_1002.is_disabled)
+
+
+@patch(TASKS_PATH + ".fetch_esi_status")
+class TestAbortMainTaskDuringDailyDowntime(TestCase):
+    @patch(TASKS_PATH + ".update_character")
+    def test_should_abort_update_all_characters(
+        self, mock_update_character, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.side_effect = (
+            EsiDailyDowntime
+        )
+        # when/then
+        update_all_characters()
+        # then
+        self.assertFalse(mock_update_character.apply_async.called)
+
+    @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
+    def test_should_abort_update_market_prices(
+        self, mock_update_from_esi, mock_fetch_esi_status
+    ):
+        # given
+        mock_fetch_esi_status.return_value.raise_for_status.side_effect = (
+            EsiDailyDowntime
+        )
+        # when/then
+        update_market_prices()
+        # then
+        self.assertFalse(mock_update_from_esi.called)
+
+
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+@patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id")
+class TestUpdateUnresolvedEveEntities(TestCase):
+    def test_should_not_attempt_to_update_when_no_unresolved_entities(
+        self, mock_update_from_esi_by_id
+    ):
+        # given
+        create_eve_entity(id=1, name="alpha")
+        # when
+        update_unresolved_eve_entities()
+        # then
+        self.assertFalse(mock_update_from_esi_by_id.called)
+
+    def test_should_update_unresolved_entities(self, mock_update_from_esi_by_id):
+        # given
+        create_eve_entity(id=1)
+        # when
+        update_unresolved_eve_entities()
+        # then
+        self.assertTrue(mock_update_from_esi_by_id.called)
+        args, _ = mock_update_from_esi_by_id.call_args
+        self.assertEqual(list(args[0]), [1])

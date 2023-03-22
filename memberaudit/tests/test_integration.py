@@ -1,5 +1,5 @@
 import datetime as dt
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -8,7 +8,7 @@ from django_webtest import WebTest
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.esi import EsiStatus
+from app_utils.esi import EsiStatus, fetch_esi_status
 
 from memberaudit import tasks
 from memberaudit.models import (
@@ -38,7 +38,7 @@ MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestUILauncher(WebTest):
     @classmethod
     def setUpClass(cls):
@@ -326,7 +326,7 @@ class TestUICharacterViewer(WebTest):
     TASKS_PATH + ".Character.objects.get_cached",
     lambda pk, timeout: Character.objects.get(pk=pk),
 )
-@patch(TASKS_PATH + ".retry_task_if_esi_is_down", lambda x: None)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
 @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)

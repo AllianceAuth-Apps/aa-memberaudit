@@ -1,7 +1,8 @@
 import datetime as dt
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
+from celery_once import AlreadyQueued
 
 from django.core.cache import cache
 from django.test import TestCase, override_settings
@@ -10,7 +11,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
-from app_utils.esi import EsiStatus
+from app_utils.esi import EsiStatus, fetch_esi_status
 from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import (
     NoSocketsTestCase,
@@ -43,6 +44,7 @@ from ..utils import (
 )
 
 MANAGERS_PATH = "memberaudit.managers.general"
+TASKS_PATH = "memberaudit.tasks"
 
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
@@ -269,6 +271,18 @@ class TestMailEntityManager(NoSocketsTestCase):
         # method must not create an EveEntity object for the mailing list
         self.assertFalse(EveEntity.objects.filter(id=9001).exists())
 
+    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(return_value=MagicMock()))
+    def test_update_or_create_esi_4(self):
+        """When entity does not exist and is a mailing list, then create it."""
+        # when
+        with patch(MANAGERS_PATH + ".EveEntity.objects.get_or_create_esi") as m:
+            m.return_value = None, False
+            obj, created = MailEntity.objects.update_or_create_esi(id=9001)
+        # when
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 9001)
+        self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
+
     def test_update_or_create_from_eve_entity_1(self):
         """When entity does not exist, create it from given EveEntity"""
         eve_entity = EveEntity.objects.get(id=1001)
@@ -392,7 +406,6 @@ class TestMailEntityManagerAsync(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
-        MailEntity.objects.all().delete()
 
     def test_get_or_create_esi_async_1(self, mock_fetch_esi_status):
         """When entity already exists, return it"""
@@ -504,6 +517,40 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
 
 
+@patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+class TestMailEntityManagerAsync2(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    @patch(TASKS_PATH + ".update_mail_entity_esi")
+    def test_should_create_new_object_and_try_to_resolve(
+        self, mock_task_update_mail_entity_esi
+    ):
+        # when
+        obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
+        self.assertEqual(obj.name, "")
+        self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
+
+    @patch("memberaudit.tasks.update_mail_entity_esi")
+    def test_should_create_new_object_and_try_to_resolve_and_ignore_already_queued(
+        self, mock_task_update_mail_entity_esi
+    ):
+        # given
+        mock_task_update_mail_entity_esi.apply_async.side_effect = AlreadyQueued(10)
+        # when
+        obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
+        self.assertEqual(obj.name, "")
+        self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
+
+
 @patch(MANAGERS_PATH + ".esi")
 class TestLocationManager(NoSocketsTestCase):
     @classmethod
@@ -602,7 +649,9 @@ class TestLocationManager(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(minutes=6)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
+        with patch(
+            "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
+        ):
             Location.objects.create(id=1000000000001)
             obj, _ = Location.objects.get_or_create_esi(
                 id=1000000000001, token=self.token
@@ -618,7 +667,9 @@ class TestLocationManager(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(hours=25)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
+        with patch(
+            "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
+        ):
             Location.objects.create(
                 id=1000000000001,
                 name="Existing Structure",
@@ -803,7 +854,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
 
 
-@patch(MANAGERS_PATH + ".esi")
 class TestLocationManagerAsync(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -828,26 +878,45 @@ class TestLocationManagerAsync(TestCase):
     @override_settings(
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
+    @patch(MANAGERS_PATH + ".esi")
     @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
+        # given
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
-
+        # when
         obj, created = Location.objects.update_or_create_esi_async(
             id=1000000000001, token=self.token
         )
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000001)
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.eve_type)
-
         obj.refresh_from_db()
         self.assertEqual(obj.name, "Amamake - Test Structure Alpha")
         self.assertEqual(obj.eve_solar_system, self.amamake)
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
-
         self.assertTrue(mock_fetch_esi_status.called)  # proofs task was called
+
+    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+    @patch(TASKS_PATH + ".update_structure_esi")
+    def test_should_create_location_and_ignore_already_queued(
+        self, mock_task_update_structure_esi
+    ):
+        # given
+        mock_task_update_structure_esi.apply_async.side_effect = AlreadyQueued(10)
+        # when
+        obj, created = Location.objects.update_or_create_esi_async(
+            id=1000000000001, token=self.token
+        )
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 1000000000001)
+        self.assertIsNone(obj.eve_solar_system)
+        self.assertIsNone(obj.eve_type)
+        self.assertTrue(mock_task_update_structure_esi.apply_async.called)
 
 
 class TestSkillSetManager(NoSocketsTestCase):
