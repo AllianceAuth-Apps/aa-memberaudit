@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Ability to set the default task priorities via settings
+- System check to prevent users from updating directly from 1.x to 2.x and skipping 2.0
 
 ### Changed
 
