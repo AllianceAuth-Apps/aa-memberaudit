@@ -12,11 +12,10 @@ def upgrade_from_1_x_check(app_configs, **kwargs):
         if version.major < 2:
             errors.append(
                 Critical(
-                    "Can not upgrade directly from 1.x to 2.x",
+                    "Direct upgrade from 1.x to 2.x not possible",
                     hint=(
-                        "You are upgrading from a 1.x version. "
-                        "Please install and upgrade to 2.0 first "
-                        "and follow the special upgrade instructions in the change notes. "
+                        "Please first upgrade to 2.0.0 by following "
+                        "the special upgrade instructions in the 2.0.0 change notes. "
                         "Then you can upgrade to the newest version. "
                         "You can install the 2.0 version with the following command: "
                         "pip install aa-memberaudit==2.0.0"
