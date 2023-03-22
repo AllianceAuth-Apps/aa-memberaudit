@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.6.0] - tbd
+
 ### Added
 
+- Faction Warfare stats are now shown for every character
 - Ability to set the default task priorities via settings
-- System check to prevent users from updating directly from 1.x to 2.x and skipping 2.0
+- Users are no longer able to migrate when trying to upgrade directly from 1.x to 2.x while skipping 2.0
 
 ### Changed
 
