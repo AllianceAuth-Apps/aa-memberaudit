@@ -32,9 +32,9 @@
                     <dt>{% translate "Enlisted on" %}</dt>
                     <dd>{{ fw_stats.enlisted_on|default:"-" }}</dd>
                     <dt>{% translate "Current rank" %}</dt>
-                    <dd>{{ fw_stats.current_rank|default:"-" }}</dd>
+                    <dd>{{ fw_stats.current_rank_name|default:"-" }}</dd>
                     <dt>{% translate "Highest rank" %}</dt>
-                    <dd>{{ fw_stats.highest_rank|default:"-" }}</dd>
+                    <dd>{{ fw_stats.highest_rank_name|default:"-" }}</dd>
                 </dl>
             </div>
 

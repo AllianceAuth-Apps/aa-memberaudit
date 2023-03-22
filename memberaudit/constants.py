@@ -16,6 +16,13 @@ class EveCategoryId(IntEnum):
     STRUCTURE = 65
 
 
+class EveFactionId(IntEnum):
+    AMARR_EMPIRE = 500_003
+    CALDARI_STATE = 500_001
+    GALLENTE_FEDERATION = 500_004
+    MINMATAR_REPUBLIC = 500_002
+
+
 class EveGroupId(IntEnum):
     CYBERIMPLANT = 300
     BOOSTER = 303
