@@ -36,6 +36,7 @@ from ..models import (
     CharacterAsset,
     CharacterContract,
     CharacterContractItem,
+    CharacterFwStats,
     Location,
 )
 from ._common import add_common_context
@@ -705,10 +706,16 @@ def character_fw_stats(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
     try:
-        fw_stats = character.fw_stats
+        fw_stats: CharacterFwStats = character.fw_stats
     except ObjectDoesNotExist:
         fw_stats = None
-    context = {"fw_stats": fw_stats}
+        logo_url = ""
+    else:
+        if fw_stats.faction:
+            logo_url = fw_stats.faction.logo_url(128)
+        else:
+            logo_url = ""
+    context = {"fw_stats": fw_stats, "faction_logo_url": logo_url}
     return render(
         request,
         "memberaudit/partials/character_viewer/tabs/fw_stats_content.html",
