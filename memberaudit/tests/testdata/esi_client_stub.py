@@ -79,6 +79,12 @@ _endpoints = [
         needs_token=True,
     ),
     EsiEndpoint(
+        "Faction_Warfare",
+        "get_characters_character_id_fw_stats",
+        "character_id",
+        needs_token=True,
+    ),
+    EsiEndpoint(
         "Location",
         "get_characters_character_id_location",
         "character_id",

@@ -20,6 +20,7 @@ from .sections import (  # noqa: F401
     CharacterContractItem,
     CharacterCorporationHistory,
     CharacterDetails,
+    CharacterFwStats,
     CharacterImplant,
     CharacterJumpClone,
     CharacterJumpCloneImplant,

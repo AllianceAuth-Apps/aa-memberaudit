@@ -488,6 +488,29 @@ class CharacterDetailsManager(models.Manager):
         EveEntity.objects.bulk_update_new_esi()
 
 
+class CharacterFwStatsManager(models.Manager):
+    def update_for_character(self, character: models.Model, stats: dict):
+        if faction_id := stats.get("faction_id"):
+            faction, _ = EveFaction.objects.get_or_create_esi(id=faction_id)
+        else:
+            faction = None
+        self.update_or_create(
+            character=character,
+            defaults={
+                "current_rank": stats.get("current_rank"),
+                "enlisted_on": stats.get("enlisted_on"),
+                "faction": faction,
+                "highest_rank": stats.get("highest_rank"),
+                "kills_last_week": stats["kills"]["last_week"],
+                "kills_total": stats["kills"]["total"],
+                "kills_yesterday": stats["kills"]["yesterday"],
+                "victory_points_last_week": stats["victory_points"]["last_week"],
+                "victory_points_total": stats["victory_points"]["total"],
+                "victory_points_yesterday": stats["victory_points"]["yesterday"],
+            },
+        )
+
+
 class CharacterImplantManager(models.Manager):
     @transaction.atomic()
     def update_for_character(self, character: models.Model, implants_data):

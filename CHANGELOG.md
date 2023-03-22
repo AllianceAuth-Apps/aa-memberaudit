@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.6.0] - tbd
+
 ### Added
 
+- Faction Warfare stats are now shown for every character
 - Ability to set the default task priorities via settings
-- System check to prevent users from updating directly from 1.x to 2.x and skipping 2.0
+- Users are no longer able to migrate when trying to upgrade directly from 1.x to 2.x while skipping 2.0
 
 ### Changed
 
@@ -19,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Character update tasks are no longer retried automatically when there is an ESI issue. This was causing huge task buildup when ESI was not having problems. Also this should not be needed, since all character updates are automatically repeated every hour or so.
 - Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning (#135)
 - Will ignore occasional http 500 for ship endpoint and log warning (#138)
+- Temporarily disabled corporations tab, since the ESI endpoint is currently not functioning
 
 ## [2.5.0] - 2023-02-23
 

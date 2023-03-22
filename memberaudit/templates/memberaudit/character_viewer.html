@@ -29,14 +29,15 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/contacts.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/character_bio.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/contracts.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
+                        {% comment %} {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %} {% endcomment %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/fw_stats.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/implants.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/jump_clones.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
@@ -395,6 +396,9 @@
             searching: false,
             info: false
         });
+
+        /* FW stats */
+        $('#div_fw_stats').load("{% url 'memberaudit:character_fw_stats' character.pk %}")
 
         /* Loyalty */
         $('#tab_loyalty').DataTable({

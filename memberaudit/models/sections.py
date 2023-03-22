@@ -21,9 +21,10 @@ from eveuniverse.models import (
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..core.xml_converter import eve_xml_to_html
-from ..managers.sections import (
+from memberaudit import __title__
+from memberaudit.constants import EveFactionId
+from memberaudit.core.xml_converter import eve_xml_to_html
+from memberaudit.managers.sections import (
     CharacterAssetManager,
     CharacterAttributesManager,
     CharacterContactLabelManager,
@@ -33,6 +34,7 @@ from ..managers.sections import (
     CharacterContractManager,
     CharacterCorporationHistoryManager,
     CharacterDetailsManager,
+    CharacterFwStatsManager,
     CharacterImplantManager,
     CharacterJumpCloneManager,
     CharacterLocationManager,
@@ -47,6 +49,7 @@ from ..managers.sections import (
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
 )
+
 from .character import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
@@ -577,6 +580,111 @@ class CharacterDetails(models.Model):
     def description_html(self) -> str:
         """returns the description without tags"""
         return mark_safe(eve_xml_to_html(self.description, add_default_style=True))
+
+
+class CharacterFwStats(models.Model):
+    """Faction Warfare statistics of a character"""
+
+    RANKS = {
+        EveFactionId.AMARR_EMPIRE: (
+            _("Paladin Crusader"),
+            _("Templar Lieutenant"),
+            _("Cardinal Lieutenant"),
+            _("Arch Lieutenant"),
+            _("Imperial Major"),
+            _("Marshal Commander"),
+            _("Imperator Commander"),
+            _("Tribunus Colonel"),
+            _("Legatus Commodore"),
+            _("Divine Commodore"),
+        ),
+        EveFactionId.CALDARI_STATE: (
+            _("Protectorate Ensign"),
+            _("Second Lieutenant"),
+            _("First Lieutenant"),
+            _("Captain"),
+            _("Major"),
+            _("Lieutenant Colonel"),
+            _("Colonel"),
+            _("Wing Commander"),
+            _("Strike Commander"),
+            _("Brigadier General"),
+        ),
+        EveFactionId.GALLENTE_FEDERATION: (
+            _("Federation Minuteman"),
+            _("Defender Lieutenant"),
+            _("Guardian Lieutenant"),
+            _("Lieutenant Sentinel"),
+            _("Shield Commander"),
+            _("Aegis Commander"),
+            _("Vice Commander"),
+            _("Major General"),
+            _("Lieutenant General"),
+            _("Luminaire General"),
+        ),
+        EveFactionId.MINMATAR_REPUBLIC: (
+            _("Nation Warrior"),
+            _("Spike Lieutenant"),
+            _("Spear Lieutenant"),
+            _("Venge Captain"),
+            _("Lance Commander"),
+            _("Blade Commander"),
+            _("Talon Commander"),
+            _("Voshud Major"),
+            _("Matar Colonel"),
+            _("Valklear General"),
+        ),
+    }
+
+    character = models.OneToOneField(
+        Character, on_delete=models.CASCADE, related_name="fw_stats"
+    )
+
+    current_rank = models.PositiveSmallIntegerField(default=None, null=True)
+    enlisted_on = models.DateTimeField(default=None, null=True)
+    faction = models.ForeignKey(
+        EveFaction, on_delete=models.SET_DEFAULT, default=None, null=True
+    )
+    highest_rank = models.PositiveSmallIntegerField(default=None, null=True)
+    kills_last_week = models.PositiveIntegerField(db_index=True)
+    kills_total = models.PositiveIntegerField(db_index=True)
+    kills_yesterday = models.PositiveIntegerField(db_index=True)
+    victory_points_last_week = models.PositiveIntegerField(db_index=True)
+    victory_points_total = models.PositiveIntegerField(db_index=True)
+    victory_points_yesterday = models.PositiveIntegerField(db_index=True)
+
+    objects = CharacterFwStatsManager()
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self) -> str:
+        return str(self.character)
+
+    def current_rank_name(self) -> str:
+        """Name of current rank or empty string when not enlisted."""
+        if not self.faction:
+            return ""
+        return self.rank_name_generic(self.faction_id, self.current_rank)
+
+    def highest_rank_name(self) -> str:
+        """Name of highest rank or empty string when not enlisted."""
+        if not self.faction:
+            return ""
+        return self.rank_name_generic(self.faction_id, self.current_rank)
+
+    @classmethod
+    def rank_name_generic(cls, faction_id: int, rank_id: int) -> str:
+        """Name of requested rank.
+
+        Raises ValueError for unknown factions and invalid ranks.
+        """
+        try:
+            return cls.RANKS[faction_id][rank_id]
+        except KeyError:
+            raise ValueError("Unknown faction") from None
+        except IndexError:
+            raise ValueError("Invalid rank") from None
 
 
 class CharacterImplant(models.Model):

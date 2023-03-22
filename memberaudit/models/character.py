@@ -71,6 +71,7 @@ class Character(models.Model):
         CONTACTS = "contacts", _("contacts")
         CONTRACTS = "contracts", _("contracts")
         CORPORATION_HISTORY = "corporation_history", _("corporation history")
+        FW_STATS = "fw_stats", _("faction warfare statistics")
         IMPLANTS = "implants", _("implants")
         JUMP_CLONES = "jump_clones", _("jump clones")
         LOCATION = "location", _("location")
@@ -114,11 +115,12 @@ class Character(models.Model):
 
     UPDATE_SECTION_RINGS_MAP = {
         UpdateSection.ASSETS: 3,
+        UpdateSection.ATTRIBUTES: 3,
         UpdateSection.CHARACTER_DETAILS: 2,
         UpdateSection.CONTACTS: 2,
         UpdateSection.CONTRACTS: 2,
         UpdateSection.CORPORATION_HISTORY: 2,
-        UpdateSection.SKILL_SETS: 2,
+        UpdateSection.FW_STATS: 3,
         UpdateSection.IMPLANTS: 2,
         UpdateSection.JUMP_CLONES: 2,
         UpdateSection.LOCATION: 1,
@@ -128,11 +130,11 @@ class Character(models.Model):
         UpdateSection.ONLINE_STATUS: 1,
         UpdateSection.SHIP: 1,
         UpdateSection.SKILLS: 2,
+        UpdateSection.SKILL_SETS: 2,
         UpdateSection.SKILL_QUEUE: 1,
         UpdateSection.WALLET_BALLANCE: 2,
         UpdateSection.WALLET_JOURNAL: 2,
         UpdateSection.WALLET_TRANSACTIONS: 2,
-        UpdateSection.ATTRIBUTES: 3,
     }
 
     class UpdateStatus(models.TextChoices):
@@ -635,6 +637,26 @@ class Character(models.Model):
             )
         else:
             logger.info("%s: Corporation history has not changed", self)
+
+    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
+    def update_fw_stats(self, token: Token, force_update: bool = False):
+        """Update FW stats  for the given character"""
+        from .sections import CharacterFwStats
+
+        logger.info("%s: Fetching FW stats from ESI", self)
+        stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
+            character_id=self.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        if force_update or self.has_section_changed(
+            section=self.UpdateSection.FW_STATS, content=stats
+        ):
+            CharacterFwStats.objects.update_for_character(self, stats)
+            self.update_section_content_hash(
+                section=self.UpdateSection.FW_STATS, content=stats
+            )
+        else:
+            logger.info("%s: FW stats have not changed", self)
 
     @fetch_token_for_character("esi-clones.read_implants.v1")
     def update_implants(self, token: Token, force_update: bool = False):

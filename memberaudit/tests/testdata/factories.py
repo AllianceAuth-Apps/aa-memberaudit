@@ -21,6 +21,7 @@ from memberaudit.models import (
     Character,
     CharacterContract,
     CharacterContractItem,
+    CharacterFwStats,
     CharacterMail,
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
@@ -310,6 +311,35 @@ def create_wallet_journal_entry(
     }
     params.update(kwargs)
     return CharacterWalletJournalEntry.objects.create(**params)
+
+
+def create_fw_stats(**kwargs) -> CharacterFwStats:
+    current_rank = random.randint(1, 5)
+    highest_rank = max(current_rank, random.randint(1, 5))
+    kills_yesterday = random.randint(1, 100)
+    kills_last_week = max(kills_yesterday, random.randint(1, 700))
+    kills_total = max(kills_last_week, random.randint(1, 5000))
+    victory_points_yesterday = random.randint(1, 1000)
+    victory_points_last_week = max(victory_points_yesterday, random.randint(1, 7000))
+    victory_points_total = max(victory_points_last_week, random.randint(1, 50000))
+    enlisted_on = now() - dt.timedelta(
+        days=random.randint(1, 180), hours=random.randint(1, 24)
+    )
+    params = {
+        "current_rank": current_rank,
+        "enlisted_on": enlisted_on,
+        "highest_rank": highest_rank,
+        "kills_last_week": kills_last_week,
+        "kills_total": kills_total,
+        "kills_yesterday": kills_yesterday,
+        "victory_points_last_week": victory_points_last_week,
+        "victory_points_total": victory_points_total,
+        "victory_points_yesterday": victory_points_yesterday,
+    }
+    if "faction" not in kwargs and "faction_id" not in kwargs:
+        params["faction_id"] = 500001
+    params.update(kwargs)
+    return CharacterFwStats(**params)
 
 
 def next_number(key=None) -> int:

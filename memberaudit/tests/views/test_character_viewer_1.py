@@ -15,7 +15,7 @@ from app_utils.testing import (
     response_text,
 )
 
-from ...models import (
+from memberaudit.models import (
     CharacterAsset,
     CharacterAttributes,
     CharacterContact,
@@ -25,7 +25,7 @@ from ...models import (
     CharacterImplant,
     CharacterLoyaltyEntry,
 )
-from ...views.character_viewer_1 import (
+from memberaudit.views.character_viewer_1 import (
     character_asset_container,
     character_asset_container_data,
     character_assets_data,
@@ -36,11 +36,13 @@ from ...views.character_viewer_1 import (
     character_contract_items_requested_data,
     character_contracts_data,
     character_corporation_history,
+    character_fw_stats,
     character_implants_data,
     character_loyalty_data,
     character_viewer,
 )
-from ..testdata.factories import create_character
+
+from ..testdata.factories import create_character, create_fw_stats
 from ..utils import (
     LoadTestDataMixin,
     json_response_to_dict_2,
@@ -103,6 +105,31 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
 
         request.user = self.user
         response = character_attribute_data(request, self.character.pk)
+        self.assertEqual(response.status_code, 200)
+
+
+class TestCharacterFwStats(LoadTestDataMixin, TestCase):
+    def test_should_load_with_stats(self):
+        # given
+        create_fw_stats(character=self.character).save()
+        request = self.factory.get(
+            reverse("memberaudit:character_fw_stats", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_fw_stats(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+
+    def test_should_load_without_stats(self):
+        # given
+        request = self.factory.get(
+            reverse("memberaudit:character_fw_stats", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_fw_stats(request, self.character.pk)
+        # then
         self.assertEqual(response.status_code, 200)
 
 
