@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning (#135)
 - Will ignore occasional http 500 for ship endpoint and log warning (#138)
 - Temporarily disabled corporations tab, since the ESI endpoint is currently not functioning
+- Switching setup configuration to PEP 517 / setup.cfg
+- Adding pyproject.toml
+- Moving flake8 config to setup.cfg
+- Moving isort config to setup.cfg
 
 ## [2.5.0] - 2023-02-23
 
