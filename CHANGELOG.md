@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Adding pyproject.toml
 - Moving flake8 config to setup.cfg
 - Moving isort config to setup.cfg
+- Switch to "build" for building deploy package
 
 ## [2.5.0] - 2023-02-23
 
