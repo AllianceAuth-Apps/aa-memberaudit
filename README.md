@@ -46,9 +46,11 @@ Member Audit adds the following key features to Auth:
   - Contacts
   - Contracts
   - Corporation history
+  - Faction Warfare statistics
   - Implants
   - Jump clones
   - Mails
+  - Mining ledger
   - Loyalty points
   - Skill queue
   - Skill sets
@@ -64,7 +66,7 @@ Member Audit adds the following key features to Auth:
 - Admins can use the flexible permission system to grant access levels for different roles (e.g. corp leadership may only have access to reports about their own corp members)
 - Admins can customize and configure Member Audit to fit their needs. e.g. change the app's name and define how often which type of data is updated from the Eve server
 
-- Ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](#compliance-groups))
+- Ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](https://aa-memberaudit.readthedocs.io/en/latest/user.html#compliance-groups))
 - Get notifications when a user removes a character that they had previously registered.
 - Designed to work efficiently with large number of characters
 - Data retention policy allows managing storage capacity needs
