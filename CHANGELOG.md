@@ -7,22 +7,26 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.6.0] - tbd
+## [2.6.0] - 2023-03-23
+
+- Show Faction warfare stats for all characters
+- Reduce extreme task buildups when ESI errors occur
+- Replace outdated project configuration for package installations
 
 ### Added
 
-- Faction Warfare stats are now shown for every character
+- Faction Warfare stats are now shown for every character on the character viewer
 - Ability to set the default task priorities via settings
-- Users are no longer able to migrate when trying to upgrade directly from 1.x to 2.x while skipping 2.0
 
 ### Changed
 
-- Normal priority for most tasks reduced to 7
+- Priority for update tasks reduced to 7 when started from periodic task
 - Child tasks now use inherit their priority from parent tasks, i.e. when doing a character update from the admin page or adding a new character, then all tasks run with higher priority then during regular updates
 - Character update tasks are no longer retried automatically when there is an ESI issue. This was causing huge task buildup when ESI was not having problems. Also this should not be needed, since all character updates are automatically repeated every hour or so.
 - Will ignore the occasional HTTP 500 error from the loyalty endpoint and log warning (#135)
 - Will ignore occasional http 500 for ship endpoint and log warning (#138)
 - Temporarily disabled corporations tab, since the ESI endpoint is currently not functioning
+- Users are no longer able to skip upgrading to 2.0 first when upgrading from 1.x to prevent migrations failures
 - Switching setup configuration to PEP 517 / setup.cfg
 - Adding pyproject.toml
 - Moving flake8 config to setup.cfg
