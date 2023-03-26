@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Added copy button to bash commands on docs
 
+### Fixed
+
+- Various bugfixes and improves to EFT parser
+
 ## [2.6.0] - 2023-03-23
 
 - Show Faction warfare stats for all characters

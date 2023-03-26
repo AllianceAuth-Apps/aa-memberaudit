@@ -10,6 +10,7 @@ from app_utils.testing import NoSocketsTestCase
 from ...core.eft_parser import (
     MissingSectionsError,
     MissingTitleError,
+    UnknownShipTypeError,
     _EftItem,
     _EftSection,
     _EftSlotType,
@@ -96,6 +97,15 @@ class TestEftParser(NoSocketsTestCase):
         # when
         with self.assertRaises(MissingSectionsError):
             create_fitting_from_eft("")
+
+    def test_should_raise_error_when_ship_type_is_invalid(self):
+        # given
+        fitting_text = create_fitting_text("fitting_unknown_ship_type.txt")
+        # when
+        with self.assertRaises(UnknownShipTypeError):
+            with patch(MODULE_PATH + "._load_eve_types") as m:
+                m.return_value = _EveTypes(), {"Unknown"}
+                create_fitting_from_eft(fitting_text)
 
     def test_should_report_unknown_types(self):
         # given
