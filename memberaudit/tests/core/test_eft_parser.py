@@ -262,6 +262,11 @@ class TestEveTypes(NoSocketsTestCase):
         self.assertIsNone(eve_types.from_name("Unknown-Type"))
         self.assertIn("Unknown-Type", unknown_types)
 
+    def test_should_raise_error_when_not_passing_iterable(self):
+        # when/then
+        with self.assertRaises(TypeError):
+            _EveTypes.create_from_names("not an allowed iterable")
+
 
 class TestEftTextItem(NoSocketsTestCase):
     def test_should_create_slot_module(self):
@@ -287,11 +292,18 @@ class TestEftTextItem(NoSocketsTestCase):
             item, _EftTextItem(item_type="Warp Disruptor II", is_offline=True)
         )
 
-    def test_should_create_slot_module_empty(self):
+    def test_should_create_slot_empty_high_slot(self):
         #  when
         item = _EftTextItem.create_from_line("[Empty High slot]")
         # then
         expected = _EftTextItem(slot_type=_EftSlotType.HIGH_SLOT)
+        self.assertEqual(item, expected)
+
+    def test_should_create_slot_empty_sub_system_slot(self):
+        #  when
+        item = _EftTextItem.create_from_line("[Empty Subsystem slot]")
+        # then
+        expected = _EftTextItem(slot_type=_EftSlotType.SUBSYSTEM_SLOT)
         self.assertEqual(item, expected)
 
     def test_should_create_non_slot_item(self):
@@ -423,7 +435,7 @@ class TestEftItem(NoSocketsTestCase):
         # when/then
         self.assertTrue(item.is_booster())
 
-    def test_should_be_cyberimplant(self):
+    def test_should_be_cyber_implant(self):
         # given
         item = _EftItem(item_type=EveType.objects.get(name="High-grade Snake Alpha"))
         # when/then
@@ -491,6 +503,21 @@ class TestEftItem(NoSocketsTestCase):
         self.assertFalse(item.is_low_slot())
         self.assertTrue(item.is_rig_slot())
 
+    def test_should_handle_empty_item(self):
+        # given
+        empty_item = _EftItem()
+        # when/then
+        self.assertTrue(empty_item.is_empty)
+        self.assertFalse(empty_item.is_booster())
+        self.assertFalse(empty_item.is_cyber_implant())
+        self.assertFalse(empty_item.is_drone())
+        self.assertFalse(empty_item.is_fighter())
+        self.assertFalse(empty_item.is_high_slot())
+        self.assertFalse(empty_item.is_med_slot())
+        self.assertFalse(empty_item.is_low_slot())
+        self.assertFalse(empty_item.is_rig_slot())
+        self.assertFalse(empty_item.is_subsystem())
+
 
 class TestEftSection(NoSocketsTestCase):
     @classmethod
@@ -528,7 +555,7 @@ class TestEftSection(NoSocketsTestCase):
         # when/then
         self.assertEqual(section.guess_category(), _EftSection.Category.DRONES_BAY)
 
-    def test_should_be_figher_bay(self):
+    def test_should_be_fighter_bay(self):
         # given
         section = _EftSection(
             [_EftItem(item_type=EveType.objects.get(name="Firbolg I"), quantity=5)]
@@ -589,3 +616,15 @@ class TestEftSection(NoSocketsTestCase):
         )
         # when/then
         self.assertEqual(section.guess_category(), _EftSection.Category.RIG_SLOTS)
+
+    def test_should_be_slots(self):
+        # given
+        section = _EftSection(
+            [
+                _EftItem(
+                    item_type=EveType.objects.get(name="Small EM Shield Reinforcer I")
+                )
+            ]
+        )
+        # when/then
+        self.assertTrue(section.is_slots)
