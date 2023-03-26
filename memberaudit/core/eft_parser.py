@@ -143,7 +143,6 @@ class _EveTypes:
     #         return obj
 
 
-@dataclass
 class _EftSlotType(Enum):
     NONE = auto()
     LOW_SLOT = auto()

@@ -12,6 +12,7 @@ from ...core.eft_parser import (
     MissingTitleError,
     _EftItem,
     _EftSection,
+    _EftSlotType,
     _EftTextItem,
     _EftTextSection,
     _EveTypes,
@@ -290,7 +291,8 @@ class TestEftTextItem(NoSocketsTestCase):
         #  when
         item = _EftTextItem.create_from_line("[Empty High slot]")
         # then
-        self.assertEqual(item, _EftTextItem())
+        expected = _EftTextItem(slot_type=_EftSlotType.HIGH_SLOT)
+        self.assertEqual(item, expected)
 
     def test_should_create_non_slot_item(self):
         #  when
