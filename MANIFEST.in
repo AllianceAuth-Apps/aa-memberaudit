@@ -1,8 +1,9 @@
 include LICENSE
+include CODEOWNERS
 include README.md
-include memberaudit/swagger.json
-recursive-include memberaudit *.py
-recursive-include memberaudit/static *
-recursive-include memberaudit/templates *
-recursive-include memberaudit/locale *.mo
-recursive-include memberaudit/tests *
+include CHANGELOG.md
+include MANIFEST.in
+graft memberaudit
+
+global-exclude __pycache__
+global-exclude *.py[co]
