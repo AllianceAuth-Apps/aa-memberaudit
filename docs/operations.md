@@ -47,41 +47,43 @@ Restart your supervisor services for Auth
 
 Update the Eve Online API app used for authentication in your AA installation to include the following scopes:
 
-- `esi-assets.read_assets.v1`
-- `esi-bookmarks.read_character_bookmarks.v1`
-- `esi-calendar.read_calendar_events.v1`
-- `esi-characters.read_agents_research.v1`
-- `esi-characters.read_blueprints.v1`
-- `esi-characters.read_contacts.v1`
-- `esi-characters.read_fatigue.v1`
-- `esi-characters.read_fw_stats.v1`
-- `esi-characters.read_loyalty.v1`
-- `esi-characters.read_medals.v1`
-- `esi-characters.read_notifications.v1`
-- `esi-characters.read_opportunities.v1`
-- `esi-characters.read_standings.v1`
-- `esi-characters.read_titles.v1`
-- `esi-clones.read_clones.v1`
-- `esi-clones.read_implants.v1`
-- `esi-contracts.read_character_contracts.v1`
-- `esi-corporations.read_corporation_membership.v1`
-- `esi-industry.read_character_jobs.v1`
-- `esi-industry.read_character_mining.v1`
-- `esi-killmails.read_killmails.v1`
-- `esi-location.read_location.v1`
-- `esi-location.read_online.v1`
-- `esi-location.read_ship_type.v1`
-- `esi-mail.organize_mail.v1`
-- `esi-mail.read_mail.v1`
-- `esi-markets.read_character_orders.v1`
-- `esi-markets.structure_markets.v1`
-- `esi-planets.manage_planets.v1`
-- `esi-planets.read_customs_offices.v1`
-- `esi-search.search_structures.v1`
-- `esi-skills.read_skillqueue.v1`
-- `esi-skills.read_skills.v1`
-- `esi-universe.read_structures.v1`
-- `esi-wallet.read_character_wallet.v1`
+```text
+esi-assets.read_assets.v1
+esi-bookmarks.read_character_bookmarks.v1
+esi-calendar.read_calendar_events.v1
+esi-characters.read_agents_research.v1
+esi-characters.read_blueprints.v1
+esi-characters.read_contacts.v1
+esi-characters.read_fatigue.v1
+esi-characters.read_fw_stats.v1
+esi-characters.read_loyalty.v1
+esi-characters.read_medals.v1
+esi-characters.read_notifications.v1
+esi-characters.read_opportunities.v1
+esi-characters.read_standings.v1
+esi-characters.read_titles.v1
+esi-clones.read_clones.v1
+esi-clones.read_implants.v1
+esi-contracts.read_character_contracts.v1
+esi-corporations.read_corporation_membership.v1
+esi-industry.read_character_jobs.v1
+esi-industry.read_character_mining.v1
+esi-killmails.read_killmails.v1
+esi-location.read_location.v1
+esi-location.read_online.v1
+esi-location.read_ship_type.v1
+esi-mail.organize_mail.v1
+esi-mail.read_mail.v1
+esi-markets.read_character_orders.v1
+esi-markets.structure_markets.v1
+esi-planets.manage_planets.v1
+esi-planets.read_customs_offices.v1
+esi-search.search_structures.v1
+esi-skills.read_skillqueue.v1
+esi-skills.read_skills.v1
+esi-universe.read_structures.v1
+esi-wallet.read_character_wallet.v1
+```
 
 ### Step 5 - Verify Celery configuration
 
@@ -187,7 +189,9 @@ Corporation Leadership | Can access reports for his corporation members<br>(but 
 Corp Leadership & Recruiter | Can access shared characters | `basic_access`<br>`finder_access`<br>`view_shared_characters`<br>`reports_access`<br>`view_same_corporation`
 Alliance Auditor | Can search for and access all characters of his alliance  | `basic_access`<br>`finder_access`<br>`characters_access`<br>`view_same_alliance`<br>`notified_on_character_removal`
 
-> **Note**<br>Naturally, superusers will have access to everything, without requiring permissions to be assigned.
+```{note}
+Naturally, superusers will have access to everything, without requiring permissions to be assigned.
+```
 
 ## Celery configuration
 

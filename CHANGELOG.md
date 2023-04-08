@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.6.1] - 2023-04-08
+
+### Changed
+
+- Added copy button to bash commands on docs
+
 ## [2.6.0] - 2023-03-23
 
 - Show Faction warfare stats for all characters

@@ -3,15 +3,16 @@ sphinx>=5,<6
 sphinx_rtd_theme
 myst_parser
 sphinxcontrib-django2
+sphinx-copybutton
 
 # autodoc
-django>=3.2,<4
+django>=4.0,<4.1
 django-celery-beat>=2
 django-bootstrap-form
 django-sortedm2m
-django-esi>=1.5,<4
-celery>=5,<6
+django-esi>=4
+celery>=5
 celery_once
 passlib
-redis>=3.3.1,<4
+redis>=4
 factory_boy
