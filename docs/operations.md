@@ -87,18 +87,9 @@ esi-wallet.read_character_wallet.v1
 
 ### Step 5 - Verify Celery configuration
 
-Member Audit makes very heavy use of Celery and will run many thousand tasks every hour.
+Please note that Member Audit **will not work** with the process based celery setup from the official AA installation guide!
 
-The minimum configuration for an average installation (approx. 500 characters) is the following:
-
-- 10 thread based workers
-- All workers can run continuously without degrading overall server performance
-
-Please see the section [Celery Configuration](#celery-configuration) on how to configure celery to run more efficiently.
-
-```{important}
-This app will not work with the default setup for celery from the official AA installation guide. The default configuration is inefficient and not able to handle the task load from Member Audit. If you task queue is ever increasing this might be the reason.
-```
+If you have not yet switched to a thread-based celery setup, please see this step-by-step guide on how to do so: [Configuring celery workers](#configuring-celery-workers)
 
 ### Step 6 - Load Eve Universe map data
 
@@ -193,55 +184,11 @@ Alliance Auditor | Can search for and access all characters of his alliance  | `
 Naturally, superusers will have access to everything, without requiring permissions to be assigned.
 ```
 
-## Celery configuration
-
-### Task throughput
-
-This app makes heavy use of Celery and will often run thousands of tasks per hour. AA's default Celery setup is not well suited for handling high task volumes though (e.g. it will only spawn one worker per core, which scale badly due to high CPU usage). We strongly recommend to switch to a thread based setup (e.g. gevent), which has been proven to be significantly more efficient for running AA.
-
-For details on how to configure celery workers with threads please see [this section](https://allianceauth.readthedocs.io/en/latest/maintenance/tuning/celery.html#increasing-task-throughput) in the AA's documentation.
-
-When switching to thread based workers please also make sure to setup measure to protect against memory leak. The default celery options will not work for threads. See [this section](https://allianceauth.readthedocs.io/en/latest/maintenance/tuning/celery.html#supervisor) for details.
-
-### ESI connection pool
-
-If you have more than 10 workers you also need to increase the connection pool for django-esi accordingly. You can do this by adding the following line to your local settings (e.g. for 20 workers):
-
-```python
-ESI_CONNECTION_POOL_MAXSIZE = 20
-```
-
-See [here](https://gitlab.com/allianceauth/django-esi/-/blob/master/esi/app_settings.py#L36) for the corresponding setting in django-esi.
-
-### Celery priorities
-
-Last, but not least, please make sure your Celery is configured to run with priorities. This should be the default for all current Auth installation, but if you have an older installation you may have missed this change. Please see [these release notes](https://gitlab.com/allianceauth/allianceauth/-/releases/v2.6.3) for details.
-
-### Member Audit configuration
-
-The goal of an optimal configuration for Member Audit is that your system can complete all update tasks for your character within the respective update cycle.
-
-For this you need to consider the following three factors:
-
-- Number of characters to update
-- Task throughput
-- Update frequency
-
-The number of characters depend on your organization. You an usually not influence this factor much and want to make sure that your system has sufficient room for that growth.
-
-Your task throughout is defined by the number of celery workers. The more workers you have, the higher your potential throughput, so you may want to maximize that number for your system.
-
-You can adjust the update frequency to meet your needs. For example if you have a lot of characters and your update tasks can not (or only barely) complete within the update cycle, then you can lengthen your update cycles to compensate. There are 3 update cycles called rings, which can be configured individually. See `MEMBERAUDIT_UPDATE_STALE_RING_x` in [settings](#settings) for details.
-
-```{hint}
-You can use the management command **memberaudit_stats** to get current data about the last update runs, which can be very helpful to find the optimal configuration. See [memberaudit_stats](#memberaudit_stats) for details.
-```
-
 ## Settings
 
 Name | Description | Default
 -- | -- | --
-`APP_UTILS_NOTIFY_THROTTLED_TIMEOUT`| Timeout for throttled notifications in seconds. This defines how often throttled user notifications are send. | (see [Settings](https://allianceauth-app-utils.readthedocs.io/en/latest/settings.html) for App Utils})
+`APP_UTILS_NOTIFY_THROTTLED_TIMEOUT`| Timeout for throttled notifications in seconds. This defines how often throttled user notifications are send. | (see [Settings](https://allianceauth-app-utils.readthedocs.io/en/latest/settings.html) for App Utils)
 `MEMBERAUDIT_APP_NAME`| Name of this app as shown in the Auth sidebar. | `'Member Audit'`
 `MEMBERAUDIT_DATA_RETENTION_LIMIT`| Maximum number of days to keep historical data for mails, contracts and wallets. Minimum is 7 day. `None` will turn it off. | `360`
 `MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD`| ESI error limit remain threshold. The number of remaining errors is counted down from 100 as errors occur. Because multiple tasks may request the value simultaneously and get the same response, the threshold must be above 0 to prevent the API from shutting down with a 420 error | `25`
@@ -295,3 +242,134 @@ This command returns current statistics as JSON, i.e. current update statistics 
 ### memberaudit_update_characters
 
 Start the process of force updating all characters from ESI.
+
+## Configuring celery workers
+
+Celery workers can be setup in different ways. The two main flavors are thread based and process based. Thread based workers perform better when tasks are primarily I/O bound. And process based workers perform better with tasks that are primarily CPU bound.
+
+AA tasks are primarily I/O bound (most tasks are fetching data from ESI and/or updating the database). That is why thread based setups for AA will usually outperform process based setups by a wide margins in terms of task throughput per CPU second. Some popular community apps, which make heavy use of tasks like Member Audit will not even work properly with a process based setup on most systems.
+
+### Step 1 - Configure workers
+
+```{hint}
+The celery worker configuration can be found in the `supervisor.conf` file. This file is usually located in your AA root folder, see same folder where you also find the `manage.py` file. When you followed the default installation guide the path is: `/home/allianceserver/myauth/supervisor.conf`. This file contains the configuration for several programs. The celery worker configuration can be found under `[program:worker]`.
+```
+
+The first step is to change the configuration of your celery worker. Here is an example configuration:
+
+```cfg
+[program:worker]
+command=/home/allianceserver/venv/auth/bin/celery -A myauth worker -P threads -c 10 -l INFO -n %(program_name)s_%(process_num)02d
+directory=/home/allianceserver/myauth
+user=allianceserver
+numprocs=2
+process_name=%(program_name)s_%(process_num)02d
+stdout_logfile=/home/allianceserver/myauth/log/worker.log
+stderr_logfile=/home/allianceserver/myauth/log/worker.log
+autostart=true
+autorestart=true
+startsecs=10
+stopwaitsecs=600
+killasgroup=true
+priority=998
+```
+
+This example configuration will spawn up to 20 concurrent worker threads running on two processes with up to 10 threads each.
+
+Depending on your system you may want to adjust the configuration:
+
+- `numprocs`: Number of processes. Must not be higher then the number of available CPU cores.
+- `-c`: Number of threads per process. Can be decreases/increased to adjust how much load the celery workers will utilize.
+
+### Step 2 - Setup memmon
+
+In addition we strongly recommend to setup measures to protect your celery workers from consuming too much memory.
+
+This is not a built in feature and requires the 3rd party extension [superlance](https://superlance.readthedocs.io/en/latest/), which includes a set of plugin utilities for supervisor. The one that watches memory consumption is [memmon](https://superlance.readthedocs.io/en/latest/memmon.html).
+
+To setup install superlance into your venv with:
+
+```bash
+pip install superlance
+```
+
+You can then add `memmon` to your `supervisor.conf`. Here is an example setup with a worker:
+
+```cfg
+[eventlistener:memmon]
+command=/home/allianceserver/venv/auth/bin/memmon -p worker_00=512MB -p worker_01=512MB
+directory=/home/allianceserver/myauth
+events=TICK_60
+stderr_logfile=/home/allianceserver/myauth/log/memmon.log
+```
+
+This setup will check the memory consumption of two "worker" programs every 60 secs and automatically restart it if is goes above 512 MB. Note that it will use the stop signal configured in supervisor, which is `TERM` by default. `TERM` will cause a "warm shutdown" of your worker, so all currently running tasks are completed before the restart.
+
+This configuration is for exactly two worker processes. If you have more or less, please adjust accordingly.
+
+The 512 MB is just an example and should be adjusted to fit your system configuration. Note that the total memory consumption is the sum of all thresholds per worker process, e.g. here we allow a maximum of 1 GB.
+
+### Step 4 - Update connection pool for ESI
+
+If you have more than 10 worker threads you also need to increase the connection pool for django-esi accordingly. You can do this by adding the following line to your local settings (e.g. for a total of 20 worker threads):
+
+```python
+ESI_CONNECTION_POOL_MAXSIZE = 20
+```
+
+See [here](https://gitlab.com/allianceauth/django-esi/-/blob/master/esi/app_settings.py#L36) for the corresponding setting in django-esi.
+
+### Step 5 - Enable changes
+
+Finally, to enable all changes your will need to reload your supervisor.
+
+Let's first shutdown your AA programs normally.
+
+```bash
+sudo supervisorctl stop myauth:
+```
+
+Then we reload the supervisor configuration, which will also restart all programs:
+
+```bash
+sudo supervisorctl reload
+```
+
+To verify this worked well, you can check the status of your AA programs with:
+
+```bash
+sudo supervisorctl status myauth:
+```
+
+All programs should be shown with `RUNNING`.
+
+In case you encounter any issues you can find the relevant logs here:
+
+- supervisor: `sudo journalctl -u supervisor`
+- worker: `worker.log` in `myauth/log`
+- memmon: `memmon.log` in `myauth/log`
+- gunicorn: `gunicorn.log` in `myauth/log`
+
+### Celery priorities
+
+Last, but not least, please make sure your Celery is configured to run with priorities. This should be the default for all current Auth installation, but if you have an older installation you may have missed this change. Please see [these release notes](https://gitlab.com/allianceauth/allianceauth/-/releases/v2.6.3) for details.
+
+### Member Audit configuration
+
+The goal of an optimal configuration for Member Audit is that your system can complete all update tasks for your character within the respective update cycle.
+
+For this you need to consider the following three factors:
+
+- Number of characters to update
+- Task throughput
+- Update frequency
+
+The number of characters depend on your organization. You an usually not influence this factor much and want to make sure that your system has sufficient room for that growth.
+
+Your task throughout is defined by the number of celery workers. The more workers you have, the higher your potential throughput, so you may want to maximize that number for your system.
+
+You can adjust the update frequency to meet your needs. For example if you have a lot of characters and your update tasks can not (or only barely) complete within the update cycle, then you can lengthen your update cycles to compensate. There are 3 update cycles called rings, which can be configured individually. See `MEMBERAUDIT_UPDATE_STALE_RING_x` in [settings](#settings) for details.
+
+```{hint}
+You can use the management command **memberaudit_stats** to get current data about the last update runs, which can be very helpful to find the optimal configuration. See [memberaudit_stats](#memberaudit_stats) for details.
+```
