@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.6.1] - 2023-04-08
+## [2.6.2] - 2023-04-11
+
+### Fixed
+
+- Template files are missing from the distribution package
+
+## [2.6.1] - 2023-04-08 [YANKED]
 
 ### Changed
 
