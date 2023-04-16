@@ -70,7 +70,7 @@ class ComplianceGroupDesignationAdmin(admin.ModelAdmin):
     def _group_name(self, obj) -> str:
         return obj.group.name
 
-    @admin.display(description="Restricted to states")
+    @admin.display(description=_("Restricted to states"))
     def _states(self, obj):
         states = [state.name for state in obj.group.authgroup.states.all()]
         return sorted(states) if states else "-"
@@ -131,7 +131,7 @@ class SyncStatusAdminInline(admin.TabularInline):
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     """Custom filter for update status with counts."""
 
-    title = "update status"
+    title = _("update status")
     parameter_name = "update_status"
 
     def lookups(self, request, model_admin):
@@ -157,7 +157,7 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
 class CharacterStateListFilter(admin.SimpleListFilter):
     """Custom state filter to include filtering of characters without main."""
 
-    title = "state"
+    title = _("state")
     parameter_name = "state"
     _NO_MAIN_KEY = "_NO_MAIN"
 
@@ -211,7 +211,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "_main",
         "_state",
         "_organization",
-        "created_at",
+        "_created_at",
         "_enabled",
         "_last_update_at",
         "_update_status",
@@ -259,24 +259,25 @@ class CharacterAdmin(admin.ModelAdmin):
         return actions
 
     @admin.display(description="")
-    def _character_pic(self, obj):
+    def _character_pic(self, obj: Character):
         character = obj.eve_character
         return format_html(
             '<img src="{}" class="img-circle">', character.portrait_url(size=32)
         )
 
-    @admin.display(ordering="eve_character__character_name")
-    def _character(self, obj) -> str:
+    @admin.display(ordering="eve_character__character_name", description=_("character"))
+    def _character(self, obj: Character) -> str:
         return str(obj.eve_character)
 
-    @admin.display(ordering="is_disabled", boolean=True)
-    def _enabled(self, obj) -> bool:
+    @admin.display(ordering="is_disabled", boolean=True, description=_("enabled"))
+    def _enabled(self, obj: Character) -> bool:
         return not obj.is_disabled
 
     @admin.display(
-        ordering="eve_character__character_ownership__user__profile__main_character"
+        ordering="eve_character__character_ownership__user__profile__main_character",
+        description=_("main"),
     )
-    def _main(self, obj) -> str:
+    def _main(self, obj: Character) -> str:
         try:
             name = obj.main_character.character_name
         except AttributeError:
@@ -284,18 +285,20 @@ class CharacterAdmin(admin.ModelAdmin):
         return str(name)
 
     @admin.display(
-        ordering="eve_character__character_ownership__user__profile__state__name"
+        ordering="eve_character__character_ownership__user__profile__state__name",
+        description=_("state"),
     )
-    def _state(self, obj) -> str:
+    def _state(self, obj: Character) -> str:
         try:
             return str(obj.user.profile.state)
         except AttributeError:
             return None
 
     @admin.display(
-        ordering="eve_character__character_ownership__user__profile__main_character__corporation_name"
+        ordering="eve_character__character_ownership__user__profile__main_character__corporation_name",
+        description=_("organization"),
     )
-    def _organization(self, obj) -> str:
+    def _organization(self, obj: Character) -> str:
         try:
             return "{}{}".format(
                 obj.main_character.corporation_name,
@@ -306,8 +309,8 @@ class CharacterAdmin(admin.ModelAdmin):
         except AttributeError:
             return None
 
-    @admin.display(ordering="update_status")
-    def _update_status(self, obj):
+    @admin.display(ordering="update_status", description=_("update status"))
+    def _update_status(self, obj: Character):
         css_class_map = {
             Character.UpdateStatus.INCOMPLETE: "text-warning",
             Character.UpdateStatus.ERROR: "text-danger",
@@ -318,8 +321,12 @@ class CharacterAdmin(admin.ModelAdmin):
             return format_html('<span class="{}">{}</span>', css_class, label)
         return label
 
-    @admin.display(ordering="last_update_at")
-    def _last_update_at(self, obj):
+    @admin.display(ordering="created_at", description=_("created"))
+    def _created_at(self, obj: Character):
+        return obj.created_at
+
+    @admin.display(ordering="last_update_at", description=_("last update"))
+    def _last_update_at(self, obj: Character):
         return obj.last_update_at
 
     def _missing_sections(self, obj):
@@ -342,7 +349,7 @@ class CharacterAdmin(admin.ModelAdmin):
         "disable_characters",
     ]
 
-    @admin.display(description="Delete selected characters")
+    @admin.display(description=_("Delete selected characters"))
     def delete_characters(self, request, queryset):
         if "apply" in request.POST:
             for obj in queryset:
@@ -352,29 +359,33 @@ class CharacterAdmin(admin.ModelAdmin):
                 )
             self.message_user(
                 request,
-                f"Started deleting {queryset.count()} character(s). "
-                "This can take a minute.",
+                _(
+                    "Started deleting %d character(s). "
+                    "This can take a minute." % queryset.count()
+                ),
             )
             return redirect(request.get_full_path())
         return render(
             request,
             "admin/memberaudit/character/confirm_character_deletion.html",
             {
-                "title": "Are you sure you want to delete these characters?",
+                "title": _("Are you sure you want to delete these characters?"),
                 "queryset": queryset.all(),
             },
         )
 
-    @admin.display(description="Update selected characters from EVE server")
+    @admin.display(description=_("Update selected characters from EVE server"))
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )
-            self.message_user(request, f"Started updating character: {obj}. ")
+            self.message_user(request, _("Started updating character: %s. " % obj))
 
-    @admin.display(description="Update assets for selected characters from EVE server")
+    @admin.display(
+        description=_("Update assets for selected characters from EVE server")
+    )
     def update_assets(self, request, queryset):
         for obj in queryset:
             tasks.update_character_assets.apply_async(
@@ -382,13 +393,19 @@ class CharacterAdmin(admin.ModelAdmin):
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )
             self.message_user(
-                request, f"Started updating assets for character: {obj}. "
+                request, _("Started updating assets for character: %s." % obj)
             )
 
     @admin.display(
         description=(
-            f"Update {Character.UpdateSection.display_name(Character.UpdateSection.LOCATION)} "
-            "for selected characters from EVE server"
+            _(
+                "Update %s for selected characters from EVE server"
+                % {
+                    Character.UpdateSection.display_name(
+                        Character.UpdateSection.LOCATION
+                    )
+                }
+            )
         )
     )
     def update_location(self, request, queryset):
@@ -400,14 +417,20 @@ class CharacterAdmin(admin.ModelAdmin):
             )
             self.message_user(
                 request,
-                f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
+                _(
+                    "Started updating %s for character: %s. "
+                    % (Character.UpdateSection.display_name(section), obj)
+                ),
             )
 
     @admin.display(
         description=(
-            "Update "
-            f"{Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)} "
-            "for selected characters from EVE server"
+            _(
+                "Update %s for selected characters from EVE server"
+                % Character.UpdateSection.display_name(
+                    Character.UpdateSection.ONLINE_STATUS
+                )
+            )
         )
     )
     def update_online_status(self, request, queryset):
@@ -419,20 +442,23 @@ class CharacterAdmin(admin.ModelAdmin):
             )
             self.message_user(
                 request,
-                f"Started updating {Character.UpdateSection.display_name(section)} for character: {obj}. ",
+                _(
+                    "Started updating %s for character: %s."
+                    % (Character.UpdateSection.display_name(section), obj)
+                ),
             )
 
-    @admin.display(description=("Enable selected characters"))
+    @admin.display(description=_("Enable selected characters"))
     def enable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=False)
-        self.message_user(request, f"Enabled {len(pks)} characters.")
+        self.message_user(request, _("Enabled %d characters." % len(pks)))
 
-    @admin.display(description=("Disable selected characters"))
+    @admin.display(description=_("Disable selected characters"))
     def disable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
-        self.message_user(request, f"Disabled {len(pks)} characters.")
+        self.message_user(request, _("Disabled %d characters." % len(pks)))
 
     inlines = (SyncStatusAdminInline,)
 
@@ -445,7 +471,7 @@ class CharacterAdmin(admin.ModelAdmin):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("id", "_name", "_type", "_group", "_solar_system", "updated_at")
+    list_display = ("id", "_name", "_type", "_group", "_solar_system", "_updated_at")
     list_filter = (
         ("eve_type__eve_group__eve_category", admin.RelatedOnlyFieldListFilter),
         ("eve_type__eve_group", admin.RelatedOnlyFieldListFilter),
@@ -464,21 +490,25 @@ class LocationAdmin(admin.ModelAdmin):
     )
     ordering = ["id"]
 
-    @admin.display(ordering="name")
+    @admin.display(ordering="name", description=_("name"))
     def _name(self, obj):
         return obj.name_plus
 
-    @admin.display(ordering="eve_solar_system__name")
+    @admin.display(ordering="eve_solar_system__name", description=_("solar system"))
     def _solar_system(self, obj):
         return obj.eve_solar_system.name if obj.eve_solar_system else None
 
-    @admin.display(ordering="eve_type__name")
+    @admin.display(ordering="eve_type__name", description=_("type"))
     def _type(self, obj):
         return obj.eve_type.name if obj.eve_type else None
 
-    @admin.display(ordering="eve_type__eve_group__name")
+    @admin.display(ordering="eve_type__eve_group__name", description=_("group"))
     def _group(self, obj):
         return obj.eve_type.eve_group.name if obj.eve_type else None
+
+    @admin.display(ordering="updated_at", description=_("updated at"))
+    def _updated_at(self, obj):
+        return obj.name_plus
 
     def has_add_permission(self, request):
         return False
@@ -537,7 +567,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                     ):
                         eve_type = row.get("eve_type")
                         raise ValidationError(
-                            f"Skill '{eve_type.name}' must have a level."
+                            _("Skill '%s' must have a level.", eve_type.name)
                         )
 
 
