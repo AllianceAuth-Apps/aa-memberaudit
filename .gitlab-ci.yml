@@ -52,13 +52,11 @@ test-py38-dj40:
   extends: .test-py38
   script:
   - tox -e py38-django40
-  - bash <(curl -s https://codecov.io/bash)
 
 test-py39-dj40:
   extends: .test-py39
   script:
   - tox -e py39-django40
-  - bash <(curl -s https://codecov.io/bash)
 
 test-py310-dj40:
   extends: .test-py310
