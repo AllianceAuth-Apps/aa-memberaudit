@@ -1,7 +1,8 @@
- {% extends 'admin/base_site.html' %}
+{% extends 'admin/base_site.html' %}
+{% load i18n %}
 
- {% block content %}
- <form action="" method="post">
+{% block content %}
+<form action="" method="post">
     {% csrf_token %}
     <div>
         <ul>
@@ -12,8 +13,8 @@
         </ul>
         <br>
         <input type="hidden" name="action" value="delete_characters" />
-        <input type="submit" name="apply" value="Delete" style="background-color: rgb(201, 48, 44)"/>
-        <a href="./"><input type="button" name="Cancel" value="Cancel"></a>
+        <input type="submit" name="apply" value="{% translate 'Delete' %}" style="background-color: rgb(201, 48, 44)"/>
+        <a href="./"><input type="button" name="Cancel" value="{% translate 'Cancel' %}"></a>
     </div>
- </form>
- {% endblock %}
+</form>
+{% endblock %}

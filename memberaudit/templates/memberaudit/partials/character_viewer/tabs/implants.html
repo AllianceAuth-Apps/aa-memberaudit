@@ -9,7 +9,7 @@
             </table>
         </div>
     {% else %}
-        <p>No implants</p>
+        <p>{% translate "No implants" %}</p>
     {% endif %}
     {% include 'memberaudit/partials/character_viewer/tabs/last_updated.html' with update_section=last_updates.implants %}
 </div>

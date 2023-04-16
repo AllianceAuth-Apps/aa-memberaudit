@@ -4,7 +4,7 @@
 
 <!-- Sidebar panel-->
 <div class="panel panel-default">
-    <div class="panel-heading">Characters</div>
+    <div class="panel-heading">{% translate 'Characters' %}</div>
     <div class="panel-body">
         <ul class="sidebar_characters">
             {% for character in all_characters %}
@@ -17,11 +17,13 @@
                 {% else %}
                     <li class="sidebar_character_disabled">
                         {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}&nbsp;
-                        <i class="fas fa-exclamation-triangle text-muted" title="Unregistered character"></i>
+                        <i class="fas fa-exclamation-triangle text-muted" title="{% translate 'Unregistered character' %}"></i>
                     </li>
                 {% endif %}
             {% empty %}
-                <li class="sidebar_character_disabled"><span class="text-muted">(orphan)</span></li>
+                <li class="sidebar_character_disabled">
+                    <span class="text-muted">{% translate '(orphan)' %}</span>
+                </li>
             {% endfor %}
         </ul>
     </div>
