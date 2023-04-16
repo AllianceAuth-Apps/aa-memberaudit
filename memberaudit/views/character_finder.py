@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
@@ -30,7 +31,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 @permission_required("memberaudit.finder_access")
 def character_finder(request) -> HttpResponse:
     context = {
-        "page_title": "Character Finder",
+        "page_title": _("Character Finder"),
     }
     return render(
         request,

@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timesince import timeuntil
 from django.utils.timezone import now
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveType
 
 from allianceauth.eveonline.models import EveCharacter
@@ -177,11 +178,12 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     except ObjectDoesNotExist:
         last_updates = None
 
-    page_title = "Character Sheet"
+    page_title = _("Character Sheet")
     if not character.user_is_owner(request.user):
         page_title = format_html(
-            '{}&nbsp;<i class="far fa-eye" title="You do not own this character"></i>',
+            '{}&nbsp;<i class="far fa-eye" title="{}"></i>',
             page_title,
+            _("You do not own this character"),
         )
 
     context = {
@@ -210,7 +212,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
 
 
 def _identify_user_characters(request, character):
-    """Identify all characters owned by this user for siderbar."""
+    """Identify all characters owned by this user for sidebar."""
     if not character.user:
         eve_characters_of_user = EveCharacter.objects.none()
     else:
@@ -331,8 +333,8 @@ def character_assets_data(
             }
         )
     for row in data:
-        sumstr = humanize_number(location_totals[row["location"]])
-        row["location"] = row["location"] + f" ({sumstr} ISK)"
+        sum_str = humanize_number(location_totals[row["location"]])
+        row["location"] = row["location"] + f" ({sum_str} ISK)"
     return JsonResponse({"data": data})
 
 

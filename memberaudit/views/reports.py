@@ -7,6 +7,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
 
@@ -35,13 +36,9 @@ def create_main_organization_html(main_character) -> str:
 @login_required
 @permission_required("memberaudit.reports_access")
 def reports(request) -> HttpResponse:
-    context = {
-        "page_title": "Reports",
-    }
+    context = {"page_title": _("Reports")}
     return render(
-        request,
-        "memberaudit/reports.html",
-        add_common_context(request, context),
+        request, "memberaudit/reports.html", add_common_context(request, context)
     )
 
 

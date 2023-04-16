@@ -69,10 +69,10 @@
                         {% endif %}
                     {% endif %}
                 {% elif contract.contract_type == contract.TYPE_AUCTION %}
-                    <dt>Starting Bid:</dt> <dd>{{ contract.price|floatformat:2|intcomma }}</dd>
-                    <dt>Buyout Price:</dt> <dd>{{ contract.buyout|floatformat:2|intcomma }}</dd>
-                    <dt>Current Bid:</dt> <dd>{{ current_bid|floatformat:2|intcomma }} ({{ bids_count }} {% translate 'so far' %})</dd>
-                    <dt>Time Left:</dt> <dd>{{ contract.date_expired|timeuntil }}</dd>
+                    <dt>{% translate 'Starting Bid:' %}</dt> <dd>{{ contract.price|floatformat:2|intcomma }}</dd>
+                    <dt>{% translate 'Buyout Price:' %}</dt> <dd>{{ contract.buyout|floatformat:2|intcomma }}</dd>
+                    <dt>{% translate 'Current Bid:' %}</dt> <dd>{{ current_bid|floatformat:2|intcomma }} ({{ bids_count }} {% translate 'so far' %})</dd>
+                    <dt>{% translate 'Time Left:' %}</dt> <dd>{{ contract.date_expired|timeuntil }}</dd>
 
                     <hr>
 
