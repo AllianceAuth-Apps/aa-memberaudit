@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2021-01-05 21:10+0100\n"
+"POT-Creation-Date: 2023-04-16 15:00+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,253 +18,467 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: app_settings.py:7
+#: admin.py:186
+msgid "No main"
+msgstr ""
+
+#: app_settings.py:8
 msgid "Member Audit"
 msgstr ""
 
-#: models.py:278
+#: models/character.py:69
 msgid "assets"
 msgstr ""
 
-#: models.py:280
+#: models/character.py:71
 msgid "contacts"
 msgstr ""
 
-#: models.py:281
+#: models/character.py:72
 msgid "contracts"
 msgstr ""
 
-#: models.py:282
+#: models/character.py:73
 msgid "corporation history"
 msgstr ""
 
-#: models.py:283
+#: models/character.py:74
+msgid "faction warfare statistics"
+msgstr ""
+
+#: models/character.py:75
 msgid "implants"
 msgstr ""
 
-#: models.py:284
+#: models/character.py:76
 msgid "jump clones"
 msgstr ""
 
-#: models.py:285
+#: models/character.py:77
 msgid "location"
 msgstr ""
 
-#: models.py:286
+#: models/character.py:78
 msgid "loyalty"
 msgstr ""
 
-#: models.py:287
+#: models/character.py:79
 msgid "mails"
 msgstr ""
 
-#: models.py:288
+#: models/character.py:80
+msgid "mining ledger"
+msgstr ""
+
+#: models/character.py:81
 msgid "online status"
 msgstr ""
 
-#: models.py:289
+#: models/character.py:82
+msgid "ship"
+msgstr ""
+
+#: models/character.py:83
 msgid "skills"
 msgstr ""
 
-#: models.py:290
+#: models/character.py:84
 msgid "skill queue"
 msgstr ""
 
-#: models.py:291
+#: models/character.py:85
 msgid "skill sets"
 msgstr ""
 
-#: models.py:292
+#: models/character.py:86
 msgid "wallet balance"
 msgstr ""
 
-#: models.py:293
+#: models/character.py:87
 msgid "wallet journal"
 msgstr ""
 
-#: models.py:2211
-msgid "excellent standing"
+#: models/character.py:88
+msgid "wallet transactions"
 msgstr ""
 
-#: models.py:2212
-msgid "good standing"
+#: models/character.py:89
+msgid "attributes"
 msgstr ""
 
-#: models.py:2213
-msgid "neutral standing"
+#: models/character.py:141
+msgid "ok"
 msgstr ""
 
-#: models.py:2214
-msgid "bad standing"
-msgstr ""
-
-#: models.py:2215
-msgid "terrible standing"
-msgstr ""
-
-#: models.py:2267
-msgid "alliance"
-msgstr ""
-
-#: models.py:2268
-msgid "corporation"
-msgstr ""
-
-#: models.py:2269
-msgid "private"
-msgstr ""
-
-#: models.py:2270
-msgid "public"
-msgstr ""
-
-#: models.py:2290
-msgid "canceled"
-msgstr ""
-
-#: models.py:2291
-msgid "deleted"
-msgstr ""
-
-#: models.py:2292
-msgid "failed"
-msgstr ""
-
-#: models.py:2293
-msgid "finished"
-msgstr ""
-
-#: models.py:2294
-msgid "finished contractor"
-msgstr ""
-
-#: models.py:2295
-msgid "finished issuer"
-msgstr ""
-
-#: models.py:2296
+#: models/character.py:142 models/sections.py:233
 msgid "in progress"
 msgstr ""
 
-#: models.py:2297
-msgid "outstanding"
+#: models/character.py:143
+msgid "incomplete"
 msgstr ""
 
-#: models.py:2298
-msgid "rejected"
+#: models/character.py:144
+msgid "error"
 msgstr ""
 
-#: models.py:2299
-msgid "reversed"
+#: models/character.py:145
+msgid "disabled"
 msgstr ""
 
-#: models.py:2320
-msgid "auction"
-msgstr ""
-
-#: models.py:2321
-msgid "courier"
-msgstr ""
-
-#: models.py:2322
-msgid "item exchange"
-msgstr ""
-
-#: models.py:2323
-msgid "loan"
-msgstr ""
-
-#: models.py:2324
-msgid "unknown"
-msgstr ""
-
-#: models.py:2480
-msgid "[Multiple Items]"
-msgstr ""
-
-#: models.py:2577
-msgid "male"
-msgstr ""
-
-#: models.py:2578
-msgid "female"
-msgstr ""
-
-#: models.py:3088
-msgid "undefined"
-msgstr ""
-
-#: models.py:3089
-msgid "station ID"
-msgstr ""
-
-#: models.py:3090
-msgid "market transaction ID"
-msgstr ""
-
-#: models.py:3091
-msgid "character ID"
-msgstr ""
-
-#: models.py:3092
-msgid "corporation ID"
-msgstr ""
-
-#: models.py:3093
-msgid "alliance ID"
-msgstr ""
-
-#: models.py:3094
-msgid "eve system"
-msgstr ""
-
-#: models.py:3095
-msgid "industry job ID"
-msgstr ""
-
-#: models.py:3096
-msgid "contract ID"
-msgstr ""
-
-#: models.py:3097
-msgid "planet ID"
-msgstr ""
-
-#: models.py:3098
-msgid "system ID"
-msgstr ""
-
-#: models.py:3099
-msgid "type ID"
-msgstr ""
-
-#: models.py:3217
+#: models/general.py:280
 msgid "Doctrine: "
 msgstr ""
 
-#: models.py:3291 templates/memberaudit/character_finder.html:86
-#: templates/memberaudit/reports.html:68 templates/memberaudit/reports.html:132
+#: models/general.py:393 templates/memberaudit/reports.html:75
+#: templates/memberaudit/reports.html:140
+#: templates/memberaudit/reports.html:214
 msgid "Alliance"
 msgstr ""
 
-#: models.py:3292 templates/memberaudit/character_finder.html:18
-#: templates/memberaudit/partials/reports/tabs/skill_sets.html:12
+#: models/general.py:394
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
 msgid "Character"
 msgstr ""
 
-#: models.py:3293 templates/memberaudit/character_finder.html:90
+#: models/general.py:395
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
-#: templates/memberaudit/reports.html:72 templates/memberaudit/reports.html:136
+#: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
+#: templates/memberaudit/reports.html:219
 msgid "Corporation"
 msgstr ""
 
-#: models.py:3294
+#: models/general.py:396
 msgid "Mailing List"
 msgstr ""
 
-#: models.py:3295
+#: models/general.py:397
 msgid "Unknown"
+msgstr ""
+
+#: models/sections.py:146
+msgid "excellent standing"
+msgstr ""
+
+#: models/sections.py:147
+msgid "good standing"
+msgstr ""
+
+#: models/sections.py:148
+msgid "neutral standing"
+msgstr ""
+
+#: models/sections.py:149
+msgid "bad standing"
+msgstr ""
+
+#: models/sections.py:150
+msgid "terrible standing"
+msgstr ""
+
+#: models/sections.py:204
+msgid "alliance"
+msgstr ""
+
+#: models/sections.py:205
+msgid "corporation"
+msgstr ""
+
+#: models/sections.py:206
+msgid "private"
+msgstr ""
+
+#: models/sections.py:207
+msgid "public"
+msgstr ""
+
+#: models/sections.py:227
+msgid "canceled"
+msgstr ""
+
+#: models/sections.py:228
+msgid "deleted"
+msgstr ""
+
+#: models/sections.py:229
+msgid "failed"
+msgstr ""
+
+#: models/sections.py:230
+msgid "finished"
+msgstr ""
+
+#: models/sections.py:231
+msgid "finished contractor"
+msgstr ""
+
+#: models/sections.py:232
+msgid "finished issuer"
+msgstr ""
+
+#: models/sections.py:234
+msgid "outstanding"
+msgstr ""
+
+#: models/sections.py:235
+msgid "rejected"
+msgstr ""
+
+#: models/sections.py:236
+msgid "reversed"
+msgstr ""
+
+#: models/sections.py:257
+msgid "auction"
+msgstr ""
+
+#: models/sections.py:258
+msgid "courier"
+msgstr ""
+
+#: models/sections.py:259
+msgid "item exchange"
+msgstr ""
+
+#: models/sections.py:260
+msgid "loan"
+msgstr ""
+
+#: models/sections.py:261
+msgid "unknown"
+msgstr ""
+
+#: models/sections.py:419
+msgid "[Multiple Items]"
+msgstr ""
+
+#: models/sections.py:520
+msgid "male"
+msgstr ""
+
+#: models/sections.py:521
+msgid "female"
+msgstr ""
+
+#: models/sections.py:590
+msgid "Paladin Crusader"
+msgstr ""
+
+#: models/sections.py:591
+msgid "Templar Lieutenant"
+msgstr ""
+
+#: models/sections.py:592
+msgid "Cardinal Lieutenant"
+msgstr ""
+
+#: models/sections.py:593
+msgid "Arch Lieutenant"
+msgstr ""
+
+#: models/sections.py:594
+msgid "Imperial Major"
+msgstr ""
+
+#: models/sections.py:595
+msgid "Marshal Commander"
+msgstr ""
+
+#: models/sections.py:596
+msgid "Imperator Commander"
+msgstr ""
+
+#: models/sections.py:597
+msgid "Tribunus Colonel"
+msgstr ""
+
+#: models/sections.py:598
+msgid "Legatus Commodore"
+msgstr ""
+
+#: models/sections.py:599
+msgid "Divine Commodore"
+msgstr ""
+
+#: models/sections.py:602
+msgid "Protectorate Ensign"
+msgstr ""
+
+#: models/sections.py:603
+msgid "Second Lieutenant"
+msgstr ""
+
+#: models/sections.py:604
+msgid "First Lieutenant"
+msgstr ""
+
+#: models/sections.py:605
+msgid "Captain"
+msgstr ""
+
+#: models/sections.py:606
+msgid "Major"
+msgstr ""
+
+#: models/sections.py:607
+msgid "Lieutenant Colonel"
+msgstr ""
+
+#: models/sections.py:608
+msgid "Colonel"
+msgstr ""
+
+#: models/sections.py:609
+msgid "Wing Commander"
+msgstr ""
+
+#: models/sections.py:610
+msgid "Strike Commander"
+msgstr ""
+
+#: models/sections.py:611
+msgid "Brigadier General"
+msgstr ""
+
+#: models/sections.py:614
+msgid "Federation Minuteman"
+msgstr ""
+
+#: models/sections.py:615
+msgid "Defender Lieutenant"
+msgstr ""
+
+#: models/sections.py:616
+msgid "Guardian Lieutenant"
+msgstr ""
+
+#: models/sections.py:617
+msgid "Lieutenant Sentinel"
+msgstr ""
+
+#: models/sections.py:618
+msgid "Shield Commander"
+msgstr ""
+
+#: models/sections.py:619
+msgid "Aegis Commander"
+msgstr ""
+
+#: models/sections.py:620
+msgid "Vice Commander"
+msgstr ""
+
+#: models/sections.py:621
+msgid "Major General"
+msgstr ""
+
+#: models/sections.py:622
+msgid "Lieutenant General"
+msgstr ""
+
+#: models/sections.py:623
+msgid "Luminaire General"
+msgstr ""
+
+#: models/sections.py:626
+msgid "Nation Warrior"
+msgstr ""
+
+#: models/sections.py:627
+msgid "Spike Lieutenant"
+msgstr ""
+
+#: models/sections.py:628
+msgid "Spear Lieutenant"
+msgstr ""
+
+#: models/sections.py:629
+msgid "Venge Captain"
+msgstr ""
+
+#: models/sections.py:630
+msgid "Lance Commander"
+msgstr ""
+
+#: models/sections.py:631
+msgid "Blade Commander"
+msgstr ""
+
+#: models/sections.py:632
+msgid "Talon Commander"
+msgstr ""
+
+#: models/sections.py:633
+msgid "Voshud Major"
+msgstr ""
+
+#: models/sections.py:634
+msgid "Matar Colonel"
+msgstr ""
+
+#: models/sections.py:635
+msgid "Valklear General"
+msgstr ""
+
+#: models/sections.py:1108
+msgid "undefined"
+msgstr ""
+
+#: models/sections.py:1109
+msgid "station ID"
+msgstr ""
+
+#: models/sections.py:1110
+msgid "market transaction ID"
+msgstr ""
+
+#: models/sections.py:1111
+msgid "character ID"
+msgstr ""
+
+#: models/sections.py:1112
+msgid "corporation ID"
+msgstr ""
+
+#: models/sections.py:1113
+msgid "alliance ID"
+msgstr ""
+
+#: models/sections.py:1114
+msgid "eve system"
+msgstr ""
+
+#: models/sections.py:1115
+msgid "industry job ID"
+msgstr ""
+
+#: models/sections.py:1116
+msgid "contract ID"
+msgstr ""
+
+#: models/sections.py:1117
+msgid "planet ID"
+msgstr ""
+
+#: models/sections.py:1118
+msgid "system ID"
+msgstr ""
+
+#: models/sections.py:1119
+msgid "type ID"
+msgstr ""
+
+#: templates/admin/memberaudit/skillset/change_list.html:9
+msgid "skill set from fitting"
+msgstr ""
+
+#: templates/admin/memberaudit/skillset/change_list.html:14
+msgid "skill set from skill plan"
+msgstr ""
+
+#: templates/admin/memberaudit/skillset/import_skills.html:6
+msgid "Home"
 msgstr ""
 
 #: templates/memberaudit/character_finder.html:10
@@ -272,92 +486,111 @@ msgstr ""
 msgid "Characters"
 msgstr ""
 
+#: templates/memberaudit/character_finder.html:18
+msgid "Character<br>Name"
+msgstr ""
+
 #: templates/memberaudit/character_finder.html:19
-#: templates/memberaudit/partials/reports/tabs/compliance.html:10
-#: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
-msgid "Organization"
+msgid "Character<br>Organization"
 msgstr ""
 
 #: templates/memberaudit/character_finder.html:20
-#: templates/memberaudit/partials/character_viewer/tabs/assets.html:8
-#: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:10
-msgid "Location"
+msgid "Main<br>Name"
 msgstr ""
 
 #: templates/memberaudit/character_finder.html:21
-#: templates/memberaudit/partials/reports/tabs/compliance.html:9
-#: templates/memberaudit/partials/reports/tabs/skill_sets.html:10
-msgid "Main"
+msgid "Main<br>Organization"
 msgstr ""
 
 #: templates/memberaudit/character_finder.html:22
-msgid "State"
+msgid "Main<br>State"
 msgstr ""
 
-#: templates/memberaudit/character_finder.html:94
+#: templates/memberaudit/character_finder.html:84
+msgid "Char Alliance"
+msgstr ""
+
+#: templates/memberaudit/character_finder.html:88
+msgid "Char Corporation"
+msgstr ""
+
+#: templates/memberaudit/character_finder.html:92
+msgid "Main Alliance"
+msgstr ""
+
+#: templates/memberaudit/character_finder.html:96
+msgid "Main Corporation"
+msgstr ""
+
+#: templates/memberaudit/character_finder.html:100
+#: templates/memberaudit/reports.html:234
 msgid "Main?"
 msgstr ""
 
-#: templates/memberaudit/character_finder.html:101
-#: templates/memberaudit/character_viewer.html:178
+#: templates/memberaudit/character_finder.html:104
+msgid "Main State"
+msgstr ""
+
+#: templates/memberaudit/character_finder.html:108
+msgid "Unregistered?"
+msgstr ""
+
+#: templates/memberaudit/character_viewer.html:186
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:8
 msgid "Region"
 msgstr ""
 
-#: templates/memberaudit/character_finder.html:105
-#: templates/memberaudit/character_viewer.html:182
+#: templates/memberaudit/character_viewer.html:190
+#: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:12
 msgid "Solar System"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:189
+#: templates/memberaudit/character_viewer.html:197
 msgid "Ship?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:285
+#: templates/memberaudit/character_viewer.html:294
 msgid "NPC?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:289
+#: templates/memberaudit/character_viewer.html:298
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:13
 msgid "Watched?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:293
+#: templates/memberaudit/character_viewer.html:302
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:14
 msgid "Blocked?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:482
-#: templates/memberaudit/modals/character_viewer/asset_container.html:13
-#: templates/memberaudit/modals/character_viewer/contract.html:14
-#: templates/memberaudit/modals/character_viewer/mail.html:14
-#: templates/memberaudit/modals/character_viewer/mail.html:30
-#: templates/memberaudit/modals/character_viewer/mail.html:32
-#: templates/memberaudit/modals/character_viewer/mail.html:34
-#: templates/memberaudit/modals/character_viewer/mail.html:36
-msgid "Loading..."
-msgstr ""
-
-#: templates/memberaudit/character_viewer.html:570
+#: templates/memberaudit/character_viewer.html:623
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:28
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/skills.html:8
 msgid "Group"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:574
-#: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
-#: templates/memberaudit/reports.html:140
+#: templates/memberaudit/character_viewer.html:627
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:14
+#: templates/memberaudit/reports.html:224
 msgid "Required Skills?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:578
-#: templates/memberaudit/reports.html:144
+#: templates/memberaudit/character_viewer.html:631
+#: templates/memberaudit/reports.html:229
 msgid "Doctrine?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:610
+#: templates/memberaudit/character_viewer.html:670
 msgid "Level"
+msgstr ""
+
+#: templates/memberaudit/character_viewer.html:769
+msgid "Buy and Sell"
+msgstr ""
+
+#: templates/memberaudit/data_export.html:10
+msgid "Topics"
 msgstr ""
 
 #: templates/memberaudit/launcher.html:20
@@ -369,7 +602,7 @@ msgid "Register"
 msgstr ""
 
 #: templates/memberaudit/launcher.html:73
-#: templates/memberaudit/partials/character_viewer/overview.html:39
+#: templates/memberaudit/partials/character_viewer/overview.html:47
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:21
 msgid "(no data yet)"
 msgstr ""
@@ -390,15 +623,23 @@ msgstr ""
 msgid "Remove this character."
 msgstr ""
 
-#: templates/memberaudit/launcher.html:116
+#: templates/memberaudit/launcher.html:118
 msgid "Unregistered character(s):"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/asset_container.html:13
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:14
+#: templates/memberaudit/modals/character_viewer/contract.html:14
+msgid "Loading..."
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/asset_container.html:26
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:52
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:37
 #: templates/memberaudit/modals/character_viewer/contract.html:27
 #: templates/memberaudit/modals/character_viewer/contract_content.html:89
-#: templates/memberaudit/modals/character_viewer/mail.html:44
+#: templates/memberaudit/modals/character_viewer/mail.html:31
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:87
 msgid "Close"
 msgstr ""
 
@@ -407,7 +648,9 @@ msgid "Asset Container"
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:26
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:22
 #: templates/memberaudit/modals/character_viewer/contract_items.html:6
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:45
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:10
 msgid "Name"
@@ -426,18 +669,37 @@ msgstr ""
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:30
 #: templates/memberaudit/modals/character_viewer/contract_items.html:10
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:13
+#: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:11
 msgid "Price"
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:31
 #: templates/memberaudit/modals/character_viewer/contract_items.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:14
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:48
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:60
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:13
 msgid "Total"
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:42
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:27
 msgid "Grand Total:"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:23
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:46
+msgid "Required"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:24
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:47
+msgid "Recommended"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:25
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:48
+msgid "Current"
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:16
@@ -465,7 +727,7 @@ msgid "Status:"
 msgstr ""
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:29
-#: templates/memberaudit/partials/character_viewer/overview.html:134
+#: templates/memberaudit/partials/character_viewer/overview.html:149
 msgid "Location:"
 msgstr ""
 
@@ -523,7 +785,9 @@ msgstr ""
 #: templates/memberaudit/modals/character_viewer/contract_items.html:8
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:9
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:10
+#: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:9
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:10
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:11
 msgid "Type"
 msgstr ""
 
@@ -531,76 +795,126 @@ msgstr ""
 msgid "Category"
 msgstr ""
 
-#: templates/memberaudit/modals/character_viewer/mail.html:29
+#: templates/memberaudit/modals/character_viewer/mail.html:15
+msgid "Mail"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/mail_content.html:5
 msgid "From:"
 msgstr ""
 
-#: templates/memberaudit/modals/character_viewer/mail.html:31
+#: templates/memberaudit/modals/character_viewer/mail_content.html:6
 msgid "To:"
 msgstr ""
 
-#: templates/memberaudit/modals/character_viewer/mail.html:33
+#: templates/memberaudit/modals/character_viewer/mail_content.html:7
 msgid "Sent:"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:25
+msgid "You meet all the required skills."
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:27
+msgid "You do not meet the skill requirements"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:37
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:15
+msgid "Description"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:69
+msgid "Copy missing skills to clipboard"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:73
+msgid "Legend:"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:75
+msgid "Below minimum requirements"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:78
+msgid "Above required, but below recommended level"
+msgstr ""
+
+#: templates/memberaudit/modals/character_viewer/skill_set_content.html:81
+msgid "At/Above recommended level"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/overview.html:8
 msgid "Overview"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:45
+#: templates/memberaudit/partials/character_viewer/overview.html:53
 msgid "Character:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:57
+#: templates/memberaudit/partials/character_viewer/overview.html:65
 msgid "Corporation:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:64
+#: templates/memberaudit/partials/character_viewer/overview.html:72
 msgid "Alliance:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:75
+#: templates/memberaudit/partials/character_viewer/overview.html:83
 msgid "Faction:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:82
+#: templates/memberaudit/partials/character_viewer/overview.html:90
 msgid "Race:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/overview.html:93
-msgid "Born:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:100
-msgid "Skillpoints:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:107
-msgid "Sec. Status:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:116
-msgid "Assets:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:123
-msgid "Wallet:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:141
-msgid "System:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:144
-msgid "Last Login:"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/overview.html:151
+#: templates/memberaudit/partials/character_viewer/overview.html:97
 msgid "Main:"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/sidebar.html:17
+#: templates/memberaudit/partials/character_viewer/overview.html:104
+msgid "Born:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:111
+msgid "Skillpoints:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:121
+msgid "Sec. Status:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:131
+msgid "Assets:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:138
+msgid "Wallet:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:156
+msgid "Ship:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:163
+msgid "System:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/overview.html:166
+msgid "Last Login:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/sidebar_character.html:9
 msgid "Main character"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/sidebar_character.html:13
+msgid "Currently shared with recruiters"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/assets.html:8
+#: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:10
+msgid "Location"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:12
@@ -609,6 +923,42 @@ msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:35
 msgid "Prices are average market prices."
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:10
+msgid "Perception"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:13
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:22
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:31
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:40
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:49
+msgid "points"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:19
+msgid "Memory"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:28
+msgid "Willpower"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:37
+msgid "Intelligence"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:46
+msgid "Charisma"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:58
+msgid "Neural Remap Available:"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:61
+msgid "Bonus Remaps Available:"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:9
@@ -624,16 +974,17 @@ msgid "Contract"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:10
-#: templates/memberaudit/partials/character_viewer/tabs/mails.html:58
+#: templates/memberaudit/partials/character_viewer/tabs/mails.html:53
 msgid "From"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:11
-#: templates/memberaudit/partials/character_viewer/tabs/mails.html:59
+#: templates/memberaudit/partials/character_viewer/tabs/mails.html:54
 msgid "To"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:12
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:20
 msgid "Status"
 msgstr ""
 
@@ -657,12 +1008,46 @@ msgstr ""
 msgid "Today"
 msgstr ""
 
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:22
+msgid "Faction"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:32
+msgid "Enlisted on"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:34
+msgid "Current rank"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:36
+msgid "Highest rank"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:42
+msgid "Kills"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:44
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:56
+msgid "Yesterday"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:46
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:58
+msgid "Last week"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:54
+msgid "Victory Points"
+msgstr ""
+
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:9
 msgid "System"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:11
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:15
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:21
 msgid "Implants"
 msgstr ""
 
@@ -674,16 +1059,23 @@ msgstr ""
 msgid "Loyalty Points"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/mails.html:6
-msgid "Unsupported link type."
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs/mails.html:57
+#: templates/memberaudit/partials/character_viewer/tabs/mails.html:52
 msgid "Sent"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/mails.html:60
+#: templates/memberaudit/partials/character_viewer/tabs/mails.html:55
 msgid "Subject"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:8
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:9
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:9
+msgid "Date"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:10
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:10
+msgid "Quantity"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:8
@@ -715,28 +1107,32 @@ msgstr ""
 msgid "Missing Recommended Skills"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:9
-msgid "Date"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:11
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:11
 msgid "First party"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:12
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:12
 msgid "Second party"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:13
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:13
 msgid "Amount"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:14
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:14
 msgid "Balance"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs/wallet.html:15
-msgid "Description"
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:12
+msgid "Unit Price"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:14
+msgid "Client"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:15
+msgid "Where"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:7
@@ -748,48 +1144,69 @@ msgid "Update in progress..."
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:11
-msgid "Bio"
+msgid "Attributes"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:12
-msgid "Contacts"
+msgid "Bio"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:13
-msgid "Contracts"
+msgid "Contacts"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:14
-msgid "Corporations"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:16
-msgid "Jump Clones"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:17
-msgid "Loyalty"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:18
-msgid "Mails"
+msgid "Contracts"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:19
-msgid "Skill Queue"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:20
-#: templates/memberaudit/partials/reports/tabs_navigation.html:13
-msgid "Skill Sets"
-msgstr ""
-
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:21
-msgid "Skills"
+msgid "Clones"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:22
+msgid "Jump Clones"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:26
+msgid "Faction Warfare"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:27
+msgid "Loyalty"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:28
+msgid "Mails"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:29
+msgid "Mining"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:32
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:36
+msgid "Skills"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:34
+msgid "Skill Queue"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:35
+#: templates/memberaudit/partials/reports/tabs_navigation.html:19
+msgid "Skill Sets"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:41
 msgid "Wallet"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:43
+msgid "Transactions"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:44
+msgid "Market Transactions"
 msgstr ""
 
 #: templates/memberaudit/partials/menu.html:11
@@ -800,27 +1217,70 @@ msgstr ""
 msgid "My Characters"
 msgstr ""
 
-#: templates/memberaudit/partials/menu.html:36
+#: templates/memberaudit/partials/menu.html:35
 msgid "Character Sheet"
 msgstr ""
 
-#: templates/memberaudit/partials/menu.html:43
+#: templates/memberaudit/partials/menu.html:42
 msgid "Character Finder"
 msgstr ""
 
-#: templates/memberaudit/partials/menu.html:51
+#: templates/memberaudit/partials/menu.html:50
 msgid "Reports"
 msgstr ""
 
-#: templates/memberaudit/partials/reports/tabs/compliance.html:11
+#: templates/memberaudit/partials/menu.html:58
+msgid "Data Export"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:8
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:12
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:10
+msgid "Organization"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:9
+msgid "Total Users"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:10
+msgid "Total Characters"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:11
+#, python-format
+msgid "Compliance %%"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:10
+msgid "Main"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:9
+#: templates/memberaudit/reports.html:70 templates/memberaudit/reports.html:209
+msgid "State"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/skill_sets.html:15
+msgid "Is Main?"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:8
+msgid "User"
+msgstr ""
+
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:11
+#: templates/memberaudit/reports.html:85
 msgid "Registered?"
 msgstr ""
 
-#: templates/memberaudit/partials/reports/tabs/compliance.html:12
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:12
+#: templates/memberaudit/reports.html:90 templates/memberaudit/reports.html:150
 msgid "Compliant?"
 msgstr ""
 
-#: templates/memberaudit/partials/reports/tabs/compliance.html:13
+#: templates/memberaudit/partials/reports/tabs/user_compliance.html:13
 msgid "Total Chars"
 msgstr ""
 
@@ -828,52 +1288,26 @@ msgstr ""
 msgid "User Compliance"
 msgstr ""
 
-#: templates/memberaudit/reports.html:128
+#: templates/memberaudit/partials/reports/tabs_navigation.html:13
+msgid "Corporation Compliance"
+msgstr ""
+
+#: templates/memberaudit/reports.html:204
 msgid "Groups"
 msgstr ""
 
-#. Translators: Abbreviation for years
-#: utils.py:275
-msgid "y"
-msgstr ""
-
-#. Translators: Abbreviation for months
-#: utils.py:277
-msgid "mt"
-msgstr ""
-
-#. Translators: Abbreviation for days
-#: utils.py:279
-msgid "d"
-msgstr ""
-
-#. Translators: Abbreviation for hours
-#: utils.py:281
-msgid "h"
-msgstr ""
-
-#. Translators: Abbreviation for months
-#: utils.py:283
-msgid "m"
-msgstr ""
-
-#. Translators: Abbreviation for seconds
-#: utils.py:285
-msgid "s"
-msgstr ""
-
-#: utils.py:335 views.py:72
-msgid "yes"
-msgstr ""
-
-#: utils.py:335 views.py:74
-msgid "no"
-msgstr ""
-
-#: views.py:61
+#: views/_common.py:12
 msgid "[Ungrouped]"
 msgstr ""
 
-#: views.py:1178
+#: views/character_viewer_2.py:284
 msgid "(training not active)"
+msgstr ""
+
+#: views/character_viewer_2.py:614
+msgid "Buy"
+msgstr ""
+
+#: views/character_viewer_2.py:614
+msgid "Sell"
 msgstr ""
