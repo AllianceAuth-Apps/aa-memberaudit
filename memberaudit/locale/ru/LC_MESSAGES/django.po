@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-16 17:38+0200\n"
+"POT-Creation-Date: 2023-04-16 17:58+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -124,7 +124,7 @@ msgstr ""
 msgid "Disabled %d characters."
 msgstr ""
 
-#: admin.py:492
+#: admin.py:492 models/general.py:259 models/general.py:294
 msgid "name"
 msgstr ""
 
@@ -153,122 +153,194 @@ msgstr ""
 msgid "Member Audit"
 msgstr ""
 
-#: models/character.py:69
+#: models/character.py:67
 msgid "assets"
 msgstr ""
 
-#: models/character.py:71
+#: models/character.py:69
 msgid "contacts"
 msgstr ""
 
-#: models/character.py:72
+#: models/character.py:70
 msgid "contracts"
 msgstr ""
 
-#: models/character.py:73
+#: models/character.py:71
 msgid "corporation history"
 msgstr ""
 
-#: models/character.py:74
+#: models/character.py:72
 msgid "faction warfare statistics"
 msgstr ""
 
-#: models/character.py:75
+#: models/character.py:73
 msgid "implants"
 msgstr ""
 
-#: models/character.py:76
+#: models/character.py:74
 msgid "jump clones"
 msgstr ""
 
-#: models/character.py:77
+#: models/character.py:75
 msgid "location"
 msgstr ""
 
-#: models/character.py:78
+#: models/character.py:76
 msgid "loyalty"
 msgstr ""
 
-#: models/character.py:79
+#: models/character.py:77
 msgid "mails"
 msgstr ""
 
-#: models/character.py:80
+#: models/character.py:78
 msgid "mining ledger"
 msgstr ""
 
-#: models/character.py:81
+#: models/character.py:79
 msgid "online status"
 msgstr ""
 
-#: models/character.py:82
+#: models/character.py:80
 msgid "ship"
 msgstr ""
 
-#: models/character.py:83
+#: models/character.py:81 models/general.py:335
 msgid "skills"
 msgstr ""
 
-#: models/character.py:84
+#: models/character.py:82
 msgid "skill queue"
 msgstr ""
 
-#: models/character.py:85
+#: models/character.py:83 models/general.py:263
 msgid "skill sets"
 msgstr ""
 
-#: models/character.py:86
+#: models/character.py:84
 msgid "wallet balance"
 msgstr ""
 
-#: models/character.py:87
+#: models/character.py:85
 msgid "wallet journal"
 msgstr ""
 
-#: models/character.py:88
+#: models/character.py:86
 msgid "wallet transactions"
 msgstr ""
 
-#: models/character.py:89
+#: models/character.py:87
 msgid "attributes"
 msgstr ""
 
-#: models/character.py:141
+#: models/character.py:139
 msgid "ok"
 msgstr ""
 
-#: models/character.py:142 models/sections.py:233
+#: models/character.py:140 models/sections.py:233
 msgid "in progress"
 msgstr ""
 
-#: models/character.py:143
+#: models/character.py:141
 msgid "incomplete"
 msgstr ""
 
-#: models/character.py:144
+#: models/character.py:142
 msgid "error"
 msgstr ""
 
-#: models/character.py:145
+#: models/character.py:143
 msgid "disabled"
 msgstr ""
 
-#: models/general.py:280
+#: models/character.py:150
+msgid "eve character"
+msgstr ""
+
+#: models/character.py:154
+msgid "created at"
+msgstr ""
+
+#: models/character.py:158
+msgid "is shared"
+msgstr ""
+
+#: models/character.py:163
+msgid "is disabled"
+msgstr ""
+
+#: models/character.py:167
+msgid "mailing lists"
+msgstr ""
+
+#: models/general.py:261 models/general.py:296
+msgid "description"
+msgstr ""
+
+#: models/general.py:268
+msgid "is doctrine"
+msgstr ""
+
+#: models/general.py:270
+msgid "This enables a skill set group to show up correctly in doctrine reports"
+msgstr ""
+
+#: models/general.py:276
+msgid "is active"
+msgstr ""
+
+#: models/general.py:277
+msgid "Whether this skill set group is in active use"
+msgstr ""
+
+#: models/general.py:285
 msgid "Doctrine: "
 msgstr ""
 
-#: models/general.py:393 templates/memberaudit/reports.html:75
+#: models/general.py:304
+msgid "ship type"
+msgstr ""
+
+#: models/general.py:307
+msgid ""
+"Ship type is used for visual presentation only. All skill requirements must "
+"be explicitly defined."
+msgstr ""
+
+#: models/general.py:315
+msgid "is visible"
+msgstr ""
+
+#: models/general.py:317
+msgid ""
+"Non visible skill sets are not shown to users on their character sheet and "
+"used for audit purposes only."
+msgstr ""
+
+#: models/general.py:340
+msgid "skill"
+msgstr ""
+
+#: models/general.py:349
+msgid "required level"
+msgstr ""
+
+#: models/general.py:356
+msgid "recommended level"
+msgstr ""
+
+#: models/general.py:412 templates/memberaudit/reports.html:75
 #: templates/memberaudit/reports.html:140
 #: templates/memberaudit/reports.html:214
 msgid "Alliance"
 msgstr ""
 
-#: models/general.py:394
+#: models/general.py:413
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
 msgid "Character"
 msgstr ""
 
-#: models/general.py:395
+#: models/general.py:414
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
 #: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
@@ -276,11 +348,11 @@ msgstr ""
 msgid "Corporation"
 msgstr ""
 
-#: models/general.py:396
+#: models/general.py:415
 msgid "Mailing List"
 msgstr ""
 
-#: models/general.py:397
+#: models/general.py:416
 msgid "Unknown"
 msgstr ""
 

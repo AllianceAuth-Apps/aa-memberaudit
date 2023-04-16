@@ -146,18 +146,28 @@ class Character(models.Model):
 
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
-        EveCharacter, related_name="memberaudit_character", on_delete=models.CASCADE
+        EveCharacter,
+        related_name="memberaudit_character",
+        on_delete=models.CASCADE,
+        verbose_name=_("eve character"),
     )
 
-    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    created_at = models.DateTimeField(
+        auto_now_add=True, db_index=True, verbose_name=_("created at")
+    )
     is_shared = models.BooleanField(
         default=False,
+        verbose_name=_("is shared"),
         help_text="Shared characters can be viewed by recruiters",
     )
     is_disabled = models.BooleanField(
-        default=False, help_text="Disabled characters are no longer updated from ESI."
+        default=False,
+        verbose_name=_("is disabled"),
+        help_text="Disabled characters are no longer updated from ESI.",
     )
-    mailing_lists = models.ManyToManyField("MailEntity", related_name="characters")
+    mailing_lists = models.ManyToManyField(
+        "MailEntity", related_name="characters", verbose_name=_("mailing lists")
+    )
 
     objects = CharacterManager()
 

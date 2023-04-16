@@ -256,20 +256,26 @@ class EveSkillType(EveType):
 class SkillSetGroup(models.Model):
     """A group of SkillSets, e.g. for defining a doctrine"""
 
-    name = models.CharField(max_length=NAMES_MAX_LENGTH, unique=True)
-    description = models.TextField(blank=True)
-    skill_sets = models.ManyToManyField("SkillSet", related_name="groups")
+    name = models.CharField(
+        max_length=NAMES_MAX_LENGTH, unique=True, verbose_name=_("name")
+    )
+    description = models.TextField(blank=True, verbose_name=_("description"))
+    skill_sets = models.ManyToManyField(
+        "SkillSet", related_name="groups", verbose_name=_("skill sets")
+    )
     is_doctrine = models.BooleanField(
         default=False,
         db_index=True,
+        verbose_name=_("is doctrine"),
         help_text=(
-            "This enables a skill set group to show up correctly in doctrine reports"
+            _("This enables a skill set group to show up correctly in doctrine reports")
         ),
     )
     is_active = models.BooleanField(
         default=True,
         db_index=True,
-        help_text="Whether this skill set group is in active use",
+        verbose_name=_("is active"),
+        help_text=_("Whether this skill set group is in active use"),
     )
 
     def __str__(self) -> str:
@@ -285,8 +291,10 @@ class SkillSet(models.Model):
     a particular task like flying a doctrine ships.
     """
 
-    name = models.CharField(max_length=NAMES_MAX_LENGTH, unique=True)
-    description = models.TextField(blank=True)
+    name = models.CharField(
+        max_length=NAMES_MAX_LENGTH, unique=True, verbose_name=_("name")
+    )
+    description = models.TextField(blank=True, verbose_name=_("description"))
     ship_type = models.ForeignKey(
         EveShipType,
         on_delete=models.SET_DEFAULT,
@@ -294,15 +302,19 @@ class SkillSet(models.Model):
         null=True,
         blank=True,
         related_name="+",
+        verbose_name=_("ship type"),
         help_text=(
-            "Ship type is used for visual presentation only. "
-            "All skill requirements must be explicitly defined."
+            _(
+                "Ship type is used for visual presentation only. "
+                "All skill requirements must be explicitly defined."
+            )
         ),
     )
     is_visible = models.BooleanField(
         default=True,
         db_index=True,
-        help_text=(
+        verbose_name=_("is visible"),
+        help_text=_(
             "Non visible skill sets are not shown to users "
             "on their character sheet and used for audit purposes only."
         ),
@@ -318,10 +330,16 @@ class SkillSetSkill(models.Model):
     """A specific skill within a skill set."""
 
     skill_set = models.ForeignKey(
-        SkillSet, on_delete=models.CASCADE, related_name="skills"
+        SkillSet,
+        on_delete=models.CASCADE,
+        related_name="skills",
+        verbose_name=_("skills"),
     )
     eve_type = models.ForeignKey(
-        EveSkillType, on_delete=models.CASCADE, verbose_name="skill", related_name="+"
+        EveSkillType,
+        on_delete=models.CASCADE,
+        verbose_name=_("skill"),
+        related_name="+",
     )
 
     required_level = models.PositiveIntegerField(
@@ -329,12 +347,14 @@ class SkillSetSkill(models.Model):
         null=True,
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_("required level"),
     )
     recommended_level = models.PositiveIntegerField(
         default=None,
         null=True,
         blank=True,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
+        verbose_name=_("recommended level"),
     )
 
     class Meta:
