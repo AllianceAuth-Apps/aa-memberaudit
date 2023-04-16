@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.6.3] - 2023-04-16
+
+### Changed
+
+- Added more locations
+
 ## [2.6.2] - 2023-04-11
 
 ### Fixed
