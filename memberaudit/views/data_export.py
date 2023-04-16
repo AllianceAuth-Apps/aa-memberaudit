@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
@@ -21,7 +22,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 def data_export(request):
     topics = data_exporters.topics_and_export_files()
     context = {
-        "page_title": "Data Export",
+        "page_title": _("Data Export"),
         "topics": topics,
         "character_count": Character.objects.count(),
         "minutes_until_next_update": MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE,
@@ -50,11 +51,11 @@ def data_export_run_update(request, topic: str):
     format_html
     messages.info(
         request,
-        format_html(
-            "Data export for topic <strong>{}</strong> has been started. "
+        _(
+            "Data export for topic <strong>%s</strong> has been started. "
             "This can take a couple of minutes. "
             "You will get a notification once it is completed.",
-            topic,
-        ),
+        )
+        % topic,
     )
     return redirect("memberaudit:data_export")

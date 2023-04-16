@@ -196,7 +196,9 @@ def character_mail(
             .get(pk=mail_pk)
         )
     except CharacterMail.DoesNotExist:
-        error_msg = f"Mail with pk {mail_pk} not found for character {character}"
+        error_msg = gettext_lazy(
+            "Mail with pk %s not found for character %s" % (mail_pk, character)
+        )
         logger.warning(error_msg)
         return HttpResponseNotFound(error_msg)
     recipients = sorted(

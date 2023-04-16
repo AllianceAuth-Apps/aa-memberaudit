@@ -3,6 +3,7 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
+from django.utils.translation import gettext_lazy as _
 
 from allianceauth import NAME as site_header
 from allianceauth.services.hooks import get_extension_logger
@@ -33,10 +34,7 @@ def admin_create_skillset_from_fitting(request):
             ):
                 messages.warning(
                     request,
-                    format_html(
-                        "A skill set with the name "
-                        f"<b>{fitting.name}</b> already exists."
-                    ),
+                    _("A skill set with the name %s already exists." % fitting.name),
                 )
             else:
                 params = {"fitting": fitting, "user": request.user}
@@ -50,9 +48,9 @@ def admin_create_skillset_from_fitting(request):
                 )
                 tasks.update_characters_skill_checks.delay(force_update=True)
                 if created:
-                    msg = f"Skill Set <b>{obj.name}</b> has been created"
+                    msg = _("Skill Set <b>%s</b> has been created") % obj.name
                 else:
-                    msg = f"Skill Set <b>{obj.name}</b> has been updated"
+                    msg = _("Skill Set <b>%s</b> has been updated") % obj.name
                 if form.cleaned_data["_errors"]:
                     errors = form.cleaned_data["_errors"]
                     msg += f" with issues:<br>- {'<br>- '.join(errors)}"
@@ -66,7 +64,7 @@ def admin_create_skillset_from_fitting(request):
         request,
         "admin/memberaudit/skillset/import_skills.html",
         {
-            "title": "Create skill set from fitting",
+            "title": _("Create skill set from fitting"),
             "form": form,
             "cl": {"opts": SkillSet._meta},
             "site_header": site_header,
@@ -88,12 +86,12 @@ def admin_create_skillset_from_skill_plan(request):
             logger.info("%s: Skill Set created from skill plan", skill_plan.name)
             tasks.update_characters_skill_checks.delay(force_update=True)
             if created:
-                msg = f"Skill Set <b>{obj.name}</b> has been created"
+                msg = _("Skill Set <b>%s</b> has been created") % obj.name
             else:
-                msg = f"Skill Set <b>{obj.name}</b> has been updated"
+                msg = _("Skill Set <b>%s</b> has been updated") % obj.name
             if form.cleaned_data["_errors"]:
                 errors = form.cleaned_data["_errors"]
-                msg += f" with issues:<br>- {'<br>- '.join(errors)}"
+                msg += f" {_('with issues')}:<br>- {'<br>- '.join(errors)}"
                 messages.warning(request, format_html(msg))
             else:
                 messages.info(request, format_html(f"{msg}."))
@@ -104,7 +102,7 @@ def admin_create_skillset_from_skill_plan(request):
         request,
         "admin/memberaudit/skillset/import_skills.html",
         {
-            "title": "Create skill set from skill plan",
+            "title": _("Create skill set from skill plan"),
             "form": form,
             "cl": {"opts": SkillSet._meta},
             "site_header": site_header,
