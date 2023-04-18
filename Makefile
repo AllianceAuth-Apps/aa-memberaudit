@@ -6,12 +6,17 @@ help:
 
 makemessages:
 	cd $(package) && \
-	django-admin makemessages -l en --ignore 'build/*' && \
-	django-admin makemessages -l de --ignore 'build/*' && \
-	django-admin makemessages -l es --ignore 'build/*' && \
-	django-admin makemessages -l ko --ignore 'build/*' && \
-	django-admin makemessages -l ru --ignore 'build/*' && \
-	django-admin makemessages -l zh_Hans --ignore 'build/*'
+	django-admin makemessages \
+		-l de \
+		-l es \
+		-l fr_FR \
+		-l it_IT \
+		-l ja \
+		-l ko_KR \
+		-l ru \
+		-l zh_Hans \
+		--keep-pot \
+		--ignore 'build/*'
 
 tx_push:
 	tx push --source
