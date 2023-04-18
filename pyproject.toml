@@ -49,11 +49,11 @@ Changelog = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/CHANGE
 Tracker = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/issues"
 
 [tool.hatch.version]
-path = "aa_memberaudit/__init__.py"
+path = "memberaudit/__init__.py"
 
 [tool.hatch.build]
 include = [
-    "/aa_memberaudit",
+    "/memberaudit",
 ]
 
 [tool.isort]
