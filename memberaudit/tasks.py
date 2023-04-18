@@ -272,8 +272,8 @@ def update_character_section(
     character_pk: int,
     section: str,
     force_update: bool = False,
-    root_task_id: str = None,
-    parent_task_id: str = None,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
     **kwargs,
 ) -> None:
     """Task that updates the section of a character"""
@@ -305,7 +305,7 @@ def _character_update_with_error_logging(
     during a character update.
     """
     try:
-        return method(*args, **kwargs)
+        return method(*args, **kwargs)  # type: ignore
     except Exception as ex:
         error_message = f"{type(ex).__name__}: {str(ex)}"
         logger.error(
@@ -366,8 +366,8 @@ def update_character_assets(
     self,
     character_pk: int,
     force_update: bool = False,
-    root_task_id: str = None,
-    parent_task_id: str = None,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
 ) -> None:
     """Main tasks for updating the character's assets"""
     character = Character.objects.get_cached(
@@ -608,8 +608,8 @@ def update_character_mails(
     self,
     character_pk: int,
     force_update: bool = False,
-    root_task_id: str = None,
-    parent_task_id: str = None,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
 ) -> None:
     """Main task for updating mails of a character"""
     character = Character.objects.get_cached(
@@ -740,8 +740,8 @@ def update_character_contacts(
     self,
     character_pk: int,
     force_update: bool = False,
-    root_task_id: str = None,
-    parent_task_id: str = None,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
 ) -> None:
     """Main task for updating contacts of a character"""
     character = Character.objects.get_cached(
@@ -814,8 +814,8 @@ def update_character_contracts(
     self,
     character_pk: int,
     force_update: bool = False,
-    root_task_id: str = None,
-    parent_task_id: str = None,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
 ) -> None:
     """Main task for updating contracts of a character"""
     character = Character.objects.get_cached(
@@ -842,7 +842,7 @@ def update_character_contracts(
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_contract_headers(
     self, character_pk: int, force_update: bool = False
-) -> bool:
+):
     fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -941,7 +941,10 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 
 @shared_task(**{**TASK_DEFAULTS_BIND_ONCE, **{"once": {"keys": ["character_pk"]}}})
 def update_character_wallet_journal(
-    self, character_pk: int, root_task_id: str = None, parent_task_id: str = None
+    self,
+    character_pk: int,
+    root_task_id: Optional[str] = None,
+    parent_task_id: Optional[str] = None,
 ) -> None:
     """Main task for updating wallet journal of a character"""
     character = Character.objects.get_cached(
@@ -1029,7 +1032,7 @@ def update_structure_esi(self, id: int, token_pk: int):
 @shared_task(
     **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["id"]}, "max_retries": None}}
 )
-def update_mail_entity_esi(id: int, category: str = None):
+def update_mail_entity_esi(id: int, category: Optional[str] = None):
     """Updates a mail entity object from ESI
     and retries later if the ESI error limit has already been reached
     """
@@ -1075,7 +1078,7 @@ def delete_character(character_pk) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def export_data(self, user_pk: int = None) -> None:
+def export_data(self, user_pk: Optional[int] = None) -> None:
     """Export data to files."""
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     tasks = [
@@ -1088,7 +1091,7 @@ def export_data(self, user_pk: int = None) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def export_data_for_topic(self, topic: str, user_pk: int) -> str:
+def export_data_for_topic(self, topic: str, user_pk: int):
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         _export_data_for_topic.si(topic).set(priority=priority),
@@ -1097,7 +1100,7 @@ def export_data_for_topic(self, topic: str, user_pk: int) -> str:
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
-def _export_data_for_topic(topic: str, destination_folder: str = None) -> str:
+def _export_data_for_topic(topic: str, destination_folder: Optional[str] = None) -> str:
     """Export data for given topic into a zipped file in destination."""
     file_path = data_exporters.export_topic_to_archive(
         topic=topic, destination_folder=destination_folder
@@ -1106,7 +1109,7 @@ def _export_data_for_topic(topic: str, destination_folder: str = None) -> str:
 
 
 @shared_task(**TASK_DEFAULTS)
-def _export_data_inform_user(user_pk: int, topic: str = None):
+def _export_data_inform_user(user_pk: int, topic: Optional[str] = None):
     user = User.objects.get(pk=user_pk)
     if topic:
         title = f"{__title__}: Data export for {topic} completed"

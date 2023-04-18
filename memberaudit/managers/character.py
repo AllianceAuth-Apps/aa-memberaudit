@@ -214,14 +214,14 @@ class CharacterUpdateStatusManager(models.Manager):
                     first = qs.order_by("started_at").first()
                     last = qs.order_by("finished_at").last()
                     started_at = first.started_at
-                    finshed_at = last.finished_at
-                    duration = round((finshed_at - started_at).total_seconds(), 1)
+                    finished_at = last.finished_at
+                    duration = round((finished_at - started_at).total_seconds(), 1)
                 except (KeyError, AttributeError):
                     first = None
                     last = None
                     duration = None
                     started_at = None
-                    finshed_at = None
+                    finished_at = None
 
                 available_time = (
                     settings[f"MEMBERAUDIT_UPDATE_STALE_RING_{ring}"]
@@ -235,7 +235,7 @@ class CharacterUpdateStatusManager(models.Manager):
                     "total": {
                         "duration": duration,
                         "started_at": started_at,
-                        "finshed_at": finshed_at,
+                        "finished_at": finished_at,
                         "root_task_id": root_task_ids.get(ring),
                         "throughput_est": throughput,
                         "available_time": available_time,

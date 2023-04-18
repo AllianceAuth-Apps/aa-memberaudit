@@ -245,7 +245,7 @@ class Character(models.Model):
             pass
         return Character.objects.user_has_access(user).filter(pk=self.pk).exists()
 
-    def is_update_status_ok(self) -> bool:
+    def is_update_status_ok(self) -> Optional[bool]:
         """returns status of last update
 
         Returns:
@@ -257,15 +257,14 @@ class Character(models.Model):
         ok_count = self.update_status_set.filter(is_success=True).count()
         if errors_count > 0:
             return False
-        elif ok_count == len(Character.UpdateSection.choices):
+        if ok_count == len(Character.UpdateSection.choices):
             return True
-        else:
-            return None
+        return None
 
     @classmethod
     def update_section_time_until_stale(cls, section: str) -> dt.timedelta:
         """time until given update section is considered stale"""
-        ring = cls.UPDATE_SECTION_RINGS_MAP[section]
+        ring = cls.UPDATE_SECTION_RINGS_MAP[cls.UpdateSection(section)]
         if ring == 1:
             minutes = MEMBERAUDIT_UPDATE_STALE_RING_1
         elif ring == 2:
@@ -302,52 +301,57 @@ class Character(models.Model):
         return update_status.started_at < deadline
 
     def has_section_changed(
-        self, section: str, content: str, hash_num: int = 1
+        self, section: str, content: Any, hash_num: int = 1
     ) -> bool:
         """returns False if the content hash for this section has not changed, else True"""
         try:
-            section = self.update_status_set.get(section=section)
+            section_obj: CharacterUpdateStatus = self.update_status_set.get(
+                section=section
+            )
         except CharacterUpdateStatus.DoesNotExist:
             return True
-        else:
-            return section.has_changed(content=content, hash_num=hash_num)
+        return section_obj.has_changed(content=content, hash_num=hash_num)
 
     def update_section_content_hash(
-        self, section: str, content: str, hash_num: int = 1
-    ) -> bool:
+        self, section: str, content: Any, hash_num: int = 1
+    ) -> None:
         try:
-            section = self.update_status_set.get(section=section)
+            section_obj: CharacterUpdateStatus = self.update_status_set.get(
+                section=section
+            )
         except CharacterUpdateStatus.DoesNotExist:
-            section, _ = CharacterUpdateStatus.objects.get_or_create(
+            section_obj, _ = CharacterUpdateStatus.objects.get_or_create(
                 character=self, section=section
             )
-
-        section.update_content_hash(content=content, hash_num=hash_num)
+        section_obj.update_content_hash(content=content, hash_num=hash_num)
 
     def reset_update_section(
-        self, section: str, root_task_id: str = None, parent_task_id: str = None
+        self,
+        section: str,
+        root_task_id: Optional[str] = None,
+        parent_task_id: Optional[str] = None,
     ) -> "CharacterUpdateStatus":
         """resets status of given update section and returns it"""
         try:
-            section = self.update_status_set.get(section=section)
+            section_onj: CharacterUpdateStatus = self.update_status_set.get(
+                section=section
+            )
         except CharacterUpdateStatus.DoesNotExist:
-            section, _ = CharacterUpdateStatus.objects.get_or_create(
+            section_onj, _ = CharacterUpdateStatus.objects.get_or_create(
                 character=self, section=section
             )
-
-        section.reset(root_task_id, parent_task_id)
-        return section
+        section_onj.reset(root_task_id, parent_task_id)
+        return section_onj
 
     def is_section_updating(self, section: str) -> bool:
         """returns True if section is currently updating, or does not exist, else False"""
         try:
-            section = self.update_status_set.get(section=section)
+            section_obj = self.update_status_set.get(section=section)
         except CharacterUpdateStatus.DoesNotExist:
             return True
+        return section_obj.is_updating
 
-        return section.is_updating
-
-    def _preload_all_locations(self, token: Token, incoming_ids: set) -> list:
+    def _preload_all_locations(self, token: Token, incoming_ids: set) -> set:
         """loads location objects specified by given set
 
         returns list of existing location IDs after preload
@@ -367,7 +371,6 @@ class Character(models.Model):
                     pass
                 else:
                     existing_ids.add(location_id)
-
         return existing_ids
 
     def fetch_token(self, scopes=None) -> Token:
@@ -400,9 +403,10 @@ class Character(models.Model):
                 f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
                 "at your earliest convenience to update your token."
             )
-            notify_throttled(
-                message_id=message_id, user=self.user, title=title, message=message
-            )
+            if self.user:
+                notify_throttled(
+                    message_id=message_id, user=self.user, title=title, message=message
+                )
             raise TokenError(f"Could not find a matching token for {self}")
         return token
 
@@ -460,7 +464,7 @@ class Character(models.Model):
         missing_ids = required_ids.difference(existing_ids)
         if missing_ids:
             logger.info("%s: Loading %s missing types from ESI", self, len(missing_ids))
-            EveType.objects.bulk_get_or_create_esi(ids=missing_ids)
+            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
 
         assets_flat = {int(x["item_id"]): x for x in asset_list}
         incoming_location_ids = {
@@ -1083,7 +1087,7 @@ class Character(models.Model):
             incoming_ids = set(skills_list.keys())
             existing_ids = set(self.skills.values_list("eve_type_id", flat=True))
             new_ids = incoming_ids.difference(existing_ids)
-            EveType.objects.bulk_get_or_create_esi(ids=new_ids)
+            EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_wallet_balance(self, token):
@@ -1139,7 +1143,7 @@ class Character(models.Model):
             token=token,
         )
 
-    def _store_list_to_disk(self, lst: list, name: str):
+    def _store_list_to_disk(self, lst: Any, name: str):
         """stores the given list as JSON file to disk. For debugging
 
         Will store under memberaudit_logs/{DATE}/{CHARACTER_PK}_{NAME}.json
@@ -1318,7 +1322,9 @@ class CharacterUpdateStatus(models.Model):
             json.dumps(content, cls=DjangoJSONEncoder).encode("utf-8")
         ).hexdigest()
 
-    def reset(self, root_task_id: str = None, parent_task_id: str = None) -> None:
+    def reset(
+        self, root_task_id: Optional[str] = None, parent_task_id: Optional[str] = None
+    ) -> None:
         """resets this update status"""
         self.is_success = None
         self.last_error_message = ""

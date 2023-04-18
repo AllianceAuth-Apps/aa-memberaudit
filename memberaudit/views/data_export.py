@@ -2,7 +2,6 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.http import FileResponse, Http404
 from django.shortcuts import redirect, render
-from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
 
 from allianceauth.services.hooks import get_extension_logger
@@ -48,7 +47,6 @@ def download_export_file(request, topic: str) -> FileResponse:
 @permission_required("memberaudit.exports_access")
 def data_export_run_update(request, topic: str):
     tasks.export_data_for_topic.delay(topic=topic, user_pk=request.user.pk)
-    format_html
     messages.info(
         request,
         _(
