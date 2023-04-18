@@ -58,6 +58,8 @@ test-py310-dj40:
 test-docs:
   stage: test
   image: python:3.10-bullseye
+  before_script:
+  - pip install tox
   script:
     - tox -e docs
 
