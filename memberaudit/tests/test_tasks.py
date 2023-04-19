@@ -12,7 +12,6 @@ from eveuniverse.models import EveSolarSystem, EveType
 from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
-from allianceauth.utils.cache import get_redis_client
 from app_utils.esi import (
     EsiDailyDowntime,
     EsiErrorLimitExceeded,
@@ -58,17 +57,11 @@ from .testdata.factories import create_character, create_compliance_group_design
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import create_memberaudit_character
+from .utils import clear_celery_once_locks, create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
-
-
-def clear_celery_once_locks():
-    r = get_redis_client()
-    if keys := r.keys(":?:qo_memberaudit.*"):
-        r.delete(*keys)
 
 
 @patch(TASKS_PATH + ".update_compliance_groups_for_all")

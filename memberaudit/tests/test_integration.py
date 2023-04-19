@@ -29,6 +29,7 @@ from .testdata.load_locations import load_locations
 from .utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
+    clear_celery_once_locks,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -46,6 +47,7 @@ class TestUILauncher(WebTest):
         load_eveuniverse()
         load_entities()
         load_locations()
+        clear_celery_once_locks()
 
     def setUp(self) -> None:
         self.user, _ = create_user_from_evecharacter_with_access(1002)
@@ -336,6 +338,7 @@ class TestTasksE2E(TestCase):
         load_eveuniverse()
         load_entities()
         load_locations()
+        clear_celery_once_locks()
 
     def test_should_update_all_characters(self, mock_esi):
         # given
