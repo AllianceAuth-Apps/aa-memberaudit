@@ -3,7 +3,7 @@ from typing import Tuple
 
 from django.contrib.auth.models import User
 from django.http import JsonResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, TestCase
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
@@ -94,3 +94,7 @@ def clear_celery_once_locks():
     r = get_redis_client()
     if keys := r.keys(":?:qo_memberaudit.*"):
         r.delete(*keys)
+
+
+class TestCaseWithFixtures(TestCase):
+    fixtures = ["disable_analytics.json"]

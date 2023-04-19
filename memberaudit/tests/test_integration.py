@@ -41,6 +41,8 @@ TASKS_PATH = "memberaudit.tasks"
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestUILauncher(WebTest):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -172,6 +174,8 @@ class TestUILauncher(WebTest):
 
 
 class TestUICharacterViewer(WebTest):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -332,6 +336,8 @@ class TestUICharacterViewer(WebTest):
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestTasksE2E(TestCase):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()

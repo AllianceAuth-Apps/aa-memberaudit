@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 from bravado.exception import HTTPInternalServerError
 from celery.exceptions import Retry as CeleryRetry
 
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
@@ -57,7 +57,11 @@ from .testdata.factories import create_character, create_compliance_group_design
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import clear_celery_once_locks, create_memberaudit_character
+from .utils import (
+    TestCaseWithFixtures,
+    clear_celery_once_locks,
+    create_memberaudit_character,
+)
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -67,7 +71,7 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(TASKS_PATH + ".update_compliance_groups_for_all")
 @patch(TASKS_PATH + ".update_all_characters")
 @patch(TASKS_PATH + ".update_market_prices")
-class TestRegularUpdates(TestCase):
+class TestRegularUpdates(TestCaseWithFixtures):
     def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
@@ -99,7 +103,7 @@ class TestRegularUpdates(TestCase):
 
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-class TestOtherTasks(TestCase):
+class TestOtherTasks(TestCaseWithFixtures):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
     def test_update_market_prices(self, mock_update_from_esi):
         update_market_prices()
@@ -109,7 +113,7 @@ class TestOtherTasks(TestCase):
 @override_settings(CELERY_ALWAYS_EAGER=True)  # need to ignore exceptions
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterAssets(TestCase):
+class TestUpdateCharacterAssets(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -397,7 +401,7 @@ class TestUpdateCharacterAssets(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterMails(TestCase):
+class TestUpdateCharacterMails(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -444,7 +448,7 @@ class TestUpdateCharacterMails(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterContacts(TestCase):
+class TestUpdateCharacterContacts(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -491,7 +495,7 @@ class TestUpdateCharacterContacts(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterContracts(TestCase):
+class TestUpdateCharacterContracts(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -539,7 +543,7 @@ class TestUpdateCharacterContracts(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterWalletJournal(TestCase):
+class TestUpdateCharacterWalletJournal(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -587,7 +591,7 @@ class TestUpdateCharacterWalletJournal(TestCase):
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharacter(TestCase):
+class TestUpdateCharacter(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -705,7 +709,7 @@ class TestUpdateCharacter(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi")
-class TestUpdateStructureEsi(TestCase):
+class TestUpdateStructureEsi(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -747,7 +751,7 @@ class TestUpdateStructureEsi(TestCase):
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi")
-class TestUpdateMailEntityEsi(TestCase):
+class TestUpdateMailEntityEsi(TestCaseWithFixtures):
     def test_normal(self, mock_update_or_create_esi):
         """When ESI status is ok, then create MailEntity"""
         mock_update_or_create_esi.return_value = None
@@ -774,7 +778,7 @@ class TestUpdateMailEntityEsi(TestCase):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharactersDoctrines(TestCase):
+class TestUpdateCharactersDoctrines(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -790,7 +794,7 @@ class TestUpdateCharactersDoctrines(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestDeleteCharacter(TestCase):
+class TestDeleteCharacter(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -806,7 +810,7 @@ class TestDeleteCharacter(TestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestExportData(TestCase):
+class TestExportData(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -836,7 +840,7 @@ class TestExportData(TestCase):
         self.assertEqual(kwargs["topic"], "abc")
 
 
-class TestUpdateComplianceGroupDesignations(TestCase):
+class TestUpdateComplianceGroupDesignations(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -858,7 +862,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(TASKS_PATH + ".update_character")
-class TestUpdateAllCharacters(TestCase):
+class TestUpdateAllCharacters(TestCaseWithFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -898,7 +902,7 @@ class TestUpdateAllCharacters(TestCase):
 
 
 @patch(TASKS_PATH + ".fetch_esi_status")
-class TestAbortMainTaskDuringDailyDowntime(TestCase):
+class TestAbortMainTaskDuringDailyDowntime(TestCaseWithFixtures):
     @patch(TASKS_PATH + ".update_character")
     def test_should_abort_update_all_characters(
         self, mock_update_character, mock_fetch_esi_status
@@ -928,7 +932,7 @@ class TestAbortMainTaskDuringDailyDowntime(TestCase):
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id")
-class TestUpdateUnresolvedEveEntities(TestCase):
+class TestUpdateUnresolvedEveEntities(TestCaseWithFixtures):
     def test_should_not_attempt_to_update_when_no_unresolved_entities(
         self, mock_update_from_esi_by_id
     ):
