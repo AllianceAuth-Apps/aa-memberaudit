@@ -2,7 +2,6 @@ import datetime as dt
 from unittest import skip
 from unittest.mock import MagicMock, patch
 
-from bravado.exception import HTTPInternalServerError
 from celery.exceptions import Retry as CeleryRetry
 
 from django.test import override_settings
@@ -19,7 +18,7 @@ from app_utils.esi import (
     EsiStatus,
     fetch_esi_status,
 )
-from app_utils.esi_testing import BravadoResponseStub
+from app_utils.esi_testing import build_http_error
 from app_utils.testing import (
     create_authgroup,
     create_user_from_evecharacter,
@@ -305,13 +304,15 @@ class TestUpdateCharacterAssets(TestCaseWithFixtures):
 
     def test_update_assets_6(self, mock_esi):
         """when update failed then report the error"""
+        # given
+        exception = build_http_error(500, "Test exception")
         mock_esi.client.Assets.get_characters_character_id_assets.side_effect = (
-            HTTPInternalServerError(response=BravadoResponseStub(500, "Test exception"))
+            exception
         )
-
+        # when
         with self.assertRaises(OSError):
             update_character_assets(self.character_1001.pk)
-
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
@@ -325,9 +326,8 @@ class TestUpdateCharacterAssets(TestCaseWithFixtures):
         mock_esi.client = esi_client_stub
 
         with patch(MODELS_PATH + ".character.Location") as m:
-            m.objects.get_or_create_esi_async.side_effect = HTTPInternalServerError(
-                response=BravadoResponseStub(500, "Test exception")
-            )
+            exception = build_http_error(500, "Test exception")
+            m.objects.get_or_create_esi_async.side_effect = exception
             with self.assertRaises(OSError):
                 update_character_assets(self.character_1001.pk)
 
@@ -344,9 +344,8 @@ class TestUpdateCharacterAssets(TestCaseWithFixtures):
         mock_esi.client = esi_client_stub
 
         with patch(MODELS_PATH + ".character.logger") as m:
-            m.info.side_effect = HTTPInternalServerError(
-                response=BravadoResponseStub(500, "Test exception")
-            )
+            exception = build_http_error(500, "Test exception")
+            m.info.side_effect = exception
             with self.assertRaises(OSError):
                 update_character_assets(self.character_1001.pk)
 
@@ -426,8 +425,9 @@ class TestUpdateCharacterMails(TestCaseWithFixtures):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
+        exception = build_http_error(500, "Test exception")
         mock_esi.client.Mail.get_characters_character_id_mail_lists.side_effect = (
-            HTTPInternalServerError(response=BravadoResponseStub(500, "Test exception"))
+            exception
         )
 
         try:
@@ -473,8 +473,9 @@ class TestUpdateCharacterContacts(TestCaseWithFixtures):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
-        mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = HTTPInternalServerError(
-            response=BravadoResponseStub(500, "Test exception")
+        exception = build_http_error(500, "Test exception")
+        mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = (
+            exception
         )
 
         try:
@@ -521,8 +522,9 @@ class TestUpdateCharacterContracts(TestCaseWithFixtures):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
+        exception = build_http_error(500, "Test exception")
         mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
-            HTTPInternalServerError(response=BravadoResponseStub(500, "Test exception"))
+            exception
         )
 
         try:
@@ -568,8 +570,9 @@ class TestUpdateCharacterWalletJournal(TestCaseWithFixtures):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
-        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = HTTPInternalServerError(
-            response=BravadoResponseStub(500, "Test exception")
+        exception = build_http_error(500, "Test exception")
+        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = (
+            exception
         )
 
         try:
