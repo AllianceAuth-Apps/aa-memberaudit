@@ -458,6 +458,8 @@ class Character(models.Model):
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def assets_preload_objects(self, token: Token, asset_list: list) -> None:
         """preloads objects needed to build the asset tree"""
+        if not asset_list:
+            return
         logger.info("%s: Preloading objects for asset tree", self)
         required_ids = {x["type_id"] for x in asset_list if "type_id" in x}
         existing_ids = set(EveType.objects.values_list("id", flat=True))
@@ -472,7 +474,8 @@ class Character(models.Model):
             for x in assets_flat.values()
             if "location_id" in x and x["location_id"] not in assets_flat
         }
-        self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
+        if incoming_location_ids:
+            self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
 
     def update_character_details(self, force_update: bool = False):
         """syncs the character details for the given character"""
@@ -559,7 +562,10 @@ class Character(models.Model):
             incoming_location_ids |= {
                 obj["end_location_id"] for obj in contracts_list.values()
             }
-            self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
+            if incoming_location_ids:
+                self._preload_all_locations(
+                    token=token, incoming_ids=incoming_location_ids
+                )
             self.contracts.update_for_character(self, contracts_list)
             self.update_section_content_hash(
                 section=self.UpdateSection.CONTRACTS, content=contracts_list
@@ -767,7 +773,8 @@ class Character(models.Model):
                     for record in jump_clones_info["jump_clones"]
                     if "location_id" in record
                 }
-                self._preload_all_locations(token, incoming_location_ids)
+                if incoming_location_ids:
+                    self._preload_all_locations(token, incoming_location_ids)
 
                 for jump_clone_info in jump_clones_list:
                     if jump_clone_info.get("implants"):
