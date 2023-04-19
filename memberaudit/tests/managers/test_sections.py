@@ -3,7 +3,18 @@ from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveTyp
 
 from app_utils.testing import NoSocketsTestCase
 
-from ...models import CharacterAsset, CharacterMailLabel, Location
+from ...models import (
+    CharacterAsset,
+    CharacterContactLabel,
+    CharacterContract,
+    CharacterContractBid,
+    CharacterMailLabel,
+    Location,
+)
+from ..testdata.factories import (
+    create_character_contract,
+    create_character_contract_bid,
+)
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..testdata.load_locations import load_locations
@@ -69,6 +80,52 @@ class TestCharacterUpdateBase(TestCase):
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1000000000001)
+
+
+class TestCharacterContactLabelManager(TestCharacterUpdateBase):
+    def test_should_do_nothing(self):
+        # when
+        CharacterContactLabel.objects.update_for_character(
+            character=self.character_1001, labels=[]
+        )
+        # then
+        self.assertEqual(CharacterContactLabel.objects.count(), 0)
+
+
+class TestCharacterContractBidManager(TestCharacterUpdateBase):
+    def test_should_do_nothing_when_there_are_no_bids(self):
+        # given
+        contract = create_character_contract(
+            character=self.character_1001, contract_type=CharacterContract.TYPE_AUCTION
+        )
+        # when
+        CharacterContractBid.objects.update_for_contract(
+            contract=contract, bids_list=dict()
+        )
+        # then
+        self.assertEqual(CharacterContractBid.objects.count(), 0)
+
+    def test_should_do_nothing_when_there_are_no_new_bids(self):
+        # given
+        contract = create_character_contract(
+            character=self.character_1001, contract_type=CharacterContract.TYPE_AUCTION
+        )
+        bidder = EveEntity.objects.get(id=1002)
+        bid = create_character_contract_bid(contract=contract, bidder=bidder)
+        bids_list = {
+            bid.bid_id: {
+                "amount": bid.amount,
+                "bid_id": bid.bid_id,
+                "bidder_id": bidder.id,
+                "date_bid": bid.date_bid,
+            }
+        }
+        # when
+        CharacterContractBid.objects.update_for_contract(
+            contract=contract, bids_list=bids_list
+        )
+        # then
+        self.assertEqual(CharacterContractBid.objects.count(), 1)
 
 
 class TestCharacterMailLabelManager(TestCharacterUpdateBase):
