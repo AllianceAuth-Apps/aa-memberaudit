@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-18 21:24+0200\n"
+"POT-Creation-Date: 2023-04-19 21:40+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
 "Language-Team: German (https://app.transifex.com/kalkoken-apps/teams/107978/"
 "de/)\n"
@@ -235,7 +235,7 @@ msgstr ""
 msgid "ok"
 msgstr ""
 
-#: models/character.py:142 models/sections.py:233
+#: models/character.py:142 models/sections.py:234
 msgid "in progress"
 msgstr ""
 
@@ -354,99 +354,99 @@ msgstr ""
 msgid "Unknown"
 msgstr ""
 
-#: models/sections.py:146
+#: models/sections.py:147
 msgid "excellent standing"
 msgstr ""
 
-#: models/sections.py:147
+#: models/sections.py:148
 msgid "good standing"
 msgstr ""
 
-#: models/sections.py:148
+#: models/sections.py:149
 msgid "neutral standing"
 msgstr ""
 
-#: models/sections.py:149
+#: models/sections.py:150
 msgid "bad standing"
 msgstr ""
 
-#: models/sections.py:150
+#: models/sections.py:151
 msgid "terrible standing"
 msgstr ""
 
-#: models/sections.py:204
+#: models/sections.py:205
 msgid "alliance"
 msgstr ""
 
-#: models/sections.py:205
+#: models/sections.py:206
 msgid "corporation"
 msgstr ""
 
-#: models/sections.py:206
+#: models/sections.py:207
 msgid "private"
 msgstr ""
 
-#: models/sections.py:207
+#: models/sections.py:208
 msgid "public"
 msgstr ""
 
-#: models/sections.py:227
+#: models/sections.py:228
 msgid "canceled"
 msgstr ""
 
-#: models/sections.py:228
+#: models/sections.py:229
 msgid "deleted"
 msgstr ""
 
-#: models/sections.py:229
+#: models/sections.py:230
 msgid "failed"
 msgstr ""
 
-#: models/sections.py:230
+#: models/sections.py:231
 msgid "finished"
 msgstr ""
 
-#: models/sections.py:231
+#: models/sections.py:232
 msgid "finished contractor"
 msgstr ""
 
-#: models/sections.py:232
+#: models/sections.py:233
 msgid "finished issuer"
 msgstr ""
 
-#: models/sections.py:234
+#: models/sections.py:235
 msgid "outstanding"
 msgstr ""
 
-#: models/sections.py:235
+#: models/sections.py:236
 msgid "rejected"
 msgstr ""
 
-#: models/sections.py:236
+#: models/sections.py:237
 msgid "reversed"
 msgstr ""
 
-#: models/sections.py:257
+#: models/sections.py:258
 msgid "auction"
 msgstr ""
 
-#: models/sections.py:258
+#: models/sections.py:259
 msgid "courier"
 msgstr ""
 
-#: models/sections.py:259
+#: models/sections.py:260
 msgid "item exchange"
 msgstr ""
 
-#: models/sections.py:260
+#: models/sections.py:261
 msgid "loan"
 msgstr ""
 
-#: models/sections.py:261
+#: models/sections.py:262
 msgid "unknown"
 msgstr ""
 
-#: models/sections.py:419
+#: models/sections.py:421
 msgid "[Multiple Items]"
 msgstr ""
 
@@ -1520,7 +1520,7 @@ msgstr ""
 msgid "Reports"
 msgstr ""
 
-#: templates/memberaudit/partials/menu.html:58 views/data_export.py:25
+#: templates/memberaudit/partials/menu.html:58 views/data_export.py:24
 msgid "Data Export"
 msgstr ""
 
@@ -1672,7 +1672,7 @@ msgstr ""
 msgid "Removed character %s as requested."
 msgstr ""
 
-#: views/data_export.py:55
+#: views/data_export.py:53
 #, python-format
 msgid ""
 "Data export for topic <strong>%s</strong> has been started. This can take a "

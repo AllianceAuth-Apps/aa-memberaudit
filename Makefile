@@ -14,6 +14,7 @@ makemessages:
 		-l ja \
 		-l ko_KR \
 		-l ru \
+		-l uk \
 		-l zh_Hans \
 		--keep-pot \
 		--ignore 'build/*'
@@ -26,12 +27,16 @@ tx_pull:
 
 compilemessages:
 	cd $(package) && \
-	django-admin compilemessages -l en  && \
-	django-admin compilemessages -l de  && \
-	django-admin compilemessages -l es  && \
-	django-admin compilemessages -l ko  && \
-	django-admin compilemessages -l ru  && \
-	django-admin compilemessages -l zh_Hans
+	django-admin compilemessages \
+		-l de \
+		-l es \
+		-l fr_FR \
+		-l it_IT \
+		-l ja \
+		-l ko_KR \
+		-l ru \
+		-l uk \
+		-l zh_Hans
 
 coverage:
 	coverage run ../myauth/manage.py test $(package).tests --keepdb --failfast && coverage html && coverage xml && coverage report -m
