@@ -116,11 +116,10 @@ class TestUILauncher(WebTest):
         self.assertTrue(character_1001.is_update_status_ok())
 
         # check added character is now visible in launcher
+        a_tags = launcher.html.find_all("a", href=True)
+        viewer_url = reverse("memberaudit:character_viewer", args=[character_1001.pk])
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:character_viewer", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == viewer_url
         ]
         self.assertGreater(len(character_1001_links), 0)
 
@@ -141,11 +140,10 @@ class TestUILauncher(WebTest):
         self.assertEqual(launcher.status_code, 200)
 
         # check for share button
+        share_url = reverse("memberaudit:share_character", args=[character_1001.pk])
+        a_tags = launcher.html.find_all("a", href=True)
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:share_character", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
         ]
         self.assertGreater(len(character_1001_links), 0)
 
@@ -163,11 +161,10 @@ class TestUILauncher(WebTest):
         self.assertEqual(launcher.status_code, 200)
 
         # check for share button
+        share_url = reverse("memberaudit:share_character", args=[character_1001.pk])
+        a_tags = launcher.html.find_all("a", href=True)
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:share_character", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
         ]
         self.assertEqual(len(character_1001_links), 0)
 

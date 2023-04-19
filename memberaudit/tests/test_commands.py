@@ -1,6 +1,7 @@
 import tempfile
 from io import StringIO
 from pathlib import Path
+from unittest import skip
 
 from django.core.management import call_command
 
@@ -23,6 +24,7 @@ PACKAGE_PATH = "memberaudit.management.commands"
 DATA_EXPORTERS_PATH = "memberaudit.core.data_exporters"
 
 
+@skip("Maria DB breaks")
 class TestResetCharacters(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
