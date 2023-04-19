@@ -20,6 +20,7 @@ from app_utils.esi import (
 )
 from app_utils.esi_testing import build_http_error
 from app_utils.testing import (
+    NoSocketsTestCase,
     create_authgroup,
     create_user_from_evecharacter,
     generate_invalid_pk,
@@ -56,21 +57,21 @@ from .testdata.factories import create_character, create_compliance_group_design
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import (
-    TestCaseWithFixtures,
-    clear_celery_once_locks,
-    create_memberaudit_character,
-)
+from .utils import clear_celery_once_locks, create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
+class TestCaseTasks(NoSocketsTestCase):
+    fixtures = ["disable_analytics.json"]
+
+
 @patch(TASKS_PATH + ".update_compliance_groups_for_all")
 @patch(TASKS_PATH + ".update_all_characters")
 @patch(TASKS_PATH + ".update_market_prices")
-class TestRegularUpdates(TestCaseWithFixtures):
+class TestRegularUpdates(TestCaseTasks):
     def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
@@ -102,7 +103,7 @@ class TestRegularUpdates(TestCaseWithFixtures):
 
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-class TestOtherTasks(TestCaseWithFixtures):
+class TestOtherTasks(TestCaseTasks):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi")
     def test_update_market_prices(self, mock_update_from_esi):
         update_market_prices()
@@ -112,7 +113,7 @@ class TestOtherTasks(TestCaseWithFixtures):
 @override_settings(CELERY_ALWAYS_EAGER=True)  # need to ignore exceptions
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterAssets(TestCaseWithFixtures):
+class TestUpdateCharacterAssets(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -400,7 +401,7 @@ class TestUpdateCharacterAssets(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterMails(TestCaseWithFixtures):
+class TestUpdateCharacterMails(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -448,7 +449,7 @@ class TestUpdateCharacterMails(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterContacts(TestCaseWithFixtures):
+class TestUpdateCharacterContacts(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -496,7 +497,7 @@ class TestUpdateCharacterContacts(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterContracts(TestCaseWithFixtures):
+class TestUpdateCharacterContracts(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -545,7 +546,7 @@ class TestUpdateCharacterContracts(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
-class TestUpdateCharacterWalletJournal(TestCaseWithFixtures):
+class TestUpdateCharacterWalletJournal(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -594,7 +595,7 @@ class TestUpdateCharacterWalletJournal(TestCaseWithFixtures):
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharacter(TestCaseWithFixtures):
+class TestUpdateCharacter(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -712,7 +713,7 @@ class TestUpdateCharacter(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi")
-class TestUpdateStructureEsi(TestCaseWithFixtures):
+class TestUpdateStructureEsi(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -754,7 +755,7 @@ class TestUpdateStructureEsi(TestCaseWithFixtures):
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi")
-class TestUpdateMailEntityEsi(TestCaseWithFixtures):
+class TestUpdateMailEntityEsi(TestCaseTasks):
     def test_normal(self, mock_update_or_create_esi):
         """When ESI status is ok, then create MailEntity"""
         mock_update_or_create_esi.return_value = None
@@ -781,7 +782,7 @@ class TestUpdateMailEntityEsi(TestCaseWithFixtures):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharactersDoctrines(TestCaseWithFixtures):
+class TestUpdateCharactersDoctrines(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -797,7 +798,7 @@ class TestUpdateCharactersDoctrines(TestCaseWithFixtures):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestDeleteCharacter(TestCaseWithFixtures):
+class TestDeleteCharacter(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -813,7 +814,7 @@ class TestDeleteCharacter(TestCaseWithFixtures):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestExportData(TestCaseWithFixtures):
+class TestExportData(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -843,7 +844,7 @@ class TestExportData(TestCaseWithFixtures):
         self.assertEqual(kwargs["topic"], "abc")
 
 
-class TestUpdateComplianceGroupDesignations(TestCaseWithFixtures):
+class TestUpdateComplianceGroupDesignations(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -865,7 +866,7 @@ class TestUpdateComplianceGroupDesignations(TestCaseWithFixtures):
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(TASKS_PATH + ".update_character")
-class TestUpdateAllCharacters(TestCaseWithFixtures):
+class TestUpdateAllCharacters(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -905,7 +906,7 @@ class TestUpdateAllCharacters(TestCaseWithFixtures):
 
 
 @patch(TASKS_PATH + ".fetch_esi_status")
-class TestAbortMainTaskDuringDailyDowntime(TestCaseWithFixtures):
+class TestAbortMainTaskDuringDailyDowntime(TestCaseTasks):
     @patch(TASKS_PATH + ".update_character")
     def test_should_abort_update_all_characters(
         self, mock_update_character, mock_fetch_esi_status
@@ -935,7 +936,7 @@ class TestAbortMainTaskDuringDailyDowntime(TestCaseWithFixtures):
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id")
-class TestUpdateUnresolvedEveEntities(TestCaseWithFixtures):
+class TestUpdateUnresolvedEveEntities(TestCaseTasks):
     def test_should_not_attempt_to_update_when_no_unresolved_entities(
         self, mock_update_from_esi_by_id
     ):
