@@ -48,6 +48,9 @@ MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
 
 
+@patch(
+    "allianceauth.authentication.models.notify", lambda *args, **kwargs: None
+)  # state changes trigger notify
 @patch(MANAGERS_PATH + ".notify")
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
@@ -80,6 +83,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
         my_state = create_state(member_corporations=[member_corporation], priority=200)
         compliance_group = create_compliance_group(states=[my_state])
+
         user, _ = create_user_from_evecharacter(
             1001, permissions=["memberaudit.basic_access"]
         )
