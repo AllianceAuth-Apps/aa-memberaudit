@@ -7,15 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.7.0] - 2023-04-19
+
 ### Changed
 
-- Move build process to PEP621
+- Added language support for more languages incl. Ukrainian
+- Add localization for models visible on admin site, e.g. Character
+- Moved build process to PEP621
+- Improved tests and test coverage
 
 ## [2.6.3] - 2023-04-16
 
 ### Changed
 
-- Added more locations
+- Added more localizations
 
 ## [2.6.2] - 2023-04-11
 

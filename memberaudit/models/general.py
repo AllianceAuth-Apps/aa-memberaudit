@@ -111,6 +111,11 @@ class ComplianceGroupDesignation(models.Model):
 
     objects = ComplianceGroupDesignationManager()
 
+    class Meta:
+        default_permissions = ()
+        verbose_name = _("compliance group designation")
+        verbose_name_plural = _("compliance group designations")
+
     def __str__(self) -> str:
         return str(self.group)
 
@@ -177,6 +182,8 @@ class Location(models.Model):
 
     class Meta:
         default_permissions = ()
+        verbose_name = _("location")
+        verbose_name_plural = _("locations")
 
     def __str__(self) -> str:
         return self.name
@@ -278,6 +285,11 @@ class SkillSetGroup(models.Model):
         help_text=_("Whether this skill set group is in active use"),
     )
 
+    class Meta:
+        default_permissions = ()
+        verbose_name = _("skill set group")
+        verbose_name_plural = _("skill set groups")
+
     def __str__(self) -> str:
         return str(self.name)
 
@@ -322,6 +334,11 @@ class SkillSet(models.Model):
 
     objects = SkillSetManager()
 
+    class Meta:
+        default_permissions = ()
+        verbose_name = _("skill set")
+        verbose_name_plural = _("skill sets")
+
     def __str__(self) -> str:
         return str(self.name)
 
@@ -364,6 +381,9 @@ class SkillSetSkill(models.Model):
                 name="functional_pk_skillsetskill",
             )
         ]
+        default_permissions = ()
+        verbose_name = _("skill")
+        verbose_name_plural = _("skills")
 
     def __str__(self) -> str:
         if self.recommended_level:

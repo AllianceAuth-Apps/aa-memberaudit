@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-19 21:40+0200\n"
+"POT-Creation-Date: 2023-04-19 22:04+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -34,7 +34,7 @@ msgstr ""
 msgid "No main"
 msgstr ""
 
-#: admin.py:268
+#: admin.py:268 models/character.py:176
 msgid "character"
 msgstr ""
 
@@ -122,7 +122,7 @@ msgstr ""
 msgid "Disabled %d characters."
 msgstr ""
 
-#: admin.py:493 models/general.py:260 models/general.py:295
+#: admin.py:493 models/general.py:267 models/general.py:307
 msgid "name"
 msgstr ""
 
@@ -179,7 +179,7 @@ msgstr ""
 msgid "jump clones"
 msgstr ""
 
-#: models/character.py:77
+#: models/character.py:77 models/general.py:185
 msgid "location"
 msgstr ""
 
@@ -203,7 +203,7 @@ msgstr ""
 msgid "ship"
 msgstr ""
 
-#: models/character.py:83 models/general.py:336
+#: models/character.py:83 models/general.py:353 models/general.py:386
 msgid "skills"
 msgstr ""
 
@@ -211,7 +211,7 @@ msgstr ""
 msgid "skill queue"
 msgstr ""
 
-#: models/character.py:85 models/general.py:264
+#: models/character.py:85 models/general.py:271 models/general.py:340
 msgid "skill sets"
 msgstr ""
 
@@ -271,74 +271,106 @@ msgstr ""
 msgid "mailing lists"
 msgstr ""
 
-#: models/general.py:262 models/general.py:297
+#: models/character.py:177
+msgid "characters"
+msgstr ""
+
+#: models/character.py:1294 models/character.py:1295
+msgid "character update status"
+msgstr ""
+
+#: models/general.py:116
+msgid "compliance group designation"
+msgstr ""
+
+#: models/general.py:117
+msgid "compliance group designations"
+msgstr ""
+
+#: models/general.py:186
+msgid "locations"
+msgstr ""
+
+#: models/general.py:269 models/general.py:309
 msgid "description"
 msgstr ""
 
-#: models/general.py:269
+#: models/general.py:276
 msgid "is doctrine"
 msgstr ""
 
-#: models/general.py:271
+#: models/general.py:278
 msgid "This enables a skill set group to show up correctly in doctrine reports"
 msgstr ""
 
-#: models/general.py:277
+#: models/general.py:284
 msgid "is active"
 msgstr ""
 
-#: models/general.py:278
+#: models/general.py:285
 msgid "Whether this skill set group is in active use"
 msgstr ""
 
-#: models/general.py:286
+#: models/general.py:290
+msgid "skill set group"
+msgstr ""
+
+#: models/general.py:291
+msgid "skill set groups"
+msgstr ""
+
+#: models/general.py:298
 msgid "Doctrine: "
 msgstr ""
 
-#: models/general.py:305
+#: models/general.py:317
 msgid "ship type"
 msgstr ""
 
-#: models/general.py:308
+#: models/general.py:320
 msgid ""
 "Ship type is used for visual presentation only. All skill requirements must "
 "be explicitly defined."
 msgstr ""
 
-#: models/general.py:316
+#: models/general.py:328
 msgid "is visible"
 msgstr ""
 
-#: models/general.py:318
+#: models/general.py:330
 msgid ""
 "Non visible skill sets are not shown to users on their character sheet and "
 "used for audit purposes only."
 msgstr ""
 
-#: models/general.py:341
+#: models/general.py:339
+msgid "skill set"
+msgstr ""
+
+#: models/general.py:358 models/general.py:385
 msgid "skill"
 msgstr ""
 
-#: models/general.py:350
+#: models/general.py:367
 msgid "required level"
 msgstr ""
 
-#: models/general.py:357
+#: models/general.py:374
 msgid "recommended level"
 msgstr ""
 
-#: models/general.py:413 templates/memberaudit/reports.html:75
+#: models/general.py:433 templates/memberaudit/reports.html:75
 #: templates/memberaudit/reports.html:140
 #: templates/memberaudit/reports.html:214
 msgid "Alliance"
 msgstr ""
 
-#: models/general.py:414
+#: models/general.py:434
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
 msgid "Character"
 msgstr ""
 
-#: models/general.py:415
+#: models/general.py:435
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
 #: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
@@ -346,11 +378,11 @@ msgstr ""
 msgid "Corporation"
 msgstr ""
 
-#: models/general.py:416
+#: models/general.py:436
 msgid "Mailing List"
 msgstr ""
 
-#: models/general.py:417
+#: models/general.py:437
 msgid "Unknown"
 msgstr ""
 

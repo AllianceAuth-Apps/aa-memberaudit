@@ -173,6 +173,8 @@ class Character(models.Model):
 
     class Meta:
         default_permissions = ()
+        verbose_name = _("character")
+        verbose_name_plural = _("characters")
 
     def __str__(self) -> str:
         return f"{self.eve_character.character_name} (PK:{self.pk})"
@@ -1289,6 +1291,8 @@ class CharacterUpdateStatus(models.Model):
                 name="functional_pk_charactersyncstatus",
             )
         ]
+        verbose_name = _("character update status")
+        verbose_name_plural = _("character update status")
 
     def __str__(self) -> str:
         return f"{self.character}-{self.section}"
