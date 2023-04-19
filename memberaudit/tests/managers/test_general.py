@@ -48,13 +48,14 @@ MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
 
 
+@patch(MANAGERS_PATH + ".notify")
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
 
-    def test_should_add_group_to_compliant_user_and_notify(self):
+    def test_should_add_group_to_compliant_user_and_notify(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         other_group = create_authgroup(internal=True)
@@ -67,11 +68,14 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertIn(compliance_group, user.groups.all())
         self.assertNotIn(other_group, user.groups.all())
-        self.assertTrue(
-            user.notification_set.filter(level=Notification.Level.SUCCESS).exists()
-        )
+        self.assertEqual(mock_notify.call_count, 1)
+        args, kwargs = mock_notify.call_args
+        self.assertEqual(kwargs["level"], Notification.Level.SUCCESS)
+        self.assertEqual(args[0], user)
 
-    def test_should_add_state_group_to_compliant_user_when_state_matches(self):
+    def test_should_add_state_group_to_compliant_user_when_state_matches(
+        self, mock_notify
+    ):
         # given
         member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
         my_state = create_state(member_corporations=[member_corporation], priority=200)
@@ -85,7 +89,9 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertIn(compliance_group, user.groups.all())
 
-    def test_should_not_add_state_group_to_compliant_user_when_state_not_matches(self):
+    def test_should_not_add_state_group_to_compliant_user_when_state_not_matches(
+        self, mock_notify
+    ):
         # given
         my_state = create_state(priority=200)
         compliance_group = create_compliance_group(states=[my_state])
@@ -113,7 +119,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
     #     # then
     #     self.assertIn(compliance_group, user.groups.all())
 
-    def test_should_add_multiple_groups_to_compliant_user(self):
+    def test_should_add_multiple_groups_to_compliant_user(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
@@ -127,7 +133,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertIn(compliance_group_1, user.groups.all())
         self.assertIn(compliance_group_2, user.groups.all())
 
-    def test_should_remove_group_from_non_compliant_user_and_notify(self):
+    def test_should_remove_group_from_non_compliant_user_and_notify(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         other_group = create_authgroup(internal=True)
@@ -140,11 +146,11 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
         self.assertIn(other_group, user.groups.all())
-        self.assertTrue(
-            user.notification_set.filter(level=Notification.Level.WARNING).exists()
-        )
+        args, kwargs = mock_notify.call_args
+        self.assertEqual(kwargs["level"], Notification.Level.WARNING)
+        self.assertEqual(args[0], user)
 
-    def test_should_remove_multiple_groups_from_non_compliant_user(self):
+    def test_should_remove_multiple_groups_from_non_compliant_user(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
@@ -161,7 +167,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertIn(other_group, user.groups.all())
 
     def test_user_with_one_registered_and_one_unregistered_characater_is_not_compliant(
-        self,
+        self, mock_notify
     ):
         # given
         compliance_group = create_compliance_group()
@@ -176,7 +182,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
-    def test_user_without_basic_permission_is_not_compliant(self):
+    def test_user_without_basic_permission_is_not_compliant(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         user, _ = create_user_from_evecharacter(1001)
@@ -187,7 +193,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
-    def test_should_add_missing_groups_if_user_remains_compliant(self):
+    def test_should_add_missing_groups_if_user_remains_compliant(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
