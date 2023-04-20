@@ -12,7 +12,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
 from app_utils.esi import EsiStatus, fetch_esi_status
-from app_utils.esi_testing import BravadoResponseStub
+from app_utils.esi_testing import BravadoOperationStub, BravadoResponseStub
 from app_utils.testing import (
     NoSocketsTestCase,
     create_authgroup,
@@ -598,21 +598,29 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
 
-    def test_can_handle_empty_structure_data(self, mock_fetch_esi_status, mock_esi):
+    def test_can_handle_incomplete_data_from_esi(self, mock_fetch_esi_status, mock_esi):
         # given
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-        mock_esi.client = esi_client_stub
+        mock_esi.client.Universe.get_universe_structures_structure_id.return_value = (
+            BravadoOperationStub(
+                {
+                    "owner_id": None,
+                    "name": "Incomplete data",
+                    "solar_system_id": 30002537,
+                }
+            )
+        )
         # when
         obj, created = Location.objects.update_or_create_esi(
-            id=1000000000001, token=self.token
+            id=1000000000666, token=self.token
         )
         # then
         self.assertTrue(created)
-        self.assertEqual(obj.id, 1000000000001)
-        self.assertEqual(obj.name, "Amamake - Test Structure Alpha")
+        self.assertEqual(obj.id, 1000000000666)
+        self.assertEqual(obj.name, "Incomplete data")
         self.assertEqual(obj.eve_solar_system, self.amamake)
-        self.assertEqual(obj.eve_type, self.astrahus)
-        self.assertEqual(obj.owner, self.corporation_2001)
+        self.assertIsNone(obj.eve_type)
+        self.assertIsNone(obj.owner)
 
     def test_can_update_structure(self, mock_fetch_esi_status, mock_esi):
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
