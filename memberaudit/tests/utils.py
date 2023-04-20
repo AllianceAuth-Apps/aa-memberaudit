@@ -11,7 +11,7 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 from allianceauth.utils.cache import get_redis_client
-from app_utils.testing import add_character_to_user, response_text
+from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
 from ..models import Character, Location
 from .testdata.load_entities import load_entities
@@ -97,4 +97,8 @@ def clear_celery_once_locks():
 
 
 class TestCaseWithFixtures(TestCase):
+    fixtures = ["disable_analytics.json"]
+
+
+class NoSocketsTestCaseFixtures(NoSocketsTestCase):
     fixtures = ["disable_analytics.json"]

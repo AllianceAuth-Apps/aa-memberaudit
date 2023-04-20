@@ -38,7 +38,7 @@ from ..testdata.factories import (
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
-    TestCaseWithFixtures,
+    NoSocketsTestCaseFixtures,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -414,7 +414,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
-class TestMailEntityManagerAsync(TestCaseWithFixtures):
+class TestMailEntityManagerAsync(NoSocketsTestCaseFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -889,7 +889,7 @@ class TestLocationManagerOther(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
 
 
-class TestLocationManagerAsync(TestCaseWithFixtures):
+class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -914,7 +914,7 @@ class TestLocationManagerAsync(TestCaseWithFixtures):
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
     @patch(MANAGERS_PATH + ".esi")
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
+    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
     def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
         # given
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
@@ -936,7 +936,7 @@ class TestLocationManagerAsync(TestCaseWithFixtures):
         self.assertTrue(mock_fetch_esi_status.called)  # proofs task was called
 
     @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-    @patch(TASKS_PATH + ".update_structure_esi")
+    @patch(TASKS_PATH + ".update_structure_esi", spec=True)
     def test_should_create_location_and_ignore_already_queued(
         self, mock_task_update_structure_esi
     ):
