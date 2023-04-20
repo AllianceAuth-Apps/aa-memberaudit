@@ -1,6 +1,7 @@
 """
 Character sections models
 """
+from typing import Optional
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -176,7 +177,7 @@ class CharacterContact(models.Model):
         return f"{self.character}-{self.eve_entity.name}"
 
     @property
-    def standing_level(self) -> int:
+    def standing_level(self) -> str:
         if self.standing > 5:
             return self.STANDING_EXCELLENT
 
@@ -189,7 +190,7 @@ class CharacterContact(models.Model):
         if 0 > self.standing >= -5:
             return self.STANDING_BAD
 
-        if self.standing < -5:
+        else:
             return self.STANDING_TERRIBLE
 
 
@@ -399,29 +400,28 @@ class CharacterContract(models.Model):
         return self.date_expired < now()
 
     @property
-    def hours_issued_2_completed(self) -> float:
-        if self.date_completed:
-            td = self.date_completed - self.date_issued
-            return td.days * 24 + (td.seconds / 3600)
-        else:
+    def hours_issued_2_completed(self) -> Optional[float]:
+        if not self.date_completed:
             return None
+        td = self.date_completed - self.date_issued
+        return td.days * 24 + (td.seconds / 3600)
 
     def summary(self) -> str:
         """return summary text for this contract"""
         if self.contract_type == CharacterContract.TYPE_COURIER:
-            summary = (
+            if not self.start_location or not self.end_location:
+                return ""
+            return (
                 f"{self.start_location.eve_solar_system} >> "
                 f"{self.end_location.eve_solar_system} "
                 f"({self.volume:.0f} m3)"
             )
-        else:
-            if self.items.filter(is_included=True).count() > 1:
-                summary = _("[Multiple Items]")
-            else:
-                first_item = self.items.first()
-                summary = first_item.eve_type.name if first_item else "(no items)"
 
-        return summary
+        if self.items.filter(is_included=True).count() > 1:
+            return _("[Multiple Items]")
+
+        first_item = self.items.first()
+        return first_item.eve_type.name if first_item else "(no items)"
 
 
 class CharacterContractBid(models.Model):
@@ -586,7 +586,7 @@ class CharacterFwStats(models.Model):
     """Faction Warfare statistics of a character"""
 
     RANKS = {
-        EveFactionId.AMARR_EMPIRE: (
+        EveFactionId.AMARR_EMPIRE.value: (
             _("Paladin Crusader"),
             _("Templar Lieutenant"),
             _("Cardinal Lieutenant"),
@@ -598,7 +598,7 @@ class CharacterFwStats(models.Model):
             _("Legatus Commodore"),
             _("Divine Commodore"),
         ),
-        EveFactionId.CALDARI_STATE: (
+        EveFactionId.CALDARI_STATE.value: (
             _("Protectorate Ensign"),
             _("Second Lieutenant"),
             _("First Lieutenant"),
@@ -610,7 +610,7 @@ class CharacterFwStats(models.Model):
             _("Strike Commander"),
             _("Brigadier General"),
         ),
-        EveFactionId.GALLENTE_FEDERATION: (
+        EveFactionId.GALLENTE_FEDERATION.value: (
             _("Federation Minuteman"),
             _("Defender Lieutenant"),
             _("Guardian Lieutenant"),
@@ -622,7 +622,7 @@ class CharacterFwStats(models.Model):
             _("Lieutenant General"),
             _("Luminaire General"),
         ),
-        EveFactionId.MINMATAR_REPUBLIC: (
+        EveFactionId.MINMATAR_REPUBLIC.value: (
             _("Nation Warrior"),
             _("Spike Lieutenant"),
             _("Spear Lieutenant"),
@@ -663,13 +663,13 @@ class CharacterFwStats(models.Model):
 
     def current_rank_name(self) -> str:
         """Name of current rank or empty string when not enlisted."""
-        if not self.faction:
+        if not self.faction_id or not self.current_rank:
             return ""
         return self.rank_name_generic(self.faction_id, self.current_rank)
 
     def highest_rank_name(self) -> str:
         """Name of highest rank or empty string when not enlisted."""
-        if not self.faction:
+        if not self.faction_id or not self.current_rank:
             return ""
         return self.rank_name_generic(self.faction_id, self.current_rank)
 
@@ -1038,7 +1038,7 @@ class CharacterSkillqueueEntry(models.Model):
     @property
     def is_active(self) -> bool:
         """Returns true when this skill is currently being trained"""
-        return self.finish_date and self.queue_position == 0
+        return bool(self.finish_date) and self.queue_position == 0
 
 
 class CharacterSkillSetCheck(models.Model):

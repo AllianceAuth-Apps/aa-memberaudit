@@ -188,7 +188,7 @@ def character_mail_headers_by_list_data(
 @fetch_character_if_allowed()
 def character_mail(
     request, character_pk: int, character: Character, mail_pk: int
-) -> JsonResponse:
+) -> HttpResponse:
     try:
         mail = (
             character.mails.select_related("sender")

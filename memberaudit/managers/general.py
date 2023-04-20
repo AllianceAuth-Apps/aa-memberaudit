@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Iterable, List, Tuple
+from typing import Iterable, List, Optional, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
@@ -215,20 +215,18 @@ class LocationManager(models.Manager):
     def _station_update_or_create_dict(
         self, id: int, station: dict
     ) -> Tuple[models.Model, bool]:
-        if station.get("system_id"):
-            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-                id=station.get("system_id")
-            )
+        if system_id := station.get("system_id"):
+            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=system_id)
         else:
             eve_solar_system = None
 
-        if station.get("type_id"):
-            eve_type, _ = EveType.objects.get_or_create_esi(id=station.get("type_id"))
+        if type_id := station.get("type_id"):
+            eve_type, _ = EveType.objects.get_or_create_esi(id=type_id)
         else:
             eve_type = None
 
-        if station.get("owner"):
-            owner, _ = EveEntity.objects.get_or_create_esi(id=station.get("owner"))
+        if owner_id := station.get("owner"):
+            owner, _ = EveEntity.objects.get_or_create_esi(id=owner_id)
         else:
             owner = None
 
@@ -278,20 +276,20 @@ class LocationManager(models.Manager):
         self, id: int, structure: dict
     ) -> Tuple[models.Model, bool]:
         """creates a new Location object from a structure dict"""
-        if structure.get("solar_system_id"):
+        if solar_system_id := structure.get("solar_system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-                id=structure.get("solar_system_id")
+                id=solar_system_id
             )
         else:
             eve_solar_system = None
 
-        if structure.get("type_id"):
-            eve_type, _ = EveType.objects.get_or_create_esi(id=structure.get("type_id"))
+        if type_id := structure.get("type_id"):
+            eve_type, _ = EveType.objects.get_or_create_esi(id=type_id)
         else:
             eve_type = None
 
-        if structure.get("owner_id"):
-            owner, _ = EveEntity.objects.get_or_create_esi(id=structure.get("owner_id"))
+        if owner_id := structure.get("owner_id"):
+            owner, _ = EveEntity.objects.get_or_create_esi(id=owner_id)
         else:
             owner = None
 
@@ -308,17 +306,17 @@ class LocationManager(models.Manager):
 
 class MailEntityManager(models.Manager):
     def get_or_create_esi(
-        self, id: int, category: str = None
+        self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
         return self._get_or_create_esi(id=id, category=category, update_async=False)
 
     def get_or_create_esi_async(
-        self, id: int, category: str = None
+        self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
         return self._get_or_create_esi(id=id, category=category, update_async=True)
 
     def _get_or_create_esi(
-        self, id: int, category: str, update_async: bool
+        self, id: int, category: Optional[str], update_async: bool
     ) -> Tuple[models.Model, bool]:
         id = int(id)
         try:
@@ -329,7 +327,7 @@ class MailEntityManager(models.Manager):
             return self.update_or_create_esi(id=id, category=category)
 
     def update_or_create_esi(
-        self, id: int, category: str = None
+        self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
         """will try to update or create a new object from ESI
 
@@ -369,7 +367,7 @@ class MailEntityManager(models.Manager):
             return self.update_or_create_from_eve_entity_id(id=id)
 
     def update_or_create_esi_async(
-        self, id: int, category: str = None
+        self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
         """Same as update_or_create_esi, but will create and return an empty object and delegate the ID resolution to a task (if needed),
         which will automatically retry on many common error conditions
@@ -475,7 +473,7 @@ class SkillSetManager(models.Manager):
     def update_or_create_from_fitting(
         self,
         fitting: Fitting,
-        user: User = None,
+        user: Optional[User] = None,
         skill_set_group=None,
         skill_set_name=None,
     ) -> Tuple[models.Model, bool]:
@@ -492,7 +490,7 @@ class SkillSetManager(models.Manager):
         )
 
     def update_or_create_from_skill_plan(
-        self, skill_plan: SkillPlan, user: User = None, skill_set_group=None
+        self, skill_plan: SkillPlan, user: Optional[User] = None, skill_set_group=None
     ) -> Tuple[models.Model, bool]:
         """Update or create a skill set from a fitting."""
 
@@ -509,9 +507,9 @@ class SkillSetManager(models.Manager):
         name: str,
         skills: List[Skill],
         source: str,
-        user: User = None,
+        user: Optional[User] = None,
         skill_set_group=None,
-        ship_type: EveType = None,
+        ship_type: Optional[EveType] = None,
     ) -> Tuple[models.Model, bool]:
         """Update or create a skill set from skills."""
         from ..models import SkillSetSkill

@@ -3,14 +3,15 @@ from typing import Tuple
 
 from django.contrib.auth.models import User
 from django.http import JsonResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, TestCase
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.testing import add_character_to_user, response_text
+from allianceauth.utils.cache import get_redis_client
+from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
 from ..models import Character, Location
 from .testdata.load_entities import load_entities
@@ -86,3 +87,18 @@ def json_response_to_python_2(response: JsonResponse, data_key="data") -> object
 def json_response_to_dict_2(response: JsonResponse, key="id", data_key="data") -> dict:
     """Convert JSON response into dict by given key."""
     return {x[key]: x for x in json_response_to_python_2(response, data_key)}
+
+
+def clear_celery_once_locks():
+    """Clear all celery once locks (if any exist)."""
+    r = get_redis_client()
+    if keys := r.keys(":?:qo_memberaudit.*"):
+        r.delete(*keys)
+
+
+class TestCaseWithFixtures(TestCase):
+    fixtures = ["disable_analytics.json"]
+
+
+class NoSocketsTestCaseFixtures(NoSocketsTestCase):
+    fixtures = ["disable_analytics.json"]

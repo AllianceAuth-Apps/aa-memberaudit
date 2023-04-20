@@ -1,4 +1,84 @@
-# pyproject.toml file specified at the root of the directory
 [build-system]
-requires = ["setuptools>=42", "wheel"]   # PEP 508 specifications.
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "aa-memberaudit"
+dynamic = ["version"]
+description = "An Alliance Auth app that provides full access to Eve characters and related reports for auditing, vetting and monitoring."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.8"
+authors = [
+    { name = "Erik Kalkoken", email = "kalkoken87@gmail.com" },
+]
+keywords = [
+    "allianceauth",
+    "eveonline",
+    "memberaudit",
+]
+classifiers = [
+    "Environment :: Web Environment",
+    "Framework :: Django",
+    "Framework :: Django :: 4.0",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
+]
+dependencies = [
+    "allianceauth-app-utils>=1.16.1",
+    "allianceauth>=3",
+    "bleach",
+    "dj-datatables-view",
+    "django-eveuniverse>=0.19",
+    "humanize",
+    "unidecode",
+]
+
+[project.urls]
+Homepage = "https://gitlab.com/ErikKalkoken/aa-memberaudit"
+Documentation = "https://aa-memberaudit.readthedocs.io/en/latest/"
+Source = "https://gitlab.com/ErikKalkoken/aa-memberaudit"
+Changelog = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/CHANGELOG.md"
+Tracker = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/issues"
+
+[tool.hatch.version]
+path = "memberaudit/__init__.py"
+
+[tool.hatch.build]
+include = [
+    "/memberaudit",
+]
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+sections = [
+    "FUTURE",
+    "STDLIB",
+    "THIRDPARTY",
+    "DJANGO",
+    "ALLIANCEAUTH",
+    "FIRSTPARTY",
+    "LOCALFOLDER"
+]
+known_allianceauth = ["allianceauth", "app_utils"]
+known_django = ["django", "django_webtest", "esi", "eveuniverse"]
+
+[tool.pylint.'MASTER']
+ignore-patterns = ["test_.*.py,__init__.py", "generate_.*.py"]
+
+[tool.pylint.'BASIC']
+good-names = ["i", "j", "k", "x", "f", "ex"]
+
+[tool.pylint.'FORMAT']
+max-line-length = 100
+
+[tool.pylint.'MESSAGES CONTROL']
+disable = ["R", "C"]

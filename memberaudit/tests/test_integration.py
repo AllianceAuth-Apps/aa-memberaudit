@@ -29,6 +29,7 @@ from .testdata.load_locations import load_locations
 from .utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
+    clear_celery_once_locks,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -40,12 +41,15 @@ TASKS_PATH = "memberaudit.tasks"
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestUILauncher(WebTest):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
+        clear_celery_once_locks()
 
     def setUp(self) -> None:
         self.user, _ = create_user_from_evecharacter_with_access(1002)
@@ -116,11 +120,10 @@ class TestUILauncher(WebTest):
         self.assertTrue(character_1001.is_update_status_ok())
 
         # check added character is now visible in launcher
+        a_tags = launcher.html.find_all("a", href=True)
+        viewer_url = reverse("memberaudit:character_viewer", args=[character_1001.pk])
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:character_viewer", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == viewer_url
         ]
         self.assertGreater(len(character_1001_links), 0)
 
@@ -141,11 +144,10 @@ class TestUILauncher(WebTest):
         self.assertEqual(launcher.status_code, 200)
 
         # check for share button
+        share_url = reverse("memberaudit:share_character", args=[character_1001.pk])
+        a_tags = launcher.html.find_all("a", href=True)
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:share_character", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
         ]
         self.assertGreater(len(character_1001_links), 0)
 
@@ -163,16 +165,17 @@ class TestUILauncher(WebTest):
         self.assertEqual(launcher.status_code, 200)
 
         # check for share button
+        share_url = reverse("memberaudit:share_character", args=[character_1001.pk])
+        a_tags = launcher.html.find_all("a", href=True)
         character_1001_links = [
-            x["href"]
-            for x in launcher.html.find_all("a", href=True)
-            if x["href"]
-            == reverse("memberaudit:share_character", args=[character_1001.pk])
+            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
         ]
         self.assertEqual(len(character_1001_links), 0)
 
 
 class TestUICharacterViewer(WebTest):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -333,12 +336,15 @@ class TestUICharacterViewer(WebTest):
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestTasksE2E(TestCase):
+    fixtures = ["disable_analytics.json"]
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
+        clear_celery_once_locks()
 
     def test_should_update_all_characters(self, mock_esi):
         # given

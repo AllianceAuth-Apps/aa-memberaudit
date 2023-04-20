@@ -8,7 +8,7 @@ from typing import Iterable
 
 from django.contrib.auth.models import Group, User
 from django.utils.timezone import now
-from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import State
 from app_utils.testing import create_authgroup
@@ -19,7 +19,9 @@ from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.models import (
     Character,
+    CharacterContact,
     CharacterContract,
+    CharacterContractBid,
     CharacterContractItem,
     CharacterFwStats,
     CharacterMail,
@@ -133,6 +135,20 @@ def create_character_update_status(
     return CharacterUpdateStatus.objects.create(**params)
 
 
+def create_character_contact(
+    character: Character, eve_entity: EveEntity, **kwargs
+) -> CharacterContact:
+    params = {
+        "character": character,
+        "eve_entity": eve_entity,
+        "is_blocked": False,
+        "is_watched": False,
+        "standing": 0.0,
+    }
+    params.update(kwargs)
+    return CharacterContact.objects.create(**params)
+
+
 def create_character_contract(character: Character, **kwargs) -> CharacterContract:
     date_issued = now() if "date_issued" not in kwargs else kwargs["date_issued"]
     params = {
@@ -166,6 +182,20 @@ def create_character_contract_item(
     }
     params.update(kwargs)
     return CharacterContractItem.objects.create(**params)
+
+
+def create_character_contract_bid(
+    contract: CharacterContract, bidder: EveEntity, **kwargs
+) -> CharacterContractBid:
+    params = {
+        "contract": contract,
+        "bid_id": next_number("contract_item_bid_id"),
+        "amount": random.randint(1_000_000, 10_000_000_000),
+        "bidder": bidder,
+        "date_bid": now(),
+    }
+    params.update(kwargs)
+    return CharacterContractBid.objects.create(**params)
 
 
 def create_compliance_group(states: Iterable[State] = None, **kwargs) -> Group:

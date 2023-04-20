@@ -5,14 +5,14 @@ from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
 from celery_once import AlreadyQueued
 
 from django.core.cache import cache
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
 from app_utils.esi import EsiStatus, fetch_esi_status
-from app_utils.esi_testing import BravadoResponseStub
+from app_utils.esi_testing import BravadoOperationStub, BravadoResponseStub
 from app_utils.testing import (
     NoSocketsTestCase,
     create_authgroup,
@@ -38,6 +38,7 @@ from ..testdata.factories import (
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
+    NoSocketsTestCaseFixtures,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -47,13 +48,17 @@ MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
 
 
+@patch(
+    "allianceauth.authentication.models.notify", lambda *args, **kwargs: None
+)  # state changes trigger notify
+@patch(MANAGERS_PATH + ".notify", spec=True)
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
 
-    def test_should_add_group_to_compliant_user_and_notify(self):
+    def test_should_add_group_to_compliant_user_and_notify(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         other_group = create_authgroup(internal=True)
@@ -66,15 +71,19 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertIn(compliance_group, user.groups.all())
         self.assertNotIn(other_group, user.groups.all())
-        self.assertTrue(
-            user.notification_set.filter(level=Notification.Level.SUCCESS).exists()
-        )
+        self.assertEqual(mock_notify.call_count, 1)
+        args, kwargs = mock_notify.call_args
+        self.assertEqual(kwargs["level"], Notification.Level.SUCCESS)
+        self.assertEqual(args[0], user)
 
-    def test_should_add_state_group_to_compliant_user_when_state_matches(self):
+    def test_should_add_state_group_to_compliant_user_when_state_matches(
+        self, mock_notify
+    ):
         # given
         member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
         my_state = create_state(member_corporations=[member_corporation], priority=200)
         compliance_group = create_compliance_group(states=[my_state])
+
         user, _ = create_user_from_evecharacter(
             1001, permissions=["memberaudit.basic_access"]
         )
@@ -84,7 +93,9 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertIn(compliance_group, user.groups.all())
 
-    def test_should_not_add_state_group_to_compliant_user_when_state_not_matches(self):
+    def test_should_not_add_state_group_to_compliant_user_when_state_not_matches(
+        self, mock_notify
+    ):
         # given
         my_state = create_state(priority=200)
         compliance_group = create_compliance_group(states=[my_state])
@@ -112,7 +123,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
     #     # then
     #     self.assertIn(compliance_group, user.groups.all())
 
-    def test_should_add_multiple_groups_to_compliant_user(self):
+    def test_should_add_multiple_groups_to_compliant_user(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
@@ -126,7 +137,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertIn(compliance_group_1, user.groups.all())
         self.assertIn(compliance_group_2, user.groups.all())
 
-    def test_should_remove_group_from_non_compliant_user_and_notify(self):
+    def test_should_remove_group_from_non_compliant_user_and_notify(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         other_group = create_authgroup(internal=True)
@@ -139,11 +150,11 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
         self.assertIn(other_group, user.groups.all())
-        self.assertTrue(
-            user.notification_set.filter(level=Notification.Level.WARNING).exists()
-        )
+        args, kwargs = mock_notify.call_args
+        self.assertEqual(kwargs["level"], Notification.Level.WARNING)
+        self.assertEqual(args[0], user)
 
-    def test_should_remove_multiple_groups_from_non_compliant_user(self):
+    def test_should_remove_multiple_groups_from_non_compliant_user(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
@@ -160,7 +171,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertIn(other_group, user.groups.all())
 
     def test_user_with_one_registered_and_one_unregistered_characater_is_not_compliant(
-        self,
+        self, mock_notify
     ):
         # given
         compliance_group = create_compliance_group()
@@ -175,7 +186,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
-    def test_user_without_basic_permission_is_not_compliant(self):
+    def test_user_without_basic_permission_is_not_compliant(self, mock_notify):
         # given
         compliance_group = create_compliance_group()
         user, _ = create_user_from_evecharacter(1001)
@@ -186,7 +197,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
-    def test_should_add_missing_groups_if_user_remains_compliant(self):
+    def test_should_add_missing_groups_if_user_remains_compliant(self, mock_notify):
         # given
         compliance_group_1 = create_compliance_group()
         compliance_group_2 = create_compliance_group()
@@ -223,7 +234,7 @@ class TestMailEntityManager(NoSocketsTestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "John Doe")
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
+    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
     def test_get_or_create_esi_2(self, mock_fetch_esi_status):
         """When entity does not exist, create it from ESI / existing EveEntity"""
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
@@ -234,7 +245,7 @@ class TestMailEntityManager(NoSocketsTestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
+    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
     def test_update_or_create_esi_1(self, mock_fetch_esi_status):
         """When entity does not exist, create it from ESI / existing EveEntity"""
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
@@ -275,7 +286,9 @@ class TestMailEntityManager(NoSocketsTestCase):
     def test_update_or_create_esi_4(self):
         """When entity does not exist and is a mailing list, then create it."""
         # when
-        with patch(MANAGERS_PATH + ".EveEntity.objects.get_or_create_esi") as m:
+        with patch(
+            MANAGERS_PATH + ".EveEntity.objects.get_or_create_esi", spec=True
+        ) as m:
             m.return_value = None, False
             obj, created = MailEntity.objects.update_or_create_esi(id=9001)
         # when
@@ -400,8 +413,8 @@ class TestMailEntityManager(NoSocketsTestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MANAGERS_PATH + ".fetch_esi_status")
-class TestMailEntityManagerAsync(TestCase):
+@patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
+class TestMailEntityManagerAsync(NoSocketsTestCaseFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -524,7 +537,7 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
         super().setUpClass()
         load_entities()
 
-    @patch(TASKS_PATH + ".update_mail_entity_esi")
+    @patch(TASKS_PATH + ".update_mail_entity_esi", spec=True)
     def test_should_create_new_object_and_try_to_resolve(
         self, mock_task_update_mail_entity_esi
     ):
@@ -536,7 +549,7 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
         self.assertEqual(obj.name, "")
         self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
 
-    @patch("memberaudit.tasks.update_mail_entity_esi")
+    @patch("memberaudit.tasks.update_mail_entity_esi", spec=True)
     def test_should_create_new_object_and_try_to_resolve_and_ignore_already_queued(
         self, mock_task_update_mail_entity_esi
     ):
@@ -552,7 +565,8 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestLocationManager(NoSocketsTestCase):
+@patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
+class TestLocationManagerStructures(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -570,9 +584,6 @@ class TestLocationManager(NoSocketsTestCase):
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
 
-    # Structures
-
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_can_create_structure(self, mock_fetch_esi_status, mock_esi):
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
@@ -587,7 +598,30 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
+    def test_can_handle_incomplete_data_from_esi(self, mock_fetch_esi_status, mock_esi):
+        # given
+        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+        mock_esi.client.Universe.get_universe_structures_structure_id.return_value = (
+            BravadoOperationStub(
+                {
+                    "owner_id": None,
+                    "name": "Incomplete data",
+                    "solar_system_id": 30002537,
+                }
+            )
+        )
+        # when
+        obj, created = Location.objects.update_or_create_esi(
+            id=1000000000666, token=self.token
+        )
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 1000000000666)
+        self.assertEqual(obj.name, "Incomplete data")
+        self.assertEqual(obj.eve_solar_system, self.amamake)
+        self.assertIsNone(obj.eve_type)
+        self.assertIsNone(obj.owner)
+
     def test_can_update_structure(self, mock_fetch_esi_status, mock_esi):
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
@@ -610,7 +644,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_does_not_update_existing_location_during_grace_period(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -630,7 +663,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertFalse(created)
         self.assertEqual(obj, obj_existing)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_always_update_existing_empty_locations_after_grace_period_1(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -641,7 +673,6 @@ class TestLocationManager(NoSocketsTestCase):
         obj, _ = Location.objects.get_or_create_esi(id=1000000000001, token=self.token)
         self.assertIsNone(obj.eve_solar_system)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_always_update_existing_empty_locations_after_grace_period_2(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -658,7 +689,6 @@ class TestLocationManager(NoSocketsTestCase):
             )
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     @patch(MANAGERS_PATH + ".MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
     def test_always_update_existing_locations_which_are_stale(
         self, mock_fetch_esi_status, mock_esi
@@ -683,7 +713,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertFalse(created)
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_propagates_http_error_on_structure_create(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -693,7 +722,6 @@ class TestLocationManager(NoSocketsTestCase):
         with self.assertRaises(HTTPNotFound):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_always_creates_empty_location_for_invalid_ids(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -706,7 +734,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertTrue(created)
         self.assertTrue(obj.is_empty)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_propagates_exceptions_on_structure_create(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -718,7 +745,6 @@ class TestLocationManager(NoSocketsTestCase):
         with self.assertRaises(RuntimeError):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_can_create_empty_location_on_access_error_1(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -733,7 +759,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000099)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_can_create_empty_location_on_access_error_2(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -748,7 +773,6 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000099)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_does_not_creates_empty_location_on_access_errors_if_requested(
         self, mock_fetch_esi_status, mock_esi
     ):
@@ -759,7 +783,6 @@ class TestLocationManager(NoSocketsTestCase):
         with self.assertRaises(RuntimeError):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
     def test_records_esi_error_on_access_error(self, mock_fetch_esi_status, mock_esi):
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
@@ -780,7 +803,27 @@ class TestLocationManager(NoSocketsTestCase):
         )
         self.assertTrue(created)
 
-    # Stations
+
+@patch(MANAGERS_PATH + ".esi")
+class TestLocationManagerOther(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.jita = EveSolarSystem.objects.get(id=30000142)
+        cls.amamake = EveSolarSystem.objects.get(id=30002537)
+        cls.astrahus = EveType.objects.get(id=35832)
+        cls.athanor = EveType.objects.get(id=35835)
+        cls.jita_trade_hub = EveType.objects.get(id=52678)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+        cls.character = create_memberaudit_character(1001)
+        cls.token = (
+            cls.character.eve_character.character_ownership.user.token_set.first()
+        )
+
+    # stations
 
     def test_can_create_station(self, mock_esi):
         mock_esi.client = esi_client_stub
@@ -854,7 +897,7 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
 
 
-class TestLocationManagerAsync(TestCase):
+class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -879,7 +922,7 @@ class TestLocationManagerAsync(TestCase):
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
     @patch(MANAGERS_PATH + ".esi")
-    @patch(MANAGERS_PATH + ".fetch_esi_status")
+    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
     def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
         # given
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
@@ -901,7 +944,7 @@ class TestLocationManagerAsync(TestCase):
         self.assertTrue(mock_fetch_esi_status.called)  # proofs task was called
 
     @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-    @patch(TASKS_PATH + ".update_structure_esi")
+    @patch(TASKS_PATH + ".update_structure_esi", spec=True)
     def test_should_create_location_and_ignore_already_queued(
         self, mock_task_update_structure_esi
     ):

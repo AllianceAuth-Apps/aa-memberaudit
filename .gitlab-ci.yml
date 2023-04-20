@@ -14,13 +14,6 @@ stages:
 #   MYSQL_HOST: mysql
 
 
-before_script:
-- apt-get update
-- apt-get install redis-server -y
-- redis-server --daemonize yes
-- python -V
-- pip install tox
-
 pre-commit-check:
   stage: checks
   image: python:3.10-bullseye
@@ -29,56 +22,54 @@ pre-commit-check:
   cache:
     paths:
       - ${PRE_COMMIT_HOME}
-  script:
+  before_script:
     - pip install pre-commit
+  script:
     - pre-commit run --all-files
 
-.test-py38:
+.test:
   stage: test
-  needs: []
-  image: python:3.8-bullseye
-
-.test-py39:
-  stage: test
-  needs: []
-  image: python:3.9-bullseye
-
-.test-py310:
-  stage: test
-  needs: []
-  image: python:3.10-bullseye
+  before_script:
+    - apt-get update
+    - apt-get install redis-server -y
+    - redis-server --daemonize yes
+    - python -V
+    - pip install tox
 
 test-py38-dj40:
-  extends: .test-py38
+  extends: .test
+  image: python:3.8-bullseye
   script:
-  - tox -e py38-django40
+    - tox -e py38-django40
 
 test-py39-dj40:
-  extends: .test-py39
+  extends: .test
+  image: python:3.9-bullseye
   script:
-  - tox -e py39-django40
+    - tox -e py39-django40
 
 test-py310-dj40:
-  extends: .test-py310
+  extends: .test
+  image: python:3.10-bullseye
   script:
-  - tox -e py310-django40
-  - bash <(curl -s https://codecov.io/bash)
+    - tox -e py310-django40
+    - bash <(curl -s https://codecov.io/bash)
 
 test-docs:
-  extends: .test-py38
+  stage: test
+  image: python:3.10-bullseye
+  before_script:
+  - pip install tox
   script:
-  - tox -e docs
+    - tox -e docs
 
 deploy-pypi:
   stage: deploy
   image: python:3.10-bullseye
-
   before_script:
     - pip install -U pip twine wheel build
-
   script:
     - python -m build
     - twine upload dist/*
-
   only:
     - tags

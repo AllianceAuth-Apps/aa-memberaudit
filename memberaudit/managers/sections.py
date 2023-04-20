@@ -101,13 +101,17 @@ class CharacterContactManager(models.Manager):
         create_ids = incoming_ids.difference(existing_ids)
         if create_ids:
             self._create_new_contacts(
-                character=character, contacts_list=contacts_list, contact_ids=create_ids
+                character=character,
+                contacts_list=contacts_list,
+                contact_ids=list(create_ids),
             )
 
         update_ids = incoming_ids.difference(create_ids)
         if update_ids:
             self._update_existing_contacts(
-                character=character, contacts_list=contacts_list, contact_ids=update_ids
+                character=character,
+                contacts_list=contacts_list,
+                contact_ids=list(update_ids),
             )
 
         if not obsolete_ids and not create_ids and not update_ids:
@@ -902,9 +906,10 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 class CharacterShipManager(models.Manager):
     def update_for_character(self, character: models.Model, ship_info: dict):
-        eve_type, _ = EveType.objects.get_or_create_esi(
-            id=ship_info.get("ship_type_id")
-        )
+        ship_type_id = ship_info.get("ship_type_id")
+        if not ship_type_id:
+            return
+        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_type_id)
         self.update_or_create(
             character=character,
             defaults={
@@ -977,7 +982,7 @@ class CharacterSkillManager(models.Manager):
         if not obsolete_ids and not create_ids and not update_ids:
             logger.info("%s: Skills have not changed", character)
 
-    def _create_from_dict(self, character, skills_list: dict, create_ids: list):
+    def _create_from_dict(self, character, skills_list: dict, create_ids: set):
         logger.info("%s: Storing %s new skills", character, len(create_ids))
         skills = [
             self.model(
@@ -992,7 +997,7 @@ class CharacterSkillManager(models.Manager):
         ]
         self.bulk_create(skills, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
-    def _update_from_dict(self, character, skills_list: dict, update_ids: list):
+    def _update_from_dict(self, character, skills_list: dict, update_ids: set):
         logger.info("%s: Updating %s skills", character, len(update_ids))
         update_pks = list(
             self.filter(character=character, eve_type_id__in=update_ids).values_list(
@@ -1155,7 +1160,7 @@ class CharacterWalletTransactionManager(models.Manager):
         }
         character._preload_all_locations(token, incoming_location_ids)
         type_ids = {row.get("type_id") for row in transaction_list.values()}
-        EveType.objects.bulk_get_or_create_esi(ids=type_ids)
+        EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
 
         with transaction.atomic():
             incoming_ids = set(transaction_list.keys())

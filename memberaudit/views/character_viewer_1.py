@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
@@ -708,15 +708,13 @@ def character_fw_stats(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
     try:
-        fw_stats: CharacterFwStats = character.fw_stats
+        fw_stats: Optional[CharacterFwStats] = character.fw_stats
     except ObjectDoesNotExist:
         fw_stats = None
-        logo_url = ""
+    if fw_stats:
+        logo_url = fw_stats.faction.logo_url(128) if fw_stats.faction else ""
     else:
-        if fw_stats.faction:
-            logo_url = fw_stats.faction.logo_url(128)
-        else:
-            logo_url = ""
+        logo_url = ""
     context = {"fw_stats": fw_stats, "faction_logo_url": logo_url}
     return render(
         request,
