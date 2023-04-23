@@ -48,12 +48,12 @@ def admin_create_skillset_from_fitting(request):
                 )
                 tasks.update_characters_skill_checks.delay(force_update=True)
                 if created:
-                    msg = _("Skill Set <b>%s</b> has been created") % obj.name
+                    msg = _("Skill Set %s has been created") % obj.name
                 else:
-                    msg = _("Skill Set <b>%s</b> has been updated") % obj.name
+                    msg = _("Skill Set %s has been updated") % obj.name
                 if form.cleaned_data["_errors"]:
                     errors = form.cleaned_data["_errors"]
-                    msg += f" with issues:<br>- {'<br>- '.join(errors)}"
+                    msg += f" {_('with issues')}:<br>- {'<br>- '.join(errors)}"
                     messages.warning(request, format_html(msg))
                 else:
                     messages.info(request, format_html(f"{msg}."))
@@ -86,9 +86,9 @@ def admin_create_skillset_from_skill_plan(request):
             logger.info("%s: Skill Set created from skill plan", skill_plan.name)
             tasks.update_characters_skill_checks.delay(force_update=True)
             if created:
-                msg = _("Skill Set <b>%s</b> has been created") % obj.name
+                msg = _("Skill Set %s has been created") % obj.name
             else:
-                msg = _("Skill Set <b>%s</b> has been updated") % obj.name
+                msg = _("Skill Set %s has been updated") % obj.name
             if form.cleaned_data["_errors"]:
                 errors = form.cleaned_data["_errors"]
                 msg += f" {_('with issues')}:<br>- {'<br>- '.join(errors)}"

@@ -8,6 +8,7 @@ makemessages:
 	cd $(package) && \
 	django-admin makemessages \
 		-l de \
+		-l en \
 		-l es \
 		-l fr_FR \
 		-l it_IT \

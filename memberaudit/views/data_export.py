@@ -50,7 +50,7 @@ def data_export_run_update(request, topic: str):
     messages.info(
         request,
         _(
-            "Data export for topic <strong>%s</strong> has been started. "
+            "Data export for topic %s has been started. "
             "This can take a couple of minutes. "
             "You will get a notification once it is completed.",
         )

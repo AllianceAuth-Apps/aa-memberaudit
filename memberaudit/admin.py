@@ -381,7 +381,7 @@ class CharacterAdmin(admin.ModelAdmin):
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )
-            self.message_user(request, _("Started updating character: %s. " % obj))
+            self.message_user(request, _("Started updating character %s." % obj))
 
     @admin.display(
         description=_("Update assets for selected characters from EVE server")
@@ -393,7 +393,7 @@ class CharacterAdmin(admin.ModelAdmin):
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )
             self.message_user(
-                request, _("Started updating assets for character: %s." % obj)
+                request, _("Started updating assets for character %s." % obj)
             )
 
     @admin.display(
@@ -418,7 +418,7 @@ class CharacterAdmin(admin.ModelAdmin):
             self.message_user(
                 request,
                 _(
-                    "Started updating %s for character: %s. "
+                    "Started updating %s for character %s."
                     % (Character.UpdateSection.display_name(section), obj)
                 ),
             )
@@ -443,8 +443,11 @@ class CharacterAdmin(admin.ModelAdmin):
             self.message_user(
                 request,
                 _(
-                    "Started updating %s for character: %s."
-                    % (Character.UpdateSection.display_name(section), obj)
+                    "Started updating %(section)s for character %(character)s."
+                    % {
+                        "section": Character.UpdateSection.display_name(section),
+                        "character": obj,
+                    }
                 ),
             )
 
