@@ -8,141 +8,140 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-19 22:04+0200\n"
+"POT-Creation-Date: 2023-04-16 17:58+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
-"Language-Team: German (https://app.transifex.com/kalkoken-apps/teams/107978/"
-"de/)\n"
-"Language: de\n"
+"Language-Team: German (https://app.transifex.com/kalkoken-apps/teams/107978/de/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: de\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: admin.py:73
+#: admin.py:72
 msgid "Restricted to states"
 msgstr ""
 
-#: admin.py:134 admin.py:312
+#: admin.py:133 admin.py:311
 msgid "update status"
 msgstr ""
 
-#: admin.py:160 admin.py:289
+#: admin.py:159 admin.py:288
 msgid "state"
 msgstr ""
 
-#: admin.py:186
+#: admin.py:185
 msgid "No main"
 msgstr ""
 
-#: admin.py:268 models/character.py:176
+#: admin.py:267
 msgid "character"
 msgstr ""
 
-#: admin.py:272
+#: admin.py:271
 msgid "enabled"
 msgstr ""
 
-#: admin.py:278
+#: admin.py:277
 msgid "main"
 msgstr ""
 
-#: admin.py:299
+#: admin.py:298
 msgid "organization"
 msgstr ""
 
-#: admin.py:324
+#: admin.py:323
 msgid "created"
 msgstr ""
 
-#: admin.py:328
+#: admin.py:327
 msgid "last update"
 msgstr ""
 
-#: admin.py:352
+#: admin.py:351
 msgid "Delete selected characters"
 msgstr ""
 
-#: admin.py:363
+#: admin.py:362
 #, python-format
 msgid "Started deleting %d character(s). This can take a minute."
 msgstr ""
 
-#: admin.py:372
+#: admin.py:371
 msgid "Are you sure you want to delete these characters?"
 msgstr ""
 
-#: admin.py:377
+#: admin.py:376
 msgid "Update selected characters from EVE server"
 msgstr ""
 
-#: admin.py:384
+#: admin.py:383
 #, python-format
 msgid "Started updating character: %s. "
 msgstr ""
 
-#: admin.py:387
+#: admin.py:386
 msgid "Update assets for selected characters from EVE server"
 msgstr ""
 
-#: admin.py:396
+#: admin.py:395
 #, python-format
 msgid "Started updating assets for character: %s."
 msgstr ""
 
-#: admin.py:402 admin.py:429
+#: admin.py:401 admin.py:428
 #, python-format
 msgid "Update %s for selected characters from EVE server"
 msgstr ""
 
-#: admin.py:421
+#: admin.py:420
 #, python-format
 msgid "Started updating %s for character: %s. "
 msgstr ""
 
-#: admin.py:446
+#: admin.py:445
 #, python-format
 msgid "Started updating %s for character: %s."
 msgstr ""
 
-#: admin.py:451
+#: admin.py:450
 msgid "Enable selected characters"
 msgstr ""
 
-#: admin.py:455
+#: admin.py:454
 #, python-format
 msgid "Enabled %d characters."
 msgstr ""
 
-#: admin.py:457
+#: admin.py:456
 msgid "Disable selected characters"
 msgstr ""
 
-#: admin.py:461
+#: admin.py:460
 #, python-format
 msgid "Disabled %d characters."
 msgstr ""
 
-#: admin.py:493 models/general.py:267 models/general.py:307
+#: admin.py:492 models/general.py:259 models/general.py:294
 msgid "name"
 msgstr ""
 
-#: admin.py:497
+#: admin.py:496
 msgid "solar system"
 msgstr ""
 
-#: admin.py:501
+#: admin.py:500
 msgid "type"
 msgstr ""
 
-#: admin.py:505
+#: admin.py:504
 msgid "group"
 msgstr ""
 
-#: admin.py:509
+#: admin.py:508
 msgid "updated at"
 msgstr ""
 
-#: admin.py:570
+#: admin.py:569
 #, python-format
 msgid "Skill '%s' must have a level."
 msgstr ""
@@ -151,334 +150,304 @@ msgstr ""
 msgid "Member Audit"
 msgstr ""
 
-#: models/character.py:69
+#: models/character.py:67
 msgid "assets"
 msgstr ""
 
-#: models/character.py:71
+#: models/character.py:69
 msgid "contacts"
 msgstr ""
 
-#: models/character.py:72
+#: models/character.py:70
 msgid "contracts"
 msgstr ""
 
-#: models/character.py:73
+#: models/character.py:71
 msgid "corporation history"
 msgstr ""
 
-#: models/character.py:74
+#: models/character.py:72
 msgid "faction warfare statistics"
 msgstr ""
 
-#: models/character.py:75
+#: models/character.py:73
 msgid "implants"
 msgstr ""
 
-#: models/character.py:76
+#: models/character.py:74
 msgid "jump clones"
 msgstr ""
 
-#: models/character.py:77 models/general.py:185
+#: models/character.py:75
 msgid "location"
 msgstr ""
 
-#: models/character.py:78
+#: models/character.py:76
 msgid "loyalty"
 msgstr ""
 
-#: models/character.py:79
+#: models/character.py:77
 msgid "mails"
 msgstr ""
 
-#: models/character.py:80
+#: models/character.py:78
 msgid "mining ledger"
 msgstr ""
 
-#: models/character.py:81
+#: models/character.py:79
 msgid "online status"
 msgstr ""
 
-#: models/character.py:82
+#: models/character.py:80
 msgid "ship"
 msgstr ""
 
-#: models/character.py:83 models/general.py:353 models/general.py:386
+#: models/character.py:81 models/general.py:335
 msgid "skills"
 msgstr ""
 
-#: models/character.py:84
+#: models/character.py:82
 msgid "skill queue"
 msgstr ""
 
-#: models/character.py:85 models/general.py:271 models/general.py:340
+#: models/character.py:83 models/general.py:263
 msgid "skill sets"
 msgstr ""
 
-#: models/character.py:86
+#: models/character.py:84
 msgid "wallet balance"
 msgstr ""
 
-#: models/character.py:87
+#: models/character.py:85
 msgid "wallet journal"
 msgstr ""
 
-#: models/character.py:88
+#: models/character.py:86
 msgid "wallet transactions"
 msgstr ""
 
-#: models/character.py:89
+#: models/character.py:87
 msgid "attributes"
 msgstr ""
 
-#: models/character.py:141
+#: models/character.py:139
 msgid "ok"
 msgstr ""
 
-#: models/character.py:142 models/sections.py:234
+#: models/character.py:140 models/sections.py:233
 msgid "in progress"
 msgstr ""
 
-#: models/character.py:143
+#: models/character.py:141
 msgid "incomplete"
 msgstr ""
 
-#: models/character.py:144
+#: models/character.py:142
 msgid "error"
 msgstr ""
 
-#: models/character.py:145
+#: models/character.py:143
 msgid "disabled"
 msgstr ""
 
-#: models/character.py:152
+#: models/character.py:150
 msgid "eve character"
 msgstr ""
 
-#: models/character.py:156
+#: models/character.py:154
 msgid "created at"
 msgstr ""
 
-#: models/character.py:160
+#: models/character.py:158
 msgid "is shared"
 msgstr ""
 
-#: models/character.py:165
+#: models/character.py:163
 msgid "is disabled"
 msgstr ""
 
-#: models/character.py:169
+#: models/character.py:167
 msgid "mailing lists"
 msgstr ""
 
-#: models/character.py:177
-msgid "characters"
-msgstr ""
-
-#: models/character.py:1294 models/character.py:1295
-msgid "character update status"
-msgstr ""
-
-#: models/general.py:116
-msgid "compliance group designation"
-msgstr ""
-
-#: models/general.py:117
-msgid "compliance group designations"
-msgstr ""
-
-#: models/general.py:186
-msgid "locations"
-msgstr ""
-
-#: models/general.py:269 models/general.py:309
+#: models/general.py:261 models/general.py:296
 msgid "description"
 msgstr ""
 
-#: models/general.py:276
+#: models/general.py:268
 msgid "is doctrine"
 msgstr ""
 
-#: models/general.py:278
-msgid "This enables a skill set group to show up correctly in doctrine reports"
+#: models/general.py:270
+msgid ""
+"This enables a skill set group to show up correctly in doctrine reports"
 msgstr ""
 
-#: models/general.py:284
+#: models/general.py:276
 msgid "is active"
 msgstr ""
 
-#: models/general.py:285
+#: models/general.py:277
 msgid "Whether this skill set group is in active use"
 msgstr ""
 
-#: models/general.py:290
-msgid "skill set group"
-msgstr ""
-
-#: models/general.py:291
-msgid "skill set groups"
-msgstr ""
-
-#: models/general.py:298
+#: models/general.py:285
 msgid "Doctrine: "
 msgstr ""
 
-#: models/general.py:317
+#: models/general.py:304
 msgid "ship type"
 msgstr ""
 
-#: models/general.py:320
+#: models/general.py:307
 msgid ""
 "Ship type is used for visual presentation only. All skill requirements must "
 "be explicitly defined."
 msgstr ""
 
-#: models/general.py:328
+#: models/general.py:315
 msgid "is visible"
 msgstr ""
 
-#: models/general.py:330
+#: models/general.py:317
 msgid ""
 "Non visible skill sets are not shown to users on their character sheet and "
 "used for audit purposes only."
 msgstr ""
 
-#: models/general.py:339
-msgid "skill set"
-msgstr ""
-
-#: models/general.py:358 models/general.py:385
+#: models/general.py:340
 msgid "skill"
 msgstr ""
 
-#: models/general.py:367
+#: models/general.py:349
 msgid "required level"
 msgstr ""
 
-#: models/general.py:374
+#: models/general.py:356
 msgid "recommended level"
 msgstr ""
 
-#: models/general.py:433 templates/memberaudit/reports.html:75
+#: models/general.py:412 templates/memberaudit/reports.html:75
 #: templates/memberaudit/reports.html:140
 #: templates/memberaudit/reports.html:214
 msgid "Alliance"
 msgstr ""
 
-#: models/general.py:434
+#: models/general.py:413
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
 msgid "Character"
 msgstr ""
 
-#: models/general.py:435
+#: models/general.py:414
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
-#: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
+#: templates/memberaudit/reports.html:80
+#: templates/memberaudit/reports.html:145
 #: templates/memberaudit/reports.html:219
 msgid "Corporation"
 msgstr ""
 
-#: models/general.py:436
+#: models/general.py:415
 msgid "Mailing List"
 msgstr ""
 
-#: models/general.py:437
+#: models/general.py:416
 msgid "Unknown"
 msgstr ""
 
-#: models/sections.py:147
+#: models/sections.py:146
 msgid "excellent standing"
 msgstr ""
 
-#: models/sections.py:148
+#: models/sections.py:147
 msgid "good standing"
 msgstr ""
 
-#: models/sections.py:149
+#: models/sections.py:148
 msgid "neutral standing"
 msgstr ""
 
-#: models/sections.py:150
+#: models/sections.py:149
 msgid "bad standing"
 msgstr ""
 
-#: models/sections.py:151
+#: models/sections.py:150
 msgid "terrible standing"
 msgstr ""
 
-#: models/sections.py:205
+#: models/sections.py:204
 msgid "alliance"
 msgstr ""
 
-#: models/sections.py:206
+#: models/sections.py:205
 msgid "corporation"
 msgstr ""
 
-#: models/sections.py:207
+#: models/sections.py:206
 msgid "private"
 msgstr ""
 
-#: models/sections.py:208
+#: models/sections.py:207
 msgid "public"
 msgstr ""
 
-#: models/sections.py:228
+#: models/sections.py:227
 msgid "canceled"
 msgstr ""
 
-#: models/sections.py:229
+#: models/sections.py:228
 msgid "deleted"
 msgstr ""
 
-#: models/sections.py:230
+#: models/sections.py:229
 msgid "failed"
 msgstr ""
 
-#: models/sections.py:231
+#: models/sections.py:230
 msgid "finished"
 msgstr ""
 
-#: models/sections.py:232
+#: models/sections.py:231
 msgid "finished contractor"
 msgstr ""
 
-#: models/sections.py:233
+#: models/sections.py:232
 msgid "finished issuer"
 msgstr ""
 
-#: models/sections.py:235
+#: models/sections.py:234
 msgid "outstanding"
 msgstr ""
 
-#: models/sections.py:236
+#: models/sections.py:235
 msgid "rejected"
 msgstr ""
 
-#: models/sections.py:237
+#: models/sections.py:236
 msgid "reversed"
 msgstr ""
 
-#: models/sections.py:258
+#: models/sections.py:257
 msgid "auction"
 msgstr ""
 
-#: models/sections.py:259
+#: models/sections.py:258
 msgid "courier"
 msgstr ""
 
-#: models/sections.py:260
+#: models/sections.py:259
 msgid "item exchange"
 msgstr ""
 
-#: models/sections.py:261
+#: models/sections.py:260
 msgid "loan"
 msgstr ""
 
-#: models/sections.py:262
+#: models/sections.py:261
 msgid "unknown"
 msgstr ""
 
-#: models/sections.py:421
+#: models/sections.py:419
 msgid "[Multiple Items]"
 msgstr ""
 
@@ -872,12 +841,9 @@ msgstr ""
 #, python-format
 msgid ""
 "\n"
-"                    Export files contain the complete data of all "
-"<strong>%(amount_of_characters)s</strong>\n"
-"                    characters known to Member Audit. They are in CSV format "
-"and zipped.\n"
-"                    Existing export files can updated after "
-"%(minutes_until_next_update)s minutes.\n"
+"                    Export files contain the complete data of all <strong>%(amount_of_characters)s</strong>\n"
+"                    characters known to Member Audit. They are in CSV format and zipped.\n"
+"                    Existing export files can updated after %(minutes_until_next_update)s minutes.\n"
 "                "
 msgstr ""
 
@@ -1552,7 +1518,7 @@ msgstr ""
 msgid "Reports"
 msgstr ""
 
-#: templates/memberaudit/partials/menu.html:58 views/data_export.py:24
+#: templates/memberaudit/partials/menu.html:58 views/data_export.py:25
 msgid "Data Export"
 msgstr ""
 
@@ -1597,7 +1563,8 @@ msgstr ""
 
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:9
-#: templates/memberaudit/reports.html:70 templates/memberaudit/reports.html:209
+#: templates/memberaudit/reports.html:70
+#: templates/memberaudit/reports.html:209
 msgid "State"
 msgstr ""
 
@@ -1615,7 +1582,8 @@ msgid "Registered?"
 msgstr ""
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:12
-#: templates/memberaudit/reports.html:90 templates/memberaudit/reports.html:150
+#: templates/memberaudit/reports.html:90
+#: templates/memberaudit/reports.html:150
 msgid "Compliant?"
 msgstr ""
 
@@ -1685,8 +1653,8 @@ msgstr ""
 
 #: views/characters.py:119
 msgid ""
-"has been registered. Note that it can take a minute until all character data "
-"is visible."
+"has been registered. Note that it can take a minute until all character data"
+" is visible."
 msgstr ""
 
 #: views/characters.py:148
@@ -1704,7 +1672,7 @@ msgstr ""
 msgid "Removed character %s as requested."
 msgstr ""
 
-#: views/data_export.py:53
+#: views/data_export.py:55
 #, python-format
 msgid ""
 "Data export for topic <strong>%s</strong> has been started. This can take a "
