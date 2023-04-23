@@ -373,3 +373,76 @@ You can adjust the update frequency to meet your needs. For example if you have 
 ```{hint}
 You can use the management command **memberaudit_stats** to get current data about the last update runs, which can be very helpful to find the optimal configuration. See [memberaudit_stats](#memberaudit_stats) for details.
 ```
+
+## Uninstalling
+
+Here is how you can uninstall Member Audit cleanly from your system.
+
+### Step 1 - Shut down supervisors
+
+First you should shut down all AA services.
+
+```bash
+sudo supervisorctl stop myauth:
+```
+
+### Step 2 - Remove tables from the database
+
+Next we will remove Member Audit's table from the database.
+
+Important: You will loose all Member Audit related data. You can not undo this step, unless you have a backup.
+
+First, fetch the SQL script:
+
+```bash
+wget https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/memberaudit/tools/drop_tables.sql
+```
+
+Next, log into mysql, switch to your database and then and run the script to drop all tables:
+
+```bash
+sudo mysql -u root
+use alliance_auth;
+source drop_tables.sql;
+```
+
+Check that all tables have been deleted.
+
+```bash
+show tables;
+```
+
+Then, switch back to bash and delete the sql script (it has served it's purpose):
+
+```bash
+exit;
+rm drop_tables.sql
+```
+
+Finally, we inform Django that the Member Audit tables have been deleted:
+
+```bash
+python manage.py migrate zero --fake
+```
+
+### Step 3 - Remove app from Django
+
+After the migration to zero is completed, we can now remove the Django app in your local settings.
+
+For that remove the `"memberaudit"` in `INSTALLED_APPS` and any other setting about Member Audit, e.g. definition for tasks.
+
+### Step 4  Uninstall Python package
+
+Finally, we can uninstall the Python package:
+
+```bash
+pip uninstall aa-memberaudit
+```
+
+### Step 5 - Restart AA services
+
+Member Audit is now fully uninstalled and you can restart your AA services:
+
+```bash
+sudo supervisorctl start myauth:
+```

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Localization for Russian
+- Uninstall chapter to docs
 
 ## [2.7.0] - 2023-04-19
 
