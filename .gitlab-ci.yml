@@ -36,11 +36,6 @@ pre-commit-check:
     - python -V
     - pip install tox
 
-.test-py311:
-  stage: test
-  needs: []
-  image: python:3.11-bullseye
-
 test-py38-dj40:
   extends: .test
   image: python:3.8-bullseye
@@ -61,7 +56,8 @@ test-py310-dj40:
     - bash <(curl -s https://codecov.io/bash)
 
 test-py311-dj40:
-  extends: .test-py311
+  extends: .test
+  image: python:3.11-bullseye
   script:
   - tox -e py311-django40
   - bash <(curl -s https://codecov.io/bash)
