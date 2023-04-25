@@ -30,6 +30,7 @@ compilemessages:
 	cd $(package) && \
 	django-admin compilemessages \
 		-l de \
+		-l en \
 		-l es \
 		-l fr_FR \
 		-l it_IT \
