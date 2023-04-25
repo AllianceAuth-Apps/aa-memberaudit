@@ -1,6 +1,6 @@
 """Eve Online Fittings"""
 from dataclasses import dataclass, field
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, Union
 
 from eveuniverse.models import EveType
 
@@ -27,25 +27,27 @@ class _BaseFittingItem:
 class Module(_BaseFittingItem):
     """A ship module used in a fitting."""
 
-    module_type: EveType = None
-    charge_type: EveType = None
+    module_type: Optional[EveType] = None
+    charge_type: Optional[EveType] = None
     is_offline: bool = False
 
     @property
     def is_empty(self) -> bool:
         return self.module_type is None
 
-    def eve_types(self) -> Set[EveType]:
+    def eve_types(self) -> Union[Set[EveType], set]:
         """Eve types used in this module."""
-        if self.is_empty:
-            return set()
-        types = {self.module_type}
+        types = set()
+        if self.module_type:
+            types.add(self.module_type)
         if self.charge_type:
             types.add(self.charge_type)
         return types
 
     def to_eft(self) -> str:
         """Convert to EFT format."""
+        if not self.module_type:
+            raise ValueError("Module is empty")
         text = self.module_type.name
         if self.charge_type:
             text += f", {self.charge_type.name}"
@@ -98,7 +100,7 @@ class Fitting:
         return f"{self.name}"
 
     @property
-    def modules(self) -> List[EveType]:
+    def modules(self) -> List[Module]:
         """All fitted modules."""
         return (
             self.high_slots
@@ -131,7 +133,7 @@ class Fitting:
         return compress_skills(skills)
 
     def to_eft(self) -> str:
-        def add_section(objs, keyword: str = None) -> List[str]:
+        def add_section(objs, keyword: Optional[str] = None) -> List[str]:
             lines = [""]
             for obj in objs:
                 lines.append(

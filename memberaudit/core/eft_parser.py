@@ -1,7 +1,7 @@
 """Parser for fitting in EFT Format"""
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPNotFound
 
@@ -19,6 +19,10 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 class EftParserError(Exception):
     """Base error for EFT parser."""
+
+
+class UnknownShipTypeError(EftParserError):
+    """Ship type is unknown."""
 
 
 class MissingTitleError(EftParserError):
@@ -76,7 +80,7 @@ class _EveTypes:
             EveType.objects.select_related("eve_group")
             .prefetch_related("dogma_effects")
             .filter(
-                enabled_sections=EveType.enabled_sections.dogmas, name__in=type_names
+                enabled_sections=EveType.enabled_sections.dogmas, name__in=type_names  # type: ignore
             )
         )
         eve_types = {obj.name: obj for obj in eve_types_query}
@@ -119,7 +123,7 @@ class _EveTypes:
             except HTTPNotFound:
                 pass
             else:
-                eve_types[obj.name] = obj
+                eve_types[obj.name] = obj  # type: ignore
         return eve_types
 
     # @classmethod
@@ -143,7 +147,6 @@ class _EveTypes:
     #         return obj
 
 
-@dataclass
 class _EftSlotType(Enum):
     NONE = auto()
     LOW_SLOT = auto()
@@ -414,7 +417,7 @@ class _EftSection:
         """Convert eft items into fitting items."""
         objs = []
         for item in self.items:
-            params = {"item_type": item.item_type}
+            params: Dict[str, Any] = {"item_type": item.item_type}
             if item.quantity:
                 params["quantity"] = item.quantity
             objs.append(Item(**params))
@@ -446,6 +449,8 @@ def create_fitting_from_eft(eft_text: str) -> Tuple[Fitting, List[str]]:
     ]
     sections = _try_to_identify_sections(sections)
     ship_type = eve_types.from_name(ship_type_name)
+    if not ship_type:
+        raise UnknownShipTypeError(f"Unknown ship type: {ship_type_name}")
     fitting = _create_fitting_from_sections(fitting_name, ship_type, sections)
     errors = _unknown_types_to_errors(unknown_types)
     return fitting, errors
