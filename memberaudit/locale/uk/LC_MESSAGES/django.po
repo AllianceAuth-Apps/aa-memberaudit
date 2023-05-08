@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-25 20:21+0200\n"
+"POT-Creation-Date: 2023-05-08 22:21+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
 "Language-Team: Ukrainian (https://app.transifex.com/kalkoken-apps/"
 "teams/107978/uk/)\n"
@@ -21,131 +21,131 @@ msgstr ""
 "100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || "
 "(n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 
-#: admin.py:73
+#: admin.py:75
 msgid "Restricted to states"
 msgstr ""
 
-#: admin.py:134 admin.py:312
+#: admin.py:136 admin.py:311
 msgid "update status"
 msgstr ""
 
-#: admin.py:160 admin.py:289
+#: admin.py:162 admin.py:291
 msgid "state"
 msgstr ""
 
-#: admin.py:186
+#: admin.py:188
 msgid "No main"
 msgstr ""
 
-#: admin.py:268 models/character.py:176
+#: admin.py:270 models/character.py:176
 msgid "character"
 msgstr ""
 
-#: admin.py:272
+#: admin.py:274
 msgid "enabled"
 msgstr ""
 
-#: admin.py:278
+#: admin.py:280
 msgid "main"
 msgstr ""
 
-#: admin.py:299
+#: admin.py:301
 msgid "organization"
 msgstr ""
 
-#: admin.py:324
+#: admin.py:323
 msgid "created"
 msgstr ""
 
-#: admin.py:328
+#: admin.py:327
 msgid "last update"
 msgstr ""
 
-#: admin.py:352
+#: admin.py:351
 msgid "Delete selected characters"
 msgstr ""
 
-#: admin.py:363
+#: admin.py:361
 #, python-format
 msgid "Started deleting %d character(s). This can take a minute."
 msgstr ""
 
-#: admin.py:372
+#: admin.py:369
 msgid "Are you sure you want to delete these characters?"
 msgstr ""
 
-#: admin.py:377
+#: admin.py:374
 msgid "Update selected characters from EVE server"
 msgstr ""
 
-#: admin.py:384
+#: admin.py:381
 #, python-format
 msgid "Started updating character %s."
 msgstr ""
 
-#: admin.py:387
+#: admin.py:384
 msgid "Update assets for selected characters from EVE server"
 msgstr ""
 
-#: admin.py:396
+#: admin.py:393
 #, python-format
 msgid "Started updating assets for character %s."
 msgstr ""
 
-#: admin.py:402 admin.py:429
+#: admin.py:399 admin.py:425
 #, python-format
 msgid "Update %s for selected characters from EVE server"
 msgstr ""
 
-#: admin.py:421
+#: admin.py:417
 #, python-format
-msgid "Started updating %s for character %s."
+msgid "Started updating section %(section)s for character %(character)s."
 msgstr ""
 
-#: admin.py:446
+#: admin.py:438
 #, python-format
 msgid "Started updating %(section)s for character %(character)s."
 msgstr ""
 
-#: admin.py:454
+#: admin.py:446
 msgid "Enable selected characters"
 msgstr ""
 
-#: admin.py:458
+#: admin.py:450
 #, python-format
 msgid "Enabled %d characters."
 msgstr ""
 
-#: admin.py:460
+#: admin.py:452
 msgid "Disable selected characters"
 msgstr ""
 
-#: admin.py:464
+#: admin.py:456
 #, python-format
 msgid "Disabled %d characters."
 msgstr ""
 
-#: admin.py:496 models/general.py:267 models/general.py:307
+#: admin.py:488 models/general.py:267 models/general.py:307
 msgid "name"
 msgstr ""
 
-#: admin.py:500
+#: admin.py:492
 msgid "solar system"
 msgstr ""
 
-#: admin.py:504
+#: admin.py:496
 msgid "type"
 msgstr ""
 
-#: admin.py:508
+#: admin.py:500
 msgid "group"
 msgstr ""
 
-#: admin.py:512
+#: admin.py:504
 msgid "updated at"
 msgstr ""
 
-#: admin.py:573
+#: admin.py:565
 #, python-format
 msgid "Skill '%s' must have a level."
 msgstr ""
@@ -1636,26 +1636,21 @@ msgstr ""
 msgid "[Ungrouped]"
 msgstr ""
 
-#: views/admin.py:37
-#, python-format
-msgid "A skill set with the name %s already exists."
-msgstr ""
-
-#: views/admin.py:51 views/admin.py:89
+#: views/admin.py:35 views/admin.py:68
 #, python-format
 msgid "Skill Set %s has been created"
 msgstr ""
 
-#: views/admin.py:53 views/admin.py:91
+#: views/admin.py:37 views/admin.py:70
 #, python-format
 msgid "Skill Set %s has been updated"
 msgstr ""
 
-#: views/admin.py:67
+#: views/admin.py:46
 msgid "Create skill set from fitting"
 msgstr ""
 
-#: views/admin.py:105
+#: views/admin.py:79
 msgid "Create skill set from skill plan"
 msgstr ""
 
@@ -1693,10 +1688,10 @@ msgstr ""
 
 #: views/characters.py:149
 #, python-format
-msgid "%s has removed character '%s'"
+msgid "%(user)s has removed character %(character)s"
 msgstr ""
 
-#: views/characters.py:156
+#: views/characters.py:159
 #, python-format
 msgid "Removed character %s as requested."
 msgstr ""

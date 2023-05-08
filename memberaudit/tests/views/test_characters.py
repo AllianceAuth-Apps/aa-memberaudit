@@ -193,7 +193,7 @@ class TestRemoveCharacter(TestCase):
             "Member Audit: Character has been removed!"
         )
         expected_removal_notification_message = (
-            "Bruce Wayne has removed character 'Bruce Wayne'"
+            "Bruce Wayne has removed character Bruce Wayne"
         )
         latest_auditor_notification = auditor.notification_set.order_by("-pk")[0]
         self.assertEqual(

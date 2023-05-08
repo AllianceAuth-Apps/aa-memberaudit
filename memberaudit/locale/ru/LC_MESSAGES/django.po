@@ -13,7 +13,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-04-25 20:21+0200\n"
+"POT-Creation-Date: 2023-05-08 22:21+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
 "Last-Translator: Erik Kalkoken <erik.kalkoken@gmail.com>, 2023\n"
 "Language-Team: Russian (https://app.transifex.com/kalkoken-apps/teams/107978/"
@@ -26,135 +26,135 @@ msgstr ""
 "n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
 "(n%100>=11 && n%100<=14)? 2 : 3);\n"
 
-#: admin.py:73
+#: admin.py:75
 msgid "Restricted to states"
 msgstr "Ограничено состояниями"
 
-#: admin.py:134 admin.py:312
+#: admin.py:136 admin.py:311
 msgid "update status"
 msgstr "статус обновления"
 
-#: admin.py:160 admin.py:289
+#: admin.py:162 admin.py:291
 msgid "state"
 msgstr "состояние"
 
-#: admin.py:186
+#: admin.py:188
 msgid "No main"
 msgstr "Нет главного"
 
-#: admin.py:268 models/character.py:176
+#: admin.py:270 models/character.py:176
 msgid "character"
 msgstr "персонажа"
 
-#: admin.py:272
+#: admin.py:274
 msgid "enabled"
 msgstr "включено"
 
-#: admin.py:278
+#: admin.py:280
 msgid "main"
 msgstr "главный"
 
-#: admin.py:299
+#: admin.py:301
 msgid "organization"
 msgstr "организация"
 
-#: admin.py:324
+#: admin.py:323
 msgid "created"
 msgstr "создано"
 
-#: admin.py:328
+#: admin.py:327
 msgid "last update"
 msgstr "последнее обновление"
 
-#: admin.py:352
+#: admin.py:351
 msgid "Delete selected characters"
 msgstr "Удалить выбранных персонажей"
 
-#: admin.py:363
+#: admin.py:361
 #, python-format
 msgid "Started deleting %d character(s). This can take a minute."
 msgstr "Началось удаление %d персонажа(ей). Это может занять минуту."
 
-#: admin.py:372
+#: admin.py:369
 msgid "Are you sure you want to delete these characters?"
 msgstr "Вы уверены, что хотите удалить этих персонажей?"
 
-#: admin.py:377
+#: admin.py:374
 msgid "Update selected characters from EVE server"
 msgstr "Обновить выбранных персонажей с сервера EVE"
 
-#: admin.py:384
+#: admin.py:381
 #, fuzzy, python-format
 #| msgid "Started updating character: %s. "
 msgid "Started updating character %s."
 msgstr "Началось обновление персонажа %s."
 
-#: admin.py:387
+#: admin.py:384
 msgid "Update assets for selected characters from EVE server"
 msgstr "Обновить имущество выбранных персонажей с сервера EVE"
 
-#: admin.py:396
+#: admin.py:393
 #, fuzzy, python-format
 #| msgid "Started updating assets for character: %s."
 msgid "Started updating assets for character %s."
 msgstr " Началось обновление имущества персонажа %s."
 
-#: admin.py:402 admin.py:429
+#: admin.py:399 admin.py:425
 #, python-format
 msgid "Update %s for selected characters from EVE server"
 msgstr "Обновление %s для выбранных персонажей с сервера EVE"
 
-#: admin.py:421
+#: admin.py:417
 #, fuzzy, python-format
-#| msgid "Started updating %s for character: %s."
-msgid "Started updating %s for character %s."
-msgstr "Началось обновление %s для персонажа: %s. "
+#| msgid "Started updating assets for character: %s."
+msgid "Started updating section %(section)s for character %(character)s."
+msgstr " Началось обновление имущества персонажа %s."
 
-#: admin.py:446
+#: admin.py:438
 #, fuzzy, python-format
 #| msgid "Started updating assets for character: %s."
 msgid "Started updating %(section)s for character %(character)s."
 msgstr " Началось обновление имущества персонажа %s."
 
-#: admin.py:454
+#: admin.py:446
 msgid "Enable selected characters"
 msgstr "Активировать выбранных персонажей."
 
-#: admin.py:458
+#: admin.py:450
 #, python-format
 msgid "Enabled %d characters."
 msgstr "Активировано %d персонажей."
 
-#: admin.py:460
+#: admin.py:452
 msgid "Disable selected characters"
 msgstr "Деактивировать выбранных персонажей"
 
-#: admin.py:464
+#: admin.py:456
 #, python-format
 msgid "Disabled %d characters."
 msgstr "Деактивировано %d персонажей."
 
-#: admin.py:496 models/general.py:267 models/general.py:307
+#: admin.py:488 models/general.py:267 models/general.py:307
 msgid "name"
 msgstr "название"
 
-#: admin.py:500
+#: admin.py:492
 msgid "solar system"
 msgstr "звездная система"
 
-#: admin.py:504
+#: admin.py:496
 msgid "type"
 msgstr "тип"
 
-#: admin.py:508
+#: admin.py:500
 msgid "group"
 msgstr "группа"
 
-#: admin.py:512
+#: admin.py:504
 msgid "updated at"
 msgstr "обновлено"
 
-#: admin.py:573
+#: admin.py:565
 #, python-format
 msgid "Skill '%s' must have a level."
 msgstr "Навык должен иметь уровень '%s'."
@@ -1661,28 +1661,23 @@ msgstr "Группы"
 msgid "[Ungrouped]"
 msgstr "[Разгруппированный]"
 
-#: views/admin.py:37
-#, python-format
-msgid "A skill set with the name %s already exists."
-msgstr "Набор навыков с именем %s уже существует."
-
-#: views/admin.py:51 views/admin.py:89
+#: views/admin.py:35 views/admin.py:68
 #, fuzzy, python-format
 #| msgid "Skill Set <b>%s</b> has been created"
 msgid "Skill Set %s has been created"
 msgstr "Набор навыков 1%s1 был создан"
 
-#: views/admin.py:53 views/admin.py:91
+#: views/admin.py:37 views/admin.py:70
 #, fuzzy, python-format
 #| msgid "Skill Set <b>%s</b> has been updated"
 msgid "Skill Set %s has been updated"
 msgstr "Набор навыков 1%s1 был обновлен"
 
-#: views/admin.py:67
+#: views/admin.py:46
 msgid "Create skill set from fitting"
 msgstr "Создать набор навыков из подгонки"
 
-#: views/admin.py:105
+#: views/admin.py:79
 msgid "Create skill set from skill plan"
 msgstr "Создать набор навыков из плана"
 
@@ -1721,11 +1716,12 @@ msgid "%s: Character has been removed!"
 msgstr "%s: персонаж был убран!"
 
 #: views/characters.py:149
-#, python-format
-msgid "%s has removed character '%s'"
+#, fuzzy, python-format
+#| msgid "%s has removed character '%s'"
+msgid "%(user)s has removed character %(character)s"
 msgstr "%s убрал персонажа '%s'"
 
-#: views/characters.py:156
+#: views/characters.py:159
 #, python-format
 msgid "Removed character %s as requested."
 msgstr "Убрал персонажа %sпо запросу."
@@ -1741,6 +1737,15 @@ msgid ""
 msgstr ""
 "Топик экспорта данных для <strong>%s</strong>запущен. Это займет несколько "
 "минут. По окончанию экспорта, вы получите уведомление."
+
+#, fuzzy, python-format
+#~| msgid "Started updating %s for character: %s."
+#~ msgid "Started updating %s for character %s."
+#~ msgstr "Началось обновление %s для персонажа: %s. "
+
+#, python-format
+#~ msgid "A skill set with the name %s already exists."
+#~ msgstr "Набор навыков с именем %s уже существует."
 
 #, python-format
 #~ msgid "Started updating %s for character: %s. "
