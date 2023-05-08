@@ -1,6 +1,7 @@
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
+from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 
@@ -290,3 +291,71 @@ class TestSkillSetAdmin(TestCase):
     #     queryset = changelist.get_queryset(request)
     #     expected = {ss_1}
     #     self.assertSetEqual(set(queryset), expected)
+
+
+class TestSkillSetSkillAdmin(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        cls.superuser = User.objects.create_superuser("Superman")
+
+    def test_should_create_new_skill_set_with_required_level_only(self):
+        # given
+        self.client.force_login(self.superuser)
+        # when
+        response = self.client.post(
+            "/admin/memberaudit/skillset/add/",
+            data={
+                "name": "Bla Bla",
+                "skills-TOTAL_FORMS": 1,
+                "skills-INITIAL_FORMS": 0,
+                "skills-MIN_NUM_FORMS": 1,
+                "skills-MAX_NUM_FORMS": 1000,
+                "skills-0-eve_type": 24311,
+                "skills-0-required_level": 1,
+            },
+        )
+        # then
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SkillSet.objects.filter(name="Bla Bla").count(), 1)
+
+    def test_should_create_new_skill_set_with_recommended_level_only(self):
+        # given
+        self.client.force_login(self.superuser)
+        # when
+        response = self.client.post(
+            "/admin/memberaudit/skillset/add/",
+            data={
+                "name": "Bla Bla",
+                "skills-TOTAL_FORMS": 1,
+                "skills-INITIAL_FORMS": 0,
+                "skills-MIN_NUM_FORMS": 1,
+                "skills-MAX_NUM_FORMS": 1000,
+                "skills-0-eve_type": 24311,
+                "skills-0-recommended_level": 1,
+            },
+        )
+        # then
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(SkillSet.objects.filter(name="Bla Bla").count(), 1)
+
+    def test_should_raise_error_when_no_level_given(self):
+        # given
+        self.client.force_login(self.superuser)
+        # when
+        response = self.client.post(
+            "/admin/memberaudit/skillset/add/",
+            data={
+                "name": "Bla Bla",
+                "skills-TOTAL_FORMS": 1,
+                "skills-INITIAL_FORMS": 0,
+                "skills-MIN_NUM_FORMS": 1,
+                "skills-MAX_NUM_FORMS": 1000,
+                "skills-0-eve_type": 24311,
+            },
+        )
+        # then
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("error", response.content.decode("utf-8"))

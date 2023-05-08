@@ -569,7 +569,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                     ):
                         eve_type = row.get("eve_type")
                         raise ValidationError(
-                            _("Skill '%s' must have a level.", eve_type.name)
+                            _("Skill '%s' must have a level." % eve_type.name)
                         )
 
 
