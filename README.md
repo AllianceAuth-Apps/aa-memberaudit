@@ -34,7 +34,7 @@ For details on how to install and use Member Audit please see the [documentation
 
 ## Features
 
-Member Audit adds the following key features to Auth:
+Member Audit adds the following features to Auth:
 
 - Users can see an overview of all their characters with key information like their current location and wallet balance
 - Users can get full access to their characters to monitor them without having to open the Eve client (similar to the classic Eve ap "EveMon").
@@ -71,6 +71,7 @@ Member Audit adds the following key features to Auth:
 - Designed to work efficiently with large number of characters
 - Data retention policy allows managing storage capacity needs
 - Data can be exported for processing it with third party apps like Google Sheets (currently wallet journal only)
+- Language support for English :us:, Russian :ru: and Chinese :cn:
 
 ## Highlights
 

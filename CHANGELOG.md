@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.8.0] - 2023-04-23
+## [2.8.0] - 2023-05-8
 
 ### Added
 
 - Localization for Russian
 - Uninstall chapter to docs
+- Support for Python 3.11
 
 ## [2.7.0] - 2023-04-19
 
