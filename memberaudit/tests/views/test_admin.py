@@ -68,7 +68,7 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
-        self.assertTrue(mock_messages.warning.info)
+        self.assertTrue(mock_messages.info.called)
         skill_set.refresh_from_db()
         self.assertGreater(skill_set.skills.count(), 0)
 
@@ -176,7 +176,7 @@ class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
-        self.assertTrue(mock_messages.warning.info)
+        self.assertTrue(mock_messages.info.called)
         skill_set.refresh_from_db()
         self.assertGreater(skill_set.skills.count(), 0)
 
