@@ -23,40 +23,19 @@ def admin_create_skillset_from_fitting(request):
         form = ImportFittingForm(request.POST)
         if form.is_valid():
             fitting = form.cleaned_data["_fitting"]
-            skill_set_name = (
-                form.cleaned_data["skill_set_name"]
-                if form.cleaned_data["skill_set_name"]
-                else fitting.name
-            )
-            if (
-                not form.cleaned_data["can_overwrite"]
-                and SkillSet.objects.filter(name=skill_set_name).exists()
-            ):
-                messages.warning(
-                    request,
-                    _("A skill set with the name %s already exists." % fitting.name),
-                )
+            params = {"fitting": fitting, "user": request.user}
+            if form.cleaned_data["skill_set_group"]:
+                params["skill_set_group"] = form.cleaned_data["skill_set_group"]
+            if form.cleaned_data["skill_set_name"]:
+                params["skill_set_name"] = form.cleaned_data["skill_set_name"]
+            obj, created = SkillSet.objects.update_or_create_from_fitting(**params)
+            logger.info("Skill Set created from fitting with name: %s", fitting.name)
+            tasks.update_characters_skill_checks.delay(force_update=True)
+            if created:
+                msg = _("Skill Set %s has been created") % obj.name
             else:
-                params = {"fitting": fitting, "user": request.user}
-                if form.cleaned_data["skill_set_group"]:
-                    params["skill_set_group"] = form.cleaned_data["skill_set_group"]
-                if form.cleaned_data["skill_set_name"]:
-                    params["skill_set_name"] = form.cleaned_data["skill_set_name"]
-                obj, created = SkillSet.objects.update_or_create_from_fitting(**params)
-                logger.info(
-                    "Skill Set created from fitting with name: %s", fitting.name
-                )
-                tasks.update_characters_skill_checks.delay(force_update=True)
-                if created:
-                    msg = _("Skill Set <b>%s</b> has been created") % obj.name
-                else:
-                    msg = _("Skill Set <b>%s</b> has been updated") % obj.name
-                if form.cleaned_data["_errors"]:
-                    errors = form.cleaned_data["_errors"]
-                    msg += f" with issues:<br>- {'<br>- '.join(errors)}"
-                    messages.warning(request, format_html(msg))
-                else:
-                    messages.info(request, format_html(f"{msg}."))
+                msg = _("Skill Set %s has been updated") % obj.name
+            messages.info(request, format_html(f"{msg}."))
             return redirect("admin:memberaudit_skillset_changelist")
     else:
         form = ImportFittingForm()
@@ -86,15 +65,10 @@ def admin_create_skillset_from_skill_plan(request):
             logger.info("%s: Skill Set created from skill plan", skill_plan.name)
             tasks.update_characters_skill_checks.delay(force_update=True)
             if created:
-                msg = _("Skill Set <b>%s</b> has been created") % obj.name
+                msg = _("Skill Set %s has been created") % obj.name
             else:
-                msg = _("Skill Set <b>%s</b> has been updated") % obj.name
-            if form.cleaned_data["_errors"]:
-                errors = form.cleaned_data["_errors"]
-                msg += f" {_('with issues')}:<br>- {'<br>- '.join(errors)}"
-                messages.warning(request, format_html(msg))
-            else:
-                messages.info(request, format_html(f"{msg}."))
+                msg = _("Skill Set %s has been updated") % obj.name
+            messages.info(request, format_html(f"{msg}."))
             return redirect("admin:memberaudit_skillset_changelist")
     else:
         form = ImportSkillPlanForm()

@@ -1,3 +1,5 @@
+from typing import List, Optional
+
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
@@ -57,13 +59,13 @@ class ComplianceGroupDesignationAdmin(admin.ModelAdmin):
         super().save_model(request, obj, *args, **kwargs)
         tasks.add_compliant_users_to_group.apply_async(
             args=[obj.group.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-        )
+        )  # type: ignore
 
     def delete_queryset(self, request, queryset) -> None:
         for obj in queryset:
             tasks.clear_users_from_group.apply_async(
                 args=[obj.group.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-            )
+            )  # type: ignore
             obj.delete()
 
     @admin.display(ordering="group__name")
@@ -277,7 +279,7 @@ class CharacterAdmin(admin.ModelAdmin):
         ordering="eve_character__character_ownership__user__profile__main_character",
         description=_("main"),
     )
-    def _main(self, obj: Character) -> str:
+    def _main(self, obj: Character) -> Optional[str]:
         try:
             name = obj.main_character.character_name
         except AttributeError:
@@ -288,7 +290,7 @@ class CharacterAdmin(admin.ModelAdmin):
         ordering="eve_character__character_ownership__user__profile__state__name",
         description=_("state"),
     )
-    def _state(self, obj: Character) -> str:
+    def _state(self, obj: Character) -> Optional[str]:
         try:
             return str(obj.user.profile.state)
         except AttributeError:
@@ -298,16 +300,13 @@ class CharacterAdmin(admin.ModelAdmin):
         ordering="eve_character__character_ownership__user__profile__main_character__corporation_name",
         description=_("organization"),
     )
-    def _organization(self, obj: Character) -> str:
-        try:
-            return "{}{}".format(
-                obj.main_character.corporation_name,
-                f" [{obj.main_character.alliance_ticker}]"
-                if obj.main_character.alliance_ticker
-                else "",
-            )
-        except AttributeError:
+    def _organization(self, obj: Character) -> Optional[str]:
+        if not obj.main_character:
             return None
+        result = obj.main_character.corporation_name
+        if result and obj.main_character.alliance_ticker:
+            result += f" [{obj.main_character.alliance_ticker}]"
+        return result
 
     @admin.display(ordering="update_status", description=_("update status"))
     def _update_status(self, obj: Character):
@@ -356,7 +355,7 @@ class CharacterAdmin(admin.ModelAdmin):
                 tasks.delete_character.apply_async(
                     kwargs={"character_pk": obj.pk},
                     priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-                )
+                )  # type: ignore
             self.message_user(
                 request,
                 _(
@@ -380,8 +379,8 @@ class CharacterAdmin(admin.ModelAdmin):
             tasks.update_character.apply_async(
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )
-            self.message_user(request, _("Started updating character: %s. " % obj))
+            )  # type: ignore
+            self.message_user(request, _("Started updating character %s." % obj))
 
     @admin.display(
         description=_("Update assets for selected characters from EVE server")
@@ -391,9 +390,9 @@ class CharacterAdmin(admin.ModelAdmin):
             tasks.update_character_assets.apply_async(
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )
+            )  # type: ignore
             self.message_user(
-                request, _("Started updating assets for character: %s." % obj)
+                request, _("Started updating assets for character %s." % obj)
             )
 
     @admin.display(
@@ -414,11 +413,11 @@ class CharacterAdmin(admin.ModelAdmin):
             tasks.update_character_section.apply_async(
                 kwargs={"character_pk": obj.pk, "section": section},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )
+            )  # type: ignore
             self.message_user(
                 request,
                 _(
-                    "Started updating %s for character: %s. "
+                    "Started updating %s for character %s."
                     % (Character.UpdateSection.display_name(section), obj)
                 ),
             )
@@ -439,12 +438,15 @@ class CharacterAdmin(admin.ModelAdmin):
             tasks.update_character_section.apply_async(
                 kwargs={"character_pk": obj.pk, "section": section},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )
+            )  # type: ignore
             self.message_user(
                 request,
                 _(
-                    "Started updating %s for character: %s."
-                    % (Character.UpdateSection.display_name(section), obj)
+                    "Started updating %(section)s for character %(character)s."
+                    % {
+                        "section": Character.UpdateSection.display_name(section),
+                        "character": obj,
+                    }
                 ),
             )
 
@@ -567,7 +569,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                     ):
                         eve_type = row.get("eve_type")
                         raise ValidationError(
-                            _("Skill '%s' must have a level.", eve_type.name)
+                            _("Skill '%s' must have a level." % eve_type.name)
                         )
 
 
@@ -655,7 +657,7 @@ class SkillSetAdmin(admin.ModelAdmin):
             for skill in obj.skills_ordered
         ]
 
-    def _groups(self, obj) -> list:
+    def _groups(self, obj) -> Optional[List[str]]:
         groups = [f"{group.name}" for group in obj.groups_ordered]
         return groups if groups else None
 
@@ -675,11 +677,11 @@ class SkillSetAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
         tasks.update_characters_skill_checks.apply_async(
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-        )
+        )  # type: ignore
 
     def delete_model(self, request, obj):
         obj.user = request.user
         super().delete_model(request, obj)
         tasks.update_characters_skill_checks.apply_async(
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-        )
+        )  # type: ignore

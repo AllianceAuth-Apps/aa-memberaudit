@@ -42,11 +42,9 @@
                 </tbody>
             </table>
             <p class="text-muted">
-                {% blocktranslate with amount_of_characters=character_count|intcomma %}
-                    Export files contain the complete data of all <strong>{{ amount_of_characters }}</strong>
-                    characters known to Member Audit. They are in CSV format and zipped.
-                    Existing export files can updated after {{ minutes_until_next_update }} minutes.
-                {% endblocktranslate %}
+                {% blocktranslate with amount_of_characters=character_count|intcomma %}Export files contain the complete data of all {{ amount_of_characters }} characters known to Member Audit.{% endblocktranslate %}
+                {% blocktranslate %}They are in CSV format and zipped.{% endblocktranslate %}
+                {% blocktranslate %}Existing export files are updated after {{ minutes_until_next_update }} minutes.{% endblocktranslate %}
             </p>
         </div>
     </div>
