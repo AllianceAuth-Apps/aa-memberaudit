@@ -10,12 +10,11 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2023-05-08 22:21+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
-"Language-Team: Korean (Korea) (https://app.transifex.com/kalkoken-apps/"
-"teams/107978/ko_KR/)\n"
-"Language: ko_KR\n"
+"Language-Team: Korean (Korea) (https://app.transifex.com/kalkoken-apps/teams/107978/ko_KR/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
+"Language: ko_KR\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
 #: admin.py:75
@@ -300,7 +299,8 @@ msgid "is doctrine"
 msgstr ""
 
 #: models/general.py:278
-msgid "This enables a skill set group to show up correctly in doctrine reports"
+msgid ""
+"This enables a skill set group to show up correctly in doctrine reports"
 msgstr ""
 
 #: models/general.py:284
@@ -374,7 +374,8 @@ msgstr ""
 #: models/general.py:435
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
-#: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
+#: templates/memberaudit/reports.html:80
+#: templates/memberaudit/reports.html:145
 #: templates/memberaudit/reports.html:219
 msgid "Corporation"
 msgstr ""
@@ -756,7 +757,8 @@ msgstr ""
 #: templates/memberaudit/character_finder.html:22
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:9
-#: templates/memberaudit/reports.html:70 templates/memberaudit/reports.html:209
+#: templates/memberaudit/reports.html:70
+#: templates/memberaudit/reports.html:209
 msgid "State"
 msgstr ""
 
@@ -1609,7 +1611,8 @@ msgid "Registered?"
 msgstr ""
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:12
-#: templates/memberaudit/reports.html:90 templates/memberaudit/reports.html:150
+#: templates/memberaudit/reports.html:90
+#: templates/memberaudit/reports.html:150
 msgid "Compliant?"
 msgstr ""
 
@@ -1674,8 +1677,8 @@ msgstr ""
 
 #: views/characters.py:119
 msgid ""
-"has been registered. Note that it can take a minute until all character data "
-"is visible."
+"has been registered. Note that it can take a minute until all character data"
+" is visible."
 msgstr ""
 
 #: views/characters.py:148

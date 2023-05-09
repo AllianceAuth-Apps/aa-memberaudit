@@ -7,7 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.8.0] - 2023-05-8
+## [2.8.1] - 2023-05-09
+
+### Changes
+
+- Some fixes of translation strings
+- Additional Russian translations (now 100%)
+
+## [2.8.0] - 2023-05-08
 
 ### Added
 

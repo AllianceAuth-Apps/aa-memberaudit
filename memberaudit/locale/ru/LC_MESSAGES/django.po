@@ -6,7 +6,6 @@
 # Translators:
 # Николай Постников, 2023
 # Тимур Шихалиев, 2023
-# Erik Kalkoken <erik.kalkoken@gmail.com>, 2023
 #
 #, fuzzy
 msgid ""
@@ -15,16 +14,13 @@ msgstr ""
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2023-05-08 22:21+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
-"Last-Translator: Erik Kalkoken <erik.kalkoken@gmail.com>, 2023\n"
-"Language-Team: Russian (https://app.transifex.com/kalkoken-apps/teams/107978/"
-"ru/)\n"
-"Language: ru\n"
+"Last-Translator: Тимур Шихалиев, 2023\n"
+"Language-Team: Russian (https://app.transifex.com/kalkoken-apps/teams/107978/ru/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && "
-"n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || "
-"(n%100>=11 && n%100<=14)? 2 : 3);\n"
+"Language: ru\n"
+"Plural-Forms: nplurals=4; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<12 || n%100>14) ? 1 : n%10==0 || (n%10>=5 && n%10<=9) || (n%100>=11 && n%100<=14)? 2 : 3);\n"
 
 #: admin.py:75
 msgid "Restricted to states"
@@ -84,8 +80,7 @@ msgid "Update selected characters from EVE server"
 msgstr "Обновить выбранных персонажей с сервера EVE"
 
 #: admin.py:381
-#, fuzzy, python-format
-#| msgid "Started updating character: %s. "
+#, python-format
 msgid "Started updating character %s."
 msgstr "Началось обновление персонажа %s."
 
@@ -94,10 +89,9 @@ msgid "Update assets for selected characters from EVE server"
 msgstr "Обновить имущество выбранных персонажей с сервера EVE"
 
 #: admin.py:393
-#, fuzzy, python-format
-#| msgid "Started updating assets for character: %s."
+#, python-format
 msgid "Started updating assets for character %s."
-msgstr " Началось обновление имущества персонажа %s."
+msgstr "Началось обновление имущества для персонажа %s."
 
 #: admin.py:399 admin.py:425
 #, python-format
@@ -105,16 +99,14 @@ msgid "Update %s for selected characters from EVE server"
 msgstr "Обновление %s для выбранных персонажей с сервера EVE"
 
 #: admin.py:417
-#, fuzzy, python-format
-#| msgid "Started updating assets for character: %s."
+#, python-format
 msgid "Started updating section %(section)s for character %(character)s."
-msgstr " Началось обновление имущества персонажа %s."
+msgstr "Началось обновление раздела %(section)sдля персонажа %(character)s. "
 
 #: admin.py:438
-#, fuzzy, python-format
-#| msgid "Started updating assets for character: %s."
+#, python-format
 msgid "Started updating %(section)s for character %(character)s."
-msgstr " Началось обновление имущества персонажа %s."
+msgstr "Началось обновление %(section)s для персонажа %(character)s."
 
 #: admin.py:446
 msgid "Enable selected characters"
@@ -284,30 +276,24 @@ msgid "mailing lists"
 msgstr "списки рассылок"
 
 #: models/character.py:177
-#, fuzzy
-#| msgid "character"
 msgid "characters"
-msgstr "персонажа"
+msgstr "персонажи"
 
 #: models/character.py:1294 models/character.py:1295
-#, fuzzy
-#| msgid "update status"
 msgid "character update status"
-msgstr "статус обновления"
+msgstr "статус обновления персонажа"
 
 #: models/general.py:116
 msgid "compliance group designation"
-msgstr ""
+msgstr "обозначение группы соблюдения"
 
 #: models/general.py:117
 msgid "compliance group designations"
-msgstr ""
+msgstr "обозначения группы соблюдения"
 
 #: models/general.py:186
-#, fuzzy
-#| msgid "location"
 msgid "locations"
-msgstr "местонахождение"
+msgstr "местонахождения"
 
 #: models/general.py:269 models/general.py:309
 msgid "description"
@@ -318,7 +304,8 @@ msgid "is doctrine"
 msgstr "является доктриной"
 
 #: models/general.py:278
-msgid "This enables a skill set group to show up correctly in doctrine reports"
+msgid ""
+"This enables a skill set group to show up correctly in doctrine reports"
 msgstr "Включить корректное отображение группы набора навыков в отчетах"
 
 #: models/general.py:284
@@ -330,16 +317,12 @@ msgid "Whether this skill set group is in active use"
 msgstr "Активна ли группа набора навыков"
 
 #: models/general.py:290
-#, fuzzy
-#| msgid "Skill Set Group"
 msgid "skill set group"
-msgstr "Группа наборов навыков"
+msgstr "группа наборов навыков"
 
 #: models/general.py:291
-#, fuzzy
-#| msgid "Skill Set Group"
 msgid "skill set groups"
-msgstr "Группа наборов навыков"
+msgstr "группы наборов навыков"
 
 #: models/general.py:298
 msgid "Doctrine: "
@@ -370,10 +353,8 @@ msgstr ""
 "используются для аудита"
 
 #: models/general.py:339
-#, fuzzy
-#| msgid "skill sets"
 msgid "skill set"
-msgstr "наборы навыков"
+msgstr "набор навыков"
 
 #: models/general.py:358 models/general.py:385
 msgid "skill"
@@ -402,7 +383,8 @@ msgstr "Персонаж"
 #: models/general.py:435
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:8
-#: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
+#: templates/memberaudit/reports.html:80
+#: templates/memberaudit/reports.html:145
 #: templates/memberaudit/reports.html:219
 msgid "Corporation"
 msgstr "Корпорация"
@@ -784,7 +766,8 @@ msgstr "Основной"
 #: templates/memberaudit/character_finder.html:22
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:9
-#: templates/memberaudit/reports.html:70 templates/memberaudit/reports.html:209
+#: templates/memberaudit/reports.html:70
+#: templates/memberaudit/reports.html:209
 msgid "State"
 msgstr "Статус"
 
@@ -907,10 +890,12 @@ msgid ""
 "Export files contain the complete data of all %(amount_of_characters)s "
 "characters known to Member Audit."
 msgstr ""
+"Файлы экспорта содержат полную информацию по %(amount_of_characters)s "
+"персонажам известных Member Audit."
 
 #: templates/memberaudit/data_export.html:46
 msgid "They are in CSV format and zipped."
-msgstr ""
+msgstr "Они в формате CSV и упакованы в zip-архив."
 
 #: templates/memberaudit/data_export.html:47
 #, python-format
@@ -918,6 +903,8 @@ msgid ""
 "Existing export files are updated after %(minutes_until_next_update)s "
 "minutes."
 msgstr ""
+"Существующие файлы экспорта будут обновлены через "
+"%(minutes_until_next_update)s минут."
 
 #: templates/memberaudit/launcher.html:20
 msgid "Register Character"
@@ -1637,7 +1624,8 @@ msgid "Registered?"
 msgstr "Зарегистрированный?"
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:12
-#: templates/memberaudit/reports.html:90 templates/memberaudit/reports.html:150
+#: templates/memberaudit/reports.html:90
+#: templates/memberaudit/reports.html:150
 msgid "Compliant?"
 msgstr "Соответствует?"
 
@@ -1662,16 +1650,14 @@ msgid "[Ungrouped]"
 msgstr "[Разгруппированный]"
 
 #: views/admin.py:35 views/admin.py:68
-#, fuzzy, python-format
-#| msgid "Skill Set <b>%s</b> has been created"
+#, python-format
 msgid "Skill Set %s has been created"
-msgstr "Набор навыков 1%s1 был создан"
+msgstr "Набор навыков %s создан"
 
 #: views/admin.py:37 views/admin.py:70
-#, fuzzy, python-format
-#| msgid "Skill Set <b>%s</b> has been updated"
+#, python-format
 msgid "Skill Set %s has been updated"
-msgstr "Набор навыков 1%s1 был обновлен"
+msgstr "Набор навыков %s обновлен"
 
 #: views/admin.py:46
 msgid "Create skill set from fitting"
@@ -1704,8 +1690,8 @@ msgstr "Продать"
 
 #: views/characters.py:119
 msgid ""
-"has been registered. Note that it can take a minute until all character data "
-"is visible."
+"has been registered. Note that it can take a minute until all character data"
+" is visible."
 msgstr ""
 "был зарегистрирован. Обратите внимание, что все данные по персонажу станут "
 "доступными к просмотру через минуту."
@@ -1716,10 +1702,9 @@ msgid "%s: Character has been removed!"
 msgstr "%s: персонаж был убран!"
 
 #: views/characters.py:149
-#, fuzzy, python-format
-#| msgid "%s has removed character '%s'"
+#, python-format
 msgid "%(user)s has removed character %(character)s"
-msgstr "%s убрал персонажа '%s'"
+msgstr "%(user)s удалил персонажа %(character)s"
 
 #: views/characters.py:159
 #, python-format
@@ -1727,59 +1712,10 @@ msgid "Removed character %s as requested."
 msgstr "Убрал персонажа %sпо запросу."
 
 #: views/data_export.py:53
-#, fuzzy, python-format
-#| msgid ""
-#| "Data export for topic <strong>%s</strong> has been started. This can take "
-#| "a couple of minutes. You will get a notification once it is completed."
+#, python-format
 msgid ""
 "Data export for topic %s has been started. This can take a couple of "
 "minutes. You will get a notification once it is completed."
 msgstr ""
-"Топик экспорта данных для <strong>%s</strong>запущен. Это займет несколько "
-"минут. По окончанию экспорта, вы получите уведомление."
-
-#, fuzzy, python-format
-#~| msgid "Started updating %s for character: %s."
-#~ msgid "Started updating %s for character %s."
-#~ msgstr "Началось обновление %s для персонажа: %s. "
-
-#, python-format
-#~ msgid "A skill set with the name %s already exists."
-#~ msgstr "Набор навыков с именем %s уже существует."
-
-#, python-format
-#~ msgid "Started updating %s for character: %s. "
-#~ msgstr "Началось обновление %s для персонажа: %s. "
-
-#~ msgid "Character<br>Name"
-#~ msgstr "Имя персонажа"
-
-#~ msgid "Character<br>Organization"
-#~ msgstr "Организация персонажа"
-
-#~ msgid "Main<br>Name"
-#~ msgstr "Основное Имя"
-
-#~ msgid "Main<br>Organization"
-#~ msgstr "Основная Организация"
-
-#~ msgid "Main<br>State"
-#~ msgstr "Основной Статус"
-
-#, python-format
-#~ msgid ""
-#~ "\n"
-#~ "                    Export files contain the complete data of all "
-#~ "<strong>%(amount_of_characters)s</strong>\n"
-#~ "                    characters known to Member Audit. They are in CSV "
-#~ "format and zipped.\n"
-#~ "                    Existing export files can updated after "
-#~ "%(minutes_until_next_update)s minutes.\n"
-#~ "                "
-#~ msgstr ""
-#~ "\n"
-#~ "Экспортируемые файлы содержат все данные для %(amount_of_characters)s "
-#~ "известных \"Просмотру персонажей\". Файлы в CSV формате и "
-#~ "заархивированы.\n"
-#~ "Существующие файлы могут быть обновлены через "
-#~ "%(minutes_until_next_update)s минут."
+"Топик экспорта данных для %s запущен. Это займет несколько минут. По "
+"окончанию экспорта, вы получите уведомление."
