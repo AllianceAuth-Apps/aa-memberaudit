@@ -358,10 +358,8 @@ class CharacterAdmin(admin.ModelAdmin):
                 )  # type: ignore
             self.message_user(
                 request,
-                _(
-                    "Started deleting %d character(s). "
-                    "This can take a minute." % queryset.count()
-                ),
+                _("Started deleting %d character(s). This can take a minute.")
+                % queryset.count(),
             )
             return redirect(request.get_full_path())
         return render(
@@ -380,7 +378,7 @@ class CharacterAdmin(admin.ModelAdmin):
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
-            self.message_user(request, _("Started updating character %s." % obj))
+            self.message_user(request, _("Started updating character %s.") % obj)
 
     @admin.display(
         description=_("Update assets for selected characters from EVE server")
@@ -392,7 +390,7 @@ class CharacterAdmin(admin.ModelAdmin):
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
             self.message_user(
-                request, _("Started updating assets for character %s." % obj)
+                request, _("Started updating assets for character %s.") % obj
             )
 
     @admin.display(
@@ -416,21 +414,16 @@ class CharacterAdmin(admin.ModelAdmin):
             )  # type: ignore
             self.message_user(
                 request,
-                _(
-                    "Started updating %s for character %s."
-                    % (Character.UpdateSection.display_name(section), obj)
-                ),
+                _("Started updating section %(section)s for character %(character)s.")
+                % {
+                    "section": Character.UpdateSection.display_name(section),
+                    "character": obj,
+                },
             )
 
     @admin.display(
-        description=(
-            _(
-                "Update %s for selected characters from EVE server"
-                % Character.UpdateSection.display_name(
-                    Character.UpdateSection.ONLINE_STATUS
-                )
-            )
-        )
+        description=_("Update %s for selected characters from EVE server")
+        % Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)
     )
     def update_online_status(self, request, queryset):
         section = Character.UpdateSection.ONLINE_STATUS
@@ -454,13 +447,13 @@ class CharacterAdmin(admin.ModelAdmin):
     def enable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=False)
-        self.message_user(request, _("Enabled %d characters." % len(pks)))
+        self.message_user(request, _("Enabled %d characters.") % len(pks))
 
     @admin.display(description=_("Disable selected characters"))
     def disable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
-        self.message_user(request, _("Disabled %d characters." % len(pks)))
+        self.message_user(request, _("Disabled %d characters.") % len(pks))
 
     inlines = (SyncStatusAdminInline,)
 
@@ -569,7 +562,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                     ):
                         eve_type = row.get("eve_type")
                         raise ValidationError(
-                            _("Skill '%s' must have a level." % eve_type.name)
+                            _("Skill '%s' must have a level.") % eve_type.name
                         )
 
 

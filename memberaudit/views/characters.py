@@ -145,8 +145,11 @@ def remove_character(request, character_pk: int) -> HttpResponse:
             content_type__app_label=Character._meta.app_label,
             codename="notified_on_character_removal",
         )
-        title = _("%s: Character has been removed!" % __title__)
-        message = _("%s has removed character '%s'" % (request.user, character_name))
+        title = _("%s: Character has been removed!") % __title__
+        message = _("%(user)s has removed character %(character)s") % {
+            "user": request.user,
+            "character": character_name,
+        }
         for to_notify in users_with_permission(permission_to_notify):
             if character.user_has_scope(to_notify):
                 notify(user=to_notify, title=title, message=message, level="INFO")
