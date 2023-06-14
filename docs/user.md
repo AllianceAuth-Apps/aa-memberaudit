@@ -8,6 +8,10 @@ Skill sets allow you to check if a character has a set of skills. This is often 
 
 In detail, skill sets are a list of skills with minimum and (optionally) recommended levels for each skill.
 
+Here is an example of a skill set for a Tristan fitting:
+
+![skill sets example](/_static/img/skill_set_example.png)
+
 You can define skill sets manually by adding skills with their levels. Or you can create them from existing fittings or skill plans. For example if you create them from a fitting, Member Audit will automatically determine which skills at which minimum levels are required to fly that fitting and create the skill set accordingly. If you want, you can then also add recommended levels for each skill.
 
 ### How to use skill sets
