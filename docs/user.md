@@ -1,28 +1,42 @@
 # User Manual
 
-## Skill Sets & Skill Set Groups
+## Skill sets
 
-### Skill sets
+### Introduction to skill sets
 
-Skill sets allow you to check if a character has a set of skills. This is most often used to see if a character can fly a ship fitting, but it can also be used more general, e.g. to see if a character can build a specific capital.
+Skill sets allow you to check if a character has a set of skills. This is often used to see if a character can fly a ship fitting, but it can also be used more general, e.g. to see if a character can build a specific capital.
 
-Skill sets are a list of skills with minimum and (optionally) recommended levels for each skill.
+In detail, skill sets are a list of skills with minimum and (optionally) recommended levels for each skill.
 
-You can define skill sets manually by adding skills with their levels. Or you can create them from existing fittings or skill plans. For example if you create them from a fitting, Member Audit will automatically determine which skills at which minimum level are required to fly that fitting and create the skill set accordingly. If you want you can then also add recommended levels for each skill.
+You can define skill sets manually by adding skills with their levels. Or you can create them from existing fittings or skill plans. For example if you create them from a fitting, Member Audit will automatically determine which skills at which minimum levels are required to fly that fitting and create the skill set accordingly. If you want, you can then also add recommended levels for each skill.
 
-Skill sets are shown for each character on the character viewer including the information if that particular character has all the skills or which skills are missing. This way a recruiter can quickly see, what doctrine ships an applicant can fly. Or an alliance member can see which skills he might need to train to fly a particular doctrine ship.
+### How to use skill sets
+
+Skill sets are shown for each character on the character viewer including the information if that particular character has all the skills or which skills are missing. This way a recruiter can quickly see, what doctrine ships a new applicant can fly.
+
+Or an alliance member can see which skills he might need to train to fly a particular doctrine ship.
+
+For example this character can fly an Archon, but is missing some skills to fly the doctrine Apostle.
+
+![skill sets character](/_static/img/skill_set_character.png)
 
 Another way to see which characters have specific skill sets is on the reports page. There all skill sets are shown that a character has the skills for.
 
-### Skill groups
+For example this character can fly these 3 ships for the listed doctrine:
+
+![skill sets report](/_static/img/skill_set_report.png)
+
+### How to organize skill sets
 
 Skill sets can be organized into skill set groups. A common skill set group would be a doctrine. Note that skill sets can belong to multiple skill set groups at the same time (or to none).
 
-### Editing skill sets & skill groups
+### How to create and maintain skill sets
 
-Skill sets and skill groups are be created and modified on the admin site.
+Skill sets and skill groups are created and modified on the admin site only.
 
-It is possible to give a user narrow access for just the purpose of editing skill sets & skill groups. For that a user needs to following permissions (e.g. defined through a group) and the user also needs to be granted the "staff" right, which is a user property.
+However, it is possible to delegate this responsibility to a non-admin user, by giving a user narrow access for just the purpose of editing skill sets & skill groups. For that a user needs some permissions (e.g. provided by a group like "Skill Set Manager") and he also needs to be granted the "staff" right, which is a user property.
+
+A user needs the following permissions for editing skill sets:
 
 - memberaudit | eve ship type | Can view eve ship type
 - memberaudit | eve skill type | Can view eve skill type
