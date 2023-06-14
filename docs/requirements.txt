@@ -4,15 +4,3 @@ sphinx_rtd_theme
 myst_parser
 sphinxcontrib-django2
 sphinx-copybutton
-
-# autodoc
-django>=4.0,<4.1
-django-celery-beat>=2
-django-bootstrap-form
-django-sortedm2m
-django-esi>=4
-celery>=5
-celery_once
-passlib
-redis>=4
-factory_boy
