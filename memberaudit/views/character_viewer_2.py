@@ -24,8 +24,8 @@ from app_utils.views import (
     yesno_str,
 )
 
-from .. import __title__
-from ..constants import (
+from memberaudit import __title__
+from memberaudit.constants import (
     DATETIME_FORMAT,
     DEFAULT_ICON_SIZE,
     MAIL_LABEL_ID_ALL_MAILS,
@@ -34,8 +34,15 @@ from ..constants import (
     SKILL_SET_DEFAULT_ICON_TYPE_ID,
     EveDogmaAttributeId,
 )
-from ..decorators import fetch_character_if_allowed
-from ..models import Character, CharacterMail, SkillSet, SkillSetSkill
+from memberaudit.decorators import fetch_character_if_allowed
+from memberaudit.models import (
+    Character,
+    CharacterMail,
+    CharacterPlanet,
+    SkillSet,
+    SkillSetSkill,
+)
+
 from ._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -249,6 +256,42 @@ def character_mining_ledger_data(
         }
         for row in qs
     ]
+    return JsonResponse({"data": data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
+def character_planets_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    data = list()
+    for planet in character.planets.select_related(
+        "eve_planet",
+        "eve_planet__eve_type",
+        "eve_planet__eve_solar_system",
+        "eve_planet__eve_solar_system__eve_constellation__eve_region",
+    ):
+        planet: CharacterPlanet
+        eve_solar_system = planet.eve_planet.eve_solar_system
+        solar_system_html = eve_solar_system_to_html(
+            eve_solar_system, show_region=False
+        )
+        data.append(
+            {
+                "id": planet.pk,
+                "region": eve_solar_system.eve_constellation.eve_region.name,
+                "solar_system": {
+                    "display": solar_system_html,
+                    "sort": eve_solar_system.name,
+                },
+                "planet": planet.eve_planet.name,
+                "type": planet.eve_planet.eve_type.name,
+                "num_pins": planet.num_pins,
+                "upgrade_level": planet.upgrade_level,
+            }
+        )
+
     return JsonResponse({"data": data})
 
 
