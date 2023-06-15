@@ -10,6 +10,7 @@ from eveuniverse.models import (
     EveBloodline,
     EveEntity,
     EveFaction,
+    EvePlanet,
     EveRace,
     EveSolarSystem,
     EveType,
@@ -902,6 +903,29 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
 CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_queryset(
     CharacterMiningLedgerEntryQueryset
 )
+
+
+class CharacterPlanetManager(models.Manager):
+    @transaction.atomic()
+    def update_for_character(self, character: models.Model, planets_data):
+        self.filter(character=character).delete()
+        if planets_data:
+            planets = []
+            for obj in planets_data:
+                eve_planet, _ = EvePlanet.objects.get_or_create_esi(id=obj["planet_id"])
+                planets.append(
+                    self.model(
+                        character=character,
+                        eve_planet=eve_planet,
+                        num_pins=obj["num_pins"],
+                        upgrade_level=obj["upgrade_level"],
+                        last_update_at=obj["last_update"],
+                    )
+                )
+            logger.info("%s: Storing %s planets", character, len(planets))
+            self.bulk_create(planets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        else:
+            logger.info("%s: No planets", character)
 
 
 class CharacterShipManager(models.Manager):

@@ -8,7 +8,7 @@ from typing import Iterable
 
 from django.contrib.auth.models import Group, User
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import State
 from app_utils.testing import create_authgroup
@@ -28,6 +28,7 @@ from memberaudit.models import (
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
+    CharacterPlanet,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
@@ -297,6 +298,19 @@ def create_online_status(character: Character, **kwargs) -> CharacterOnlineStatu
     }
     params.update(kwargs)
     return CharacterOnlineStatus.objects.create(**params)
+
+
+def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
+    planet_ids = EvePlanet.objects.values_list("id", flat=True)
+    params = {
+        "character": character,
+        "last_update_at": now() - dt.timedelta(days=random.randint(0, 300)),
+        "num_pins": random.randint(1, 10),
+        "eve_planet": EvePlanet.objects.get(id=random.choice(planet_ids)),
+        "upgrade_level": random.randint(0, 5),
+    }
+    params.update(kwargs)
+    return CharacterPlanet.objects.create(**params)
 
 
 def create_skill_set(**kwargs):

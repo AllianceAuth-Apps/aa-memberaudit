@@ -31,6 +31,7 @@ from .sections import (  # noqa: F401
     CharacterMailUnreadCount,
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
+    CharacterPlanet,
     CharacterShip,
     CharacterSkill,
     CharacterSkillpoints,

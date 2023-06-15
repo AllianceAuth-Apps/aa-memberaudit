@@ -14,6 +14,7 @@ from eveuniverse.models import (
     EveBloodline,
     EveEntity,
     EveFaction,
+    EvePlanet,
     EveRace,
     EveSolarSystem,
     EveType,
@@ -43,6 +44,7 @@ from memberaudit.managers.sections import (
     CharacterMailLabelManager,
     CharacterMailManager,
     CharacterMiningLedgerEntryManager,
+    CharacterPlanetManager,
     CharacterShipManager,
     CharacterSkillManager,
     CharacterSkillqueueEntryManager,
@@ -939,6 +941,37 @@ class CharacterOnlineStatus(models.Model):
         return str(self.character)
 
 
+class CharacterPlanet(models.Model):
+    """A planetary colony belonging to a character."""
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="planets"
+    )
+    eve_planet = models.ForeignKey(
+        EvePlanet, on_delete=models.CASCADE, related_name="+"
+    )
+
+    last_update_at = models.DateTimeField()
+    num_pins = models.PositiveIntegerField()
+    upgrade_level = models.PositiveIntegerField()
+
+    objects = CharacterPlanetManager()
+
+    # class Meta:
+    #     default_permissions = ()
+    #     constraints = [
+    #         models.UniqueConstraint(
+    #             fields=["character", "eve_planet"], name="functional_pk_characterplanet"
+    #
+    #     ]
+
+    def __str__(self) -> str:
+        return f"{self.character}-{self.eve_planet.name}"
+
+    def planet_type(self) -> str:
+        return self.eve_planet.eve_type.name
+
+
 class CharacterShip(models.Model):
     """Current ship of a character"""
 
@@ -958,6 +991,8 @@ class CharacterShip(models.Model):
 
 
 class CharacterSkill(models.Model):
+    """A trained skill of a character."""
+
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="skills"
     )

@@ -609,6 +609,30 @@
             }
         ]
     },
+    "Planetary_Interaction": {
+        "get_characters_character_id_planets": {
+            "1001": [
+                {
+                    "last_update": "2016-11-28T16:42:51Z",
+                    "num_pins": 1,
+                    "owner_id": 1001,
+                    "planet_id": 40161463,
+                    "planet_type": "barren",
+                    "solar_system_id": 30002537,
+                    "upgrade_level": 0
+                },
+                {
+                    "last_update": "2016-11-28T16:41:54Z",
+                    "num_pins": 2,
+                    "owner_id": 1001,
+                    "planet_id": 40161464,
+                    "planet_type": "temperate",
+                    "solar_system_id": 30002537,
+                    "upgrade_level": 3
+                }
+            ]
+        }
+    },
     "Status": {
         "get_status": {
             "players": 12345,

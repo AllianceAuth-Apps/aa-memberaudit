@@ -10,7 +10,8 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
-from ...models import CharacterAttributes, CharacterFwStats
+from memberaudit.models import CharacterAttributes, CharacterFwStats
+
 from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import create_character, create_character_mining_ledger_entry
 from ..testdata.load_entities import load_entities

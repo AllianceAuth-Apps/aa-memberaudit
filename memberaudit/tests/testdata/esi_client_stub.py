@@ -137,6 +137,12 @@ _endpoints = [
     ),
     EsiEndpoint("Market", "get_markets_prices"),
     EsiEndpoint(
+        "Planetary_Interaction",
+        "get_characters_character_id_planets",
+        "character_id",
+        needs_token=True,
+    ),
+    EsiEndpoint(
         "Skills",
         "get_characters_character_id_skills",
         "character_id",
