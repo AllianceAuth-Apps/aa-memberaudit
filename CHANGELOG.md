@@ -9,14 +9,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [2.9.0] - TBD
 
+### Update notes
+
+Users now need the new permission `view_skill_sets` in order to see the skill sets for a character. Please add this new permission to your states / groups accordingly. The rational behind this change is that is allows you to hide your doctrine fits from guests and new recruits.
+
 ### Added
 
 - Show by whom and when a skill set was last modified
-
 - Show by whom and when a skill set group was last modified
+- New permission `view_skill_sets`
 
 ### Changed
 
+- Viewing skill sets for characters now require the new permission `view_skill_sets` (#130)
 - Switched to flit build tool
 
 ### Fixed

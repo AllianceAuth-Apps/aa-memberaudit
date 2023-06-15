@@ -7,6 +7,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
+from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import (
     NoSocketsTestCase,
     generate_invalid_pk,
@@ -14,7 +15,7 @@ from app_utils.testing import (
     response_text,
 )
 
-from ...models import (
+from memberaudit.models import (
     CharacterJumpClone,
     CharacterJumpCloneImplant,
     CharacterMail,
@@ -23,11 +24,8 @@ from ...models import (
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
     Location,
-    SkillSet,
-    SkillSetGroup,
-    SkillSetSkill,
 )
-from ...views.character_viewer_2 import (
+from memberaudit.views.character_viewer_2 import (
     character_jump_clones_data,
     character_mail,
     character_mail_headers_by_label_data,
@@ -40,12 +38,16 @@ from ...views.character_viewer_2 import (
     character_wallet_journal_data,
     character_wallet_transactions_data,
 )
+
 from ..testdata.factories import (
     create_character_mail,
     create_character_mail_label,
     create_character_mining_ledger_entry,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -211,7 +213,7 @@ class TestMailData(TestCase):
             },
         )
 
-    def test_mail_to_mailinglist(self):
+    def test_mail_to_mailing_list(self):
         """can return mail sent to mailing list"""
         # given
         request = self.factory.get(
@@ -275,6 +277,9 @@ class TestMailData(TestCase):
 
 class TestSkillSetsData(LoadTestDataMixin, TestCase):
     def test_skill_sets_data(self):
+        self.user = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_skill_sets", self.user
+        )
         CharacterSkill.objects.create(
             character=self.character,
             eve_type=self.skill_type_1,
@@ -290,12 +295,12 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
             trained_skill_level=5,
         )
 
-        doctrine_1 = SkillSetGroup.objects.create(name="Alpha")
-        doctrine_2 = SkillSetGroup.objects.create(name="Bravo", is_doctrine=True)
+        doctrine_1 = create_skill_set_group(name="Alpha")
+        doctrine_2 = create_skill_set_group(name="Bravo", is_doctrine=True)
 
         # can fly ship 1
-        ship_1 = SkillSet.objects.create(name="Ship 1")
-        SkillSetSkill.objects.create(
+        ship_1 = create_skill_set(name="Ship 1")
+        create_skill_set_skill(
             skill_set=ship_1,
             eve_type=self.skill_type_1,
             required_level=3,
@@ -305,18 +310,18 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         doctrine_2.skill_sets.add(ship_1)
 
         # can not fly ship 2
-        ship_2 = SkillSet.objects.create(name="Ship 2")
-        SkillSetSkill.objects.create(
+        ship_2 = create_skill_set(name="Ship 2")
+        create_skill_set_skill(
             skill_set=ship_2, eve_type=self.skill_type_1, required_level=3
         )
-        SkillSetSkill.objects.create(
+        create_skill_set_skill(
             skill_set=ship_2, eve_type=self.skill_type_2, required_level=3
         )
         doctrine_1.skill_sets.add(ship_2)
 
         # can fly ship 3 (No SkillSetGroup)
-        ship_3 = SkillSet.objects.create(name="Ship 3")
-        SkillSetSkill.objects.create(
+        ship_3 = create_skill_set(name="Ship 3")
+        create_skill_set_skill(
             skill_set=ship_3, eve_type=self.skill_type_1, required_level=1
         )
 
@@ -376,6 +381,17 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         )
         self.assertIn(url, row["action"])
 
+    def test_need_permission_to_see_data(self):
+        # given
+        request = self.factory.get(
+            reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_skill_sets_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 302)
+
 
 class TestSkillSetsDetails(TestCase):
     @classmethod
@@ -414,30 +430,33 @@ class TestSkillSetsDetails(TestCase):
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
-        skill_set = SkillSet.objects.create(name="skill set")
-        SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        create_skill_set_skill(
             skill_set=skill_set,
             eve_type=amarr_carrier,
             required_level=3,
             recommended_level=5,
         )
-        SkillSetSkill.objects.create(
+        create_skill_set_skill(
             skill_set=skill_set,
             eve_type=caldari_carrier,
             required_level=None,
             recommended_level=3,
         )
-        SkillSetSkill.objects.create(
+        create_skill_set_skill(
             skill_set=skill_set,
             eve_type=gallente_carrier,
             required_level=3,
             recommended_level=None,
         )
-        SkillSetSkill.objects.create(
+        create_skill_set_skill(
             skill_set=skill_set,
             eve_type=minmatar_carrier,
             required_level=None,
             recommended_level=None,
+        )
+        self.user = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_skill_sets", self.user
         )
         request = self.factory.get(
             reverse(
@@ -462,6 +481,22 @@ class TestSkillSetsDetails(TestCase):
         self.assertIn("Caldari Carrier III", missing_skills_str)
         self.assertIn("Minmatar Carrier I", missing_skills_str)
         self.assertNotIn("Gallente Carrier", missing_skills_str)
+
+    def test_need_permission_to_see_data(self):
+        # given
+        skill_set = create_skill_set()
+        request = self.factory.get(
+            reverse(
+                "memberaudit:character_skill_set_details",
+                args=[self.character.pk, skill_set.pk],
+            )
+        )
+
+        request.user = self.user
+        # when
+        response = character_skill_sets_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 302)
 
 
 class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):

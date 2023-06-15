@@ -301,14 +301,14 @@ def create_online_status(character: Character, **kwargs) -> CharacterOnlineStatu
 
 def create_skill_set(**kwargs):
     my_id = next_number("skill_set_id")
-    params = {"name": f"Test Set {my_id}", "description": "Generated test set"}
+    params = {"name": f"Test Set {my_id}", "description": "Generated skill set"}
     params.update(kwargs)
     return SkillSet.objects.create(**params)
 
 
 def create_skill_set_group(**kwargs):
     my_id = next_number("skill_set_group_id")
-    params = {"name": f"Test Group {my_id}", "description": "Generated test group"}
+    params = {"name": f"Test Group {my_id}", "description": "Generated skill set group"}
     params.update(kwargs)
     return SkillSetGroup.objects.create(**params)
 

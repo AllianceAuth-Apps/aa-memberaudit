@@ -2,12 +2,14 @@
 
 <!-- Nav tabs -->
 <ul class="nav nav-tabs" role="tablist">
+
     <li role="presentation">
         <a href="#assets" aria-controls="assets" role="tab" data-toggle="tab">
             {% translate 'Assets' %}
             {% if is_assets_updating %}&nbsp;<i class="fas fa-exclamation-circle" title="{% translate 'Update in progress...' %}"></i>{% endif %}
         </a>
     </li>
+
     <li role="presentation"><a href="#attributes" aria-controls="attributes" role="tab" data-toggle="tab">{% translate 'Attributes' %}</a></li>
     <li role="presentation"><a href="#bio" aria-controls="bio" role="tab" data-toggle="tab">{% translate 'Bio' %}</a></li>
     <li role="presentation"><a href="#contacts" aria-controls="contacts" role="tab" data-toggle="tab">{% translate 'Contacts' %}</a></li>
@@ -31,7 +33,9 @@
         <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">{% translate 'Skills' %}&nbsp;<b class="caret"></b></a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
         <li class=""><a href="#skillqueue" tabindex="-1" data-toggle="tab">{% translate 'Skill Queue' %}</a></li>
-        <li class=""><a href="#skill_sets" tabindex="-1" data-toggle="tab">{% translate 'Skill Sets' %}</a></li>
+        {% if perms.memberaudit.view_skill_sets %}
+            <li class=""><a href="#skill_sets" tabindex="-1" data-toggle="tab">{% translate 'Skill Sets' %}</a></li>
+        {% endif %}
         <li class=""><a href="#skills" tabindex="-1" data-toggle="tab">{% translate 'Skills' %}</a></li>
         </ul>
     </li>

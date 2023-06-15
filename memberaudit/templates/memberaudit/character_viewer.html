@@ -37,7 +37,9 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
+                        {% if perms.memberaudit.view_skill_sets %}
+                            {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
+                        {% endif %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
