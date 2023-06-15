@@ -36,6 +36,7 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
                         {% if perms.memberaudit.view_skill_sets %}
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
@@ -548,6 +549,31 @@
                     }
                 });
         })
+
+        /* Planets */
+        $('#tab_planets').DataTable({
+            ajax: {
+                url: "{% url 'memberaudit:character_planets_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'region' },
+                {
+                    data: 'solar_system',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                { data: 'planet' },
+                { data: 'type' },
+                { data: 'num_plus' },
+                { data: 'upgrade_level' },
+            ],
+            order: [[0, "asc"]],
+        });
+
 
         /* Skillqueue */
         $('#tab_skillqueue').DataTable({

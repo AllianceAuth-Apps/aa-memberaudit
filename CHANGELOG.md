@@ -18,6 +18,7 @@ Users now need the new permission `view_skill_sets` in order to see the skill se
 - Show by whom and when a skill set was last modified
 - Show by whom and when a skill set group was last modified
 - New permission `view_skill_sets`
+- New tab showing a characters PI planets
 
 ### Changed
 
