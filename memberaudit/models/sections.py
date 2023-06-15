@@ -957,13 +957,13 @@ class CharacterPlanet(models.Model):
 
     objects = CharacterPlanetManager()
 
-    # class Meta:
-    #     default_permissions = ()
-    #     constraints = [
-    #         models.UniqueConstraint(
-    #             fields=["character", "eve_planet"], name="functional_pk_characterplanet"
-    #
-    #     ]
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character", "eve_planet"], name="functional_pk_characterplanet"
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.character}-{self.eve_planet.name}"
