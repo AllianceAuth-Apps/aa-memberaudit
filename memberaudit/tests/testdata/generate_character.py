@@ -40,7 +40,8 @@ from memberaudit.models import (
     CharacterLocation,
     CharacterWalletJournalEntry,
 )
-from memberaudit.tests import create_memberaudit_character
+from memberaudit.tests.testdata.factories import create_character_planet
+from memberaudit.tests.utils import create_memberaudit_character
 
 WALLET_JOURNAL_ENTRIES = 100_000
 
@@ -50,6 +51,7 @@ def main():
     create_details(eve_character, corporation, character)
     create_location(character)
     create_wallet_journal(eve_character, character)
+    create_planets(character)
     print("DONE")
 
 
@@ -88,7 +90,9 @@ def create_details(eve_character, corporation, character):
 
 
 def create_location(character):
-    eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=30004984)
+    eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
+        id=30004984, include_children=True
+    )
     CharacterLocation.objects.create(
         character=character, eve_solar_system=eve_solar_system
     )
@@ -125,6 +129,11 @@ def create_wallet_journal(eve_character, character):
             )
         )
     CharacterWalletJournalEntry.objects.bulk_create(objs, batch_size=500)
+
+
+def create_planets(character):
+    for _ in range(10):
+        create_character_planet(character)
 
 
 main()

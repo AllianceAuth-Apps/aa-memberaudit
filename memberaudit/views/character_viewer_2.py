@@ -288,7 +288,10 @@ def character_planets_data(
                 "planet": planet.eve_planet.name,
                 "type": planet.eve_planet.type_name(),
                 "num_pins": planet.num_pins,
-                "upgrade_level": planet.upgrade_level,
+                "upgrade_level": MAP_ARABIC_TO_ROMAN_NUMBERS.get(
+                    planet.upgrade_level, ""
+                ),
+                "solar_system_name": eve_solar_system.name,
             }
         )
 

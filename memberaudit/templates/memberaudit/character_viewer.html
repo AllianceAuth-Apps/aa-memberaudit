@@ -568,10 +568,15 @@
                 },
                 { data: 'planet' },
                 { data: 'type' },
-                { data: 'num_plus' },
+                { data: 'num_pins' },
                 { data: 'upgrade_level' },
+                { data: 'solar_system_name' },
             ],
-            order: [[0, "asc"]],
+            order: [[0, "asc"], [1, "asc"]],
+            columnDefs: [
+                { "visible": false, "targets": [6] },
+            ],
+
             filterDropDown: {
                 columns: [
                     {
@@ -579,7 +584,7 @@
                         title: "{% translate 'Region' %}"
                     },
                     {
-                        idx: 1,
+                        idx: 6,
                         title: "{% translate 'Solar System' %}"
                     },
                     {
