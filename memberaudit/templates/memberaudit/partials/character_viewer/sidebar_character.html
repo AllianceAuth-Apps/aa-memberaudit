@@ -1,7 +1,7 @@
 {% load i18n %}
 {% load evelinks %}
 
-<span class="nowrap">
+<span class="text-nowrap">
     <img height="20" width="20" src="{{ character.character_id|character_portrait_url:32 }}"/>
     <span {% if not character.memberaudit_character_pk %}class="text-muted"{% endif%}>
         {{ character.character_name }}
