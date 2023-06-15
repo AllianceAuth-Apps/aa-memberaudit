@@ -523,6 +523,15 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
     )
     ordering = ["name"]
     filter_horizontal = ("skill_sets",)
+    readonly_fields = ("last_modified_at", "last_modified_by")
+    fields = [
+        "name",
+        "description",
+        "skill_sets",
+        "is_doctrine",
+        "is_active",
+        ("last_modified_at", "last_modified_by"),
+    ]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -536,6 +545,11 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
 
     def _skill_sets(self, obj):
         return format_html("<br>".join([x.name for x in obj.skill_sets_ordered]))
+
+    def save_model(self, request, obj, form, change):
+        obj.last_modified_by = request.user
+        obj.last_modified_at = now()
+        super().save_model(request, obj, form, change)
 
 
 class MinValidatedInlineMixIn:

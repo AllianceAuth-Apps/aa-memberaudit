@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.9.0] - TBD
+
+### Added
+
+- Show by whom and when a skill set was last modified
+
+- Show by whom and when a skill set group was last modified
+
 ### Changed
 
 - Switched to flit build tool

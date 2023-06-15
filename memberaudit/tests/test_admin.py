@@ -18,8 +18,14 @@ from memberaudit.admin import (
     ComplianceGroupDesignationAdmin,
     ComplianceGroupDesignationForm,
     SkillSetAdmin,
+    SkillSetGroupAdmin,
 )
-from memberaudit.models import Character, ComplianceGroupDesignation, SkillSet
+from memberaudit.models import (
+    Character,
+    ComplianceGroupDesignation,
+    SkillSet,
+    SkillSetGroup,
+)
 
 from .testdata.factories import (
     create_character_update_status,
@@ -374,3 +380,28 @@ class TestSkillSetSkillAdmin(TestCase):
         # then
         self.assertEqual(response.status_code, 200)
         self.assertIn("error", response.content.decode("utf-8"))
+
+
+class TestSkillSetGroupAdmin(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        cls.modeladmin = SkillSetGroupAdmin(model=SkillSetGroup, admin_site=AdminSite())
+        load_eveuniverse()
+        load_entities()
+        cls.superuser = User.objects.create_superuser("Superman")
+
+    def test_save_model(self):
+        # given
+        obj = SkillSetGroup(name="Dummy")
+        request = MockRequest(self.superuser)
+        form = self.modeladmin.get_form(request)
+        my_now = now()
+        # when
+        with patch(ADMIN_PATH + ".now", lambda: my_now):
+            self.modeladmin.save_model(request, obj, form, True)
+        # then
+        obj_2: SkillSetGroup = SkillSetGroup.objects.get(name="Dummy")
+        self.assertEqual(obj_2.last_modified_by, self.superuser)
+        self.assertEqual(obj_2.last_modified_at, my_now)
