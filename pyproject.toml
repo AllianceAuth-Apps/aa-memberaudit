@@ -38,7 +38,7 @@ dependencies = [
     "allianceauth>=3",
     "bleach",
     "dj-datatables-view",
-    "django-eveuniverse>=0.19",
+    "django-eveuniverse>=1.2",
     "humanize",
     "unidecode",
 ]

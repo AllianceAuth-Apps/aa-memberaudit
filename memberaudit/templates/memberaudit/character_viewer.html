@@ -572,6 +572,24 @@
                 { data: 'upgrade_level' },
             ],
             order: [[0, "asc"]],
+            filterDropDown: {
+                columns: [
+                    {
+                        idx: 0,
+                        title: "{% translate 'Region' %}"
+                    },
+                    {
+                        idx: 1,
+                        title: "{% translate 'Solar System' %}"
+                    },
+                    {
+                        idx: 3,
+                        title: "{% translate 'Planet Type' %}"
+                    }
+                ],
+                autoSize: false,
+                bootstrap: true
+            }
         });
 
 

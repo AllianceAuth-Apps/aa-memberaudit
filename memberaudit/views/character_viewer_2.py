@@ -286,7 +286,7 @@ def character_planets_data(
                     "sort": eve_solar_system.name,
                 },
                 "planet": planet.eve_planet.name,
-                "type": planet.eve_planet.eve_type.name,
+                "type": planet.eve_planet.type_name(),
                 "num_pins": planet.num_pins,
                 "upgrade_level": planet.upgrade_level,
             }
