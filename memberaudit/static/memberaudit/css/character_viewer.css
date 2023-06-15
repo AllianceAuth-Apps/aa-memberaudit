@@ -1,4 +1,8 @@
 @media all {
+    h3 {
+        margin-top: 0px;
+    }
+
     h4 {
         margin-top: 0px;
     }

@@ -23,6 +23,7 @@ Users now need the new permission `view_skill_sets` in order to see the skill se
 ### Changed
 
 - Viewing skill sets for characters now require the new permission `view_skill_sets` (#130)
+- All character sections tabs now have a title
 - Switched to flit build tool
 
 ### Fixed

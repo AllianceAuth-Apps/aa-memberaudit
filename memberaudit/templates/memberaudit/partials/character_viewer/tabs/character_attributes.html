@@ -1,8 +1,9 @@
+{% load i18n %}
 {% load static %}
 
 <div role="tabpanel" class="tab-pane" id="attributes">
-
-     <div id="div_character_attributes">
+    <h3>{% translate 'Attributes' %}</h3>
+    <div id="div_character_attributes">
         {% if NIGHT_MODE %}
             <img src="{% static 'memberaudit/images/Spinner-1s-64px-dark.gif' %}"/>
         {% else %}
