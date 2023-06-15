@@ -111,7 +111,7 @@
                             <dt>{% translate 'Skillpoints:' %}</dt>
                             {% if character.skillpoints %}
                                 <dd>
-                                    {{ character.skillpoints.total|intword }} (total)<br>
+                                    {{ character.skillpoints.total|intword }} (allocated)<br>
                                     {{ character.skillpoints.unallocated|intword|default:"-" }} (unallocated)
                                 </dd>
                             {% else %}

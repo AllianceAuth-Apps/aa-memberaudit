@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Fixed
+
+- Skillpoints Data Mislabeled (#141)
+
 ## [2.8.1] - 2023-05-09
 
 ### Changes
