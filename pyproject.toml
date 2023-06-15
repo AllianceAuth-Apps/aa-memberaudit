@@ -1,13 +1,12 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
 
 [project]
 name = "aa-memberaudit"
-dynamic = ["version"]
-description = "An Alliance Auth app that provides full access to Eve characters and related reports for auditing, vetting and monitoring."
+dynamic = ["version", "description"]
 readme = "README.md"
-license = "MIT"
+license = {file = "LICENSE"}
 requires-python = ">=3.8"
 authors = [
     { name = "Erik Kalkoken", email = "kalkoken87@gmail.com" },
@@ -51,13 +50,8 @@ Source = "https://gitlab.com/ErikKalkoken/aa-memberaudit"
 Changelog = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/CHANGELOG.md"
 Tracker = "https://gitlab.com/ErikKalkoken/aa-memberaudit/-/issues"
 
-[tool.hatch.version]
-path = "memberaudit/__init__.py"
-
-[tool.hatch.build]
-include = [
-    "/memberaudit",
-]
+[tool.flit.module]
+name = "memberaudit"
 
 [tool.isort]
 profile = "black"

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Changed
+
+- Switched to flit build tool
+
 ### Fixed
 
 - Skillpoints Data Mislabeled (#141)
