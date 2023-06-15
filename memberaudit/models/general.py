@@ -14,9 +14,9 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..constants import MAP_ARABIC_TO_ROMAN_NUMBERS
-from ..managers.general import (
+from memberaudit import __title__
+from memberaudit.constants import MAP_ARABIC_TO_ROMAN_NUMBERS
+from memberaudit.managers.general import (
     ComplianceGroupDesignationManager,
     EveShipTypeManger,
     EveSkillTypeManger,
@@ -24,6 +24,7 @@ from ..managers.general import (
     MailEntityManager,
     SkillSetManager,
 )
+
 from .constants import NAMES_MAX_LENGTH
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -50,6 +51,7 @@ class General(models.Model):
             ("view_same_alliance", "Can view alliance characters"),
             ("view_everything", "Can view all characters"),
             ("notified_on_character_removal", "Notified when member drops character"),
+            ("view_skill_sets", "Can view skill sets for a character"),
         )
 
     @classmethod
@@ -263,13 +265,7 @@ class EveSkillType(EveType):
 class SkillSetGroup(models.Model):
     """A group of SkillSets, e.g. for defining a doctrine"""
 
-    name = models.CharField(
-        max_length=NAMES_MAX_LENGTH, unique=True, verbose_name=_("name")
-    )
     description = models.TextField(blank=True, verbose_name=_("description"))
-    skill_sets = models.ManyToManyField(
-        "SkillSet", related_name="groups", verbose_name=_("skill sets")
-    )
     is_doctrine = models.BooleanField(
         default=False,
         db_index=True,
@@ -283,6 +279,18 @@ class SkillSetGroup(models.Model):
         db_index=True,
         verbose_name=_("is active"),
         help_text=_("Whether this skill set group is in active use"),
+    )
+    last_modified_at = models.DateTimeField(
+        null=True, default=None
+    )  # TODO: Remove default when migrations are reset
+    last_modified_by = models.ForeignKey(
+        User, on_delete=models.SET_DEFAULT, null=True, default=None
+    )
+    name = models.CharField(
+        max_length=NAMES_MAX_LENGTH, unique=True, verbose_name=_("name")
+    )
+    skill_sets = models.ManyToManyField(
+        "SkillSet", related_name="groups", verbose_name=_("skill sets")
     )
 
     class Meta:
@@ -303,10 +311,25 @@ class SkillSet(models.Model):
     a particular task like flying a doctrine ships.
     """
 
+    description = models.TextField(blank=True, verbose_name=_("description"))
+    is_visible = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name=_("is visible"),
+        help_text=_(
+            "Non visible skill sets are not shown to users "
+            "on their character sheet and used for audit purposes only."
+        ),
+    )
+    last_modified_at = models.DateTimeField(
+        null=True, default=None
+    )  # TODO: Remove default when migrations are reset
+    last_modified_by = models.ForeignKey(
+        User, on_delete=models.SET_DEFAULT, null=True, default=None
+    )
     name = models.CharField(
         max_length=NAMES_MAX_LENGTH, unique=True, verbose_name=_("name")
     )
-    description = models.TextField(blank=True, verbose_name=_("description"))
     ship_type = models.ForeignKey(
         EveShipType,
         on_delete=models.SET_DEFAULT,
@@ -320,15 +343,6 @@ class SkillSet(models.Model):
                 "Ship type is used for visual presentation only. "
                 "All skill requirements must be explicitly defined."
             )
-        ),
-    )
-    is_visible = models.BooleanField(
-        default=True,
-        db_index=True,
-        verbose_name=_("is visible"),
-        help_text=_(
-            "Non visible skill sets are not shown to users "
-            "on their character sheet and used for audit purposes only."
         ),
     )
 
