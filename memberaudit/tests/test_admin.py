@@ -4,6 +4,7 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils.timezone import now
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from app_utils.testing import (
@@ -12,14 +13,25 @@ from app_utils.testing import (
     create_user_from_evecharacter,
 )
 
-from ..admin import (
+from memberaudit.admin import (
     CharacterAdmin,
     ComplianceGroupDesignationAdmin,
     ComplianceGroupDesignationForm,
     SkillSetAdmin,
+    SkillSetGroupAdmin,
 )
-from ..models import Character, ComplianceGroupDesignation, SkillSet
-from .testdata.factories import create_character_update_status, create_compliance_group
+from memberaudit.models import (
+    Character,
+    ComplianceGroupDesignation,
+    SkillSet,
+    SkillSetGroup,
+)
+
+from .testdata.factories import (
+    create_character_update_status,
+    create_compliance_group,
+    create_skill_set,
+)
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .utils import (
@@ -229,6 +241,7 @@ class TestCharacterAdmin(TestCase):
         self.assertTrue(mock_message_user.called)
 
 
+@patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
 class TestSkillSetAdmin(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -239,21 +252,29 @@ class TestSkillSetAdmin(TestCase):
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
-    @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
     def test_save_model(self, mock_update_characters_skill_checks):
-        ship = SkillSet.objects.create(name="Dummy")
+        # given
+        obj = SkillSet(name="Dummy")
         request = MockRequest(self.user)
         form = self.modeladmin.get_form(request)
-        self.modeladmin.save_model(request, ship, form, True)
-
+        my_now = now()
+        # when
+        with patch(ADMIN_PATH + ".now", lambda: my_now):
+            self.modeladmin.save_model(request, obj, form, True)
+        # then
+        obj_2: SkillSet = SkillSet.objects.get(name="Dummy")
+        self.assertEqual(obj_2.last_modified_by, self.user)
+        self.assertEqual(obj_2.last_modified_at, my_now)
         self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
 
-    @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
     def test_delete_model(self, mock_update_characters_skill_checks):
-        ship = SkillSet.objects.create(name="Dummy")
+        # given
+        obj = create_skill_set(name="Dummy")
         request = MockRequest(self.user)
-        self.modeladmin.delete_model(request, ship)
-
+        # when
+        self.modeladmin.delete_model(request, obj)
+        # then
+        self.assertFalse(SkillSet.objects.filter(pk=obj.pk).exists())
         self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
 
     # def test_ship_type_filter(self):
@@ -359,3 +380,28 @@ class TestSkillSetSkillAdmin(TestCase):
         # then
         self.assertEqual(response.status_code, 200)
         self.assertIn("error", response.content.decode("utf-8"))
+
+
+class TestSkillSetGroupAdmin(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        cls.modeladmin = SkillSetGroupAdmin(model=SkillSetGroup, admin_site=AdminSite())
+        load_eveuniverse()
+        load_entities()
+        cls.superuser = User.objects.create_superuser("Superman")
+
+    def test_save_model(self):
+        # given
+        obj = SkillSetGroup(name="Dummy")
+        request = MockRequest(self.superuser)
+        form = self.modeladmin.get_form(request)
+        my_now = now()
+        # when
+        with patch(ADMIN_PATH + ".now", lambda: my_now):
+            self.modeladmin.save_model(request, obj, form, True)
+        # then
+        obj_2: SkillSetGroup = SkillSetGroup.objects.get(name="Dummy")
+        self.assertEqual(obj_2.last_modified_by, self.superuser)
+        self.assertEqual(obj_2.last_modified_at, my_now)

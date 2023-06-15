@@ -514,14 +514,21 @@ class SkillSetManager(models.Manager):
         """Update or create a skill set from skills."""
         from ..models import SkillSetSkill
 
+        my_now = now()
         description = (
             f"Generated from {source} "
             f"by {user if user else '?'} "
-            f"at {now().strftime(DATETIME_FORMAT)}"
+            f"at {my_now.strftime(DATETIME_FORMAT)}"
         )
         with transaction.atomic():
             skill_set, created = self.update_or_create(
-                name=name, defaults={"description": description, "ship_type": ship_type}
+                name=name,
+                defaults={
+                    "description": description,
+                    "ship_type": ship_type,
+                    "last_modified_at": my_now,
+                    "last_modified_by": user,
+                },
             )
             skill_set.skills.all().delete()
             skill_set_skills = [

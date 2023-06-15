@@ -1,13 +1,17 @@
+import datetime as dt
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import RequestFactory
 from django.urls import reverse
+from django.utils.timezone import now
 
+from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase
 
-from ...models import SkillSet
-from ...views import admin
+from memberaudit.models import SkillSet
+from memberaudit.views import admin
+
 from ..testdata.factories import (
     create_fitting_text,
     create_skill_set,
@@ -15,11 +19,12 @@ from ..testdata.factories import (
 )
 from ..testdata.load_eveuniverse import load_eveuniverse
 
-MODULE_PATH = "memberaudit.views.admin"
+VIEWS_PATH = "memberaudit.views.admin"
+MANAGERS_PATH = "memberaudit.managers.general"
 
 
-@patch(MODULE_PATH + ".messages", spec=True)
-@patch(MODULE_PATH + ".tasks", spec=True)
+@patch(VIEWS_PATH + ".messages", spec=True)
+@patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromFitting(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -47,30 +52,45 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
             data={"fitting_text": self.fitting_text},
         )
         request.user = self.superuser
+        my_now = now()
         # when
-        response = admin.admin_create_skillset_from_fitting(request)
+        with patch(MANAGERS_PATH + ".now", lambda: my_now):
+            response = admin.admin_create_skillset_from_fitting(request)
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
         self.assertTrue(mock_messages.info.called)
         self.assertEqual(SkillSet.objects.count(), 1)
+        obj: SkillSet = SkillSet.objects.first()
+        self.assertEqual(obj.last_modified_at, my_now)
+        self.assertEqual(obj.last_modified_by, self.superuser)
 
     def test_should_overwrite_existing_skillset(self, mock_tasks, mock_messages):
         # given
-        skill_set = create_skill_set(name="Tristan - Standard Kite (cap stable)")
+        other_user = AuthUtils.create_user("nobody")
+        old_dt = now() - dt.timedelta(days=10)
+        skill_set = create_skill_set(
+            name="Tristan - Standard Kite (cap stable)",
+            last_modified_by=other_user,
+            last_modified_at=old_dt,
+        )
         request = self.factory.post(
             reverse("memberaudit:admin_create_skillset_from_fitting"),
             data={"fitting_text": self.fitting_text, "can_overwrite": True},
         )
         request.user = self.superuser
+        my_now = now()
         # when
-        response = admin.admin_create_skillset_from_fitting(request)
+        with patch(MANAGERS_PATH + ".now", lambda: my_now):
+            response = admin.admin_create_skillset_from_fitting(request)
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
         self.assertTrue(mock_messages.info.called)
         skill_set.refresh_from_db()
         self.assertGreater(skill_set.skills.count(), 0)
+        self.assertEqual(skill_set.last_modified_at, my_now)
+        self.assertEqual(skill_set.last_modified_by, self.superuser)
 
     def test_should_create_new_skillset_and_assign_group(
         self, mock_tasks, mock_messages
@@ -114,8 +134,8 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
         self.assertEqual(skill_set.name, "My-Name")
 
 
-@patch(MODULE_PATH + ".messages", spec=True)
-@patch(MODULE_PATH + ".tasks", spec=True)
+@patch(VIEWS_PATH + ".messages", spec=True)
+@patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -149,19 +169,28 @@ class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
             },
         )
         request.user = self.superuser
+        my_now = now()
         # when
-        response = admin.admin_create_skillset_from_skill_plan(request)
+        with patch(MANAGERS_PATH + ".now", lambda: my_now):
+            response = admin.admin_create_skillset_from_skill_plan(request)
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
         self.assertTrue(mock_messages.info.called)
         self.assertEqual(SkillSet.objects.count(), 1)
+        obj: SkillSet = SkillSet.objects.first()
+        self.assertEqual(obj.last_modified_at, my_now)
+        self.assertEqual(obj.last_modified_by, self.superuser)
 
     def test_should_overwrite_existing_skillset_when_requested(
         self, mock_tasks, mock_messages
     ):
         # given
-        skill_set = create_skill_set(name="My Skill Set")
+        other_user = AuthUtils.create_user("nobody")
+        old_dt = now() - dt.timedelta(days=10)
+        skill_set = create_skill_set(
+            name="My Skill Set", last_modified_by=other_user, last_modified_at=old_dt
+        )
         request = self.factory.post(
             reverse("memberaudit:admin_create_skillset_from_skill_plan"),
             data={
@@ -171,14 +200,18 @@ class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
             },
         )
         request.user = self.superuser
+        my_now = now()
         # when
-        response = admin.admin_create_skillset_from_skill_plan(request)
+        with patch(MANAGERS_PATH + ".now", lambda: my_now):
+            response = admin.admin_create_skillset_from_skill_plan(request)
         # then
         self.assertEqual(response.status_code, 302)
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
         self.assertTrue(mock_messages.info.called)
         skill_set.refresh_from_db()
         self.assertGreater(skill_set.skills.count(), 0)
+        self.assertEqual(skill_set.last_modified_at, my_now)
+        self.assertEqual(skill_set.last_modified_by, self.superuser)
 
     def test_should_create_new_skillset_and_assign_group(
         self, mock_tasks, mock_messages

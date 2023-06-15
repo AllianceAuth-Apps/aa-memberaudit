@@ -9,9 +9,9 @@ from allianceauth import NAME as site_header
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__, tasks
-from ..forms import ImportFittingForm, ImportSkillPlanForm
-from ..models import SkillSet
+from memberaudit import __title__, tasks
+from memberaudit.forms import ImportFittingForm, ImportSkillPlanForm
+from memberaudit.models import SkillSet
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -37,8 +37,10 @@ def admin_create_skillset_from_fitting(request):
                 msg = _("Skill Set %s has been updated") % obj.name
             messages.info(request, format_html(f"{msg}."))
             return redirect("admin:memberaudit_skillset_changelist")
+
     else:
         form = ImportFittingForm()
+
     return render(
         request,
         "admin/memberaudit/skillset/import_skills.html",

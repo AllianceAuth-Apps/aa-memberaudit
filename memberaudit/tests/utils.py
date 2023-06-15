@@ -13,7 +13,8 @@ from allianceauth.tests.auth_utils import AuthUtils
 from allianceauth.utils.cache import get_redis_client
 from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
-from ..models import Character, Location
+from memberaudit.models import Character, Location
+
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations

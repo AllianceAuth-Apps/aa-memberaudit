@@ -8,15 +8,16 @@ from django.db.models import Max, Prefetch
 from django.forms.models import BaseInlineFormSet
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveType
 
 from allianceauth.authentication.models import State
 
-from . import tasks
-from .app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-from .constants import EveCategoryId
-from .models import (
+from memberaudit import tasks
+from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+from memberaudit.constants import EveCategoryId
+from memberaudit.models import (
     Character,
     CharacterUpdateStatus,
     ComplianceGroupDesignation,
@@ -522,6 +523,15 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
     )
     ordering = ["name"]
     filter_horizontal = ("skill_sets",)
+    readonly_fields = ("last_modified_at", "last_modified_by")
+    fields = [
+        "name",
+        "description",
+        "skill_sets",
+        "is_doctrine",
+        "is_active",
+        ("last_modified_at", "last_modified_by"),
+    ]
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -535,6 +545,11 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
 
     def _skill_sets(self, obj):
         return format_html("<br>".join([x.name for x in obj.skill_sets_ordered]))
+
+    def save_model(self, request, obj, form, change):
+        obj.last_modified_by = request.user
+        obj.last_modified_at = now()
+        super().save_model(request, obj, form, change)
 
 
 class MinValidatedInlineMixIn:
@@ -619,9 +634,17 @@ class SkillSetAdmin(admin.ModelAdmin):
         ("groups", admin.RelatedOnlyFieldListFilter),
         "is_visible",
     )
-    # list_select_related = ("ship_type",)
     ordering = ["name"]
     search_fields = ["name"]
+
+    fields = [
+        "name",
+        "description",
+        "ship_type",
+        "is_visible",
+        ("last_modified_at", "last_modified_by"),
+    ]
+    readonly_fields = ("last_modified_at", "last_modified_by")
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -667,6 +690,8 @@ class SkillSetAdmin(admin.ModelAdmin):
 
     def save_model(self, request, obj, form, change):
         obj.user = request.user
+        obj.last_modified_by = request.user
+        obj.last_modified_at = now()
         super().save_model(request, obj, form, change)
         tasks.update_characters_skill_checks.apply_async(
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY

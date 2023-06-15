@@ -29,8 +29,8 @@ from app_utils.datetime import datetime_round_hour
 from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..app_settings import (
+from memberaudit import __title__
+from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
     MEMBERAUDIT_DATA_RETENTION_LIMIT,
     MEMBERAUDIT_DEVELOPER_MODE,
@@ -40,10 +40,14 @@ from ..app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
-from ..core.xml_converter import eve_xml_to_html
-from ..decorators import fetch_token_for_character
-from ..managers.character import CharacterManager, CharacterUpdateStatusManager
-from ..providers import esi
+from memberaudit.core.xml_converter import eve_xml_to_html
+from memberaudit.decorators import fetch_token_for_character
+from memberaudit.managers.character import (
+    CharacterManager,
+    CharacterUpdateStatusManager,
+)
+from memberaudit.providers import esi
+
 from .general import Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)

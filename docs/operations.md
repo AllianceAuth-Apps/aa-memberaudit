@@ -163,9 +163,10 @@ Name | Description | Type
 `view_same_alliance`| All mains - incl. their alts -  of the same alliances<br>the user's main belongs to | Scope
 `view_everything`| All characters registered with Member Audit | Scope
 `notified_on_character_removal` | Get a notification when someone drops a character. | Feature
+`view_skill_sets` | Can view skill set for a character. | Scope
 
 ```{hint}
-All permissions can be found under the category "memberaudit | general".
+All above mentioned permissions can be found under the category "memberaudit | general".
 ```
 
 ### Example Roles
