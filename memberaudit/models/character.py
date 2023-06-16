@@ -986,10 +986,9 @@ class Character(models.Model):
             },
         )
 
-    @fetch_token_for_character("esi-planets.manage_planets.v1")
-    def update_planets(self, token, force_update: bool = False):
+    def update_planets(self, force_update: bool = False):
         """update the character's planets."""
-        self.planets.update_or_create_esi(self, token, force_update)
+        self.planets.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-location.read_ship_type.v1")
     def update_ship(self, token: Token):

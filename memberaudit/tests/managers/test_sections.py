@@ -174,7 +174,7 @@ class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         mock_esi.client = esi_client_stub
         mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
         # when
-        self.character_1001.update_character_details()
+        CharacterDetails.objects.update_or_create_esi(self.character_1001)
         # then
         self.assertEqual(self.character_1001.details.eve_ancestry.id, 11)
         self.assertEqual(
