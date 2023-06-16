@@ -546,14 +546,39 @@ class CharacterFwStatsManager(models.Manager):
 
 
 class CharacterImplantManager(models.Manager):
+    @fetch_token_for_character_2("esi-clones.read_implants.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create implants for a character from ESI."""
+
+        logger.info("%s: Fetching implants from ESI", character)
+        implants_data = esi.client.Clones.get_characters_character_id_implants(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(implants_data, "implants")
+
+        section = character.UpdateSection.IMPLANTS
+        if force_update or character.has_section_changed(
+            section=section, content=implants_data
+        ):
+            if implants_data:
+                EveType.objects.bulk_get_or_create_esi(ids=implants_data)
+            self._update_or_create_objs(character, implants_data)
+            character.update_section_content_hash(
+                section=section, content=implants_data
+            )
+        else:
+            logger.info("%s: Implants have not changed", character)
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, implants_data):
+    def _update_or_create_objs(self, character, implants_data):
         self.filter(character=character).delete()
         if implants_data:
             implants = [
                 self.model(
-                    character=character,
-                    eve_type=EveType.objects.get(id=eve_type_id),
+                    character=character, eve_type=EveType.objects.get(id=eve_type_id)
                 )
                 for eve_type_id in implants_data
             ]

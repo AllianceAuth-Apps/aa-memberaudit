@@ -670,27 +670,9 @@ class Character(models.Model):
         else:
             logger.info("%s: FW stats have not changed", self)
 
-    @fetch_token_for_character("esi-clones.read_implants.v1")
-    def update_implants(self, token: Token, force_update: bool = False):
+    def update_implants(self, force_update: bool = False):
         """update the character's implants"""
-        logger.info("%s: Fetching implants from ESI", self)
-        implants_data = esi.client.Clones.get_characters_character_id_implants(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(implants_data, "implants")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.IMPLANTS, content=implants_data
-        ):
-            if implants_data:
-                EveType.objects.bulk_get_or_create_esi(ids=implants_data)
-            self.implants.update_for_character(self, implants_data)
-            self.update_section_content_hash(
-                section=self.UpdateSection.IMPLANTS, content=implants_data
-            )
-        else:
-            logger.info("%s: Implants have not changed", self)
+        self.implants.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character(
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]

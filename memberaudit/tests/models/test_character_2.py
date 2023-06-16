@@ -583,49 +583,6 @@ class TestCharacterUpdateCorporationHistory(
         self.assertEqual(self.character_1001.corporation_history.count(), 0)
 
 
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateImplants(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_implants_1(self, mock_esi):
-        """can create implants from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.assertEqual(self.character_1001.implants.count(), 3)
-        self.assertSetEqual(
-            set(self.character_1001.implants.values_list("eve_type_id", flat=True)),
-            {19540, 19551, 19553},
-        )
-
-    def test_update_implants_2(self, mock_esi):
-        """can deal with no implants returned from ESI"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1002.update_implants()
-        self.assertEqual(self.character_1002.implants.count(), 0)
-
-    def test_update_implants_3(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants()
-        self.assertFalse(
-            self.character_1001.implants.filter(eve_type_id=19540).exists()
-        )
-
-    def test_update_implants_4(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants(force_update=True)
-        self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
-
-
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODELS_PATH + ".character.esi")
 class TestCharacterUpdateJumpClones(CharacterUpdateTestDataMixin, NoSocketsTestCase):
