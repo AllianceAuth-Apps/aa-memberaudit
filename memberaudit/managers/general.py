@@ -26,8 +26,8 @@ from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
 from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
-from memberaudit.helpers import filter_groups_available_to_user
 from memberaudit.providers import esi
+from memberaudit.utils import filter_groups_available_to_user
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 

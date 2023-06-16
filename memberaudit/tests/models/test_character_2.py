@@ -217,7 +217,7 @@ class TestCharacterUpdateContacts(CharacterUpdateTestDataMixin, NoSocketsTestCas
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODELS_PATH + ".character.esi")
 class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_1(self, mock_esi):
         """can create new courier contract"""
         mock_esi.client = esi_client_stub
@@ -251,7 +251,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(obj.title, "Test 1")
         self.assertEqual(obj.volume, 486000.0)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_2(self, mock_esi):
         """can create new item exchange contract"""
         mock_esi.client = esi_client_stub
@@ -280,7 +280,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(item.raw_quantity, -1)
         self.assertEqual(item.eve_type, EveType.objects.get(id=19551))
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_3(self, mock_esi):
         """can create new auction contract"""
         mock_esi.client = esi_client_stub
@@ -310,7 +310,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
         self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_4(self, mock_esi):
         """old contracts must be kept"""
         mock_esi.client = esi_client_stub
@@ -335,7 +335,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.character_1001.update_contract_headers()
         self.assertEqual(self.character_1001.contracts.count(), 4)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_5(self, mock_esi):
         """Existing contracts are updated"""
         mock_esi.client = esi_client_stub
@@ -385,7 +385,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(obj.title, "Test 1")
         self.assertEqual(obj.volume, 486000.0)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_6(self, mock_esi):
         """can add new bids to auction contract"""
         mock_esi.client = esi_client_stub
@@ -429,7 +429,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         bid = obj.bids.get(bid_id=2)
         self.assertEqual(float(bid.amount), 21_000_000)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_7(self, mock_esi):
         """when contract list from ESI has not changed, then skip update"""
         mock_esi.client = esi_client_stub
@@ -444,7 +444,7 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         obj = self.character_1001.contracts.get(contract_id=100000001)
         self.assertEqual(obj.status, CharacterContract.STATUS_FINISHED)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     def test_update_contracts_8(self, mock_esi):
         """
         when contract list from ESI has not changed and update is forced, then update
@@ -461,7 +461,10 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
         obj = self.character_1001.contracts.get(contract_id=100000001)
         self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 10)
+    @patch(
+        MODELS_PATH + ".character.data_retention_cutoff",
+        lambda: dt.datetime(2019, 10, 11, 1, 15, tzinfo=utc),
+    )
     def test_update_contracts_9(self, mock_esi):
         """when retention limit is set, then only create contracts younger than limit"""
         mock_esi.client = esi_client_stub
@@ -475,7 +478,10 @@ class TestCharacterUpdateContracts(CharacterUpdateTestDataMixin, NoSocketsTestCa
             {100000002, 100000003},
         )
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 15)
+    @patch(
+        MODELS_PATH + ".character.data_retention_cutoff",
+        lambda: dt.datetime(2019, 10, 6, 1, 15, tzinfo=utc),
+    )
     def test_update_contracts_10(self, mock_esi):
         """when retention limit is set,
         then remove existing contracts older than limit

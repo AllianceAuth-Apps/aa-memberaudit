@@ -29,7 +29,6 @@ from .testdata.load_locations import load_locations
 from .utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
-    clear_celery_once_locks,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -49,7 +48,6 @@ class TestUILauncher(WebTest):
         load_eveuniverse()
         load_entities()
         load_locations()
-        clear_celery_once_locks()
 
     def setUp(self) -> None:
         self.user, _ = create_user_from_evecharacter_with_access(1002)
@@ -334,7 +332,8 @@ class TestUICharacterViewer(WebTest):
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
-@patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+@patch(MANAGERS_PATH + ".sections.data_retention_cutoff", lambda: None)
+@patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".sections.esi")
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
@@ -347,7 +346,6 @@ class TestTasksE2E(TestCase):
         load_eveuniverse()
         load_entities()
         load_locations()
-        clear_celery_once_locks()
 
     def test_should_update_all_characters(self, mock_esi_models, mock_esi_managers):
         # given

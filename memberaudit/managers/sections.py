@@ -1,5 +1,4 @@
 import ast
-import datetime as dt
 from typing import Dict, List
 
 from django.db import models, transaction
@@ -26,12 +25,13 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character_2
-from memberaudit.helpers import (
+from memberaudit.helpers import data_retention_cutoff
+from memberaudit.providers import esi
+from memberaudit.utils import (
     get_or_create_esi_or_none,
     get_or_create_or_none,
     get_or_none,
 )
-from memberaudit.providers import esi
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -1271,9 +1271,23 @@ class CharacterSkillSetCheckManager(models.Manager):
 
 
 class CharacterWalletJournalEntryManager(models.Manager):
-    def update_for_character(
-        self, character: models.Model, cutoff_datetime: dt.datetime, journal: list
-    ):
+    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet journal entries for character from ESI.
+
+        Note: Does not update unknown EveEntities.
+        """
+
+        logger.info("%s: Fetching wallet journal from ESI", character)
+        journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(journal, "wallet_journal")
+
+        cutoff_datetime = data_retention_cutoff()
         entries_list = {
             obj.get("id"): obj
             for obj in journal

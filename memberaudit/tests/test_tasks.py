@@ -39,7 +39,7 @@ from .testdata.factories import create_character, create_compliance_group_design
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import clear_celery_once_locks, create_memberaudit_character
+from .utils import create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -527,7 +527,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MODELS_PATH + ".character.esi")
+@patch(MANAGERS_PATH + ".sections.esi")
 class TestUpdateCharacterWalletJournal(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
@@ -572,7 +572,7 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
 
 
-@patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+@patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".sections.esi")
@@ -588,7 +588,6 @@ class TestUpdateCharacter(TestCaseTasks):
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
-        clear_celery_once_locks()
 
     @skip  # temporary disabled because it does not work in tox
     def test_should_update_normally(self, mock_esi_models, mock_esi_managers):
@@ -665,9 +664,8 @@ class TestUpdateCharacter(TestCaseTasks):
         # then
         self.assertFalse(mock_update_character_mails.apply_async.called)
 
-    @patch(TASKS_PATH + ".Character.update_skills", spec=True)
     def test_should_update_stale_sections_only_3(
-        self, mock_update_skills, mock_esi_models, mock_esi_managers
+        self, mock_esi_models, mock_esi_managers
     ):
         """When generic section has recently been updated and force_update is called
         then update again
@@ -675,17 +673,19 @@ class TestUpdateCharacter(TestCaseTasks):
         # given
         mock_esi_models.client = esi_client_stub
         mock_esi_managers.client = esi_client_stub
-        CharacterUpdateStatus.objects.create(
+        section: CharacterUpdateStatus = CharacterUpdateStatus.objects.create(
             character=self.character_1001,
-            section=Character.UpdateSection.SKILLS,
+            section=Character.UpdateSection.SKILLS.value,
             is_success=True,
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
+        last_finished = section.finished_at
         # when
         tasks.update_character(self.character_1001.pk, force_update=True)
         # then
-        self.assertTrue(mock_update_skills.called)
+        section.refresh_from_db()
+        self.assertGreater(section.finished_at, last_finished)
 
     def test_no_update_required(self, mock_esi_models, mock_esi_managers):
         """Do not update anything when not required"""

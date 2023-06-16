@@ -25,14 +25,12 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_throttled
-from app_utils.datetime import datetime_round_hour
 from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
-    MEMBERAUDIT_DATA_RETENTION_LIMIT,
     MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_MAX_MAILS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
@@ -42,6 +40,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
+from memberaudit.helpers import data_retention_cutoff
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
@@ -51,15 +50,6 @@ from memberaudit.providers import esi
 from .general import Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
-
-
-def data_retention_cutoff() -> Optional[dt.datetime]:
-    """returns cutoff datetime for data retention of None if unlimited"""
-    if MEMBERAUDIT_DATA_RETENTION_LIMIT is None:
-        return None
-    return datetime_round_hour(
-        now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
-    )
 
 
 class Character(models.Model):
@@ -1024,23 +1014,9 @@ class Character(models.Model):
             character=self, defaults={"total": balance}
         )
 
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_journal(self, token: Token) -> None:
-        """syncs the character's wallet journal
-
-        Note: Does not update unknown EvEntities.
-        """
-        logger.info("%s: Fetching wallet journal from ESI", self)
-        journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(journal, "wallet_journal")
-
-        self.wallet_journal.update_for_character(
-            character=self, cutoff_datetime=data_retention_cutoff(), journal=journal
-        )
+    def update_wallet_journal(self) -> None:
+        """syncs the character's wallet journal"""
+        self.wallet_journal.update_or_create_esi(self)
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_wallet_transactions(self, token):

@@ -560,7 +560,7 @@ class TestCharacterUpdateFwStats(NoSocketsTestCase):
         # given
         mock_esi.client = self.esi_client_stub
         # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+        with patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None):
             self.character_1001.update_fw_stats()
         # then
         obj: CharacterFwStats = self.character_1001.fw_stats
@@ -590,7 +590,7 @@ class TestCharacterUpdateFwStats(NoSocketsTestCase):
             victory_points_yesterday=0,
         )
         # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+        with patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None):
             self.character_1001.update_fw_stats()
         # then
         self.character_1001.refresh_from_db()
@@ -634,7 +634,7 @@ class TestCharacterUpdateFwStats(NoSocketsTestCase):
         ]
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+        with patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None):
             self.character_1001.update_fw_stats()
         # then
         obj: CharacterFwStats = self.character_1001.fw_stats

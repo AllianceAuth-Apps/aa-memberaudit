@@ -1,7 +1,7 @@
 import datetime as dt
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import (
@@ -26,6 +26,7 @@ from memberaudit.models import (
     CharacterMailLabel,
     CharacterPlanet,
     CharacterSkill,
+    CharacterWalletJournalEntry,
     Location,
 )
 
@@ -586,3 +587,152 @@ class TestCharacterSkillsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         self.character_1001.update_skills(force_update=True)
         skill = self.character_1001.skills.get(eve_type_id=24311)
         self.assertEqual(skill.active_skill_level, 3)
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(MODULE_PATH + ".esi")
+class TestCharacterWalletJournalManager(
+    CharacterUpdateTestDataMixin, NoSocketsTestCase
+):
+    # def test_update_wallet_balance(self, mock_esi):
+    #     mock_esi.client = esi_client_stub
+
+    #     self.character_1001.update_wallet_balance()
+    #     self.assertEqual(self.character_1001.wallet_balance.total, 123456789)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_update_wallet_journal_1(self, mock_esi):
+        """can create wallet journal entry from scratch"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_wallet_journal()
+
+        self.assertSetEqual(
+            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
+            {89, 91},
+        )
+        obj = self.character_1001.wallet_journal.get(entry_id=89)
+        self.assertEqual(obj.amount, -100_000)
+        self.assertEqual(float(obj.balance), 500_000.43)
+        self.assertEqual(obj.context_id, 4)
+        self.assertEqual(obj.context_id_type, obj.CONTEXT_ID_TYPE_CONTRACT_ID)
+        self.assertEqual(obj.date, parse_datetime("2018-02-23T14:31:32Z"))
+        self.assertEqual(obj.description, "Contract Deposit")
+        self.assertEqual(obj.first_party.id, 2001)
+        self.assertEqual(obj.reason, "just for fun")
+        self.assertEqual(obj.ref_type, "contract_deposit")
+        self.assertEqual(obj.second_party.id, 2002)
+
+        obj = self.character_1001.wallet_journal.get(entry_id=91)
+        self.assertEqual(
+            obj.ref_type, "agent_mission_time_bonus_reward_corporation_tax"
+        )
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_update_wallet_journal_2(self, mock_esi):
+        """can add entry to existing wallet journal"""
+        mock_esi.client = esi_client_stub
+        CharacterWalletJournalEntry.objects.create(
+            character=self.character_1001,
+            entry_id=1,
+            amount=1_000_000,
+            balance=10_000_000,
+            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+            date=now(),
+            description="dummy",
+            first_party=EveEntity.objects.get(id=1001),
+            second_party=EveEntity.objects.get(id=1002),
+        )
+
+        self.character_1001.update_wallet_journal()
+
+        self.assertSetEqual(
+            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
+            {1, 89, 91},
+        )
+
+        obj = self.character_1001.wallet_journal.get(entry_id=89)
+        self.assertEqual(obj.amount, -100_000)
+        self.assertEqual(float(obj.balance), 500_000.43)
+        self.assertEqual(obj.context_id, 4)
+        self.assertEqual(obj.context_id_type, obj.CONTEXT_ID_TYPE_CONTRACT_ID)
+        self.assertEqual(obj.date, parse_datetime("2018-02-23T14:31:32Z"))
+        self.assertEqual(obj.description, "Contract Deposit")
+        self.assertEqual(obj.first_party.id, 2001)
+        self.assertEqual(obj.ref_type, "contract_deposit")
+        self.assertEqual(obj.second_party.id, 2002)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_update_wallet_journal_3(self, mock_esi):
+        """does not update existing entries"""
+        mock_esi.client = esi_client_stub
+        CharacterWalletJournalEntry.objects.create(
+            character=self.character_1001,
+            entry_id=89,
+            amount=1_000_000,
+            balance=10_000_000,
+            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+            date=now(),
+            description="dummy",
+            first_party=EveEntity.objects.get(id=1001),
+            second_party=EveEntity.objects.get(id=1002),
+        )
+
+        self.character_1001.update_wallet_journal()
+
+        self.assertSetEqual(
+            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
+            {89, 91},
+        )
+        obj = self.character_1001.wallet_journal.get(entry_id=89)
+        self.assertEqual(obj.amount, 1_000_000)
+        self.assertEqual(float(obj.balance), 10_000_000)
+        self.assertEqual(
+            obj.context_id_type, CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED
+        )
+        self.assertEqual(obj.description, "dummy")
+        self.assertEqual(obj.first_party.id, 1001)
+        self.assertEqual(obj.second_party.id, 1002)
+
+    def test_update_wallet_journal_4(self, mock_esi):
+        """When new wallet entry is older than retention limit, then do not store it"""
+        mock_esi.client = esi_client_stub
+
+        with patch(
+            MODULE_PATH + ".data_retention_cutoff",
+            lambda: dt.datetime(2018, 3, 11, 20, 5, tzinfo=dt.timezone.utc)
+            - dt.timedelta(days=10),
+        ):
+            self.character_1001.update_wallet_journal()
+
+        self.assertSetEqual(
+            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
+            {91},
+        )
+
+    def test_update_wallet_journal_5(self, mock_esi):
+        """When wallet existing entry is older than retention limit, then delete it"""
+        mock_esi.client = esi_client_stub
+        CharacterWalletJournalEntry.objects.create(
+            character=self.character_1001,
+            entry_id=55,
+            amount=1_000_000,
+            balance=10_000_000,
+            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+            date=dt.datetime(2018, 2, 11, 20, 5, tzinfo=dt.timezone.utc),
+            description="dummy",
+            first_party=EveEntity.objects.get(id=1001),
+            second_party=EveEntity.objects.get(id=1002),
+        )
+
+        with patch(
+            MODULE_PATH + ".data_retention_cutoff",
+            lambda: dt.datetime(2018, 3, 11, 20, 5, tzinfo=dt.timezone.utc)
+            - dt.timedelta(days=20),
+        ):
+            self.character_1001.update_wallet_journal()
+
+        self.assertSetEqual(
+            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
+            {89, 91},
+        )

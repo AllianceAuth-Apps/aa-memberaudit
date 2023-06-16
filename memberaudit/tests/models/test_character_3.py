@@ -216,7 +216,7 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         except EveEntity.DoesNotExist:
             return None, False
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_1(
@@ -258,7 +258,7 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         self.assertTrue(obj.recipients.filter(id=9003).exists())
         self.assertEqual(obj.timestamp, parse_datetime("2015-09-20T12:07:00Z"))
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_2(
@@ -304,7 +304,7 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         self.assertTrue(obj.recipients.filter(id=9001).exists())
         self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_3(
@@ -327,7 +327,7 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         obj = self.character_1001.mails.get(mail_id=1)
         self.assertFalse(obj.is_read)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+    @patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_4(
@@ -350,7 +350,10 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         obj = self.character_1001.mails.get(mail_id=1)
         self.assertTrue(obj.is_read)
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 15)
+    @patch(
+        MODELS_PATH + ".character.data_retention_cutoff",
+        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=utc) - dt.timedelta(days=15),
+    )
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_6(
@@ -372,7 +375,10 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
             {2, 3},
         )
 
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 15)
+    @patch(
+        MODELS_PATH + ".character.data_retention_cutoff",
+        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=utc) - dt.timedelta(days=15),
+    )
     @patch(MANAGERS_PATH + ".general.fetch_esi_status")
     @patch(MANAGERS_PATH + ".sections.EveEntity.objects.get_or_create_esi")
     def test_update_mail_headers_7(
@@ -691,149 +697,6 @@ class TestCharacterUpdateSkillQueue(CharacterUpdateTestDataMixin, NoSocketsTestC
         self.assertEqual(entry.finished_level, 3)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateWalletJournal(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_wallet_balance(self, mock_esi):
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_wallet_balance()
-        self.assertEqual(self.character_1001.wallet_balance.total, 123456789)
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-    def test_update_wallet_journal_1(self, mock_esi):
-        """can create wallet journal entry from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_wallet_journal()
-
-        self.assertSetEqual(
-            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
-            {89, 91},
-        )
-        obj = self.character_1001.wallet_journal.get(entry_id=89)
-        self.assertEqual(obj.amount, -100_000)
-        self.assertEqual(float(obj.balance), 500_000.43)
-        self.assertEqual(obj.context_id, 4)
-        self.assertEqual(obj.context_id_type, obj.CONTEXT_ID_TYPE_CONTRACT_ID)
-        self.assertEqual(obj.date, parse_datetime("2018-02-23T14:31:32Z"))
-        self.assertEqual(obj.description, "Contract Deposit")
-        self.assertEqual(obj.first_party.id, 2001)
-        self.assertEqual(obj.reason, "just for fun")
-        self.assertEqual(obj.ref_type, "contract_deposit")
-        self.assertEqual(obj.second_party.id, 2002)
-
-        obj = self.character_1001.wallet_journal.get(entry_id=91)
-        self.assertEqual(
-            obj.ref_type, "agent_mission_time_bonus_reward_corporation_tax"
-        )
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-    def test_update_wallet_journal_2(self, mock_esi):
-        """can add entry to existing wallet journal"""
-        mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
-            character=self.character_1001,
-            entry_id=1,
-            amount=1_000_000,
-            balance=10_000_000,
-            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-            date=now(),
-            description="dummy",
-            first_party=EveEntity.objects.get(id=1001),
-            second_party=EveEntity.objects.get(id=1002),
-        )
-
-        self.character_1001.update_wallet_journal()
-
-        self.assertSetEqual(
-            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
-            {1, 89, 91},
-        )
-
-        obj = self.character_1001.wallet_journal.get(entry_id=89)
-        self.assertEqual(obj.amount, -100_000)
-        self.assertEqual(float(obj.balance), 500_000.43)
-        self.assertEqual(obj.context_id, 4)
-        self.assertEqual(obj.context_id_type, obj.CONTEXT_ID_TYPE_CONTRACT_ID)
-        self.assertEqual(obj.date, parse_datetime("2018-02-23T14:31:32Z"))
-        self.assertEqual(obj.description, "Contract Deposit")
-        self.assertEqual(obj.first_party.id, 2001)
-        self.assertEqual(obj.ref_type, "contract_deposit")
-        self.assertEqual(obj.second_party.id, 2002)
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-    def test_update_wallet_journal_3(self, mock_esi):
-        """does not update existing entries"""
-        mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
-            character=self.character_1001,
-            entry_id=89,
-            amount=1_000_000,
-            balance=10_000_000,
-            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-            date=now(),
-            description="dummy",
-            first_party=EveEntity.objects.get(id=1001),
-            second_party=EveEntity.objects.get(id=1002),
-        )
-
-        self.character_1001.update_wallet_journal()
-
-        self.assertSetEqual(
-            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
-            {89, 91},
-        )
-        obj = self.character_1001.wallet_journal.get(entry_id=89)
-        self.assertEqual(obj.amount, 1_000_000)
-        self.assertEqual(float(obj.balance), 10_000_000)
-        self.assertEqual(
-            obj.context_id_type, CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED
-        )
-        self.assertEqual(obj.description, "dummy")
-        self.assertEqual(obj.first_party.id, 1001)
-        self.assertEqual(obj.second_party.id, 1002)
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 10)
-    def test_update_wallet_journal_4(self, mock_esi):
-        """When new wallet entry is older than retention limit, then do not store it"""
-        mock_esi.client = esi_client_stub
-
-        with patch(MODELS_PATH + ".character.now") as mock_now:
-            mock_now.return_value = dt.datetime(2018, 3, 11, 20, 5, tzinfo=utc)
-            self.character_1001.update_wallet_journal()
-
-        self.assertSetEqual(
-            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
-            {91},
-        )
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 20)
-    def test_update_wallet_journal_5(self, mock_esi):
-        """When wallet existing entry is older than retention limit, then delete it"""
-        mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
-            character=self.character_1001,
-            entry_id=55,
-            amount=1_000_000,
-            balance=10_000_000,
-            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-            date=dt.datetime(2018, 2, 11, 20, 5, tzinfo=utc),
-            description="dummy",
-            first_party=EveEntity.objects.get(id=1001),
-            second_party=EveEntity.objects.get(id=1002),
-        )
-
-        with patch(MODELS_PATH + ".character.now") as mock_now:
-            mock_now.return_value = dt.datetime(2018, 3, 11, 20, 5, tzinfo=utc)
-            self.character_1001.update_wallet_journal()
-
-        self.assertSetEqual(
-            set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
-            {89, 91},
-        )
-
-
 @patch(MODELS_PATH + ".character.esi")
 class TestCharacterUpdateWalletTransaction(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
@@ -842,7 +705,7 @@ class TestCharacterUpdateWalletTransaction(
         # given
         mock_esi.client = esi_client_stub
         # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+        with patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None):
             self.character_1001.update_wallet_transactions()
         # then
         self.assertSetEqual(
@@ -881,7 +744,7 @@ class TestCharacterUpdateWalletTransaction(
             second_party=EveEntity.objects.get(id=1003),
         )
         # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
+        with patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None):
             self.character_1001.update_wallet_transactions()
         # then
         self.assertSetEqual(

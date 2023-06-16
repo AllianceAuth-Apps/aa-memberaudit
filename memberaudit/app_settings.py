@@ -1,8 +1,8 @@
 from django.utils.translation import gettext_lazy as _
 
-from app_utils.django import clean_setting
+from app_utils.app_settings import clean_setting
 
-from memberaudit.helpers import get_unidecoded_slug
+from memberaudit.utils import get_unidecoded_slug
 
 MEMBERAUDIT_APP_NAME = clean_setting(
     "MEMBERAUDIT_APP_NAME", _("Member Audit"), required_type=str

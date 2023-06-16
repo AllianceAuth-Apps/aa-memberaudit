@@ -1,9 +1,5 @@
-import datetime as dt
-from unittest.mock import patch
-
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from django.test import TestCase
 from eveuniverse.models import EveSolarSystem, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
@@ -15,7 +11,6 @@ from app_utils.testing import (
 )
 
 from memberaudit.models import General, Location, MailEntity, SkillSetSkill
-from memberaudit.models.character import data_retention_cutoff
 
 from ..testdata.factories import (
     create_compliance_group_designation,
@@ -215,20 +210,6 @@ class TestGeneralUserHasAccess(NoSocketsTestCase):
         self.assertSetEqual(
             queryset_pks(result), {self.user_1001.pk, self.user_1002.pk}
         )
-
-
-class TestDataRetentionCutoff(TestCase):
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", 10)
-    def test_limit_is_set(self):
-        with patch(MODELS_PATH + ".character.now") as mock_now:
-            mock_now.return_value = dt.datetime(2020, 12, 19, 16, 15)
-            self.assertEqual(data_retention_cutoff(), dt.datetime(2020, 12, 9, 16, 0))
-
-    @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
-    def test_limit_not_set(self):
-        with patch(MODELS_PATH + ".character.now") as mock_now:
-            mock_now.return_value = dt.datetime(2020, 12, 19, 16, 15)
-            self.assertIsNone(data_retention_cutoff())
 
 
 class TestLocation(NoSocketsTestCase):

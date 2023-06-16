@@ -22,7 +22,7 @@ from app_utils.esi import (
 )
 from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, helpers
+from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOG_UPDATE_STATS,
@@ -1154,4 +1154,4 @@ def add_compliant_users_to_group(group_pk: int):
 def clear_users_from_group(group_pk: int):
     """Clear all users from given group."""
     group = Group.objects.get(pk=group_pk)
-    helpers.clear_users_from_group(group)
+    utils.clear_users_from_group(group)
