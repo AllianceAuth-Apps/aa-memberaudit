@@ -36,14 +36,18 @@ from eveuniverse.models import EveEntity, EveSolarSystem
 from allianceauth.eveonline.models import EveCharacter
 
 from memberaudit.models import (
+    Character,
     CharacterDetails,
     CharacterLocation,
     CharacterWalletJournalEntry,
 )
-from memberaudit.tests.testdata.factories import create_character_planet
+from memberaudit.tests.testdata.factories import (
+    create_character_planet,
+    create_wallet_journal_entry,
+)
 from memberaudit.tests.utils import create_memberaudit_character
 
-WALLET_JOURNAL_ENTRIES = 100_000
+WALLET_JOURNAL_ENTRIES = 1_000
 
 
 def main():
@@ -73,6 +77,7 @@ def recreate_character():
         eve_character.character_ownership.user.delete()
     except ObjectDoesNotExist:
         pass
+    Character.objects.get(eve_character=eve_character).delete()
     character = create_memberaudit_character(92532650)
     return eve_character, corporation, character
 
@@ -132,7 +137,7 @@ def create_wallet_journal(eve_character, character):
 
 
 def create_planets(character):
-    for _ in range(10):
+    for _ in range(6):
         create_character_planet(character)
 
 

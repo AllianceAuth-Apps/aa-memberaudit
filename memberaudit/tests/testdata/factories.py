@@ -301,12 +301,18 @@ def create_online_status(character: Character, **kwargs) -> CharacterOnlineStatu
 
 
 def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
-    planet_ids = EvePlanet.objects.values_list("id", flat=True)
+    all_planets = set(EvePlanet.objects.values_list("id", flat=True))
+    colonized_planets = set(
+        CharacterPlanet.objects.values_list("eve_planet_id", flat=True)
+    )
+    available_planets = all_planets - colonized_planets
+    if not available_planets:
+        raise RuntimeError("No free planet to colonize")
     params = {
         "character": character,
         "last_update_at": now() - dt.timedelta(days=random.randint(0, 300)),
         "num_pins": random.randint(1, 10),
-        "eve_planet": EvePlanet.objects.get(id=random.choice(planet_ids)),
+        "eve_planet": EvePlanet.objects.get(id=random.choice(list(available_planets))),
         "upgrade_level": random.randint(0, 5),
     }
     params.update(kwargs)

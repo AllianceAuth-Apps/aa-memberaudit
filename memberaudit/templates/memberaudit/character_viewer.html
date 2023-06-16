@@ -570,13 +570,22 @@
                 { data: 'type' },
                 { data: 'num_pins' },
                 { data: 'upgrade_level' },
+                {
+                    data: 'last_update',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                /* hidden */
                 { data: 'solar_system_name' },
             ],
+            paging: false,
+            searching: false,
             order: [[0, "asc"], [1, "asc"]],
             columnDefs: [
-                { "visible": false, "targets": [6] },
+                { "visible": false, "targets": [7] },
             ],
-
             filterDropDown: {
                 columns: [
                     {
@@ -584,7 +593,7 @@
                         title: "{% translate 'Region' %}"
                     },
                     {
-                        idx: 6,
+                        idx: 7,
                         title: "{% translate 'Solar System' %}"
                     },
                     {
