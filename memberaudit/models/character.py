@@ -19,7 +19,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveEntity, EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
@@ -57,10 +57,9 @@ def data_retention_cutoff() -> Optional[dt.datetime]:
     """returns cutoff datetime for data retention of None if unlimited"""
     if MEMBERAUDIT_DATA_RETENTION_LIMIT is None:
         return None
-    else:
-        return datetime_round_hour(
-            now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
-        )
+    return datetime_round_hour(
+        now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
+    )
 
 
 class Character(models.Model):
@@ -927,27 +926,9 @@ class Character(models.Model):
         if MEMBERAUDIT_DEVELOPER_MODE:
             self._store_list_to_disk(mail_body, "mail_body")
 
-    @fetch_token_for_character("esi-industry.read_character_mining.v1")
-    def update_mining_ledger(self, token: Token):
+    def update_mining_ledger(self):
         """Update mining ledger from ESI for this character."""
-        logger.info("%s: Fetching mining ledger from ESI", self)
-        entries = esi.client.Industry.get_characters_character_id_mining(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(entries, self.UpdateSection.MINING_LEDGER)
-        for entry in entries:
-            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-                id=entry["solar_system_id"]
-            )
-            eve_type, _ = EveType.objects.get_or_create_esi(id=entry["type_id"])
-            self.mining_ledger.update_or_create(
-                date=entry["date"],
-                eve_solar_system=eve_solar_system,
-                eve_type=eve_type,
-                defaults={"quantity": entry["quantity"]},
-            )
+        self.mining_ledger.update_or_create_esi(self)
 
     @fetch_token_for_character("esi-location.read_online.v1")
     def update_online_status(self, token):

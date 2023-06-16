@@ -951,7 +951,32 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
-    pass
+    @fetch_token_for_character_2("esi-industry.read_character_mining.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or create mining ledger for a character from ESI."""
+
+        logger.info("%s: Fetching mining ledger from ESI", character)
+        entries = esi.client.Industry.get_characters_character_id_mining(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(
+                entries, character.UpdateSection.MINING_LEDGER
+            )
+
+        for entry in entries:
+            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
+                id=entry["solar_system_id"]
+            )
+            eve_type, _ = EveType.objects.get_or_create_esi(id=entry["type_id"])
+            self.update_or_create(
+                date=entry["date"],
+                eve_solar_system=eve_solar_system,
+                eve_type=eve_type,
+                defaults={"quantity": entry["quantity"]},
+            )
 
 
 CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_queryset(

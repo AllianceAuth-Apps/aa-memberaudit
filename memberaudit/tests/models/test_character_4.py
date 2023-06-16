@@ -3,7 +3,6 @@ from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.dateparse import parse_datetime
-from eveuniverse.models import EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
@@ -13,7 +12,7 @@ from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 from memberaudit.models import CharacterAttributes, CharacterFwStats
 
 from ..testdata.esi_client_stub import esi_client_stub
-from ..testdata.factories import create_character, create_character_mining_ledger_entry
+from ..testdata.factories import create_character
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
@@ -517,79 +516,6 @@ class TestCharacterUpdateAttributes(CharacterUpdateTestDataMixin, NoSocketsTestC
         self.assertEqual(self.character_1001.attributes.memory, 18)
         self.assertEqual(self.character_1001.attributes.perception, 19)
         self.assertEqual(self.character_1001.attributes.willpower, 20)
-
-
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateMiningLedger(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.endpoints = [
-            EsiEndpoint(
-                "Industry",
-                "get_characters_character_id_mining",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {
-                            "date": "2017-09-19",
-                            "quantity": 7004,
-                            "solar_system_id": 30002537,
-                            "type_id": 17471,
-                        },
-                        {
-                            "date": "2017-09-18",
-                            "quantity": 5199,
-                            "solar_system_id": 30002537,
-                            "type_id": 17471,
-                        },
-                    ]
-                },
-            ),
-        ]
-        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
-
-    def test_should_add_new_entry_from_scratch(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
-        # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
-            self.character_1001.update_mining_ledger()
-        # then
-        self.assertEqual(self.character_1001.mining_ledger.count(), 2)
-        obj = self.character_1001.mining_ledger.first()
-        self.assertEqual(obj.date, dt.date(2017, 9, 19))
-        self.assertEqual(obj.eve_type, EveType.objects.get(name="Dense Veldspar"))
-        self.assertEqual(
-            obj.eve_solar_system, EveSolarSystem.objects.get(name="Amamake")
-        )
-        self.assertEqual(obj.quantity, 7004)
-
-    def test_should_update_existing_entries(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
-        create_character_mining_ledger_entry(
-            character=self.character_1001,
-            date=dt.date(2017, 9, 19),
-            eve_solar_system=EveSolarSystem.objects.get(name="Amamake"),
-            eve_type=EveType.objects.get(name="Dense Veldspar"),
-            quantity=5,
-        )
-        # when
-        with patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None):
-            self.character_1001.update_mining_ledger()
-        # then
-        self.assertEqual(self.character_1001.mining_ledger.count(), 2)
-        obj = self.character_1001.mining_ledger.get(
-            date=dt.date(2017, 9, 19),
-            eve_solar_system=EveSolarSystem.objects.get(name="Amamake"),
-            eve_type=EveType.objects.get(name="Dense Veldspar"),
-        )
-        self.assertEqual(obj.quantity, 7004)
 
 
 @patch(MODELS_PATH + ".character.esi")

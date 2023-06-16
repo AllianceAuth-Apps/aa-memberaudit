@@ -31,6 +31,7 @@ from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_contract,
     create_character_contract_bid,
+    create_character_mining_ledger_entry,
     create_character_planet,
 )
 from ..testdata.load_entities import load_entities
@@ -146,67 +147,6 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
         )
         # then
         self.assertEqual(CharacterContractBid.objects.count(), 1)
-
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterUpdateImplants(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_implants_1(self, mock_esi):
-        """can create implants from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.assertEqual(self.character_1001.implants.count(), 3)
-        self.assertSetEqual(
-            set(self.character_1001.implants.values_list("eve_type_id", flat=True)),
-            {19540, 19551, 19553},
-        )
-
-    def test_update_implants_2(self, mock_esi):
-        """can deal with no implants returned from ESI"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1002.update_implants()
-        self.assertEqual(self.character_1002.implants.count(), 0)
-
-    def test_update_implants_3(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants()
-        self.assertFalse(
-            self.character_1001.implants.filter(eve_type_id=19540).exists()
-        )
-
-    def test_update_implants_4(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants(force_update=True)
-        self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
-
-
-class TestCharacterMailLabelManager(TestCharacterUpdateBase):
-    def test_normal(self):
-        label_1 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=1, name="Alpha"
-        )
-        label_2 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=2, name="Bravo"
-        )
-        labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(
-            labels, {label_1.label_id: label_1, label_2.label_id: label_2}
-        )
-
-    def test_empty(self):
-        labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(labels, dict())
 
 
 @patch(MODULE_PATH + ".eve_xml_to_html")
@@ -361,6 +301,138 @@ class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
     #         self.character_1001.details.title, "All round pretty awesome guy"
     #     )
     #     self.assertTrue(mock_eve_xml_to_html.called)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterImplantsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_update_implants_1(self, mock_esi):
+        """can create implants from scratch"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_implants()
+        self.assertEqual(self.character_1001.implants.count(), 3)
+        self.assertSetEqual(
+            set(self.character_1001.implants.values_list("eve_type_id", flat=True)),
+            {19540, 19551, 19553},
+        )
+
+    def test_update_implants_2(self, mock_esi):
+        """can deal with no implants returned from ESI"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1002.update_implants()
+        self.assertEqual(self.character_1002.implants.count(), 0)
+
+    def test_update_implants_3(self, mock_esi):
+        """when data from ESI has not changed, then skip update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_implants()
+        self.character_1001.implants.get(eve_type_id=19540).delete()
+
+        self.character_1001.update_implants()
+        self.assertFalse(
+            self.character_1001.implants.filter(eve_type_id=19540).exists()
+        )
+
+    def test_update_implants_4(self, mock_esi):
+        """when data from ESI has not changed and update is forced, then do update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_implants()
+        self.character_1001.implants.get(eve_type_id=19540).delete()
+
+        self.character_1001.update_implants(force_update=True)
+        self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
+
+
+class TestCharacterMailLabelManager(TestCharacterUpdateBase):
+    def test_normal(self):
+        label_1 = CharacterMailLabel.objects.create(
+            character=self.character_1001, label_id=1, name="Alpha"
+        )
+        label_2 = CharacterMailLabel.objects.create(
+            character=self.character_1001, label_id=2, name="Bravo"
+        )
+        labels = CharacterMailLabel.objects.get_all_labels()
+        self.assertDictEqual(
+            labels, {label_1.label_id: label_1, label_2.label_id: label_2}
+        )
+
+    def test_empty(self):
+        labels = CharacterMailLabel.objects.get_all_labels()
+        self.assertDictEqual(labels, dict())
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterMiningLedgerManager(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.endpoints = [
+            EsiEndpoint(
+                "Industry",
+                "get_characters_character_id_mining",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "date": "2017-09-19",
+                            "quantity": 7004,
+                            "solar_system_id": 30002537,
+                            "type_id": 17471,
+                        },
+                        {
+                            "date": "2017-09-18",
+                            "quantity": 5199,
+                            "solar_system_id": 30002537,
+                            "type_id": 17471,
+                        },
+                    ]
+                },
+            ),
+        ]
+        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
+
+    def test_should_add_new_entry_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        # when
+        self.character_1001.update_mining_ledger()
+        # then
+        self.assertEqual(self.character_1001.mining_ledger.count(), 2)
+        obj = self.character_1001.mining_ledger.first()
+        self.assertEqual(obj.date, dt.date(2017, 9, 19))
+        self.assertEqual(obj.eve_type, EveType.objects.get(name="Dense Veldspar"))
+        self.assertEqual(
+            obj.eve_solar_system, EveSolarSystem.objects.get(name="Amamake")
+        )
+        self.assertEqual(obj.quantity, 7004)
+
+    def test_should_update_existing_entries(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_mining_ledger_entry(
+            character=self.character_1001,
+            date=dt.date(2017, 9, 19),
+            eve_solar_system=EveSolarSystem.objects.get(name="Amamake"),
+            eve_type=EveType.objects.get(name="Dense Veldspar"),
+            quantity=5,
+        )
+        # when
+        self.character_1001.update_mining_ledger()
+        # then
+        self.assertEqual(self.character_1001.mining_ledger.count(), 2)
+        obj = self.character_1001.mining_ledger.get(
+            date=dt.date(2017, 9, 19),
+            eve_solar_system=EveSolarSystem.objects.get(name="Amamake"),
+            eve_type=EveType.objects.get(name="Dense Veldspar"),
+        )
+        self.assertEqual(obj.quantity, 7004)
 
 
 @patch(MODULE_PATH + ".esi")
