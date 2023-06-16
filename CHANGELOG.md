@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.9.0] - TBD
+## [2.9.0] - 2023-06-16
 
 ### Update notes
 
-Users now need the new permission `view_skill_sets` in order to see the skill sets for a character. Please add this new permission to your states / groups accordingly. The rational behind this change is that is allows you to hide your doctrine fits from guests and new recruits.
+Users now need the new permission `view_skill_sets` in order to see the skill sets for a character. Please add this new permission to your states / groups accordingly (e.g. to the Member state). The rational behind this change is that is allows alliances to hide their doctrine fits from guests and new recruits.
 
 ### Added
 
