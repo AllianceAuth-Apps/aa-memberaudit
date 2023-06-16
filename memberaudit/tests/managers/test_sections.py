@@ -12,7 +12,7 @@ from eveuniverse.models import (
     EveType,
 )
 
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint
+from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.xml_converter import eve_xml_to_html
@@ -27,6 +27,7 @@ from memberaudit.models import (
     CharacterDetails,
     CharacterFwStats,
     CharacterLocation,
+    CharacterLoyaltyEntry,
     CharacterMailLabel,
     CharacterPlanet,
     CharacterSkill,
@@ -786,6 +787,78 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # then
         self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
         self.assertEqual(self.character_1002.location.location, self.structure_1)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation_id=2002)
+        self.assertEqual(obj.loyalty_points, 100)
+
+    def test_can_update_existing_entries(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.loyalty_entries.create(
+            corporation=self.corporation_2001, loyalty_points=200
+        )
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        self.assertEqual(obj.loyalty_points, 100)
+
+    def test_should_skip_update_when_no_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        obj.loyalty_points = 200
+        obj.save()
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        self.assertEqual(obj.loyalty_points, 200)
+
+    def test_should_always_update_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        obj.loyalty_points = 200
+        obj.save()
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        self.assertEqual(obj.loyalty_points, 100)
+
+    def test_should_thread_http_500_as_empty_loyalty_list(self, mock_esi):
+        # given
+        exception = build_http_error(
+            500, '{"error":"Unhandled internal error encountered!"}'
+        )
+        mock_esi.client.Loyalty.get_characters_character_id_loyalty_points.side_effect = (
+            exception
+        )
+        self.character_1001.loyalty_entries.create(
+            corporation=self.corporation_2001, loyalty_points=100
+        )
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2001)
+        self.assertEqual(obj.loyalty_points, 100)
 
 
 class TestCharacterMailLabelManager(TestCharacterUpdateBase):

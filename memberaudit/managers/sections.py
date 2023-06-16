@@ -1,6 +1,8 @@
 import ast
 from typing import Dict, List
 
+from bravado.exception import HTTPInternalServerError
+
 from django.db import models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
 from esi.models import Token
@@ -740,8 +742,46 @@ class CharacterLocationManager(models.Manager):
 
 
 class CharacterLoyaltyEntryManager(models.Manager):
+    @fetch_token_for_character_2("esi-characters.read_loyalty.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create implants for a character from ESI."""
+
+        logger.info("%s: Fetching loyalty entries from ESI", character)
+        try:
+            loyalty_entries = (
+                esi.client.Loyalty.get_characters_character_id_loyalty_points(
+                    character_id=character.eve_character.character_id,
+                    token=token.valid_access_token(),
+                ).results()
+            )
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                character,
+                ex,
+            )
+            return
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(loyalty_entries, "loyalty")
+
+        section = character.UpdateSection.LOYALTY
+        if force_update or character.has_section_changed(
+            section=section, content=loyalty_entries
+        ):
+            self._update_or_create_objs(character, loyalty_entries)
+            character.update_section_content_hash(
+                section=section, content=loyalty_entries
+            )
+            EveEntity.objects.bulk_update_new_esi()
+
+        else:
+            logger.info("%s: Loyalty entries have not changed", character)
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, loyalty_entries):
+    def _update_or_create_objs(self, character: models.Model, loyalty_entries):
         self.filter(character=character).delete()
         new_entries = [
             self.model(

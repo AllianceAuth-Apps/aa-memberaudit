@@ -605,40 +605,9 @@ class Character(models.Model):
 
         CharacterLocation.objects.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-characters.read_loyalty.v1")
-    def update_loyalty(self, token: Token, force_update: bool = False):
+    def update_loyalty(self, force_update: bool = False):
         """syncs the character's loyalty entries"""
-        logger.info("%s: Fetching loyalty entries from ESI", self)
-        try:
-            loyalty_entries = (
-                esi.client.Loyalty.get_characters_character_id_loyalty_points(
-                    character_id=self.eve_character.character_id,
-                    token=token.valid_access_token(),
-                ).results()
-            )
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                self,
-                ex,
-            )
-            return
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(loyalty_entries, "loyalty")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.LOYALTY, content=loyalty_entries
-        ):
-            self.loyalty_entries.update_for_character(self, loyalty_entries)
-            self.update_section_content_hash(
-                section=self.UpdateSection.LOYALTY, content=loyalty_entries
-            )
-            EveEntity.objects.bulk_update_new_esi()
-
-        else:
-            logger.info("%s: Loyalty entries have not changed", self)
+        self.loyalty_entries.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character(
         ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
