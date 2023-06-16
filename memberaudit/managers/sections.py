@@ -617,7 +617,7 @@ class CharacterDetailsManager(models.Manager):
 class CharacterFwStatsManager(models.Manager):
     @fetch_token_for_character_2("esi-characters.read_fw_stats.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create implants for a character from ESI."""
+        """Update or create fw stats for a character from ESI."""
         logger.info("%s: Fetching FW stats from ESI", character)
         stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
             character_id=character.eve_character.character_id,
@@ -703,7 +703,7 @@ class CharacterLocationManager(models.Manager):
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
     )
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create implants for a character from ESI."""
+        """Update or create location for a character from ESI."""
 
         logger.info("%s: Fetching location from ESI", character)
         location_info = esi.client.Location.get_characters_character_id_location(
@@ -744,7 +744,7 @@ class CharacterLocationManager(models.Manager):
 class CharacterLoyaltyEntryManager(models.Manager):
     @fetch_token_for_character_2("esi-characters.read_loyalty.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create implants for a character from ESI."""
+        """Update or create loyalty entries for a character from ESI."""
 
         logger.info("%s: Fetching loyalty entries from ESI", character)
         try:
@@ -796,8 +796,52 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
 
 class CharacterJumpCloneManager(models.Manager):
+    @fetch_token_for_character_2(
+        ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
+    )
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create jump clones for a character from ESI."""
+
+        logger.info("%s: Fetching jump clones from ESI", character)
+        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(jump_clones_info, "jump_clones")
+
+        section = character.UpdateSection.JUMP_CLONES
+        if force_update or character.has_section_changed(
+            section=section, content=jump_clones_info
+        ):
+            jump_clones_list = jump_clones_info.get("jump_clones")
+            # fetch related objects ahead of transaction
+            if jump_clones_list:
+                incoming_location_ids = {
+                    record["location_id"]
+                    for record in jump_clones_info["jump_clones"]
+                    if "location_id" in record
+                }
+                if incoming_location_ids:
+                    character._preload_all_locations(token, incoming_location_ids)
+
+                for jump_clone_info in jump_clones_list:
+                    if jump_clone_info.get("implants"):
+                        EveType.objects.bulk_get_or_create_esi(
+                            ids=jump_clone_info.get("implants", [])
+                        )
+
+            self._update_or_create_objs(character, jump_clones_list)
+            character.update_section_content_hash(
+                section=section, content=jump_clones_info
+            )
+
+        else:
+            logger.info("%s: Jump clones have not changed", character)
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, jump_clones_list: dict):
+    def _update_or_create_objs(self, character: models.Model, jump_clones_list: dict):
         from ..models import CharacterJumpCloneImplant, Location
 
         self.filter(character=character).delete()

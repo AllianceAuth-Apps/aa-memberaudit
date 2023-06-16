@@ -609,46 +609,9 @@ class Character(models.Model):
         """syncs the character's loyalty entries"""
         self.loyalty_entries.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character(
-        ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_jump_clones(self, token: Token, force_update: bool = False):
+    def update_jump_clones(self, force_update: bool = False):
         """updates the character's jump clones"""
-        logger.info("%s: Fetching jump clones from ESI", self)
-        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(jump_clones_info, "jump_clones")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.JUMP_CLONES, content=jump_clones_info
-        ):
-            jump_clones_list = jump_clones_info.get("jump_clones")
-            # fetch related objects ahead of transaction
-            if jump_clones_list:
-                incoming_location_ids = {
-                    record["location_id"]
-                    for record in jump_clones_info["jump_clones"]
-                    if "location_id" in record
-                }
-                if incoming_location_ids:
-                    self._preload_all_locations(token, incoming_location_ids)
-
-                for jump_clone_info in jump_clones_list:
-                    if jump_clone_info.get("implants"):
-                        EveType.objects.bulk_get_or_create_esi(
-                            ids=jump_clone_info.get("implants", [])
-                        )
-
-            self.jump_clones.update_for_character(self, jump_clones_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.JUMP_CLONES, content=jump_clones_info
-            )
-
-        else:
-            logger.info("%s: Jump clones have not changed", self)
+        self.jump_clones.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_mailing_lists(self, token: Token, force_update: bool = False):

@@ -26,6 +26,7 @@ from memberaudit.models import (
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
+    CharacterJumpClone,
     CharacterLocation,
     CharacterLoyaltyEntry,
     CharacterMailLabel,
@@ -765,6 +766,63 @@ class TestCharacterImplantsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
 
         self.character_1001.update_implants(force_update=True)
         self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(MODULE_PATH + ".esi")
+class TestCharacterUpdateJumpClones(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_update_with_implants(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterJumpClone.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.jump_clones.count(), 1)
+        obj = self.character_1001.jump_clones.get(jump_clone_id=12345)
+        self.assertEqual(obj.location, self.jita_44)
+        self.assertEqual(
+            {x for x in obj.implants.values_list("eve_type", flat=True)},
+            {19540, 19551, 19553},
+        )
+
+    def test_can_update_without_implants(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterJumpClone.objects.update_or_create_esi(self.character_1002)
+        # then
+        self.assertEqual(self.character_1002.jump_clones.count(), 1)
+        obj = self.character_1002.jump_clones.get(jump_clone_id=12345)
+        self.assertEqual(obj.location, self.jita_44)
+        self.assertEqual(obj.implants.count(), 0)
+
+    def test_skip_update_when_no_new_data(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterJumpClone.objects.update_or_create_esi(self.character_1001)
+        obj = self.character_1001.jump_clones.get(jump_clone_id=12345)
+        obj.location = self.structure_1
+        obj.save()
+        # when
+        CharacterJumpClone.objects.update_or_create_esi(self.character_1001)
+        # then
+        obj = self.character_1001.jump_clones.get(jump_clone_id=12345)
+        self.assertEqual(obj.location, self.structure_1)
+
+    def test_update_always_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterJumpClone.objects.update_or_create_esi(self.character_1001)
+        obj = self.character_1001.jump_clones.get(jump_clone_id=12345)
+        obj.location = self.structure_1
+        obj.save()
+        # when
+        CharacterJumpClone.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        obj = self.character_1001.jump_clones.get(jump_clone_id=12345)
+        self.assertEqual(obj.location, self.jita_44)
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
