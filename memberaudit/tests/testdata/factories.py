@@ -319,21 +319,23 @@ def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     return CharacterPlanet.objects.create(**params)
 
 
-def create_skill_set(**kwargs):
+def create_skill_set(**kwargs) -> SkillSet:
     my_id = next_number("skill_set_id")
     params = {"name": f"Test Set {my_id}", "description": "Generated skill set"}
     params.update(kwargs)
     return SkillSet.objects.create(**params)
 
 
-def create_skill_set_group(**kwargs):
+def create_skill_set_group(**kwargs) -> SkillSetGroup:
     my_id = next_number("skill_set_group_id")
     params = {"name": f"Test Group {my_id}", "description": "Generated skill set group"}
     params.update(kwargs)
     return SkillSetGroup.objects.create(**params)
 
 
-def create_skill_set_skill(skill_set, eve_type, required_level, **kwargs):
+def create_skill_set_skill(
+    skill_set, eve_type, required_level=1, **kwargs
+) -> SkillSetSkill:
     params = {
         "skill_set": skill_set,
         "eve_type": eve_type,

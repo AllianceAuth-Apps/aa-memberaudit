@@ -6,6 +6,7 @@ from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.core import dotlan, evewho
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
@@ -356,6 +357,30 @@ class SkillSet(models.Model):
     def __str__(self) -> str:
         return str(self.name)
 
+    def clone(self, user: User) -> "SkillSet":
+        """Create a clone of this skill set and return it."""
+        params = {
+            "description": self.description,
+            "is_visible": self.is_visible,
+            "last_modified_at": now(),
+            "last_modified_by": user,
+            "name": self.name + " 2",
+            "ship_type": self.ship_type,
+        }
+        new_instance = self.__class__(**params)
+        new_instance.save()
+        cloned_skills = [
+            SkillSetSkill(
+                skill_set=new_instance,
+                eve_type=skill.eve_type,
+                required_level=skill.required_level,
+                recommended_level=skill.recommended_level,
+            )
+            for skill in self.skills.all()
+        ]
+        SkillSetSkill.objects.bulk_create(cloned_skills)
+        return new_instance
+
 
 class SkillSetSkill(models.Model):
     """A specific skill within a skill set."""
@@ -409,19 +434,19 @@ class SkillSetSkill(models.Model):
         return f"{self.skill_set}: {self.required_skill_str}{recommended_level_str}"
 
     @property
-    def is_required(self) -> bool:
+    def is_required(self) -> bool:  # TODO: Add test
         return bool(self.required_level)
 
     @property
-    def required_skill_str(self) -> str:
+    def required_skill_str(self) -> str:  # TODO: Add test
         return self._skill_str(self.required_level) if self.required_level else ""
 
     @property
-    def recommened_skill_str(self) -> str:
+    def recommened_skill_str(self) -> str:  # TODO: Add test
         return self._skill_str(self.recommended_level) if self.recommended_level else ""
 
     @property
-    def maximum_level(self) -> int:
+    def maximum_level(self) -> int:  # TODO: Add test
         """Maximum level of this skill."""
         levels = [1]
         if self.recommended_level:
@@ -431,7 +456,7 @@ class SkillSetSkill(models.Model):
         return max(levels)
 
     @property
-    def maximum_skill_str(self) -> str:
+    def maximum_skill_str(self) -> str:  # TODO: Add test
         """Skill with maximum level as string."""
         return self._skill_str(self.maximum_level)
 
