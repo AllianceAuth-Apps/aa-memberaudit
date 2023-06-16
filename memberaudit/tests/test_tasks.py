@@ -575,6 +575,7 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
 @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".sections.esi")
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestUpdateCharacter(TestCaseTasks):
@@ -590,22 +591,28 @@ class TestUpdateCharacter(TestCaseTasks):
         clear_celery_once_locks()
 
     @skip  # temporary disabled because it does not work in tox
-    def test_should_update_normally(self, mock_esi):
+    def test_should_update_normally(self, mock_esi_models, mock_esi_managers):
         """can update from scratch"""
-        mock_esi.client = esi_client_stub
-
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
+        # when
         result = tasks.update_character(self.character_1001.pk)
+        # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    def test_should_report_errors_during_updates(self, mock_esi):
-        mock_esi.client = esi_client_error_stub
-
+    def test_should_report_errors_during_updates(
+        self, mock_esi_models, mock_esi_managers
+    ):
+        # given
+        mock_esi_models.client = esi_client_error_stub
+        mock_esi_managers.client = esi_client_stub
+        # when
         with self.assertRaises(OSError):  # raised when trying to fetch attributes
             tasks.update_character(self.character_1001.pk)
-
+        # then
         self.assertFalse(self.character_1001.is_update_status_ok())
-
         status = self.character_1001.update_status_set.get(
             character=self.character_1001,
             section=Character.UpdateSection.ATTRIBUTES,
@@ -617,9 +624,14 @@ class TestUpdateCharacter(TestCaseTasks):
         self.assertTrue(status.finished_at)
 
     @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
-    def test_should_update_stale_sections_only_1(self, update_loyalty, mock_esi):
+    def test_should_update_stale_sections_only_1(
+        self, update_loyalty, mock_esi_models, mock_esi_managers
+    ):
         """normal section"""
-        mock_esi.client = esi_client_stub
+
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.LOYALTY,
@@ -627,17 +639,20 @@ class TestUpdateCharacter(TestCaseTasks):
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
-
+        # when
         tasks.update_character(self.character_1001.pk)
-
+        # then
         self.assertFalse(update_loyalty.called)
 
     @patch(TASKS_PATH + ".update_character_mails", spec=True)
     def test_should_update_stale_sections_only_2(
-        self, mock_update_character_mails, mock_esi
+        self, mock_update_character_mails, mock_esi_models, mock_esi_managers
     ):
         """special section"""
-        mock_esi.client = esi_client_stub
+
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.MAILS,
@@ -645,17 +660,21 @@ class TestUpdateCharacter(TestCaseTasks):
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
-
+        # when
         tasks.update_character(self.character_1001.pk)
-
+        # then
         self.assertFalse(mock_update_character_mails.apply_async.called)
 
     @patch(TASKS_PATH + ".Character.update_skills", spec=True)
-    def test_should_update_stale_sections_only_3(self, mock_update_skills, mock_esi):
+    def test_should_update_stale_sections_only_3(
+        self, mock_update_skills, mock_esi_models, mock_esi_managers
+    ):
         """When generic section has recently been updated and force_update is called
         then update again
         """
-        mock_esi.client = esi_client_stub
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS,
@@ -663,14 +682,17 @@ class TestUpdateCharacter(TestCaseTasks):
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
-
+        # when
         tasks.update_character(self.character_1001.pk, force_update=True)
-
+        # then
         self.assertTrue(mock_update_skills.called)
 
-    def test_no_update_required(self, mock_esi):
+    def test_no_update_required(self, mock_esi_models, mock_esi_managers):
         """Do not update anything when not required"""
-        mock_esi.client = esi_client_stub
+
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         for section in Character.UpdateSection.values:
             CharacterUpdateStatus.objects.create(
                 character=self.character_1001,
@@ -679,21 +701,26 @@ class TestUpdateCharacter(TestCaseTasks):
                 started_at=now() - dt.timedelta(seconds=30),
                 finished_at=now(),
             )
-
+        # when
         result = tasks.update_character(self.character_1001.pk)
+        # then
         self.assertFalse(result)
 
-    def test_update_forced(self, mock_esi):
+    def test_update_forced(self, mock_esi_models, mock_esi_managers):
         """Can do forced update"""
-        mock_esi.client = esi_client_stub
-
+        # given
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
+        # when
         result = tasks.update_character(self.character_1001.pk, force_update=True)
+        # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    def test_skip_update_for_orphans(self, mock_esi):
+    def test_skip_update_for_orphans(self, mock_esi_models, mock_esi_managers):
         # given
-        mock_esi.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         character = create_character(EveCharacter.objects.get(character_id=1121))
         # when
         result = tasks.update_character(character.pk)

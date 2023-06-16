@@ -17,11 +17,11 @@ from ..testdata.factories import create_character, create_character_mining_ledge
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
+    CharacterUpdateTestDataMixin,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
-from .utils import CharacterUpdateTestDataMixin
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"

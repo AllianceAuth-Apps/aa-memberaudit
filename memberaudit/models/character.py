@@ -489,23 +489,7 @@ class Character(models.Model):
         """syncs the character details for the given character"""
         from .sections import CharacterDetails
 
-        logger.info("%s: Fetching character details from ESI", self)
-        details = esi.client.Character.get_characters_character_id(
-            character_id=self.eve_character.character_id,
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(details, "character_details")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CHARACTER_DETAILS, content=details
-        ):
-            CharacterDetails.objects.update_for_character(self, details)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CHARACTER_DETAILS, content=details
-            )
-
-        else:
-            logger.info("%s: Character details have not changed", self)
+        CharacterDetails.objects.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-characters.read_contacts.v1")
     def update_contact_labels(self, token: Token, force_update: bool = False):

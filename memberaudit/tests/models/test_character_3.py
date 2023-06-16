@@ -26,7 +26,7 @@ from ...models import (
     MailEntity,
 )
 from ..testdata.esi_client_stub import esi_client_stub
-from .utils import CharacterUpdateTestDataMixin
+from ..utils import CharacterUpdateTestDataMixin
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"

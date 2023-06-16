@@ -75,16 +75,18 @@ class TestUILauncher(WebTest):
         )
         self.assertEqual(character_viewer.status_code, 200)
 
+    @patch(MANAGERS_PATH + ".sections.esi")
     @patch(MODELS_PATH + ".character.esi")
     @override_settings(
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
-    def test_add_character(self, mock_esi):
+    def test_add_character(self, mock_esi_models, mock_esi_managers):
         """
         when clicking on "register"
         then user can add a new character
         """
-        mock_esi.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
         # user as another auth character
         character_ownership_1001 = add_auth_character_to_user(self.user, 1001)
 
@@ -333,6 +335,7 @@ class TestUICharacterViewer(WebTest):
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
 @patch(MODELS_PATH + ".character.MEMBERAUDIT_DATA_RETENTION_LIMIT", None)
+@patch(MANAGERS_PATH + ".sections.esi")
 @patch(MODELS_PATH + ".character.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestTasksE2E(TestCase):
@@ -346,9 +349,11 @@ class TestTasksE2E(TestCase):
         load_locations()
         clear_celery_once_locks()
 
-    def test_should_update_all_characters(self, mock_esi):
+    def test_should_update_all_characters(self, mock_esi_models, mock_esi_managers):
         # given
-        mock_esi.client = esi_client_stub
+        mock_esi_models.client = esi_client_stub
+        mock_esi_managers.client = esi_client_stub
+
         character_1001 = create_memberaudit_character(1001)
         # when
         tasks.update_all_characters()

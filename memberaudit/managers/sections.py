@@ -20,7 +20,10 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+from memberaudit.app_settings import (
+    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+    MEMBERAUDIT_DEVELOPER_MODE,
+)
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.helpers import (
     get_or_create_esi_or_none,
@@ -444,7 +447,27 @@ class CharacterCorporationHistoryManager(models.Manager):
 
 
 class CharacterDetailsManager(models.Manager):
-    def update_for_character(self, character: models.Model, details):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create character details from ESI."""
+
+        logger.info("%s: Fetching character details from ESI", character)
+        details = esi.client.Character.get_characters_character_id(
+            character_id=character.eve_character.character_id,
+        ).results()
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(details, "character_details")
+
+        section = character.UpdateSection.CHARACTER_DETAILS
+        if force_update or character.has_section_changed(
+            section=section, content=details
+        ):
+            self._update_or_create_objs(character, details)
+            character.update_section_content_hash(section=section, content=details)
+
+        else:
+            logger.info("%s: Character details have not changed", character)
+
+    def _update_or_create_objs(self, character, details):
         description = (
             details.get("description", "") if details.get("description") else ""
         )
