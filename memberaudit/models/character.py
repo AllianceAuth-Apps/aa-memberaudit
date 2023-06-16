@@ -480,47 +480,11 @@ class Character(models.Model):
 
         CharacterDetails.objects.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_contact_labels(self, token: Token, force_update: bool = False):
-        logger.info("%s: Fetching contact labels from ESI", self)
-        labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(labels, "contact_labels")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTACTS, content=labels, hash_num=2
-        ):
-            self.contact_labels.update_for_character(self, labels)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTACTS, content=labels, hash_num=2
-            )
-        else:
-            logger.info("%s: Contact labels have not changed", self)
+    def update_contact_labels(self, force_update: bool = False):
+        self.contact_labels.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_contacts(self, token: Token, force_update: bool = False):
-        logger.info("%s: Fetching contacts from ESI", self)
-        contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(contacts_data, "contacts")
-        if contacts_data:
-            contacts_list = {int(x["contact_id"]): x for x in contacts_data}
-        else:
-            contacts_list = dict()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTACTS, content=contacts_list
-        ):
-            self.contacts.update_for_character(self, contacts_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTACTS, content=contacts_list
-            )
-        else:
-            logger.info("%s: Contacts have not changed", self)
+    def update_contacts(self, force_update: bool = False):
+        self.contacts.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_contract_headers(self, token: Token, force_update: bool = False):

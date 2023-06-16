@@ -85,8 +85,32 @@ class CharacterAttributesManager(models.Manager):
 
 
 class CharacterContactLabelManager(models.Manager):
+    @fetch_token_for_character_2("esi-characters.read_contacts.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create assets for a character from ESI."""
+
+        logger.info("%s: Fetching contact labels from ESI", character)
+        labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(labels, "contact_labels")
+
+        section = character.UpdateSection.CONTACTS
+        if force_update or character.has_section_changed(
+            section=section, content=labels, hash_num=2
+        ):
+            self._update_or_create_objs(character, labels)
+            character.update_section_content_hash(
+                section=section, content=labels, hash_num=2
+            )
+        else:
+            logger.info("%s: Contact labels have not changed", character)
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, labels):
+    def _update_or_create_objs(self, character, labels):
         # TODO: replace with bulk methods to optimize
         if labels:
             incoming_ids = {x["label_id"] for x in labels}
@@ -114,8 +138,35 @@ class CharacterContactLabelManager(models.Manager):
 
 
 class CharacterContactManager(models.Manager):
+    @fetch_token_for_character_2("esi-characters.read_contacts.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create assets for a character from ESI."""
+
+        logger.info("%s: Fetching contacts from ESI", character)
+        contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(contacts_data, "contacts")
+        if contacts_data:
+            contacts_list = {int(x["contact_id"]): x for x in contacts_data}
+        else:
+            contacts_list = dict()
+        section = character.UpdateSection.CONTACTS
+        if force_update or character.has_section_changed(
+            section=section, content=contacts_list
+        ):
+            self._update_or_create_objs(character, contacts_list)
+            character.update_section_content_hash(
+                section=section, content=contacts_list
+            )
+        else:
+            logger.info("%s: Contacts have not changed", character)
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, contacts_list):
+    def _update_or_create_objs(self, character: models.Model, contacts_list):
         incoming_ids = set(contacts_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("eve_entity_id", flat=True)
