@@ -83,6 +83,7 @@ class Character(models.Model):
         MAILS = "mails", _("mails")
         MINING_LEDGER = "mining_ledger", _("mining ledger")
         ONLINE_STATUS = "online_status", _("online status")
+        PLANETS = "planets", _("planets")
         SHIP = "ship", _("ship")
         SKILLS = "skills", _("skills")
         SKILL_QUEUE = "skill_queue", _("skill queue")
@@ -132,6 +133,7 @@ class Character(models.Model):
         UpdateSection.MAILS: 2,
         UpdateSection.MINING_LEDGER: 2,
         UpdateSection.ONLINE_STATUS: 1,
+        UpdateSection.PLANETS: 2,
         UpdateSection.SHIP: 1,
         UpdateSection.SKILLS: 2,
         UpdateSection.SKILL_SETS: 2,
@@ -999,6 +1001,28 @@ class Character(models.Model):
                 "logins": online_info.get("logins"),
             },
         )
+
+    @fetch_token_for_character("esi-planets.manage_planets.v1")
+    def update_planets(self, token, force_update: bool = False):
+        """update the character's planets."""
+        logger.info("%s: Fetching planets from ESI", self)
+        planets_data = (
+            esi.client.Planetary_Interaction.get_characters_character_id_planets(
+                character_id=self.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            self._store_list_to_disk(planets_data, "planets")
+        if force_update or self.has_section_changed(
+            section=self.UpdateSection.PLANETS, content=planets_data
+        ):
+            self.planets.update_for_character(self, planets_data)
+            self.update_section_content_hash(
+                section=self.UpdateSection.PLANETS, content=planets_data
+            )
+        else:
+            logger.info("%s: Planets have not changed", self)
 
     @fetch_token_for_character("esi-location.read_ship_type.v1")
     def update_ship(self, token: Token):

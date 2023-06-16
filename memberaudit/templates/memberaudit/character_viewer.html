@@ -36,6 +36,7 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
                         {% if perms.memberaudit.view_skill_sets %}
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
@@ -548,6 +549,63 @@
                     }
                 });
         })
+
+        /* Planets */
+        $('#tab_planets').DataTable({
+            ajax: {
+                url: "{% url 'memberaudit:character_planets_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'region' },
+                {
+                    data: 'solar_system',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                { data: 'planet' },
+                { data: 'type' },
+                { data: 'num_pins' },
+                { data: 'upgrade_level' },
+                {
+                    data: 'last_update',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                /* hidden */
+                { data: 'solar_system_name' },
+            ],
+            paging: false,
+            searching: false,
+            order: [[0, "asc"], [1, "asc"]],
+            columnDefs: [
+                { "visible": false, "targets": [7] },
+            ],
+            filterDropDown: {
+                columns: [
+                    {
+                        idx: 0,
+                        title: "{% translate 'Region' %}"
+                    },
+                    {
+                        idx: 7,
+                        title: "{% translate 'Solar System' %}"
+                    },
+                    {
+                        idx: 3,
+                        title: "{% translate 'Planet Type' %}"
+                    }
+                ],
+                autoSize: false,
+                bootstrap: true
+            }
+        });
+
 
         /* Skillqueue */
         $('#tab_skillqueue').DataTable({

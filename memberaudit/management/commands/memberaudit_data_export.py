@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand
 
 from app_utils.logging import LoggerAddTag
 
-from ... import __title__
-from ...core.data_exporters import DataExporter
+from memberaudit import __title__
+from memberaudit.core.data_exporters import DataExporter
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 

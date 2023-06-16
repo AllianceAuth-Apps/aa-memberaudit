@@ -5,8 +5,8 @@ from django.core.management.base import BaseCommand
 
 from app_utils.logging import LoggerAddTag
 
-from ... import __title__
-from ...constants import EveCategoryId
+from memberaudit import __title__
+from memberaudit.constants import EveCategoryId
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 

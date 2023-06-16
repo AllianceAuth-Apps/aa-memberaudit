@@ -1,7 +1,7 @@
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from ..templatetags.memberaudit import navactive_2
+from memberaudit.templatetags.memberaudit import navactive_2
 
 
 class TestNavactive2(TestCase):

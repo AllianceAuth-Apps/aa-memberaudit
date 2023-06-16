@@ -13,7 +13,7 @@ from django.utils.timezone import now
 
 from allianceauth.eveonline.models import EveCharacter
 
-from ...core.data_exporters import (
+from memberaudit.core.data_exporters import (
     ContractExporter,
     ContractItemExporter,
     DataExporter,
@@ -22,7 +22,8 @@ from ...core.data_exporters import (
     file_to_zip,
     topics_and_export_files,
 )
-from ...models import CharacterWalletJournalEntry
+from memberaudit.models import CharacterWalletJournalEntry
+
 from ..testdata.factories import (
     create_character,
     create_character_contract,

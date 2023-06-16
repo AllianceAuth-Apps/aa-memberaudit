@@ -1,6 +1,7 @@
 from eveuniverse.models import EveEntity, EveSolarSystem
 
-from ...models import Location
+from memberaudit.models import Location
+
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..testdata.load_locations import load_locations

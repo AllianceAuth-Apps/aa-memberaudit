@@ -18,10 +18,15 @@ Users now need the new permission `view_skill_sets` in order to see the skill se
 - Show by whom and when a skill set was last modified
 - Show by whom and when a skill set group was last modified
 - New permission `view_skill_sets`
+- New tab showing a characters PI planets
+- Ability to clone existing skill sets (#130)
 
 ### Changed
 
 - Viewing skill sets for characters now require the new permission `view_skill_sets` (#130)
+- All character sections tabs now have a title
+- "Mining" tab now under "Industry"
+- "Attributes" tab now under "Skills"
 - Switched to flit build tool
 
 ### Fixed

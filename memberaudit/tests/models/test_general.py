@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.test import TestCase
-from eveuniverse.models import EveSolarSystem
+from eveuniverse.models import EveSolarSystem, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import (
@@ -14,9 +14,14 @@ from app_utils.testing import (
     queryset_pks,
 )
 
-from ...models import General, Location, MailEntity
-from ...models.character import data_retention_cutoff
-from ..testdata.factories import create_compliance_group_designation
+from memberaudit.models import General, Location, MailEntity, SkillSetSkill
+from memberaudit.models.character import data_retention_cutoff
+
+from ..testdata.factories import (
+    create_compliance_group_designation,
+    create_skill_set,
+    create_skill_set_skill,
+)
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..testdata.load_locations import load_locations
@@ -287,3 +292,34 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         # then
         group.refresh_from_db()
         self.assertTrue(group.authgroup.internal)
+
+
+class TestSkillSet(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        cls.user = AuthUtils.create_user("Bruce Wayne")
+
+    def test_should_clone_a_skill_set(self):
+        # given
+        obj_1 = create_skill_set()
+        gunnery_skill = EveType.objects.get(name="Gunnery")
+        skill_1 = create_skill_set_skill(
+            obj_1, gunnery_skill, required_level=3, recommended_level=5
+        )
+        # when
+        obj_2 = obj_1.clone(user=self.user)
+        # then
+        self.assertNotEqual(obj_2.pk, obj_1.pk)
+        self.assertEqual(obj_2.description, obj_1.description)
+        self.assertEqual(obj_2.is_visible, obj_1.is_visible)
+        self.assertNotEqual(obj_2.last_modified_at, obj_1.last_modified_at)
+        self.assertEqual(obj_2.last_modified_by, self.user)
+        self.assertEqual(obj_2.ship_type, obj_1.ship_type)
+
+        skill_2: SkillSetSkill = obj_2.skills.first()
+        self.assertNotEqual(skill_2.pk, skill_1.pk)
+        self.assertEqual(skill_2.eve_type, skill_1.eve_type)
+        self.assertEqual(skill_2.required_level, skill_1.required_level)
+        self.assertEqual(skill_2.recommended_level, skill_1.recommended_level)

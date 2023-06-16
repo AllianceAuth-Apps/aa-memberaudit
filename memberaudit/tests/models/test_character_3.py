@@ -13,7 +13,8 @@ from app_utils.esi import EsiStatus
 from app_utils.esi_testing import BravadoResponseStub, build_http_error
 from app_utils.testing import NoSocketsTestCase
 
-from ...core.xml_converter import eve_xml_to_html
+from memberaudit.core.xml_converter import eve_xml_to_html
+
 from ...models import (
     Character,
     CharacterMail,

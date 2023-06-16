@@ -246,6 +246,17 @@ class CharacterAdmin(admin.ModelAdmin):
     ]
     exclude = ("mailing_lists",)
 
+    actions = [
+        "delete_characters",
+        "update_characters",
+        "update_assets",
+        "update_location",
+        "update_online_status",
+        "enable_characters",
+        "disable_characters",
+    ]
+    inlines = (SyncStatusAdminInline,)
+
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset(*args, **kwargs)
         return (
@@ -338,16 +349,6 @@ class CharacterAdmin(admin.ModelAdmin):
                 [Character.UpdateSection.display_name(obj) for obj in missing]
             )
         return None
-
-    actions = [
-        "delete_characters",
-        "update_characters",
-        "update_assets",
-        "update_location",
-        "update_online_status",
-        "enable_characters",
-        "disable_characters",
-    ]
 
     @admin.display(description=_("Delete selected characters"))
     def delete_characters(self, request, queryset):
@@ -455,8 +456,6 @@ class CharacterAdmin(admin.ModelAdmin):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
         self.message_user(request, _("Disabled %d characters.") % len(pks))
-
-    inlines = (SyncStatusAdminInline,)
 
     def has_add_permission(self, request):
         return False
@@ -636,6 +635,7 @@ class SkillSetAdmin(admin.ModelAdmin):
     )
     ordering = ["name"]
     search_fields = ["name"]
+    actions = ["clone_skill_sets"]
 
     fields = [
         "name",
@@ -645,6 +645,7 @@ class SkillSetAdmin(admin.ModelAdmin):
         ("last_modified_at", "last_modified_by"),
     ]
     readonly_fields = ("last_modified_at", "last_modified_by")
+    inlines = (SkillSetSkillAdminInline,)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -677,8 +678,6 @@ class SkillSetAdmin(admin.ModelAdmin):
         groups = [f"{group.name}" for group in obj.groups_ordered]
         return groups if groups else None
 
-    inlines = (SkillSetSkillAdminInline,)
-
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "ship_type":
             kwargs["queryset"] = (
@@ -703,3 +702,10 @@ class SkillSetAdmin(admin.ModelAdmin):
         tasks.update_characters_skill_checks.apply_async(
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
         )  # type: ignore
+
+    @admin.display(description=_("Clone selected skill sets"))
+    def clone_skill_sets(self, request, queryset):
+        for obj in queryset:
+            obj.clone(request.user)
+
+        self.message_user(request, _("Cloned %d skill sets.") % queryset.count())

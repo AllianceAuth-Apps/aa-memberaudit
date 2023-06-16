@@ -1,4 +1,8 @@
 @media all {
+    h3 {
+        margin-top: 0px;
+    }
+
     h4 {
         margin-top: 0px;
     }
@@ -177,12 +181,15 @@
         text-align: right;
     }
 
-    /* Skillqueue */
-    /*
-    #tab_skillqueue tbody td:nth-child(1) {
+    /* Planets */
+
+    #tab_planets tbody td:nth-child(5) {
         text-align: center;
     }
-    */
+
+    #tab_planets tbody td:nth-child(6) {
+        text-align: center;
+    }
 
     /* Wallet Journal */
     #tab_wallet_journal tbody td:nth-child(1) {

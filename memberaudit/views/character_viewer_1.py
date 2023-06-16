@@ -23,23 +23,23 @@ from app_utils.views import (
     yesno_str,
 )
 
-from .. import __title__
-from ..constants import (
+from memberaudit import __title__
+from memberaudit.constants import (
     DEFAULT_ICON_SIZE,
     MAIL_LABEL_ID_ALL_MAILS,
     MY_DATETIME_FORMAT,
     EveCategoryId,
     EveDogmaAttributeId,
 )
-from ..decorators import fetch_character_if_allowed
-from ..models import (
+from memberaudit.decorators import fetch_character_if_allowed
+from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,
-    CharacterContractItem,
     CharacterFwStats,
     Location,
 )
+
 from ._common import add_common_context
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -162,10 +162,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     )
 
     # implants
-    try:
-        has_implants = character.implants.exists()
-    except ObjectDoesNotExist:
-        has_implants = False
+    has_implants = character.implants.exists()
 
     # last updates
     try:
@@ -251,20 +248,17 @@ def character_assets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = list()
-    try:
-        asset_qs = (
-            character.assets.annotate_pricing()
-            .select_related(
-                "eve_type",
-                "eve_type__eve_group",
-                "eve_type__eve_group__eve_category",
-                "location__eve_solar_system",
-                "location__eve_solar_system__eve_constellation__eve_region",
-            )
-            .filter(location__isnull=False)
+    asset_qs = (
+        character.assets.annotate_pricing()
+        .select_related(
+            "eve_type",
+            "eve_type__eve_group",
+            "eve_type__eve_group__eve_category",
+            "location__eve_solar_system",
+            "location__eve_solar_system__eve_constellation__eve_region",
         )
-    except ObjectDoesNotExist:
-        return HttpResponseNotFound()
+        .filter(location__isnull=False)
+    )
 
     assets_with_children_ids = set(
         character.assets.filter(children__isnull=False).values_list(
@@ -439,38 +433,33 @@ def character_contacts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = list()
-    try:
-        for contact in character.contacts.select_related("eve_entity").all():
-            is_watched = contact.is_watched is True
-            is_blocked = contact.is_blocked is True
-            name = contact.eve_entity.name
-            is_npc = contact.eve_entity.is_npc
-            if is_npc:
-                name_plus = format_html(
-                    "{} {}", name, bootstrap_label_html("NPC", "info")
-                )
-            else:
-                name_plus = name
+    for contact in character.contacts.select_related("eve_entity").all():
+        is_watched = contact.is_watched is True
+        is_blocked = contact.is_blocked is True
+        name = contact.eve_entity.name
+        is_npc = contact.eve_entity.is_npc
+        if is_npc:
+            name_plus = format_html("{} {}", name, bootstrap_label_html("NPC", "info"))
+        else:
+            name_plus = name
 
-            name_html = bootstrap_icon_plus_name_html(
-                contact.eve_entity.icon_url(DEFAULT_ICON_SIZE), name_plus, avatar=True
-            )
-            data.append(
-                {
-                    "id": contact.eve_entity_id,
-                    "name": {"display": name_html, "sort": name},
-                    "standing": contact.standing,
-                    "type": contact.eve_entity.get_category_display().title(),
-                    "is_watched": is_watched,
-                    "is_blocked": is_blocked,
-                    "is_watched_str": yesno_str(is_watched),
-                    "is_blocked_str": yesno_str(is_blocked),
-                    "is_npc_str": yesno_str(is_npc),
-                    "level": contact.standing_level.title(),
-                }
-            )
-    except ObjectDoesNotExist:
-        pass
+        name_html = bootstrap_icon_plus_name_html(
+            contact.eve_entity.icon_url(DEFAULT_ICON_SIZE), name_plus, avatar=True
+        )
+        data.append(
+            {
+                "id": contact.eve_entity_id,
+                "name": {"display": name_html, "sort": name},
+                "standing": contact.standing,
+                "type": contact.eve_entity.get_category_display().title(),
+                "is_watched": is_watched,
+                "is_blocked": is_blocked,
+                "is_watched_str": yesno_str(is_watched),
+                "is_blocked_str": yesno_str(is_blocked),
+                "is_npc_str": yesno_str(is_npc),
+                "level": contact.standing_level.title(),
+            }
+        )
 
     return JsonResponse({"data": data})
 
@@ -482,40 +471,37 @@ def character_contracts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = list()
-    try:
-        for contract in character.contracts.select_related("issuer", "assignee").all():
-            if now() < contract.date_expired:
-                time_left = timeuntil(contract.date_expired, now())
-            else:
-                time_left = "expired"
+    for contract in character.contracts.select_related("issuer", "assignee").all():
+        if now() < contract.date_expired:
+            time_left = timeuntil(contract.date_expired, now())
+        else:
+            time_left = "expired"
 
-            ajax_contract_detail = reverse(
-                "memberaudit:character_contract_details",
-                args=[character.pk, contract.pk],
-            )
+        ajax_contract_detail = reverse(
+            "memberaudit:character_contract_details",
+            args=[character.pk, contract.pk],
+        )
 
-            actions_html = (
-                '<button type="button" class="btn btn-primary" '
-                'data-toggle="modal" data-target="#modalCharacterContract" '
-                f"data-ajax_contract_detail={ajax_contract_detail}>"
-                '<i class="fas fa-search"></i></button>'
-            )
-            data.append(
-                {
-                    "contract_id": contract.contract_id,
-                    "summary": contract.summary(),
-                    "type": contract.get_contract_type_display().title(),
-                    "from": contract.issuer.name,
-                    "to": contract.assignee.name if contract.assignee else "(None)",
-                    "status": contract.get_status_display(),
-                    "date_issued": contract.date_issued.isoformat(),
-                    "time_left": time_left,
-                    "info": contract.title,
-                    "actions": actions_html,
-                }
-            )
-    except ObjectDoesNotExist:
-        pass
+        actions_html = (
+            '<button type="button" class="btn btn-primary" '
+            'data-toggle="modal" data-target="#modalCharacterContract" '
+            f"data-ajax_contract_detail={ajax_contract_detail}>"
+            '<i class="fas fa-search"></i></button>'
+        )
+        data.append(
+            {
+                "contract_id": contract.contract_id,
+                "summary": contract.summary(),
+                "type": contract.get_contract_type_display().title(),
+                "from": contract.issuer.name,
+                "to": contract.assignee.name if contract.assignee else "(None)",
+                "status": contract.get_status_display(),
+                "date_issued": contract.date_issued.isoformat(),
+                "time_left": time_left,
+                "info": contract.title,
+                "actions": actions_html,
+            }
+        )
 
     return JsonResponse({"data": data})
 
@@ -545,22 +531,10 @@ def character_contract_details(
             "character": character,
         }
     else:
-        try:
-            has_items_included = contract.items.filter(is_included=True).exists()
-            has_items_requested = contract.items.filter(is_included=False).exists()
-        except ObjectDoesNotExist:
-            has_items_included = False
-            has_items_requested = False
-
-        try:
-            current_bid = (
-                contract.bids.all().aggregate(Max("amount")).get("amount__max")
-            )
-            bids_count = contract.bids.count()
-        except ObjectDoesNotExist:
-            current_bid = None
-            bids_count = None
-
+        has_items_included = contract.items.filter(is_included=True).exists()
+        has_items_requested = contract.items.filter(is_included=False).exists()
+        current_bid = contract.bids.all().aggregate(Max("amount")).get("amount__max")
+        bids_count = contract.bids.count()
         context = {
             "character": character,
             "contract": contract,
@@ -625,18 +599,13 @@ def _character_contract_items_data(
         logger.warning(error_msg)
         return HttpResponseNotFound(error_msg)
 
-    try:
-        items_qs = (
-            contract.items.annotate_pricing()
-            .filter(is_included=is_included)
-            .select_related(
-                "eve_type",
-                "eve_type__eve_group",
-                "eve_type__eve_group__eve_category",
-            )
+    items_qs = (
+        contract.items.annotate_pricing()
+        .filter(is_included=is_included)
+        .select_related(
+            "eve_type", "eve_type__eve_group", "eve_type__eve_group__eve_category"
         )
-    except ObjectDoesNotExist:
-        items_qs = CharacterContractItem.objects.none()
+    )
 
     for item in items_qs:
         name_html, name = item_icon_plus_name_html(item)
@@ -730,32 +699,29 @@ def character_implants_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = list()
-    try:
-        for implant in character.implants.select_related("eve_type").prefetch_related(
-            "eve_type__dogma_attributes"
-        ):
-            implant_html = bootstrap_icon_plus_name_html(
-                implant.eve_type.icon_url(
-                    DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
-                ),
-                implant.eve_type.name,
-            )
-            dogma_attributes = {
-                obj.eve_dogma_attribute_id: obj.value
-                for obj in implant.eve_type.dogma_attributes.all()
+    for implant in character.implants.select_related("eve_type").prefetch_related(
+        "eve_type__dogma_attributes"
+    ):
+        implant_html = bootstrap_icon_plus_name_html(
+            implant.eve_type.icon_url(
+                DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
+            ),
+            implant.eve_type.name,
+        )
+        dogma_attributes = {
+            obj.eve_dogma_attribute_id: obj.value
+            for obj in implant.eve_type.dogma_attributes.all()
+        }
+        try:
+            slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
+        except KeyError:
+            slot_num = 0
+        data.append(
+            {
+                "id": implant.pk,
+                "implant": {"display": implant_html, "sort": slot_num},
             }
-            try:
-                slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
-            except KeyError:
-                slot_num = 0
-            data.append(
-                {
-                    "id": implant.pk,
-                    "implant": {"display": implant_html, "sort": slot_num},
-                }
-            )
-    except ObjectDoesNotExist:
-        pass
+        )
 
     return JsonResponse({"data": data})
 
@@ -767,22 +733,19 @@ def character_loyalty_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = list()
-    try:
-        for entry in character.loyalty_entries.select_related("corporation"):
-            corporation_html = bootstrap_icon_plus_name_html(
-                entry.corporation.icon_url(DEFAULT_ICON_SIZE), entry.corporation.name
-            )
-            data.append(
-                {
-                    "id": entry.pk,
-                    "corporation": {
-                        "display": corporation_html,
-                        "sort": entry.corporation.name,
-                    },
-                    "loyalty_points": entry.loyalty_points,
-                }
-            )
-    except ObjectDoesNotExist:
-        pass
+    for entry in character.loyalty_entries.select_related("corporation"):
+        corporation_html = bootstrap_icon_plus_name_html(
+            entry.corporation.icon_url(DEFAULT_ICON_SIZE), entry.corporation.name
+        )
+        data.append(
+            {
+                "id": entry.pk,
+                "corporation": {
+                    "display": corporation_html,
+                    "sort": entry.corporation.name,
+                },
+                "loyalty_points": entry.loyalty_points,
+            }
+        )
 
     return JsonResponse({"data": data})

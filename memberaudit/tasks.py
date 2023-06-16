@@ -22,8 +22,8 @@ from app_utils.esi import (
 )
 from app_utils.logging import LoggerAddTag
 
-from . import __title__, helpers
-from .app_settings import (
+from memberaudit import __title__, helpers
+from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOG_UPDATE_STATS,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
@@ -33,8 +33,8 @@ from .app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
-from .core import data_exporters
-from .models import (
+from memberaudit.core import data_exporters
+from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,

@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import (
+from memberaudit.views import (
     admin,
     character_finder,
     character_viewer_1,
@@ -122,6 +122,11 @@ urlpatterns = [
         "character_mining_ledger_data/<int:character_pk>/",
         character_viewer_2.character_mining_ledger_data,
         name="character_mining_ledger_data",
+    ),
+    path(
+        "character_planets_data/<int:character_pk>/",
+        character_viewer_2.character_planets_data,
+        name="character_planets_data",
     ),
     path(
         "character_skillqueue_data/<int:character_pk>/",

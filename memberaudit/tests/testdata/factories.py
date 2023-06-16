@@ -8,7 +8,7 @@ from typing import Iterable
 
 from django.contrib.auth.models import Group, User
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import State
 from app_utils.testing import create_authgroup
@@ -28,6 +28,7 @@ from memberaudit.models import (
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
+    CharacterPlanet,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
@@ -299,21 +300,42 @@ def create_online_status(character: Character, **kwargs) -> CharacterOnlineStatu
     return CharacterOnlineStatus.objects.create(**params)
 
 
-def create_skill_set(**kwargs):
+def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
+    all_planets = set(EvePlanet.objects.values_list("id", flat=True))
+    colonized_planets = set(
+        CharacterPlanet.objects.values_list("eve_planet_id", flat=True)
+    )
+    available_planets = all_planets - colonized_planets
+    if not available_planets:
+        raise RuntimeError("No free planet to colonize")
+    params = {
+        "character": character,
+        "last_update_at": now() - dt.timedelta(days=random.randint(0, 300)),
+        "num_pins": random.randint(1, 10),
+        "eve_planet": EvePlanet.objects.get(id=random.choice(list(available_planets))),
+        "upgrade_level": random.randint(0, 5),
+    }
+    params.update(kwargs)
+    return CharacterPlanet.objects.create(**params)
+
+
+def create_skill_set(**kwargs) -> SkillSet:
     my_id = next_number("skill_set_id")
     params = {"name": f"Test Set {my_id}", "description": "Generated skill set"}
     params.update(kwargs)
     return SkillSet.objects.create(**params)
 
 
-def create_skill_set_group(**kwargs):
+def create_skill_set_group(**kwargs) -> SkillSetGroup:
     my_id = next_number("skill_set_group_id")
     params = {"name": f"Test Group {my_id}", "description": "Generated skill set group"}
     params.update(kwargs)
     return SkillSetGroup.objects.create(**params)
 
 
-def create_skill_set_skill(skill_set, eve_type, required_level, **kwargs):
+def create_skill_set_skill(
+    skill_set, eve_type, required_level=1, **kwargs
+) -> SkillSetSkill:
     params = {
         "skill_set": skill_set,
         "eve_type": eve_type,

@@ -6,8 +6,9 @@ from esi.models import Token
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase, generate_invalid_pk
 
-from ..decorators import fetch_character_if_allowed, fetch_token_for_character
-from ..models import Character
+from memberaudit.decorators import fetch_character_if_allowed, fetch_token_for_character
+from memberaudit.models import Character
+
 from .testdata.load_entities import load_entities
 from .utils import create_memberaudit_character, scope_names_set
 

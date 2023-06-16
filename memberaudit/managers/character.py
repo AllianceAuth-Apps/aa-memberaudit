@@ -22,7 +22,7 @@ from app_utils.caching import ObjectCacheMixin
 from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
+from memberaudit import __title__
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 

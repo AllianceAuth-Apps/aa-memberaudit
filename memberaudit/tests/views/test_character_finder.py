@@ -5,11 +5,12 @@ from django.urls import reverse
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_user_from_evecharacter, json_response_to_python
 
-from ...views.character_finder import (
+from memberaudit.views.character_finder import (
     CharacterFinderListJson,
     character_finder,
     character_finder_list_fdd_data,
 )
+
 from ..testdata.factories import create_character
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse

@@ -5,8 +5,8 @@ from typing import DefaultDict, Dict, Iterable, List, Tuple
 
 from eveuniverse.models import EveType, EveTypeDogmaAttribute
 
-from ..constants import MAP_ARABIC_TO_ROMAN_NUMBERS
-from ..constants import EveDogmaAttributeId as AttributeId
+from memberaudit.constants import MAP_ARABIC_TO_ROMAN_NUMBERS
+from memberaudit.constants import EveDogmaAttributeId as AttributeId
 
 
 @dataclass(frozen=True)

@@ -10,8 +10,9 @@ from eveuniverse.models import EveEntity, EveType
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..constants import EveCategoryId, EveDogmaEffectId, EveGroupId
+from memberaudit import __title__
+from memberaudit.constants import EveCategoryId, EveDogmaEffectId, EveGroupId
+
 from .fittings import Fitting, Item, Module
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)

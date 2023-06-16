@@ -6,8 +6,8 @@ from django.core.serializers.json import DjangoJSONEncoder
 
 from app_utils.logging import LoggerAddTag
 
-from ... import __title__
-from ...models import CharacterUpdateStatus
+from memberaudit import __title__
+from memberaudit.models import CharacterUpdateStatus
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 

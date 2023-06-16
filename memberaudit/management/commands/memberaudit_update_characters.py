@@ -4,9 +4,10 @@ from django.core.management.base import BaseCommand
 
 from app_utils.logging import LoggerAddTag
 
-from ... import __title__
-from ...models import Character
-from ...tasks import update_all_characters
+from memberaudit import __title__
+from memberaudit.models import Character
+from memberaudit.tasks import update_all_characters
+
 from . import get_input
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
