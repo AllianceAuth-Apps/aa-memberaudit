@@ -14,9 +14,10 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__, tasks
-from ..app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-from ..models import Character, ComplianceGroupDesignation
+from memberaudit import __title__, tasks
+from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+from memberaudit.models import Character, ComplianceGroupDesignation
+
 from ._common import add_common_context
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)

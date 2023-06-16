@@ -1,6 +1,6 @@
 from django.urls import path
 
-from .views import (
+from memberaudit.views import (
     admin,
     character_finder,
     character_viewer_1,

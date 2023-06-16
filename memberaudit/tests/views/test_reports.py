@@ -16,13 +16,14 @@ from app_utils.testing import (
     multi_assert_not_in,
 )
 
-from ...models import Character, CharacterSkill, SkillSetGroup
-from ...views.reports import (
+from memberaudit.models import Character, CharacterSkill, SkillSetGroup
+from memberaudit.views.reports import (
     corporation_compliance_report_data,
     reports,
     skill_sets_report_data,
     user_compliance_report_data,
 )
+
 from ..testdata.factories import (
     create_character,
     create_skill_set,

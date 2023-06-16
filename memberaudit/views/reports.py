@@ -17,9 +17,10 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 from app_utils.views import bootstrap_icon_plus_name_html, yesno_str
 
-from .. import __title__
-from ..constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
-from ..models import CharacterSkillSetCheck, General, SkillSet, SkillSetSkill
+from memberaudit import __title__
+from memberaudit.constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
+from memberaudit.models import CharacterSkillSetCheck, General, SkillSet, SkillSetSkill
+
 from ._common import UNGROUPED_SKILL_SET, add_common_context
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)

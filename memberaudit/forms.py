@@ -1,11 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from .core.eft_parser import EftParserError
-from .core.fittings import Fitting
-from .core.skill_plans import SkillPlan, SkillPlanError
-from .models import SkillSet, SkillSetGroup
-from .models.constants import NAMES_MAX_LENGTH
+from memberaudit.core.eft_parser import EftParserError
+from memberaudit.core.fittings import Fitting
+from memberaudit.core.skill_plans import SkillPlan, SkillPlanError
+from memberaudit.models import SkillSet, SkillSetGroup
+from memberaudit.models.constants import NAMES_MAX_LENGTH
 
 
 class ImportFittingForm(forms.Form):

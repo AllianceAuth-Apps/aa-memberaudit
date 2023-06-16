@@ -9,11 +9,12 @@ from app_utils.testing import (
     create_user_from_evecharacter,
 )
 
-from ..helpers import (
+from memberaudit.helpers import (
     clear_users_from_group,
     filter_groups_available_to_user,
     get_unidecoded_slug,
 )
+
 from .testdata.load_entities import load_entities
 
 

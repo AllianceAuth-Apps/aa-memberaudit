@@ -5,9 +5,9 @@ from eveuniverse.models import EveSolarSystem
 
 from app_utils.views import link_html
 
-from ..app_settings import MEMBERAUDIT_APP_NAME
-from ..constants import MY_DATETIME_FORMAT
-from ..models import Character
+from memberaudit.app_settings import MEMBERAUDIT_APP_NAME
+from memberaudit.constants import MY_DATETIME_FORMAT
+from memberaudit.models import Character
 
 UNGROUPED_SKILL_SET = gettext_lazy("[Ungrouped]")
 

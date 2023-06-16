@@ -19,9 +19,9 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 from app_utils.views import yesno_str
 
-from .. import __title__
-from ..app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
-from ..models import (
+from memberaudit import __title__
+from memberaudit.app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
+from memberaudit.models import (
     CharacterContract,
     CharacterContractItem,
     CharacterWalletJournalEntry,

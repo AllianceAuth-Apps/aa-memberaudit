@@ -16,18 +16,18 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.esi import fetch_esi_status
 from app_utils.logging import LoggerAddTag
 
-from .. import __title__
-from ..app_settings import (
+from memberaudit import __title__
+from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
-from ..constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
-from ..core.fittings import Fitting
-from ..core.skill_plans import SkillPlan
-from ..core.skills import Skill
-from ..helpers import filter_groups_available_to_user
-from ..providers import esi
+from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
+from memberaudit.core.fittings import Fitting
+from memberaudit.core.skill_plans import SkillPlan
+from memberaudit.core.skills import Skill
+from memberaudit.helpers import filter_groups_available_to_user
+from memberaudit.providers import esi
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 

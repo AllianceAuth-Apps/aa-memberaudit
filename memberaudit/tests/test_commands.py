@@ -7,7 +7,8 @@ from django.core.management import call_command
 
 from app_utils.testing import NoSocketsTestCase
 
-from ..models import Character
+from memberaudit.models import Character
+
 from .testdata.factories import (
     create_character_contract,
     create_character_contract_item,

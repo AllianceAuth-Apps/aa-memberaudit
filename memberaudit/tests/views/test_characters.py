@@ -7,8 +7,8 @@ from django.urls import reverse
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
 
-from ...models import Character
-from ...views.characters import (
+from memberaudit.models import Character
+from memberaudit.views.characters import (
     add_character,
     index,
     launcher,
@@ -16,6 +16,7 @@ from ...views.characters import (
     share_character,
     unshare_character,
 )
+
 from ..testdata.factories import create_compliance_group
 from ..testdata.load_entities import load_entities
 from ..utils import (

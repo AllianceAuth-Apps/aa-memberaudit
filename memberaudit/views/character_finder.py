@@ -20,8 +20,9 @@ from app_utils.views import (
     yesno_str,
 )
 
-from .. import __title__
-from ..models import General
+from memberaudit import __title__
+from memberaudit.models import General
+
 from ._common import add_common_context
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)

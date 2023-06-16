@@ -3,7 +3,7 @@ from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveTyp
 
 from app_utils.testing import NoSocketsTestCase
 
-from ...models import (
+from memberaudit.models import (
     CharacterAsset,
     CharacterContactLabel,
     CharacterContract,
@@ -11,6 +11,7 @@ from ...models import (
     CharacterMailLabel,
     Location,
 )
+
 from ..testdata.factories import (
     create_character_contract,
     create_character_contract_bid,

@@ -14,8 +14,9 @@ from app_utils.testing import (
     queryset_pks,
 )
 
-from ...models import General, Location, MailEntity
-from ...models.character import data_retention_cutoff
+from memberaudit.models import General, Location, MailEntity
+from memberaudit.models.character import data_retention_cutoff
+
 from ..testdata.factories import create_compliance_group_designation
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse

@@ -12,7 +12,7 @@ from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveTyp
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
-from ...models import (
+from memberaudit.models import (
     Character,
     CharacterContract,
     CharacterContractItem,
@@ -26,6 +26,7 @@ from ...models import (
     SkillSetGroup,
     SkillSetSkill,
 )
+
 from ..testdata.factories import create_character, create_character_update_status
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
