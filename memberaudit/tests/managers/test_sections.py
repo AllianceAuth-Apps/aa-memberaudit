@@ -26,6 +26,7 @@ from memberaudit.models import (
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
+    CharacterLocation,
     CharacterMailLabel,
     CharacterPlanet,
     CharacterSkill,
@@ -575,7 +576,7 @@ class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterUpdateFwStats(NoSocketsTestCase):
+class TestCharacterFwStatsManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -763,6 +764,28 @@ class TestCharacterImplantsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
 
         self.character_1001.update_implants(force_update=True)
         self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(MODULE_PATH + ".esi")
+class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_update_location_1(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterLocation.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
+        self.assertEqual(self.character_1001.location.location, self.jita_44)
+
+    def test_update_location_2(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterLocation.objects.update_or_create_esi(self.character_1002)
+        # then
+        self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
+        self.assertEqual(self.character_1002.location.location, self.structure_1)
 
 
 class TestCharacterMailLabelManager(TestCharacterUpdateBase):

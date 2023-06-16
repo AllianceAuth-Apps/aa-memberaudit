@@ -697,7 +697,20 @@ class CharacterImplantManager(models.Manager):
 
 
 class CharacterLocationManager(models.Manager):
-    def update_for_character(
+    @fetch_token_for_character_2(
+        ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
+    )
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create implants for a character from ESI."""
+
+        logger.info("%s: Fetching location from ESI", character)
+        location_info = esi.client.Location.get_characters_character_id_location(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        self._update_or_create_objs(character, token, location_info)
+
+    def _update_or_create_objs(
         self, character: models.Model, token: Token, location_info
     ):
         from ..models.general import Location

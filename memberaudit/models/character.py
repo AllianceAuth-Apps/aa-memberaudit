@@ -599,19 +599,11 @@ class Character(models.Model):
         """update the character's implants"""
         self.implants.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character(
-        ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_location(self, token: Token):
+    def update_location(self):
         """update the location for the given character"""
         from .sections import CharacterLocation
 
-        logger.info("%s: Fetching location from ESI", self)
-        location_info = esi.client.Location.get_characters_character_id_location(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        CharacterLocation.objects.update_for_character(self, token, location_info)
+        CharacterLocation.objects.update_or_create_esi(self)
 
     @fetch_token_for_character("esi-characters.read_loyalty.v1")
     def update_loyalty(self, token: Token, force_update: bool = False):

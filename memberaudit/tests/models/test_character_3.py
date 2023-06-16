@@ -558,24 +558,6 @@ class TestCharacterUpdateLoyalty(CharacterUpdateTestDataMixin, NoSocketsTestCase
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateLocation(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_location_1(self, mock_esi):
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_location()
-        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
-        self.assertEqual(self.character_1001.location.location, self.jita_44)
-
-    def test_update_location_2(self, mock_esi):
-        mock_esi.client = esi_client_stub
-
-        self.character_1002.update_location()
-        self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
-        self.assertEqual(self.character_1002.location.location, self.structure_1)
-
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODELS_PATH + ".character.esi")
 class TestCharacterUpdateOnlineStatus(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_online_status(self, mock_esi):
         mock_esi.client = esi_client_stub
