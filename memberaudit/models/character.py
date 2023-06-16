@@ -623,21 +623,7 @@ class Character(models.Model):
 
     def update_corporation_history(self, force_update: bool = False):
         """syncs the character's corporation history"""
-        logger.info("%s: Fetching corporation history from ESI", self)
-        history = esi.client.Character.get_characters_character_id_corporationhistory(
-            character_id=self.eve_character.character_id,
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(history, "corporation_history")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CORPORATION_HISTORY, content=history
-        ):
-            self.corporation_history.update_for_character(self, history)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CORPORATION_HISTORY, content=history
-            )
-        else:
-            logger.info("%s: Corporation history has not changed", self)
+        self.corporation_history.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-characters.read_fw_stats.v1")
     def update_fw_stats(self, token: Token, force_update: bool = False):

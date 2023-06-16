@@ -22,6 +22,7 @@ from memberaudit.models import (
     CharacterContactLabel,
     CharacterContract,
     CharacterContractBid,
+    CharacterCorporationHistory,
     CharacterDetails,
     CharacterMailLabel,
     CharacterPlanet,
@@ -150,6 +151,81 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
         )
         # then
         self.assertEqual(CharacterContractBid.objects.count(), 1)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterCorporationHistoryManager(
+    CharacterUpdateTestDataMixin, NoSocketsTestCase
+):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.corporation_history.count(), 2)
+
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        self.assertEqual(obj.corporation, self.corporation_2001)
+        self.assertTrue(obj.is_deleted)
+        self.assertEqual(obj.start_date, parse_datetime("2016-06-26T20:00:00Z"))
+
+        obj = self.character_1001.corporation_history.get(record_id=501)
+        self.assertEqual(obj.corporation, self.corporation_2002)
+        self.assertFalse(obj.is_deleted)
+        self.assertEqual(obj.start_date, parse_datetime("2016-07-26T20:00:00Z"))
+
+    def test_can_update_existing_history(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.corporation_history.create(
+            record_id=500, corporation=self.corporation_2002, start_date=now()
+        )
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.corporation_history.count(), 2)
+
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        self.assertEqual(obj.corporation, self.corporation_2001)
+        self.assertTrue(obj.is_deleted)
+        self.assertEqual(obj.start_date, parse_datetime("2016-06-26T20:00:00Z"))
+
+    def test_should_skip_update_when_data_on_ESI_has_not_changed(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.update_corporation_history()
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        obj.corporation = self.corporation_2002
+        obj.save()
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        # then
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        self.assertEqual(obj.corporation, self.corporation_2002)
+
+    def test_should_update_always_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.update_corporation_history()
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        obj.corporation = self.corporation_2002
+        obj.save()
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        obj = self.character_1001.corporation_history.get(record_id=500)
+        self.assertEqual(obj.corporation, self.corporation_2001)
+
+    def test_should_handle_empty_response(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1002)
+        # then
+        self.assertEqual(self.character_1001.corporation_history.count(), 0)
 
 
 @patch(MODULE_PATH + ".eve_xml_to_html")

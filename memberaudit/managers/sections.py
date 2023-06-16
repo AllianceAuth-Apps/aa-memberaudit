@@ -65,6 +65,25 @@ class CharacterAssetManager(models.Manager):
         )
 
 
+class CharacterAttributesManager(models.Manager):
+    def update_for_character(self, character, attribute_data):
+        self.update_or_create(
+            character=character,
+            defaults={
+                "accrued_remap_cooldown_date": attribute_data.get(
+                    "accrued_remap_cooldown_date"
+                ),
+                "last_remap_date": attribute_data.get("last_remap_date"),
+                "bonus_remaps": attribute_data.get("bonus_remaps"),
+                "charisma": attribute_data.get("charisma"),
+                "intelligence": attribute_data.get("intelligence"),
+                "memory": attribute_data.get("memory"),
+                "perception": attribute_data.get("perception"),
+                "willpower": attribute_data.get("willpower"),
+            },
+        )
+
+
 class CharacterContactLabelManager(models.Manager):
     @transaction.atomic()
     def update_for_character(self, character: models.Model, labels):
@@ -420,7 +439,27 @@ class CharacterContractItemManager(models.Manager):
 
 
 class CharacterCorporationHistoryManager(models.Manager):
-    def update_for_character(self, character: models.Model, history):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create corporation history for character."""
+
+        logger.info("%s: Fetching corporation history from ESI", character)
+        history = esi.client.Character.get_characters_character_id_corporationhistory(
+            character_id=character.eve_character.character_id,
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(history, "corporation_history")
+
+        section = character.UpdateSection.CORPORATION_HISTORY
+        if force_update or character.has_section_changed(
+            section=section, content=history
+        ):
+            self._update_or_create_objs(character, history)
+            character.update_section_content_hash(section=section, content=history)
+        else:
+            logger.info("%s: Corporation history has not changed", character)
+
+    def _update_or_create_objs(self, character: models.Model, history):
         entries = [
             self.model(
                 character=character,
@@ -1393,22 +1432,3 @@ class CharacterWalletTransactionManager(models.Manager):
             self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
         EveEntity.objects.bulk_update_new_esi()
-
-
-class CharacterAttributesManager(models.Manager):
-    def update_for_character(self, character, attribute_data):
-        self.update_or_create(
-            character=character,
-            defaults={
-                "accrued_remap_cooldown_date": attribute_data.get(
-                    "accrued_remap_cooldown_date"
-                ),
-                "last_remap_date": attribute_data.get("last_remap_date"),
-                "bonus_remaps": attribute_data.get("bonus_remaps"),
-                "charisma": attribute_data.get("charisma"),
-                "intelligence": attribute_data.get("intelligence"),
-                "memory": attribute_data.get("memory"),
-                "perception": attribute_data.get("perception"),
-                "willpower": attribute_data.get("willpower"),
-            },
-        )
