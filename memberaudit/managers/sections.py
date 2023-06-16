@@ -27,6 +27,7 @@ from memberaudit.helpers import (
     get_or_create_or_none,
     get_or_none,
 )
+from memberaudit.providers import esi
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -910,26 +911,48 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 
 class CharacterPlanetManager(models.Manager):
-    @transaction.atomic()
-    def update_for_character(self, character: models.Model, planets_data):
-        self.filter(character=character).delete()
-        if planets_data:
-            planets = []
-            for obj in planets_data:
-                eve_planet, _ = EvePlanet.objects.get_or_create_esi(id=obj["planet_id"])
-                planets.append(
-                    self.model(
-                        character=character,
-                        eve_planet=eve_planet,
-                        num_pins=obj["num_pins"],
-                        upgrade_level=obj["upgrade_level"],
-                        last_update_at=obj["last_update"],
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create planets for a character from ESI."""
+        logger.info("%s: Fetching planets from ESI", character)
+        planets_data = (
+            esi.client.Planetary_Interaction.get_characters_character_id_planets(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+        # if MEMBERAUDIT_DEVELOPER_MODE:
+        #     self._store_list_to_disk(planets_data, "planets")
+        section = character.UpdateSection.PLANETS
+        if force_update or character.has_section_changed(
+            section=section, content=planets_data
+        ):
+            with transaction.atomic():
+                self.filter(character=character).delete()
+                if planets_data:
+                    planets = []
+                    for obj in planets_data:
+                        eve_planet, _ = EvePlanet.objects.get_or_create_esi(
+                            id=obj["planet_id"]
+                        )
+                        planets.append(
+                            self.model(
+                                character=character,
+                                eve_planet=eve_planet,
+                                num_pins=obj["num_pins"],
+                                upgrade_level=obj["upgrade_level"],
+                                last_update_at=obj["last_update"],
+                            )
+                        )
+                    logger.info("%s: Storing %s planets", character, len(planets))
+                    self.bulk_create(
+                        planets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
                     )
-                )
-            logger.info("%s: Storing %s planets", character, len(planets))
-            self.bulk_create(planets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+                else:
+                    logger.info("%s: No planets", character)
+
+            character.update_section_content_hash(section=section, content=planets_data)
         else:
-            logger.info("%s: No planets", character)
+            logger.info("%s: Planets have not changed", character)
 
 
 class CharacterShipManager(models.Manager):
