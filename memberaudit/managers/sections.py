@@ -613,7 +613,25 @@ class CharacterDetailsManager(models.Manager):
 
 
 class CharacterFwStatsManager(models.Manager):
-    def update_for_character(self, character: models.Model, stats: dict):
+    @fetch_token_for_character_2("esi-characters.read_fw_stats.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create implants for a character from ESI."""
+        logger.info("%s: Fetching FW stats from ESI", character)
+        stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        section = character.UpdateSection.FW_STATS
+        if force_update or character.has_section_changed(
+            section=section, content=stats
+        ):
+            self._update_or_create_objs(character, stats)
+            character.update_section_content_hash(section=section, content=stats)
+        else:
+            logger.info("%s: FW stats have not changed", character)
+
+    def _update_or_create_objs(self, character: models.Model, stats: dict):
         if faction_id := stats.get("faction_id"):
             faction, _ = EveFaction.objects.get_or_create_esi(id=faction_id)
         else:

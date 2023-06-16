@@ -589,25 +589,11 @@ class Character(models.Model):
         """syncs the character's corporation history"""
         self.corporation_history.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
-    def update_fw_stats(self, token: Token, force_update: bool = False):
+    def update_fw_stats(self, force_update: bool = False):
         """Update FW stats  for the given character"""
         from .sections import CharacterFwStats
 
-        logger.info("%s: Fetching FW stats from ESI", self)
-        stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.FW_STATS, content=stats
-        ):
-            CharacterFwStats.objects.update_for_character(self, stats)
-            self.update_section_content_hash(
-                section=self.UpdateSection.FW_STATS, content=stats
-            )
-        else:
-            logger.info("%s: FW stats have not changed", self)
+        CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
     def update_implants(self, force_update: bool = False):
         """update the character's implants"""
