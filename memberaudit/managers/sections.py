@@ -1077,8 +1077,61 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
 
 class CharacterSkillManager(models.Manager):
+    @fetch_token_for_character_2("esi-skills.read_skills.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create skills for a character from ESI."""
+
+        skills_list = self._fetch_skills_from_esi(character, token)
+
+        section = character.UpdateSection.SKILLS
+        if force_update or character.has_section_changed(
+            section=section, content=skills_list
+        ):
+            self._preload_types(skills_list)
+            self._update_or_create_objs(character, skills_list)
+            character.update_section_content_hash(section=section, content=skills_list)
+
+        else:
+            logger.info("%s: Skills have not changed", character)
+
+    def _fetch_skills_from_esi(self, character, token: Token) -> dict:
+        from memberaudit.models import CharacterSkillpoints
+
+        logger.info("%s: Fetching skills from ESI", character)
+        skills_info = esi.client.Skills.get_characters_character_id_skills(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(skills_info, "skills")
+
+        CharacterSkillpoints.objects.update_or_create(
+            character=character,
+            defaults={
+                "total": skills_info.get("total_sp"),
+                "unallocated": skills_info.get("unallocated_sp"),
+            },
+        )
+
+        if not skills_info.get("skills"):
+            return {}
+
+        return {
+            obj["skill_id"]: obj
+            for obj in skills_info.get("skills")
+            if "skill_id" in obj
+        }
+
+    def _preload_types(self, skills_list: dict):
+        if skills_list:
+            incoming_ids = set(skills_list.keys())
+            existing_ids = set(self.values_list("eve_type_id", flat=True))
+            new_ids = incoming_ids.difference(existing_ids)
+            EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
+
     @transaction.atomic()
-    def update_for_character(self, character, skills_list):
+    def _update_or_create_objs(self, character, skills_list):
         incoming_ids = set(skills_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("eve_type_id", flat=True)

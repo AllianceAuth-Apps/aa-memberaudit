@@ -16,11 +16,9 @@ from app_utils.testing import NoSocketsTestCase
 from memberaudit.core.xml_converter import eve_xml_to_html
 
 from ...models import (
-    Character,
     CharacterMail,
     CharacterMailLabel,
     CharacterShip,
-    CharacterSkill,
     CharacterWalletJournalEntry,
     Location,
     MailEntity,
@@ -616,99 +614,6 @@ class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
-
-
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateSkills(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_skills_1(self, mock_esi):
-        """can create new skills"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_skills()
-        self.assertEqual(self.character_1001.skillpoints.total, 30_000)
-        self.assertEqual(self.character_1001.skillpoints.unallocated, 1_000)
-
-        self.assertSetEqual(
-            set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
-        )
-
-        skill = self.character_1001.skills.get(eve_type_id=24311)
-        self.assertEqual(skill.active_skill_level, 3)
-        self.assertEqual(skill.skillpoints_in_skill, 20_000)
-        self.assertEqual(skill.trained_skill_level, 4)
-
-        skill = self.character_1001.skills.get(eve_type_id=24312)
-        self.assertEqual(skill.active_skill_level, 1)
-        self.assertEqual(skill.skillpoints_in_skill, 10_000)
-        self.assertEqual(skill.trained_skill_level, 1)
-
-    def test_update_skills_2(self, mock_esi):
-        """can update existing skills"""
-        mock_esi.client = esi_client_stub
-
-        CharacterSkill.objects.create(
-            character=self.character_1001,
-            eve_type=EveType.objects.get(id=24311),
-            active_skill_level=1,
-            skillpoints_in_skill=1,
-            trained_skill_level=1,
-        )
-
-        self.character_1001.update_skills()
-
-        self.assertEqual(self.character_1001.skills.count(), 2)
-        skill = self.character_1001.skills.get(eve_type_id=24311)
-        self.assertEqual(skill.active_skill_level, 3)
-        self.assertEqual(skill.skillpoints_in_skill, 20_000)
-        self.assertEqual(skill.trained_skill_level, 4)
-
-    def test_update_skills_3(self, mock_esi):
-        """can delete obsolete skills"""
-        mock_esi.client = esi_client_stub
-
-        CharacterSkill.objects.create(
-            character=self.character_1001,
-            eve_type=EveType.objects.get(id=20185),
-            active_skill_level=1,
-            skillpoints_in_skill=1,
-            trained_skill_level=1,
-        )
-
-        self.character_1001.update_skills()
-
-        self.assertSetEqual(
-            set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
-        )
-
-    def test_update_skills_4(self, mock_esi):
-        """when ESI info has not changed, then do not update local data"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.reset_update_section(Character.UpdateSection.SKILLS)
-        self.character_1001.update_skills()
-        skill = self.character_1001.skills.get(eve_type_id=24311)
-        skill.active_skill_level = 4
-        skill.save()
-        self.character_1001.update_skills()
-        skill.refresh_from_db()
-        self.assertEqual(skill.active_skill_level, 4)
-
-    def test_update_skills_5(self, mock_esi):
-        """when ESI info has not changed and update forced, then update local data"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.reset_update_section(Character.UpdateSection.SKILLS)
-        self.character_1001.update_skills()
-        skill = self.character_1001.skills.get(eve_type_id=24311)
-        skill.active_skill_level = 4
-        skill.save()
-
-        self.character_1001.update_skills(force_update=True)
-
-        skill = self.character_1001.skills.get(eve_type_id=24311)
-        self.assertEqual(skill.active_skill_level, 3)
 
 
 @patch(MODELS_PATH + ".character.esi")

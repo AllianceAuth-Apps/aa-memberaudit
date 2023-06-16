@@ -1003,57 +1003,9 @@ class Character(models.Model):
         """
         self.skill_set_checks.update_for_character(self)
 
-    @fetch_token_for_character("esi-skills.read_skills.v1")
-    def update_skills(self, token, force_update: bool = False):
+    def update_skills(self, force_update: bool = False):
         """update the character's skill"""
-        skills_list = self._fetch_skills_from_esi(token)
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.SKILLS, content=skills_list
-        ):
-            self._preload_types(skills_list)
-            self.skills.update_for_character(self, skills_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.SKILLS, content=skills_list
-            )
-
-        else:
-            logger.info("%s: Skills have not changed", self)
-
-    def _fetch_skills_from_esi(self, token: Token) -> dict:
-        from .sections import CharacterSkillpoints
-
-        logger.info("%s: Fetching skills from ESI", self)
-        skills_info = esi.client.Skills.get_characters_character_id_skills(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(skills_info, "skills")
-
-        CharacterSkillpoints.objects.update_or_create(
-            character=self,
-            defaults={
-                "total": skills_info.get("total_sp"),
-                "unallocated": skills_info.get("unallocated_sp"),
-            },
-        )
-        if skills_info.get("skills"):
-            skills_list = {
-                obj["skill_id"]: obj
-                for obj in skills_info.get("skills")
-                if "skill_id" in obj
-            }
-        else:
-            skills_list = dict()
-
-        return skills_list
-
-    def _preload_types(self, skills_list: dict):
-        if skills_list:
-            incoming_ids = set(skills_list.keys())
-            existing_ids = set(self.skills.values_list("eve_type_id", flat=True))
-            new_ids = incoming_ids.difference(existing_ids)
-            EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
+        self.skills.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_wallet_balance(self, token):
