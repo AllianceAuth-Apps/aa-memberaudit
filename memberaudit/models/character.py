@@ -23,13 +23,11 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_throttled
-from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
@@ -40,7 +38,6 @@ from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.providers import esi
 
 from .general import Location
 
@@ -384,50 +381,12 @@ class Character(models.Model):
             raise TokenError(f"Could not find a matching token for {self}")
         return token
 
-    @fetch_token_for_character("esi-assets.read_assets.v1")
-    def assets_build_list_from_esi(
-        self, token: Token, force_update=False
-    ) -> Optional[list]:
+    def assets_build_list_from_esi(self, force_update=False) -> Optional[list]:
         """fetches assets from ESI and preloads related objects from ESI
 
         returns the asset_list or None if no update is required
         """
-        logger.info("%s: Fetching assets from ESI", self)
-        asset_list = esi.client.Assets.get_characters_character_id_assets(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
-
-        logger.info("%s: Fetching asset names from ESI", self)
-        names = list()
-        for asset_ids_chunk in chunks(list(assets_flat.keys()), 999):
-            names += esi.client.Assets.post_characters_character_id_assets_names(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-                item_ids=asset_ids_chunk,
-            ).results()
-
-        asset_names = {
-            int(x["item_id"]): x["name"] for x in names if x["name"] != "None"
-        }
-        for item_id in assets_flat.keys():
-            assets_flat[item_id]["name"] = asset_names.get(item_id, "")
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(assets_flat, "asset_list")
-
-        new_asset_list = list(assets_flat.values())
-        if force_update or self.has_section_changed(
-            section=Character.UpdateSection.ASSETS, content=new_asset_list
-        ):
-            self.update_section_content_hash(
-                section=Character.UpdateSection.ASSETS, content=new_asset_list
-            )
-            return new_asset_list
-        else:
-            logger.info("%s: Assets did not change", self)
-            return None
+        return self.assets.fetch_from_esi(self, force_update)
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def assets_preload_objects(self, token: Token, asset_list: list) -> None:
@@ -510,51 +469,9 @@ class Character(models.Model):
         """updates the character's jump clones"""
         self.jump_clones.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mailing_lists(self, token: Token, force_update: bool = False):
-        """update mailing lists with input from given character
-
-        Note: Obsolete mailing lists must not be removed,
-        since they might still be referenced by older mails
-        """
-        logger.info("%s: Fetching mailing lists from ESI", self)
-        mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if mailing_lists_raw:
-            mailing_lists = {
-                obj["mailing_list_id"]: obj
-                for obj in mailing_lists_raw
-                if "mailing_list_id" in obj
-            }
-        else:
-            mailing_lists = dict()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mailing_lists, "mailing_lists")
-
-        # TODO: replace with bulk methods to optimize
-
-        incoming_ids = set(mailing_lists.keys())
-        # existing_ids = set(self.mailing_lists.values_list("list_id", flat=True))
-        if not incoming_ids:
-            logger.info("%s: No new mailing lists", self)
-            return
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.MAILS, content=mailing_lists, hash_num=2
-        ):
-            new_mailing_lists = self.mailing_lists.update_for_character(
-                character=self, mailing_lists=mailing_lists
-            )
-            self.mailing_lists.set(new_mailing_lists, clear=True)
-            self.update_section_content_hash(
-                section=self.UpdateSection.MAILS, content=mailing_lists, hash_num=2
-            )
-
-        else:
-            logger.info("%s: Mailing lists have not changed", self)
+    def update_mailing_lists(self, force_update: bool = False):
+        """Update mailing lists with input from given character."""
+        self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
 
     def update_mail_labels(self, force_update: bool = False):
         """Update the mail labels for the given character"""

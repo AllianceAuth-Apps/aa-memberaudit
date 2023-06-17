@@ -39,6 +39,7 @@ from ..testdata.factories import (
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
+    CharacterUpdateTestDataMixin,
     NoSocketsTestCaseFixtures,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
@@ -171,7 +172,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertNotIn(compliance_group_2, user.groups.all())
         self.assertIn(other_group, user.groups.all())
 
-    def test_user_with_one_registered_and_one_unregistered_characater_is_not_compliant(
+    def test_user_with_one_registered_and_one_unregistered_character_is_not_compliant(
         self, mock_notify
     ):
         # given
@@ -1010,6 +1011,95 @@ class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.eve_type)
         self.assertTrue(mock_task_update_structure_esi.apply_async.called)
+
+
+@patch(MANAGERS_PATH + ".esi")
+class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_update_mailing_lists_1(self, mock_esi):
+        """can create new mailing lists from scratch"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
+
+        obj = MailEntity.objects.get(id=9002)
+        self.assertEqual(obj.name, "Dummy 2")
+
+    def test_update_mailing_lists_2(self, mock_esi):
+        """does not remove obsolete mailing lists"""
+        mock_esi.client = esi_client_stub
+        MailEntity.objects.create(
+            id=5, category=MailEntity.Category.MAILING_LIST, name="Obsolete"
+        )
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002, 5}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+
+    def test_update_mailing_lists_3(self, mock_esi):
+        """updates existing mailing lists"""
+        mock_esi.client = esi_client_stub
+        MailEntity.objects.create(
+            id=9001, category=MailEntity.Category.MAILING_LIST, name="Update me"
+        )
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
+
+    def test_update_mailing_lists_4(self, mock_esi):
+        """when data from ESI has not changed, then skip update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        obj.name = "Extravaganza"
+        obj.save()
+        self.character_1001.mailing_lists.clear()
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Extravaganza")
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)), set()
+        )
+
+    def test_update_mailing_lists_5(self, mock_esi):
+        """when data from ESI has not changed and update is forced, then do update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        obj.name = "Extravaganza"
+        obj.save()
+
+        self.character_1001.update_mailing_lists(force_update=True)
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
 
 
 class TestSkillSetManager(NoSocketsTestCase):

@@ -74,7 +74,7 @@ class TestUILauncher(WebTest):
         self.assertEqual(character_viewer.status_code, 200)
 
     @patch(MANAGERS_PATH + ".sections.esi")
-    @patch(MODELS_PATH + ".character.esi")
+    @patch(MANAGERS_PATH + ".general.esi")
     @override_settings(
         CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
     )
@@ -334,7 +334,7 @@ class TestUICharacterViewer(WebTest):
 @patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
 @patch(MANAGERS_PATH + ".sections.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".sections.esi")
-@patch(MODELS_PATH + ".character.esi")
+@patch(MANAGERS_PATH + ".general.esi")
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestTasksE2E(TestCase):
     fixtures = ["disable_analytics.json"]

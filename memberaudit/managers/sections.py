@@ -1,5 +1,5 @@
 import ast
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from bravado.exception import HTTPInternalServerError, HTTPNotFound
 
@@ -18,6 +18,7 @@ from eveuniverse.models import (
 )
 
 from allianceauth.services.hooks import get_extension_logger
+from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
@@ -69,7 +70,49 @@ class CharacterAssetQuerySet(models.QuerySet):
 
 
 class CharacterAssetManagerBase(models.Manager):
-    pass
+    @fetch_token_for_character_2("esi-assets.read_assets.v1")
+    def fetch_from_esi(
+        self, character, token: Token, force_update: bool = False
+    ) -> Optional[list]:  # TODO: Add test
+        """Fetch assets from ESI and preload related objects from ESI."""
+
+        logger.info("%s: Fetching assets from ESI", character)
+        asset_list = esi.client.Assets.get_characters_character_id_assets(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        assets_flat = {int(x["item_id"]): x for x in asset_list}
+
+        logger.info("%s: Fetching asset names from ESI", character)
+        names = list()
+        for asset_ids_chunk in chunks(list(assets_flat.keys()), 999):
+            names += esi.client.Assets.post_characters_character_id_assets_names(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+                item_ids=asset_ids_chunk,
+            ).results()
+
+        asset_names = {
+            int(x["item_id"]): x["name"] for x in names if x["name"] != "None"
+        }
+        for item_id in assets_flat.keys():
+            assets_flat[item_id]["name"] = asset_names.get(item_id, "")
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(assets_flat, "asset_list")
+
+        new_asset_list = list(assets_flat.values())
+        section = character.UpdateSection.ASSETS
+        if force_update or character.has_section_changed(
+            section=section, content=new_asset_list
+        ):
+            character.update_section_content_hash(
+                section=section, content=new_asset_list
+            )
+            return new_asset_list
+
+        logger.info("%s: Assets did not change", character)
+        return None
 
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)
@@ -78,7 +121,7 @@ CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQu
 class CharacterAttributesManager(models.Manager):
     @fetch_token_for_character_2("esi-skills.read_skills.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create assets for a character from ESI."""
+        """Update or create attributes for a character from ESI."""
 
         logger.info("%s: Fetching attributes from ESI", character)
         attribute_data = esi.client.Skills.get_characters_character_id_attributes(
@@ -1942,7 +1985,7 @@ class CharacterWalletTransactionManager(models.Manager):
             existing_ids = set(self.values_list("transaction_id", flat=True))
             create_ids = incoming_ids.difference(existing_ids)
             if not create_ids:
-                logger.info("%s: No new wallet transcations", character)
+                logger.info("%s: No new wallet transactions", character)
                 return
 
             logger.info(

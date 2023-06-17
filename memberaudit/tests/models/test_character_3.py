@@ -15,95 +15,6 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_mailing_lists_1(self, mock_esi):
-        """can create new mailing lists from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mailing_lists()
-
-        self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
-        )
-        self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
-            {9001, 9002},
-        )
-
-        obj = MailEntity.objects.get(id=9001)
-        self.assertEqual(obj.name, "Dummy 1")
-
-        obj = MailEntity.objects.get(id=9002)
-        self.assertEqual(obj.name, "Dummy 2")
-
-    def test_update_mailing_lists_2(self, mock_esi):
-        """does not remove obsolete mailing lists"""
-        mock_esi.client = esi_client_stub
-        MailEntity.objects.create(
-            id=5, category=MailEntity.Category.MAILING_LIST, name="Obsolete"
-        )
-
-        self.character_1001.update_mailing_lists()
-
-        self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002, 5}
-        )
-        self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
-            {9001, 9002},
-        )
-
-    def test_update_mailing_lists_3(self, mock_esi):
-        """updates existing mailing lists"""
-        mock_esi.client = esi_client_stub
-        MailEntity.objects.create(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Update me"
-        )
-
-        self.character_1001.update_mailing_lists()
-
-        self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
-        )
-        self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
-            {9001, 9002},
-        )
-        obj = MailEntity.objects.get(id=9001)
-        self.assertEqual(obj.name, "Dummy 1")
-
-    def test_update_mailing_lists_4(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mailing_lists()
-        obj = MailEntity.objects.get(id=9001)
-        obj.name = "Extravaganza"
-        obj.save()
-        self.character_1001.mailing_lists.clear()
-
-        self.character_1001.update_mailing_lists()
-        obj = MailEntity.objects.get(id=9001)
-        self.assertEqual(obj.name, "Extravaganza")
-        self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)), set()
-        )
-
-    def test_update_mailing_lists_5(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mailing_lists()
-        obj = MailEntity.objects.get(id=9001)
-        obj.name = "Extravaganza"
-        obj.save()
-
-        self.character_1001.update_mailing_lists(force_update=True)
-        obj = MailEntity.objects.get(id=9001)
-        self.assertEqual(obj.name, "Dummy 1")
-
-
 # class TestCharacterMailingList(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 #     def test_name_plus_1(self):
 #         """when mailing list has name then return it's name"""
@@ -119,7 +30,7 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
 
 
 @patch(MANAGERS_PATH + ".sections.esi")
-@patch(MODELS_PATH + ".character.esi")
+@patch(MANAGERS_PATH + ".general.esi")
 class TestCharacterMailUpdateIntegration(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
 ):
