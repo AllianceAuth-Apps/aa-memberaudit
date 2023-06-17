@@ -51,32 +51,6 @@ def fetch_character_if_allowed(*args_select_related):
 
 def fetch_token_for_character(scopes=None):
     """Fetch and add valid token for a character.
-    Needs to be attached on a Character method !!
-
-    Args:
-        -scopes: Optionally provide the required scopes.
-            Otherwise will use all scopes defined for this character.
-    """
-
-    def decorator(func):
-        @wraps(func)
-        def _wrapped_view(character, *args, **kwargs):
-            token = character.fetch_token(scopes)
-            logger.debug(
-                "%s: Using token %s for `%s`",
-                token.character_name,
-                token.pk,
-                func.__name__,
-            )
-            return func(character, token, *args, **kwargs)
-
-        return _wrapped_view
-
-    return decorator
-
-
-def fetch_token_for_character_2(scopes=None):
-    """Fetch and add valid token for a character.
     Needs to be attached on a character section manager method !!
 
     Args:

@@ -27,7 +27,7 @@ from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
 from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
-from memberaudit.decorators import fetch_token_for_character_2
+from memberaudit.decorators import fetch_token_for_character
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
@@ -477,7 +477,7 @@ class MailEntityManager(models.Manager):
                 batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
             )
 
-    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_or_create_mailing_lists_esi(self, character, token: Token, force_update):
         """Update or create wallet balance for a character from ESI.
 

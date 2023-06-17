@@ -28,7 +28,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_MAX_MAILS,
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
-from memberaudit.decorators import fetch_token_for_character_2
+from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import data_retention_cutoff
 from memberaudit.providers import esi
 from memberaudit.utils import (
@@ -70,7 +70,7 @@ class CharacterAssetQuerySet(models.QuerySet):
 
 
 class CharacterAssetManagerBase(models.Manager):
-    @fetch_token_for_character_2("esi-assets.read_assets.v1")
+    @fetch_token_for_character("esi-assets.read_assets.v1")
     def fetch_from_esi(
         self, character, token: Token, force_update: bool = False
     ) -> Optional[list]:  # TODO: Add test
@@ -114,7 +114,7 @@ class CharacterAssetManagerBase(models.Manager):
         logger.info("%s: Assets did not change", character)
         return None
 
-    @fetch_token_for_character_2("esi-universe.read_structures.v1")
+    @fetch_token_for_character("esi-universe.read_structures.v1")
     def preload_objects_from_esi(
         self, character, token: Token, asset_list: list
     ) -> None:
@@ -149,7 +149,7 @@ CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQu
 
 
 class CharacterAttributesManager(models.Manager):
-    @fetch_token_for_character_2("esi-skills.read_skills.v1")
+    @fetch_token_for_character("esi-skills.read_skills.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create attributes for a character from ESI."""
 
@@ -192,7 +192,7 @@ class CharacterAttributesManager(models.Manager):
 
 
 class CharacterContactLabelManager(models.Manager):
-    @fetch_token_for_character_2("esi-characters.read_contacts.v1")
+    @fetch_token_for_character("esi-characters.read_contacts.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
@@ -245,7 +245,7 @@ class CharacterContactLabelManager(models.Manager):
 
 
 class CharacterContactManager(models.Manager):
-    @fetch_token_for_character_2("esi-characters.read_contacts.v1")
+    @fetch_token_for_character("esi-characters.read_contacts.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
@@ -393,7 +393,7 @@ class CharacterContactManager(models.Manager):
 
 
 class CharacterContractManager(models.Manager):
-    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create contracts for a character from ESI."""
 
@@ -563,7 +563,7 @@ class CharacterContractManager(models.Manager):
 
 
 class CharacterContractBidManager(models.Manager):
-    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract bids for a contract from ESI."""
 
@@ -654,7 +654,7 @@ class CharacterContractItemQuerySet(models.QuerySet):
 
 
 class CharacterContractItemManagerBase(models.Manager):
-    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract items for a contract from ESI."""
 
@@ -835,7 +835,7 @@ class CharacterDetailsManager(models.Manager):
 
 
 class CharacterFwStatsManager(models.Manager):
-    @fetch_token_for_character_2("esi-characters.read_fw_stats.v1")
+    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create fw stats for a character from ESI."""
         logger.info("%s: Fetching FW stats from ESI", character)
@@ -876,7 +876,7 @@ class CharacterFwStatsManager(models.Manager):
 
 
 class CharacterImplantManager(models.Manager):
-    @fetch_token_for_character_2("esi-clones.read_implants.v1")
+    @fetch_token_for_character("esi-clones.read_implants.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create implants for a character from ESI."""
 
@@ -919,7 +919,7 @@ class CharacterImplantManager(models.Manager):
 
 
 class CharacterLocationManager(models.Manager):
-    @fetch_token_for_character_2(
+    @fetch_token_for_character(
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
     )
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
@@ -962,7 +962,7 @@ class CharacterLocationManager(models.Manager):
 
 
 class CharacterLoyaltyEntryManager(models.Manager):
-    @fetch_token_for_character_2("esi-characters.read_loyalty.v1")
+    @fetch_token_for_character("esi-characters.read_loyalty.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
 
@@ -1016,7 +1016,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
 
 class CharacterJumpCloneManager(models.Manager):
-    @fetch_token_for_character_2(
+    @fetch_token_for_character(
         ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
     )
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
@@ -1104,7 +1104,7 @@ class CharacterJumpCloneManager(models.Manager):
 
 
 class CharacterMailManager(models.Manager):
-    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_or_create_header_esi(
         self, character, token: Token, force_update: bool = False
     ):
@@ -1340,7 +1340,7 @@ class CharacterMailManager(models.Manager):
 
         self.bulk_update(mails.values(), ["is_read"])
 
-    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_or_create_body_esi(
         self, character, token: Token, mail, force_update: bool = False
     ):
@@ -1378,7 +1378,7 @@ class CharacterMailLabelManager(models.Manager):
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}
 
-    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
 
@@ -1505,7 +1505,7 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
-    @fetch_token_for_character_2("esi-industry.read_character_mining.v1")
+    @fetch_token_for_character("esi-industry.read_character_mining.v1")
     def update_or_create_esi(self, character, token: Token):
         """Update or create mining ledger for a character from ESI."""
 
@@ -1539,7 +1539,7 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 
 class CharacterOnlineStatusManager(models.Manager):
-    @fetch_token_for_character_2("esi-location.read_online.v1")
+    @fetch_token_for_character("esi-location.read_online.v1")
     def update_or_create_esi(self, character, token: Token):
         """Update or online status for a character from ESI."""
 
@@ -1560,7 +1560,7 @@ class CharacterOnlineStatusManager(models.Manager):
 
 
 class CharacterPlanetManager(models.Manager):
-    @fetch_token_for_character_2("esi-planets.manage_planets.v1")
+    @fetch_token_for_character("esi-planets.manage_planets.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create planets for a character from ESI."""
 
@@ -1605,7 +1605,7 @@ class CharacterPlanetManager(models.Manager):
 
 
 class CharacterShipManager(models.Manager):
-    @fetch_token_for_character_2("esi-location.read_ship_type.v1")
+    @fetch_token_for_character("esi-location.read_ship_type.v1")
     def update_or_create_esi(self, character, token: Token):
         """Update or create ship for a character from ESI."""
 
@@ -1639,7 +1639,7 @@ class CharacterShipManager(models.Manager):
 
 
 class CharacterSkillqueueEntryManager(models.Manager):
-    @fetch_token_for_character_2("esi-skills.read_skillqueue.v1")
+    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create skills queue for a character from ESI."""
 
@@ -1695,7 +1695,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
 
 class CharacterSkillManager(models.Manager):
-    @fetch_token_for_character_2("esi-skills.read_skills.v1")
+    @fetch_token_for_character("esi-skills.read_skills.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create skills for a character from ESI."""
 
@@ -1889,7 +1889,7 @@ class CharacterSkillSetCheckManager(models.Manager):
 
 
 class CharacterWalletBalanceManager(models.Manager):
-    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_or_create_esi(self, character, token):
         """Update or create wallet balance for a character from ESI."""
 
@@ -1906,7 +1906,7 @@ class CharacterWalletBalanceManager(models.Manager):
 
 
 class CharacterWalletJournalEntryManager(models.Manager):
-    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_or_create_esi(self, character, token):
         """Update or create wallet journal entries for character from ESI.
 
@@ -1970,7 +1970,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
 
 
 class CharacterWalletTransactionManager(models.Manager):
-    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def update_or_create_esi(self, character, token):
         """Update or create wallet transactions for a character from ESI."""
 
