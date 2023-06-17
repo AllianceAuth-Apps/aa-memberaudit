@@ -185,7 +185,7 @@ class TestCharacterContactLabelManager(TestCharacterUpdateBase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterUpdateContacts(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_contact_labels_1(self, mock_esi):
         """can create new contact labels from scratch"""
         mock_esi.client = esi_client_stub
@@ -371,6 +371,301 @@ class TestCharacterUpdateContacts(CharacterUpdateTestDataMixin, NoSocketsTestCas
 
         obj = self.character_1001.contacts.get(eve_entity_id=1101)
         self.assertTrue(obj.is_watched)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterContractsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_can_create_new_courier_contract(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertSetEqual(
+            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            {100000001, 100000002, 100000003},
+        )
+
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.assertEqual(obj.contract_type, CharacterContract.TYPE_COURIER)
+        self.assertEqual(obj.acceptor, EveEntity.objects.get(id=1101))
+        self.assertEqual(obj.assignee, EveEntity.objects.get(id=2101))
+        self.assertEqual(obj.availability, CharacterContract.AVAILABILITY_PERSONAL)
+        self.assertIsNone(obj.buyout)
+        self.assertEqual(float(obj.collateral), 550000000.0)
+        self.assertEqual(obj.date_accepted, parse_datetime("2019-10-06T13:15:21Z"))
+        self.assertEqual(obj.date_completed, parse_datetime("2019-10-07T13:15:21Z"))
+        self.assertEqual(obj.date_expired, parse_datetime("2019-10-09T13:15:21Z"))
+        self.assertEqual(obj.date_issued, parse_datetime("2019-10-02T13:15:21Z"))
+        self.assertEqual(obj.days_to_complete, 3)
+        self.assertEqual(obj.end_location, self.structure_1)
+        self.assertFalse(obj.for_corporation)
+        self.assertEqual(obj.issuer_corporation, EveEntity.objects.get(id=2001))
+        self.assertEqual(obj.issuer, EveEntity.objects.get(id=1001))
+        self.assertEqual(float(obj.price), 0.0)
+        self.assertEqual(float(obj.reward), 500000000.0)
+        self.assertEqual(obj.start_location, self.jita_44)
+        self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
+        self.assertEqual(obj.title, "Test 1")
+        self.assertEqual(obj.volume, 486000.0)
+
+    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    # def test_update_contracts_2(self, mock_esi):
+    #     """can create new item exchange contract"""
+    #     mock_esi.client = esi_client_stub
+
+    #     self.character_1001.update_contract_headers()
+    #     obj = self.character_1001.contracts.get(contract_id=100000002)
+    #     self.assertEqual(obj.contract_type, CharacterContract.TYPE_ITEM_EXCHANGE)
+    #     self.assertEqual(float(obj.price), 270000000.0)
+    #     self.assertEqual(obj.volume, 486000.0)
+    #     self.assertEqual(obj.status, CharacterContract.STATUS_FINISHED)
+
+    #     self.character_1001.update_contract_items(contract=obj)
+
+    #     self.assertEqual(obj.items.count(), 2)
+
+    #     item = obj.items.get(record_id=1)
+    #     self.assertTrue(item.is_included)
+    #     self.assertFalse(item.is_singleton)
+    #     self.assertEqual(item.quantity, 3)
+    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
+
+    #     item = obj.items.get(record_id=2)
+    #     self.assertTrue(item.is_included)
+    #     self.assertFalse(item.is_singleton)
+    #     self.assertEqual(item.quantity, 5)
+    #     self.assertEqual(item.raw_quantity, -1)
+    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19551))
+
+    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    # def test_update_contracts_3(self, mock_esi):
+    #     """can create new auction contract"""
+    #     mock_esi.client = esi_client_stub
+
+    #     self.character_1001.update_contract_headers()
+    #     obj = self.character_1001.contracts.get(contract_id=100000003)
+    #     self.assertEqual(obj.contract_type, CharacterContract.TYPE_AUCTION)
+    #     self.assertEqual(float(obj.buyout), 200_000_000.0)
+    #     self.assertEqual(float(obj.price), 20_000_000.0)
+    #     self.assertEqual(obj.volume, 400.0)
+    #     self.assertEqual(obj.status, CharacterContract.STATUS_OUTSTANDING)
+
+    #     self.character_1001.update_contract_items(contract=obj)
+
+    #     self.assertEqual(obj.items.count(), 1)
+    #     item = obj.items.get(record_id=1)
+    #     self.assertTrue(item.is_included)
+    #     self.assertFalse(item.is_singleton)
+    #     self.assertEqual(item.quantity, 3)
+    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
+
+    #     self.character_1001.update_contract_bids(contract=obj)
+
+    #     self.assertEqual(obj.bids.count(), 1)
+    #     bid = obj.bids.get(bid_id=1)
+    #     self.assertEqual(float(bid.amount), 1_000_000.23)
+    #     self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
+    #     self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_should_keep_old_contracts_when_updating(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterContract.objects.create(
+            character=self.character_1001,
+            contract_id=190000001,
+            availability=CharacterContract.AVAILABILITY_PERSONAL,
+            contract_type=CharacterContract.TYPE_COURIER,
+            assignee=EveEntity.objects.get(id=1002),
+            date_issued=now() - dt.timedelta(days=60),
+            date_expired=now() - dt.timedelta(days=30),
+            for_corporation=False,
+            issuer=EveEntity.objects.get(id=1001),
+            issuer_corporation=EveEntity.objects.get(id=2001),
+            status=CharacterContract.STATUS_IN_PROGRESS,
+            start_location=self.jita_44,
+            end_location=self.structure_1,
+            title="Old contract",
+        )
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.contracts.count(), 4)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_should_update_existing_contracts(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterContract.objects.create(
+            character=self.character_1001,
+            contract_id=100000001,
+            availability=CharacterContract.AVAILABILITY_PERSONAL,
+            contract_type=CharacterContract.TYPE_COURIER,
+            assignee=EveEntity.objects.get(id=2101),
+            date_issued=parse_datetime("2019-10-02T13:15:21Z"),
+            date_expired=parse_datetime("2019-10-09T13:15:21Z"),
+            for_corporation=False,
+            issuer=EveEntity.objects.get(id=1001),
+            issuer_corporation=EveEntity.objects.get(id=2001),
+            status=CharacterContract.STATUS_OUTSTANDING,
+            start_location=self.jita_44,
+            end_location=self.structure_1,
+            title="Test 1",
+            collateral=550000000,
+            reward=500000000,
+            volume=486000,
+            days_to_complete=3,
+        )
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.assertEqual(obj.contract_type, CharacterContract.TYPE_COURIER)
+        self.assertEqual(obj.acceptor, EveEntity.objects.get(id=1101))
+        self.assertEqual(obj.assignee, EveEntity.objects.get(id=2101))
+        self.assertEqual(obj.availability, CharacterContract.AVAILABILITY_PERSONAL)
+        self.assertIsNone(obj.buyout)
+        self.assertEqual(float(obj.collateral), 550000000.0)
+        self.assertEqual(obj.date_accepted, parse_datetime("2019-10-06T13:15:21Z"))
+        self.assertEqual(obj.date_completed, parse_datetime("2019-10-07T13:15:21Z"))
+        self.assertEqual(obj.date_expired, parse_datetime("2019-10-09T13:15:21Z"))
+        self.assertEqual(obj.date_issued, parse_datetime("2019-10-02T13:15:21Z"))
+        self.assertEqual(obj.days_to_complete, 3)
+        self.assertEqual(obj.end_location, self.structure_1)
+        self.assertFalse(obj.for_corporation)
+        self.assertEqual(obj.issuer_corporation, EveEntity.objects.get(id=2001))
+        self.assertEqual(obj.issuer, EveEntity.objects.get(id=1001))
+        self.assertEqual(float(obj.reward), 500000000.0)
+        self.assertEqual(obj.start_location, self.jita_44)
+        self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
+        self.assertEqual(obj.title, "Test 1")
+        self.assertEqual(obj.volume, 486000.0)
+
+    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    # def test_update_contracts_6(self, mock_esi):
+    #     """can add new bids to auction contract"""
+    #     mock_esi.client = esi_client_stub
+    #     contract = CharacterContract.objects.create(
+    #         character=self.character_1001,
+    #         contract_id=100000003,
+    #         availability=CharacterContract.AVAILABILITY_PERSONAL,
+    #         contract_type=CharacterContract.TYPE_AUCTION,
+    #         assignee=EveEntity.objects.get(id=2101),
+    #         date_issued=parse_datetime("2019-10-02T13:15:21Z"),
+    #         date_expired=parse_datetime("2019-10-09T13:15:21Z"),
+    #         for_corporation=False,
+    #         issuer=EveEntity.objects.get(id=1001),
+    #         issuer_corporation=EveEntity.objects.get(id=2001),
+    #         status=CharacterContract.STATUS_OUTSTANDING,
+    #         start_location=self.jita_44,
+    #         end_location=self.jita_44,
+    #         buyout=200_000_000,
+    #         price=20_000_000,
+    #         volume=400,
+    #     )
+    #     CharacterContractBid.objects.create(
+    #         contract=contract,
+    #         bid_id=2,
+    #         amount=21_000_000,
+    #         bidder=EveEntity.objects.get(id=1003),
+    #         date_bid=now(),
+    #     )
+
+    #     self.character_1001.update_contract_headers()
+    #     obj = self.character_1001.contracts.get(contract_id=100000003)
+    #     self.character_1001.update_contract_bids(contract=obj)
+
+    #     self.assertEqual(obj.bids.count(), 2)
+
+    #     bid = obj.bids.get(bid_id=1)
+    #     self.assertEqual(float(bid.amount), 1_000_000.23)
+    #     self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
+    #     self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
+
+    #     bid = obj.bids.get(bid_id=2)
+    #     self.assertEqual(float(bid.amount), 21_000_000)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_should_skip_updates_when_there_is_no_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.update_contract_headers()
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj.status = CharacterContract.STATUS_FINISHED
+        obj.save()
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.assertEqual(obj.status, CharacterContract.STATUS_FINISHED)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_always_update_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.update_contract_headers()
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj.status = CharacterContract.STATUS_FINISHED
+        obj.save()
+        # when
+        CharacterContract.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
+
+    @patch(
+        MODULE_PATH + ".data_retention_cutoff",
+        lambda: dt.datetime(2019, 10, 11, 1, 15, tzinfo=dt.timezone.utc),
+    )
+    def test_when_updating_then_use_retention_limit(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertSetEqual(
+            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            {100000002, 100000003},
+        )
+
+    @patch(
+        MODULE_PATH + ".data_retention_cutoff",
+        lambda: dt.datetime(2019, 10, 6, 1, 15, tzinfo=dt.timezone.utc),
+    )
+    def test_when_retention_limit_is_set_then_remove_outdated_contracts(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterContract.objects.create(
+            character=self.character_1001,
+            contract_id=100000004,
+            availability=CharacterContract.AVAILABILITY_PERSONAL,
+            contract_type=CharacterContract.TYPE_COURIER,
+            assignee=EveEntity.objects.get(id=2101),
+            date_issued=parse_datetime("2019-09-02T13:15:21Z"),
+            date_expired=parse_datetime("2019-09-09T13:15:21Z"),
+            for_corporation=False,
+            issuer=EveEntity.objects.get(id=1001),
+            issuer_corporation=EveEntity.objects.get(id=2001),
+            status=CharacterContract.STATUS_OUTSTANDING,
+            start_location=self.jita_44,
+            end_location=self.structure_1,
+            title="This contract is too old",
+            collateral=550000000,
+            reward=500000000,
+            volume=486000,
+            days_to_complete=3,
+        )
+        # when
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertSetEqual(
+            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            {100000001, 100000002, 100000003},
+        )
 
 
 class TestCharacterContractBidManager(TestCharacterUpdateBase):

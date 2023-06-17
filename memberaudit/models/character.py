@@ -496,54 +496,9 @@ class Character(models.Model):
     def update_contacts(self, force_update: bool = False):
         self.contacts.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_headers(self, token: Token, force_update: bool = False):
-        """update the character's contract headers"""
-        contracts_list = self._fetch_contracts_from_esi(token)
-        if not contracts_list:
-            logger.info("%s: No contracts received from ESI", self)
-        cutoff_datetime = data_retention_cutoff()
-        if cutoff_datetime:
-            self.contracts.filter(date_expired__lt=cutoff_datetime).delete()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTRACTS, content=contracts_list
-        ):
-            existing_ids = set(self.contracts.values_list("contract_id", flat=True))
-            incoming_location_ids = {
-                obj["start_location_id"]
-                for contract_id, obj in contracts_list.items()
-                if contract_id not in existing_ids
-            }
-            incoming_location_ids |= {
-                obj["end_location_id"] for obj in contracts_list.values()
-            }
-            if incoming_location_ids:
-                self._preload_all_locations(
-                    token=token, incoming_ids=incoming_location_ids
-                )
-            self.contracts.update_for_character(self, contracts_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTRACTS, content=contracts_list
-            )
-        else:
-            logger.info("%s: Contracts have not changed", self)
-
-    def _fetch_contracts_from_esi(self, token) -> dict:
-        logger.info("%s: Fetching contracts from ESI", self)
-        contracts_data = esi.client.Contracts.get_characters_character_id_contracts(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(contracts_data, "contracts")
-
-        cutoff_datetime = data_retention_cutoff()
-        contracts_list = {
-            obj.get("contract_id"): obj
-            for obj in contracts_data
-            if cutoff_datetime is None or obj.get("date_expired") > cutoff_datetime
-        }
-        return contracts_list
+    def update_contract_headers(self, force_update: bool = False):
+        """Update the character's contract headers."""
+        self.contracts.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_contract_items(self, token: Token, contract: models.Model):

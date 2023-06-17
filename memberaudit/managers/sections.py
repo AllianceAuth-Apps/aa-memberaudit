@@ -312,8 +312,64 @@ class CharacterContactManager(models.Manager):
 
 
 class CharacterContractManager(models.Manager):
+    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create contracts for a character from ESI."""
+
+        contracts_list = self._fetch_contracts_from_esi(character, token)
+        if not contracts_list:
+            logger.info("%s: No contracts received from ESI", character)
+
+        cutoff_datetime = data_retention_cutoff()
+        if cutoff_datetime:
+            character.contracts.filter(date_expired__lt=cutoff_datetime).delete()
+
+        section = character.UpdateSection.CONTRACTS
+        if force_update or character.has_section_changed(
+            section=section, content=contracts_list
+        ):
+            existing_ids = set(
+                character.contracts.values_list("contract_id", flat=True)
+            )
+            incoming_location_ids = {
+                obj["start_location_id"]
+                for contract_id, obj in contracts_list.items()
+                if contract_id not in existing_ids
+            }
+            incoming_location_ids |= {
+                obj["end_location_id"] for obj in contracts_list.values()
+            }
+            if incoming_location_ids:
+                character._preload_all_locations(
+                    token=token, incoming_ids=incoming_location_ids
+                )
+            self._update_or_create_objs(character, contracts_list)
+            character.update_section_content_hash(
+                section=section, content=contracts_list
+            )
+        else:
+            logger.info("%s: Contracts have not changed", character)
+
+    def _fetch_contracts_from_esi(self, character, token) -> dict:
+        logger.info("%s: Fetching contracts from ESI", character)
+        contracts_data = esi.client.Contracts.get_characters_character_id_contracts(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(contracts_data, "contracts")
+
+        cutoff_datetime = data_retention_cutoff()
+        contracts_list = {
+            obj.get("contract_id"): obj
+            for obj in contracts_data
+            if cutoff_datetime is None or obj.get("date_expired") > cutoff_datetime
+        }
+        return contracts_list
+
     @transaction.atomic()
-    def update_for_character(self, character: models.Model, contracts_list):
+    def _update_or_create_objs(self, character: models.Model, contracts_list):
         incoming_ids = set(contracts_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("contract_id", flat=True)
