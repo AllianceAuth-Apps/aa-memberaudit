@@ -13,7 +13,7 @@ from app_utils.esi_testing import BravadoResponseStub
 
 from memberaudit.core.xml_converter import eve_xml_to_html
 
-from ...models import CharacterMail, CharacterMailLabel, MailEntity
+from ...models import CharacterMail, MailEntity
 from ..testdata.esi_client_stub import esi_client_stub
 from ..utils import CharacterUpdateTestDataMixin
 
@@ -110,93 +110,6 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         self.character_1001.update_mailing_lists(force_update=True)
         obj = MailEntity.objects.get(id=9001)
         self.assertEqual(obj.name, "Dummy 1")
-
-    def test_update_mail_labels_1(self, mock_esi):
-        """can create from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mail_labels()
-
-        self.assertEqual(self.character_1001.unread_mail_count.total, 5)
-        self.assertSetEqual(
-            set(self.character_1001.mail_labels.values_list("label_id", flat=True)),
-            {3, 17},
-        )
-
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
-        self.assertEqual(obj.unread_count, 4)
-        self.assertEqual(obj.color, "#660066")
-
-        obj = self.character_1001.mail_labels.get(label_id=17)
-        self.assertEqual(obj.name, "WHITE")
-        self.assertEqual(obj.unread_count, 1)
-        self.assertEqual(obj.color, "#ffffff")
-
-    def test_update_mail_labels_2(self, mock_esi):
-        """will remove obsolete labels"""
-        mock_esi.client = esi_client_stub
-        CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=666, name="Obsolete"
-        )
-
-        self.character_1001.update_mail_labels()
-
-        self.assertSetEqual(
-            set(self.character_1001.mail_labels.values_list("label_id", flat=True)),
-            {3, 17},
-        )
-
-    def test_update_mail_labels_3(self, mock_esi):
-        """will update existing labels"""
-        mock_esi.client = esi_client_stub
-        CharacterMailLabel.objects.create(
-            character=self.character_1001,
-            label_id=3,
-            name="Update me",
-            unread_count=0,
-            color=0,
-        )
-
-        self.character_1001.update_mail_labels()
-
-        self.assertSetEqual(
-            set(self.character_1001.mail_labels.values_list("label_id", flat=True)),
-            {3, 17},
-        )
-
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
-        self.assertEqual(obj.unread_count, 4)
-        self.assertEqual(obj.color, "#660066")
-
-    def test_update_mail_labels_4(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mail_labels()
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        obj.name = "MAGENTA"
-        obj.save()
-
-        self.character_1001.update_mail_labels()
-
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "MAGENTA")
-
-    def test_update_mail_labels_5(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_mail_labels()
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        obj.name = "MAGENTA"
-        obj.save()
-
-        self.character_1001.update_mail_labels(force_update=True)
-
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
 
     @staticmethod
     def stub_eve_entity_get_or_create_esi(id, *args, **kwargs):

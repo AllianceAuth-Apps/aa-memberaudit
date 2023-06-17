@@ -582,47 +582,9 @@ class Character(models.Model):
         else:
             logger.info("%s: Mailing lists have not changed", self)
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_labels(self, token: Token, force_update: bool = False):
+    def update_mail_labels(self, force_update: bool = False):
         """Update the mail labels for the given character"""
-        mail_labels_list = self._fetch_mail_labels_from_esi(token)
-        if not mail_labels_list:
-            logger.info("%s: No mail labels", self)
-            return
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.MAILS, content=mail_labels_list, hash_num=3
-        ):
-            self.mail_labels.update_for_character(self, mail_labels_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.MAILS, content=mail_labels_list, hash_num=3
-            )
-
-        else:
-            logger.info("%s: Mail labels have not changed", self)
-
-    def _fetch_mail_labels_from_esi(self, token) -> dict:
-        from .sections import CharacterMailUnreadCount
-
-        logger.info("%s: Fetching mail labels from ESI", self)
-        mail_labels_info = esi.client.Mail.get_characters_character_id_mail_labels(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_labels_info, "mail_labels")
-
-        if mail_labels_info.get("total_unread_count"):
-            CharacterMailUnreadCount.objects.update_or_create(
-                character=self,
-                defaults={"total": mail_labels_info.get("total_unread_count")},
-            )
-
-        mail_labels = mail_labels_info.get("labels")
-        if mail_labels:
-            return {obj["label_id"]: obj for obj in mail_labels if "label_id" in obj}
-        else:
-            return dict()
+        self.mail_labels.update_or_create_esi(self, force_update)
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_mail_headers(self, token: Token, force_update: bool = False):
