@@ -329,7 +329,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         """when building the asset tree failed then report the error"""
         mock_esi.client = esi_client_stub
 
-        with patch(MODELS_PATH + ".character.logger") as m:
+        with patch(MANAGERS_PATH + ".sections.logger") as m:
             exception = build_http_error(500, "Test exception")
             m.info.side_effect = exception
             with self.assertRaises(OSError):

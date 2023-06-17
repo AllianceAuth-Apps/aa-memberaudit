@@ -17,7 +17,6 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
@@ -33,13 +32,10 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
-from memberaudit.decorators import fetch_token_for_character
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-
-from .general import Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -388,28 +384,9 @@ class Character(models.Model):
         """
         return self.assets.fetch_from_esi(self, force_update)
 
-    @fetch_token_for_character("esi-universe.read_structures.v1")
-    def assets_preload_objects(self, token: Token, asset_list: list) -> None:
+    def assets_preload_objects(self, asset_list: list) -> None:
         """preloads objects needed to build the asset tree"""
-        if not asset_list:
-            return
-        logger.info("%s: Preloading objects for asset tree", self)
-        required_ids = {x["type_id"] for x in asset_list if "type_id" in x}
-        existing_ids = set(EveType.objects.values_list("id", flat=True))
-        missing_ids = required_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info("%s: Loading %s missing types from ESI", self, len(missing_ids))
-            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
-
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
-        incoming_location_ids = {
-            x["location_id"]
-            for x in assets_flat.values()
-            if "location_id" in x and x["location_id"] not in assets_flat
-        }
-        Location.objects.create_missing_esi(
-            location_ids=incoming_location_ids, token=token
-        )
+        self.assets.preload_objects_from_esi(self, asset_list)
 
     def update_attributes(self, force_update: bool = False):
         """update the character's attributes"""

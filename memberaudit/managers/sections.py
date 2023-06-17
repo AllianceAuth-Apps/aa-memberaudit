@@ -114,6 +114,36 @@ class CharacterAssetManagerBase(models.Manager):
         logger.info("%s: Assets did not change", character)
         return None
 
+    @fetch_token_for_character_2("esi-universe.read_structures.v1")
+    def preload_objects_from_esi(
+        self, character, token: Token, asset_list: list
+    ) -> None:
+        """Preloads objects needed to build the asset tree."""
+        from memberaudit.models import Location
+
+        if not asset_list:
+            return
+
+        logger.info("%s: Preloading objects for asset tree", character)
+        required_ids = {x["type_id"] for x in asset_list if "type_id" in x}
+        existing_ids = set(EveType.objects.values_list("id", flat=True))
+        missing_ids = required_ids.difference(existing_ids)
+        if missing_ids:
+            logger.info(
+                "%s: Loading %s missing types from ESI", character, len(missing_ids)
+            )
+            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+
+        assets_flat = {int(x["item_id"]): x for x in asset_list}
+        incoming_location_ids = {
+            x["location_id"]
+            for x in assets_flat.values()
+            if "location_id" in x and x["location_id"] not in assets_flat
+        }
+        Location.objects.create_missing_esi(
+            location_ids=incoming_location_ids, token=token
+        )
+
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)
 
