@@ -1475,6 +1475,23 @@ class CharacterSkillSetCheckManager(models.Manager):
         return failed_skills
 
 
+class CharacterWalletBalanceManager(models.Manager):
+    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet balance for a character from ESI."""
+
+        logger.info("%s: Fetching wallet balance from ESI", character)
+        balance = esi.client.Wallet.get_characters_character_id_wallet(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(balance, "balance")
+
+        self.update_or_create(character=character, defaults={"total": balance})
+
+
 class CharacterWalletJournalEntryManager(models.Manager):
     @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
     def update_or_create_esi(self, character, token):

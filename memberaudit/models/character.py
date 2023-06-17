@@ -59,6 +59,8 @@ class Character(models.Model):
     """
 
     class UpdateSection(models.TextChoices):
+        """A section of content for a character that can be updated separately."""
+
         ASSETS = "assets", _("assets")
         CHARACTER_DETAILS = "character_details", ("character details")
         CONTACTS = "contacts", _("contacts")
@@ -80,14 +82,16 @@ class Character(models.Model):
         WALLET_BALLANCE = "wallet_balance", _("wallet balance")
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
-        ATTRIBUTES = "attributes", _("attributes")
+        ATTRIBUTES = "attributes", _(
+            "attributes"
+        )  # TODO: Apply sort order with next DB change
 
         @classmethod
         def method_name(cls, section: str) -> str:
             """returns name of update method corresponding with the given section
 
             Raises:
-            - ValueError if secton is invalid
+            - ValueError if section is invalid
             """
             if section not in cls.values:
                 raise ValueError(f"Unknown section: {section}")
@@ -99,7 +103,7 @@ class Character(models.Model):
             """returns display name of given section
 
             Raises:
-            - ValueError if secton is invalid
+            - ValueError if section is invalid
             """
             for short_name, long_name in cls.choices:
                 if short_name == section:
@@ -657,11 +661,11 @@ class Character(models.Model):
             )
 
         else:
-            logger.info("%s: Mailng lists have not changed", self)
+            logger.info("%s: Mailing lists have not changed", self)
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_mail_labels(self, token: Token, force_update: bool = False):
-        """update the mail lables for the given character"""
+        """Update the mail labels for the given character"""
         mail_labels_list = self._fetch_mail_labels_from_esi(token)
         if not mail_labels_list:
             logger.info("%s: No mail labels", self)
@@ -857,22 +861,11 @@ class Character(models.Model):
         """update the character's skill"""
         self.skills.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_balance(self, token):
+    def update_wallet_balance(self):
         """syncs the character's wallet balance"""
         from .sections import CharacterWalletBalance
 
-        logger.info("%s: Fetching wallet balance from ESI", self)
-        balance = esi.client.Wallet.get_characters_character_id_wallet(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(balance, "balance")
-
-        CharacterWalletBalance.objects.update_or_create(
-            character=self, defaults={"total": balance}
-        )
+        CharacterWalletBalance.objects.update_or_create_esi(self)
 
     def update_wallet_journal(self) -> None:
         """syncs the character's wallet journal"""

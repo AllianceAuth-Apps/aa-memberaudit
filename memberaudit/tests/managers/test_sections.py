@@ -32,6 +32,7 @@ from memberaudit.models import (
     CharacterMailLabel,
     CharacterPlanet,
     CharacterSkill,
+    CharacterWalletBalance,
     CharacterWalletJournalEntry,
     Location,
 )
@@ -1159,17 +1160,24 @@ class TestCharacterSkillsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         self.assertEqual(skill.active_skill_level, 3)
 
 
+@patch(MODULE_PATH + ".esi")
+class TestCharacterWalletBalanceManager(
+    CharacterUpdateTestDataMixin, NoSocketsTestCase
+):
+    def test_update_wallet_balance(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterWalletBalance.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.wallet_balance.total, 123456789)
+
+
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
 class TestCharacterWalletJournalManager(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
 ):
-    # def test_update_wallet_balance(self, mock_esi):
-    #     mock_esi.client = esi_client_stub
-
-    #     self.character_1001.update_wallet_balance()
-    #     self.assertEqual(self.character_1001.wallet_balance.total, 123456789)
-
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_1(self, mock_esi):
         """can create wallet journal entry from scratch"""

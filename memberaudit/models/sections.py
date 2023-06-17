@@ -49,6 +49,7 @@ from memberaudit.managers.sections import (
     CharacterSkillManager,
     CharacterSkillqueueEntryManager,
     CharacterSkillSetCheckManager,
+    CharacterWalletBalanceManager,
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
 )
@@ -1120,6 +1121,8 @@ class CharacterWalletBalance(models.Model):
     total = models.DecimalField(
         max_digits=CURRENCY_MAX_DIGITS, decimal_places=CURRENCY_MAX_DECIMALS
     )
+
+    objects = CharacterWalletBalanceManager()
 
     class Meta:
         default_permissions = ()
