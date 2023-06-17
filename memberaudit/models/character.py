@@ -8,7 +8,7 @@ import json
 import os
 from typing import Any, Optional
 
-from bravado.exception import HTTPInternalServerError, HTTPNotFound
+from bravado.exception import HTTPNotFound
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -813,27 +813,11 @@ class Character(models.Model):
         """update the character's planets."""
         self.planets.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-location.read_ship_type.v1")
-    def update_ship(self, token: Token):
+    def update_ship(self):
         """Update the ship for the given character."""
         from .sections import CharacterShip
 
-        logger.info("%s: Fetching ship from ESI", self)
-        try:
-            ship_info = esi.client.Location.get_characters_character_id_ship(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                self,
-                ex,
-            )
-            return
-        CharacterShip.objects.update_for_character(self, ship_info)
+        CharacterShip.objects.update_or_create_esi(self)
 
     def update_skill_queue(self, force_update: bool = False):
         """update the character's skill queue"""

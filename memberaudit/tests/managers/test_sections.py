@@ -32,6 +32,7 @@ from memberaudit.models import (
     CharacterLoyaltyEntry,
     CharacterMailLabel,
     CharacterPlanet,
+    CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
     CharacterWalletBalance,
@@ -1065,6 +1066,36 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
             eve_type=EveType.objects.get(name="Dense Veldspar"),
         )
         self.assertEqual(obj.quantity, 7004)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_should_update_all_fields(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_ignore_error_500(self, mock_esi):
+        # given
+        error_500 = build_http_error(
+            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
+        )
+        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
+            error_500
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
 
 @patch(MODULE_PATH + ".esi")

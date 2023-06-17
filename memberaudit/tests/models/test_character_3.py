@@ -9,12 +9,12 @@ from django.utils.dateparse import parse_datetime
 from eveuniverse.models import EveEntity
 
 from app_utils.esi import EsiStatus
-from app_utils.esi_testing import BravadoResponseStub, build_http_error
+from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.xml_converter import eve_xml_to_html
 
-from ...models import CharacterMail, CharacterMailLabel, CharacterShip, MailEntity
+from ...models import CharacterMail, CharacterMailLabel, MailEntity
 from ..testdata.esi_client_stub import esi_client_stub
 from ..utils import CharacterUpdateTestDataMixin
 
@@ -493,36 +493,6 @@ class TestCharacterUpdateOnlineStatus(CharacterUpdateTestDataMixin, NoSocketsTes
             parse_datetime("2017-01-02T04:05:06Z"),
         )
         self.assertEqual(self.character_1001.online_status.logins, 9001)
-
-
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_should_update_all_fields(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        # when
-        self.character_1001.update_ship()
-        # then
-        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
-        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
-
-    def test_should_ignore_error_500(self, mock_esi):
-        # given
-        error_500 = build_http_error(
-            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
-        )
-        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
-            error_500
-        )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
-        )
-        # when
-        self.character_1001.update_ship()
-        # then
-        self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
-        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
 
 # class TestCharacterMailingList(CharacterUpdateTestDataMixin, NoSocketsTestCase):

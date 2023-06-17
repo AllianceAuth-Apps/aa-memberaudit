@@ -1258,7 +1258,26 @@ class CharacterPlanetManager(models.Manager):
 
 
 class CharacterShipManager(models.Manager):
-    def update_for_character(self, character: models.Model, ship_info: dict):
+    @fetch_token_for_character_2("esi-location.read_ship_type.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or create ship for a character from ESI."""
+
+        logger.info("%s: Fetching ship from ESI", character)
+        try:
+            ship_info = esi.client.Location.get_characters_character_id_ship(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                character,
+                ex,
+            )
+            return
+
         ship_type_id = ship_info.get("ship_type_id")
         if not ship_type_id:
             return
