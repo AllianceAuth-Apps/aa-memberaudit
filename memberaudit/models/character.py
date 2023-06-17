@@ -790,24 +790,11 @@ class Character(models.Model):
         """Update mining ledger from ESI for this character."""
         self.mining_ledger.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-location.read_online.v1")
-    def update_online_status(self, token):
+    def update_online_status(self):
         """Update the character's online status"""
         from .sections import CharacterOnlineStatus
 
-        logger.info("%s: Fetching online status from ESI", self)
-        online_info = esi.client.Location.get_characters_character_id_online(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        CharacterOnlineStatus.objects.update_or_create(
-            character=self,
-            defaults={
-                "last_login": online_info.get("last_login"),
-                "last_logout": online_info.get("last_logout"),
-                "logins": online_info.get("logins"),
-            },
-        )
+        CharacterOnlineStatus.objects.update_or_create_esi(self)
 
     def update_planets(self, force_update: bool = False):
         """update the character's planets."""

@@ -44,6 +44,7 @@ from memberaudit.managers.sections import (
     CharacterMailLabelManager,
     CharacterMailManager,
     CharacterMiningLedgerEntryManager,
+    CharacterOnlineStatusManager,
     CharacterPlanetManager,
     CharacterShipManager,
     CharacterSkillManager,
@@ -962,6 +963,8 @@ class CharacterOnlineStatus(models.Model):
     last_login = models.DateTimeField(default=None, null=True)
     last_logout = models.DateTimeField(default=None, null=True)
     logins = models.PositiveIntegerField(default=None, null=True)
+
+    objects = CharacterOnlineStatusManager()
 
     class Meta:
         default_permissions = ()

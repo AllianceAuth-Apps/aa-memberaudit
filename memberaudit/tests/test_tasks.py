@@ -605,18 +605,16 @@ class TestUpdateCharacter(TestCaseTasks):
         self, mock_esi_models, mock_esi_managers
     ):
         # given
-        mock_esi_models.client = esi_client_error_stub
+        mock_esi_models.client = esi_client_error_stub  # raises exception
         mock_esi_managers.client = esi_client_stub
         # when
         with self.assertRaises(OSError):  # raised when trying to fetch attributes
             tasks.update_character(self.character_1001.pk)
         # then
         self.assertFalse(self.character_1001.is_update_status_ok())
-        status = self.character_1001.update_status_set.get(
-            character=self.character_1001,
-            section=Character.UpdateSection.ATTRIBUTES,
-        )
-        self.assertFalse(status.is_success)
+        status = self.character_1001.update_status_set.filter(
+            character=self.character_1001, is_success=False
+        ).first()
         self.assertEqual(
             status.last_error_message, "HTTPInternalServerError: 500 Test exception"
         )

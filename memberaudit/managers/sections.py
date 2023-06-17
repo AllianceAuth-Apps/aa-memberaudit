@@ -1213,10 +1213,32 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 )
 
 
+class CharacterOnlineStatusManager(models.Manager):
+    @fetch_token_for_character_2("esi-location.read_online.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or online status for a character from ESI."""
+
+        logger.info("%s: Fetching online status from ESI", character)
+        online_info = esi.client.Location.get_characters_character_id_online(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        self.update_or_create(
+            character=character,
+            defaults={
+                "last_login": online_info.get("last_login"),
+                "last_logout": online_info.get("last_logout"),
+                "logins": online_info.get("logins"),
+            },
+        )
+
+
 class CharacterPlanetManager(models.Manager):
     @fetch_token_for_character_2("esi-planets.manage_planets.v1")
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create planets for a character from ESI."""
+
         logger.info("%s: Fetching planets from ESI", character)
         planets_data = (
             esi.client.Planetary_Interaction.get_characters_character_id_planets(

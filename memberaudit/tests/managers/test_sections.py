@@ -31,6 +31,7 @@ from memberaudit.models import (
     CharacterLocation,
     CharacterLoyaltyEntry,
     CharacterMailLabel,
+    CharacterOnlineStatus,
     CharacterPlanet,
     CharacterShip,
     CharacterSkill,
@@ -830,7 +831,7 @@ class TestCharacterImplantsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterUpdateJumpClones(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_update_with_implants(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -1069,7 +1070,7 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_should_update_all_fields(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -1175,6 +1176,25 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         # then
         entry = self.character_1001.skillqueue.get(queue_position=0)
         self.assertEqual(entry.finished_level, 3)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_update_online_status(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterOnlineStatus.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(
+            self.character_1001.online_status.last_login,
+            parse_datetime("2017-01-02T03:04:05Z"),
+        )
+        self.assertEqual(
+            self.character_1001.online_status.last_logout,
+            parse_datetime("2017-01-02T04:05:06Z"),
+        )
+        self.assertEqual(self.character_1001.online_status.logins, 9001)
 
 
 @patch(MODULE_PATH + ".esi")

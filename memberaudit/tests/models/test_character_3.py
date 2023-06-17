@@ -10,7 +10,6 @@ from eveuniverse.models import EveEntity
 
 from app_utils.esi import EsiStatus
 from app_utils.esi_testing import BravadoResponseStub
-from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.xml_converter import eve_xml_to_html
 
@@ -475,24 +474,6 @@ class TestCharacterUpdateMails(CharacterUpdateTestDataMixin, TestCase):
         self.character_1001.update_mail_body(mail)
         # then
         self.assertFalse(self.character_1001.mails.filter(mail_id=1).exists())
-
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateOnlineStatus(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_online_status(self, mock_esi):
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_online_status()
-        self.assertEqual(
-            self.character_1001.online_status.last_login,
-            parse_datetime("2017-01-02T03:04:05Z"),
-        )
-        self.assertEqual(
-            self.character_1001.online_status.last_logout,
-            parse_datetime("2017-01-02T04:05:06Z"),
-        )
-        self.assertEqual(self.character_1001.online_status.logins, 9001)
 
 
 # class TestCharacterMailingList(CharacterUpdateTestDataMixin, NoSocketsTestCase):
