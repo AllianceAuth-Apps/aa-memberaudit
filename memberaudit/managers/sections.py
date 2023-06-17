@@ -38,7 +38,7 @@ from memberaudit.utils import (
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterAssetManager(models.Manager):
+class CharacterAssetQuerySet(models.QuerySet):
     def annotate_pricing(self) -> models.QuerySet:
         """Returns qs with annotated price and total columns"""
         return (
@@ -65,6 +65,13 @@ class CharacterAssetManager(models.Manager):
                 )
             )
         )
+
+
+class CharacterAssetManagerBase(models.Manager):
+    pass
+
+
+CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)
 
 
 class CharacterAttributesManager(models.Manager):
@@ -544,7 +551,36 @@ class CharacterContractBidManager(models.Manager):
         self.bulk_create(bids, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
 
-class CharacterContractItemManager(models.Manager):
+class CharacterContractItemQuerySet(models.QuerySet):
+    def annotate_pricing(self) -> models.QuerySet:
+        """Return qs with annotated price and total columns"""
+        return (
+            self.select_related("eve_type__market_price")
+            .annotate(
+                price=Case(
+                    When(
+                        raw_quantity=-2,
+                        then=Value(None),
+                    ),
+                    default=F("eve_type__market_price__average_price"),
+                )
+            )
+            .annotate(
+                total=Case(
+                    When(
+                        raw_quantity=-2,
+                        then=Value(None),
+                    ),
+                    default=ExpressionWrapper(
+                        F("eve_type__market_price__average_price") * F("quantity"),
+                        output_field=models.FloatField(),
+                    ),
+                )
+            )
+        )
+
+
+class CharacterContractItemManagerBase(models.Manager):
     @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract items for a contract from ESI."""
@@ -596,32 +632,10 @@ class CharacterContractItemManager(models.Manager):
             self.filter(contract=contract).delete()
             self.bulk_create(items, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
-    def annotate_pricing(self) -> models.QuerySet:
-        """Returns qs with annotated price and total columns"""
-        return (
-            self.select_related("eve_type__market_price")
-            .annotate(
-                price=Case(
-                    When(
-                        raw_quantity=-2,
-                        then=Value(None),
-                    ),
-                    default=F("eve_type__market_price__average_price"),
-                )
-            )
-            .annotate(
-                total=Case(
-                    When(
-                        raw_quantity=-2,
-                        then=Value(None),
-                    ),
-                    default=ExpressionWrapper(
-                        F("eve_type__market_price__average_price") * F("quantity"),
-                        output_field=models.FloatField(),
-                    ),
-                )
-            )
-        )
+
+CharacterContractItemManager = CharacterContractItemManagerBase.from_queryset(
+    CharacterContractItemQuerySet
+)
 
 
 class CharacterCorporationHistoryManager(models.Manager):
