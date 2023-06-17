@@ -31,6 +31,7 @@ from memberaudit.models import (
     CharacterJumpClone,
     CharacterLocation,
     CharacterLoyaltyEntry,
+    CharacterMail,
     CharacterMailLabel,
     CharacterOnlineStatus,
     CharacterPlanet,
@@ -41,14 +42,18 @@ from memberaudit.models import (
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
     Location,
+    MailEntity,
 )
 
 from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_contract,
     create_character_contract_bid,
+    create_character_mail_label,
     create_character_mining_ledger_entry,
     create_character_planet,
+    create_mail_entity_from_eve_entity,
+    create_mailing_list,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -982,7 +987,8 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
         obj: CharacterFwStats = self.character_1001.fw_stats
         self.assertEqual(obj.current_rank, 3)
         self.assertEqual(
-            obj.enlisted_on, dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc)
+            obj.enlisted_on,
+            dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc),
         )
         self.assertEqual(obj.faction_id, 500001)
         self.assertEqual(obj.highest_rank, 4)
@@ -1013,7 +1019,8 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
         obj: CharacterFwStats = self.character_1001.fw_stats
         self.assertEqual(obj.current_rank, 3)
         self.assertEqual(
-            obj.enlisted_on, dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc)
+            obj.enlisted_on,
+            dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc),
         )
         self.assertEqual(obj.faction_id, 500001)
         self.assertEqual(obj.highest_rank, 4)
@@ -1274,6 +1281,214 @@ class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCas
         self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
         obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2001)
         self.assertEqual(obj.loyalty_points, 100)
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(MODULE_PATH + ".esi")
+class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_can_create_new_mail_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_mail_entity_from_eve_entity(1002)
+        create_mailing_list(id=9001)
+        create_character_mail_label(character=self.character_1001, label_id=3)
+        # when
+        self.character_1001.update_mail_headers()
+        # then
+        self.assertSetEqual(
+            set(self.character_1001.mails.values_list("mail_id", flat=True)),
+            {1, 2, 3},
+        )
+        obj = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(obj.sender.id, 1002)
+        self.assertTrue(obj.is_read)
+        self.assertEqual(obj.subject, "Mail 1")
+        self.assertEqual(obj.timestamp, parse_datetime("2015-09-05T16:07:00Z"))
+        self.assertFalse(obj.body)
+        self.assertTrue(obj.recipients.filter(id=1001).exists())
+        self.assertTrue(obj.recipients.filter(id=9001).exists())
+        self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
+
+        obj = self.character_1001.mails.get(mail_id=2)
+        self.assertEqual(obj.sender_id, 9001)
+        self.assertFalse(obj.is_read)
+        self.assertEqual(obj.subject, "Mail 2")
+        self.assertEqual(obj.timestamp, parse_datetime("2015-09-10T18:07:00Z"))
+        self.assertFalse(obj.body)
+        self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
+
+        obj = self.character_1001.mails.get(mail_id=3)
+        self.assertEqual(obj.sender_id, 1002)
+        self.assertTrue(obj.recipients.filter(id=9003).exists())
+        self.assertEqual(obj.timestamp, parse_datetime("2015-09-20T12:07:00Z"))
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_should_skip_update_when_no_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_mail_entity_from_eve_entity(1002)
+        create_mailing_list(id=9001)
+        create_character_mail_label(character=self.character_1001, label_id=3)
+        self.character_1001.update_mail_headers()
+        obj = self.character_1001.mails.get(mail_id=1)
+        obj.is_read = False
+        obj.save()
+        # when
+        self.character_1001.update_mail_headers()
+        # then
+        obj = self.character_1001.mails.get(mail_id=1)
+        self.assertFalse(obj.is_read)
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_should_always_update_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_mail_entity_from_eve_entity(1002)
+        create_mailing_list(id=9001)
+        create_character_mail_label(character=self.character_1001, label_id=3)
+        self.character_1001.update_mail_headers()
+        obj = self.character_1001.mails.get(mail_id=1)
+        obj.is_read = False
+        obj.save()
+        # when
+        self.character_1001.update_mail_headers(force_update=True)
+        # then
+        obj = self.character_1001.mails.get(mail_id=1)
+        self.assertTrue(obj.is_read)
+
+    @patch(
+        MODULE_PATH + ".data_retention_cutoff",
+        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=dt.timezone.utc)
+        - dt.timedelta(days=15),
+    )
+    def test_update_mail_headers_6(self, mock_esi):
+        """when data retention limit is set, then only fetch mails within that limit"""
+        mock_esi.client = esi_client_stub
+        create_mail_entity_from_eve_entity(1002)
+        create_mailing_list(id=9001)
+        create_character_mail_label(character=self.character_1001, label_id=3)
+
+        self.character_1001.update_mail_headers()
+
+        self.assertSetEqual(
+            set(self.character_1001.mails.values_list("mail_id", flat=True)),
+            {2, 3},
+        )
+
+    @patch(
+        MODULE_PATH + ".data_retention_cutoff",
+        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=dt.timezone.utc)
+        - dt.timedelta(days=15),
+    )
+    def test_update_mail_headers_7(self, mock_esi):
+        """when data retention limit is set, then remove old data beyond that limit"""
+        mock_esi.client = esi_client_stub
+        sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
+        CharacterMail.objects.create(
+            character=self.character_1001,
+            mail_id=99,
+            sender=sender,
+            subject="Mail Old",
+            timestamp=parse_datetime("2015-09-02T14:02:00Z"),
+            is_read=False,
+        )
+
+        create_mail_entity_from_eve_entity(1002)
+        create_mailing_list(id=9001)
+        create_character_mail_label(character=self.character_1001, label_id=3)
+
+        self.character_1001.update_mail_headers()
+
+        self.assertSetEqual(
+            set(self.character_1001.mails.values_list("mail_id", flat=True)),
+            {2, 3},
+        )
+
+    def test_should_update_existing_mail_body(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        sender = create_mail_entity_from_eve_entity(1002)
+        mail = CharacterMail.objects.create(
+            character=self.character_1001,
+            mail_id=1,
+            sender=sender,
+            subject="Mail 1",
+            body="Update me",
+            is_read=False,
+            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        )
+        recipient_1001 = create_mail_entity_from_eve_entity(1001)
+        recipient_9001 = create_mailing_list(
+            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
+        )
+        mail.recipients.add(recipient_1001, recipient_9001)
+        # when
+        self.character_1001.update_mail_body(mail)
+        # then
+        obj = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(obj.body, "blah blah blah 😓")
+
+    @patch(MODULE_PATH + ".eve_xml_to_html")
+    def test_should_update_mail_body_from_scratch(self, mock_eve_xml_to_html, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
+        sender = create_mail_entity_from_eve_entity(1002)
+        mail = CharacterMail.objects.create(
+            character=self.character_1001,
+            mail_id=2,
+            sender=sender,
+            subject="Mail 1",
+            is_read=False,
+            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        )
+        recipient_1 = create_mail_entity_from_eve_entity(1001)
+        mail.recipients.add(recipient_1)
+        # when
+        self.character_1001.update_mail_body(mail)
+        # then
+        obj = self.character_1001.mails.get(mail_id=2)
+        self.assertTrue(obj.body)
+        self.assertTrue(mock_eve_xml_to_html.called)
+
+    def test_should_delete_mail_header_when_fetching_body_returns_404(self, mock_esi):
+        # given
+        mock_esi.client.Mail.get_characters_character_id_mail_mail_id.side_effect = (
+            build_http_error(404, "Test")
+        )
+        sender = create_mail_entity_from_eve_entity(1002)
+        mail = CharacterMail.objects.create(
+            character=self.character_1001,
+            mail_id=1,
+            sender=sender,
+            subject="Mail 1",
+            is_read=False,
+            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        )
+        recipient_1001 = create_mail_entity_from_eve_entity(1001)
+        recipient_9001 = create_mailing_list(
+            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
+        )
+        mail.recipients.add(recipient_1001, recipient_9001)
+        # when
+        self.character_1001.update_mail_body(mail)
+        # then
+        self.assertFalse(self.character_1001.mails.filter(mail_id=1).exists())
+
+    @patch("memberaudit.models.MailEntity.objects.get_or_create_esi_async")
+    def test_can_preload_mail_senders(self, mock_get_or_create_esi_async, mock_esi):
+        # given
+        create_mailing_list(id=9001)
+        headers = {1: {"from": 9001, "mail_id": 1}, 2: {"from": 9002, "mail_id": 2}}
+        # when
+        CharacterMail.objects._preload_mail_senders(self.character_1001, headers)
+        # then
+        self.assertTrue(mock_get_or_create_esi_async.called)
+        mail_entity_ids = {
+            o[1]["id"] for o in mock_get_or_create_esi_async.call_args_list
+        }
+        self.assertSetEqual(mail_entity_ids, {9002})
 
 
 class TestCharacterMailLabelManager(TestCharacterUpdateBase):

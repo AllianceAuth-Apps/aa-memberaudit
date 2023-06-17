@@ -382,6 +382,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".sections.esi")
 @patch(MODELS_PATH + ".character.esi")
 class TestUpdateCharacterMails(TestCaseTasks):
     @classmethod
@@ -394,9 +395,10 @@ class TestUpdateCharacterMails(TestCaseTasks):
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
         )
 
-    def test_update_ok(self, mock_esi):
+    def test_update_ok(self, mock_esi_character, mock_esi_sections):
         """when update succeeded then report update success"""
-        mock_esi.client = esi_client_stub
+        mock_esi_character.client = esi_client_stub
+        mock_esi_sections.client = esi_client_stub
 
         tasks.update_character_mails(self.character_1001.pk)
 
@@ -406,13 +408,15 @@ class TestUpdateCharacterMails(TestCaseTasks):
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
 
-    def test_detect_error(self, mock_esi):
+    def test_detect_error(self, mock_esi_character, mock_esi_sections):
         """when update failed then report the error"""
         exception = build_http_error(500, "Test exception")
-        mock_esi.client.Mail.get_characters_character_id_mail_lists.side_effect = (
+        mock_esi_character.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
-
+        mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
+            exception
+        )
         try:
             tasks.update_character_mails(self.character_1001.pk)
         except Exception:
@@ -572,7 +576,7 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
 
 
-@patch(MODELS_PATH + ".character.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".sections.data_retention_cutoff", lambda: None)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".sections.esi")

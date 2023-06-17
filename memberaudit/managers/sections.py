@@ -1,7 +1,7 @@
 import ast
 from typing import Dict, List
 
-from bravado.exception import HTTPInternalServerError
+from bravado.exception import HTTPInternalServerError, HTTPNotFound
 
 from django.db import models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
@@ -24,6 +24,7 @@ from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_DEVELOPER_MODE,
+    MEMBERAUDIT_MAX_MAILS,
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character_2
@@ -1031,14 +1032,76 @@ class CharacterJumpCloneManager(models.Manager):
 
 
 class CharacterMailManager(models.Manager):
-    def update_for_character(
+    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    def update_or_create_header_esi(
+        self, character, token: Token, force_update: bool = False
+    ):
+        """Update or create mail headers for a character from ESI."""
+
+        mail_headers = self._fetch_mail_headers(character, token)
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(mail_headers, "mail_headers")
+
+        self._update_or_create_objs(
+            character=character,
+            cutoff_datetime=data_retention_cutoff(),
+            mail_headers=mail_headers,
+            force_update=force_update,
+        )
+
+    @staticmethod
+    def _fetch_mail_headers(character, token) -> dict:
+        last_mail_id = None
+        mail_headers_all = list()
+        page = 1
+        while True:
+            logger.info("%s: Fetching mail headers from ESI - page %s", character, page)
+            mail_headers = esi.client.Mail.get_characters_character_id_mail(
+                character_id=character.eve_character.character_id,
+                last_mail_id=last_mail_id,
+                token=token.valid_access_token(),
+            ).results()
+            if MEMBERAUDIT_DEVELOPER_MODE:
+                character._store_list_to_disk(mail_headers, "mail_headers")
+
+            mail_headers_all += mail_headers
+            if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
+                break
+            else:
+                last_mail_id = min([x["mail_id"] for x in mail_headers])
+                page += 1
+
+        cutoff_datetime = data_retention_cutoff()
+        mail_headers_all_2 = {
+            obj["mail_id"]: obj
+            for obj in mail_headers_all
+            if cutoff_datetime is None
+            or not obj.get("timestamp")
+            or obj.get("timestamp") > cutoff_datetime
+        }
+        logger.info(
+            "%s: Received %s mail headers from ESI", character, len(mail_headers_all_2)
+        )
+        return mail_headers_all_2
+
+    @staticmethod
+    def _headers_list_subset(mail_headers, subset_ids) -> dict:
+        return {
+            mail_info["mail_id"]: mail_info
+            for mail_id, mail_info in mail_headers.items()
+            if mail_id in subset_ids
+        }
+
+    def _update_or_create_objs(
         self, character, cutoff_datetime, mail_headers, force_update
     ):
         if cutoff_datetime:
             self.filter(character=character, timestamp__lt=cutoff_datetime).delete()
 
+        section = character.UpdateSection.MAILS
         if force_update or character.has_section_changed(
-            section=character.UpdateSection.MAILS, content=mail_headers
+            section=section, content=mail_headers
         ):
             self._preload_mail_senders(character=character, mail_headers=mail_headers)
             with transaction.atomic():
@@ -1065,9 +1128,7 @@ class CharacterMailManager(models.Manager):
                 if not create_ids and not update_ids:
                     logger.info("%s: No mails", character)
 
-            character.update_section_content_hash(
-                section=character.UpdateSection.MAILS, content=mail_headers
-            )
+            character.update_section_content_hash(section=section, content=mail_headers)
 
         else:
             logger.info("%s: Mails have not changed", character)
@@ -1075,23 +1136,17 @@ class CharacterMailManager(models.Manager):
     def _preload_mail_senders(self, character, mail_headers):
         from ..models import MailEntity
 
-        incoming_ids = set(mail_headers.keys())
-        existing_ids = set(
-            self.filter(character=character).values_list("mail_id", flat=True)
-        )
+        incoming_ids = {o["from"] for o in mail_headers.values()}
+        existing_ids = set(MailEntity.objects.values_list("id", flat=True))
         create_ids = incoming_ids.difference(existing_ids)
-        if create_ids:
-            new_mail_headers_list = character._headers_list_subset(
-                mail_headers, create_ids
-            )
-            for mail_id, header in new_mail_headers_list.items():
-                MailEntity.objects.get_or_create_esi_async(header.get("from"))
+        for mail_entity_id in create_ids:
+            MailEntity.objects.get_or_create_esi_async(id=mail_entity_id)
 
     def _create_mail_headers(self, character, mail_headers: dict, create_ids) -> None:
         from ..models import MailEntity
 
         logger.info("%s: Create %s new mail headers", character, len(create_ids))
-        new_mail_headers_list = character._headers_list_subset(mail_headers, create_ids)
+        new_mail_headers_list = self._headers_list_subset(mail_headers, create_ids)
         self._add_missing_mailing_lists_from_recipients(
             character=character, new_mail_headers_list=new_mail_headers_list
         )
@@ -1212,6 +1267,37 @@ class CharacterMailManager(models.Manager):
                 )
 
         self.bulk_update(mails.values(), ["is_read"])
+
+    @fetch_token_for_character_2("esi-mail.read_mail.v1")
+    def update_or_create_body_esi(
+        self, character, token: Token, mail, force_update: bool = False
+    ):
+        """Update or create mail body for a character from ESI."""
+
+        logger.debug(
+            "%s: Fetching body from ESI for mail ID %s", character, mail.mail_id
+        )
+        try:
+            mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
+                character_id=character.eve_character.character_id,
+                mail_id=mail.mail_id,
+                token=token.valid_access_token(),
+            ).result()
+        except HTTPNotFound:
+            logger.info(
+                "%s: Mail %s was deleted in game. Removing mail header.",
+                character,
+                mail,
+            )
+            mail.delete()
+            return
+
+        mail.body = mail_body.get("body", "")
+        mail.save()
+        eve_xml_to_html(mail.body)  # resolve names early
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(mail_body, "mail_body")
 
 
 class CharacterMailLabelManager(models.Manager):

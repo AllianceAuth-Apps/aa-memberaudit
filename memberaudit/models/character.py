@@ -8,8 +8,6 @@ import json
 import os
 from typing import Any, Optional
 
-from bravado.exception import HTTPNotFound
-
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
@@ -32,15 +30,12 @@ from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
     MEMBERAUDIT_DEVELOPER_MODE,
-    MEMBERAUDIT_MAX_MAILS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
-from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
@@ -586,80 +581,11 @@ class Character(models.Model):
         """Update the mail labels for the given character"""
         self.mail_labels.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_headers(self, token: Token, force_update: bool = False):
-        mail_headers = self._fetch_mail_headers(token)
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_headers, "mail_headers")
-        self.mails.update_for_character(
-            character=self,
-            cutoff_datetime=data_retention_cutoff(),
-            mail_headers=mail_headers,
-            force_update=force_update,
-        )
+    def update_mail_headers(self, force_update: bool = False):
+        self.mails.update_or_create_header_esi(self, force_update)
 
-    def _fetch_mail_headers(self, token) -> dict:
-        last_mail_id = None
-        mail_headers_all = list()
-        page = 1
-        while True:
-            logger.info("%s: Fetching mail headers from ESI - page %s", self, page)
-            mail_headers = esi.client.Mail.get_characters_character_id_mail(
-                character_id=self.eve_character.character_id,
-                last_mail_id=last_mail_id,
-                token=token.valid_access_token(),
-            ).results()
-            if MEMBERAUDIT_DEVELOPER_MODE:
-                self._store_list_to_disk(mail_headers, "mail_headers")
-
-            mail_headers_all += mail_headers
-            if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
-                break
-            else:
-                last_mail_id = min([x["mail_id"] for x in mail_headers])
-                page += 1
-
-        cutoff_datetime = data_retention_cutoff()
-        mail_headers_all_2 = {
-            obj["mail_id"]: obj
-            for obj in mail_headers_all
-            if cutoff_datetime is None
-            or not obj.get("timestamp")
-            or obj.get("timestamp") > cutoff_datetime
-        }
-        logger.info(
-            "%s: Received %s mail headers from ESI", self, len(mail_headers_all_2)
-        )
-        return mail_headers_all_2
-
-    @staticmethod
-    def _headers_list_subset(mail_headers, subset_ids) -> dict:
-        return {
-            mail_info["mail_id"]: mail_info
-            for mail_id, mail_info in mail_headers.items()
-            if mail_id in subset_ids
-        }
-
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_body(self, token: Token, mail: models.Model) -> None:
-        logger.debug("%s: Fetching body from ESI for mail ID %s", self, mail.mail_id)
-        try:
-            mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
-                character_id=self.eve_character.character_id,
-                mail_id=mail.mail_id,
-                token=token.valid_access_token(),
-            ).result()
-        except HTTPNotFound:
-            logger.info(
-                "%s: Mail %s was deleted in game. Removing mail header.", self, mail
-            )
-            mail.delete()
-            return
-        mail.body = mail_body.get("body", "")
-        mail.save()
-        eve_xml_to_html(mail.body)  # resolve names early
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_body, "mail_body")
+    def update_mail_body(self, mail) -> None:
+        self.mails.update_or_create_body_esi(self, mail)
 
     def update_mining_ledger(self):
         """Update mining ledger from ESI for this character."""
