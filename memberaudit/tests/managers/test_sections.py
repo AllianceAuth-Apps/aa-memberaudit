@@ -19,6 +19,7 @@ from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.models import (
     Character,
     CharacterAsset,
+    CharacterAttributes,
     CharacterContact,
     CharacterContactLabel,
     CharacterContract,
@@ -91,6 +92,61 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         asset = CharacterAsset.objects.annotate_pricing().first()
         self.assertIsNone(asset.price)
         self.assertIsNone(asset.total)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterUpdateAttributes(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterAttributes.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(
+            self.character_1001.attributes.accrued_remap_cooldown_date,
+            parse_datetime("2016-10-24T09:00:00Z"),
+        )
+        self.assertEqual(
+            self.character_1001.attributes.last_remap_date,
+            parse_datetime("2016-10-24T09:00:00Z"),
+        )
+        self.assertEqual(self.character_1001.attributes.charisma, 16)
+        self.assertEqual(self.character_1001.attributes.intelligence, 17)
+        self.assertEqual(self.character_1001.attributes.memory, 18)
+        self.assertEqual(self.character_1001.attributes.perception, 19)
+        self.assertEqual(self.character_1001.attributes.willpower, 20)
+
+    def test_can_update_existing_attributes(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterAttributes.objects.create(
+            character=self.character_1001,
+            accrued_remap_cooldown_date="2020-10-24T09:00:00Z",
+            last_remap_date="2020-10-24T09:00:00Z",
+            bonus_remaps=4,
+            charisma=102,
+            intelligence=103,
+            memory=104,
+            perception=105,
+            willpower=106,
+        )
+        # when
+        CharacterAttributes.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.character_1001.attributes.refresh_from_db()
+        self.assertEqual(
+            self.character_1001.attributes.accrued_remap_cooldown_date,
+            parse_datetime("2016-10-24T09:00:00Z"),
+        )
+        self.assertEqual(
+            self.character_1001.attributes.last_remap_date,
+            parse_datetime("2016-10-24T09:00:00Z"),
+        )
+        self.assertEqual(self.character_1001.attributes.charisma, 16)
+        self.assertEqual(self.character_1001.attributes.intelligence, 17)
+        self.assertEqual(self.character_1001.attributes.memory, 18)
+        self.assertEqual(self.character_1001.attributes.perception, 19)
+        self.assertEqual(self.character_1001.attributes.willpower, 20)
 
 
 class TestCharacterUpdateBase(TestCase):

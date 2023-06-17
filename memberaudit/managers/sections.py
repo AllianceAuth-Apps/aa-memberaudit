@@ -68,7 +68,31 @@ class CharacterAssetManager(models.Manager):
 
 
 class CharacterAttributesManager(models.Manager):
-    def update_for_character(self, character, attribute_data):
+    @fetch_token_for_character_2("esi-skills.read_skills.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create assets for a character from ESI."""
+
+        logger.info("%s: Fetching attributes from ESI", character)
+        attribute_data = esi.client.Skills.get_characters_character_id_attributes(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(attribute_data, "attributes")
+
+        section = character.UpdateSection.ATTRIBUTES
+        if force_update or character.has_section_changed(
+            section=section, content=attribute_data
+        ):
+            self._update_or_create_objs(character, attribute_data)
+            character.update_section_content_hash(
+                section=section, content=attribute_data
+            )
+        else:
+            logger.info("%s: Attributes have not changed", character)
+
+    def _update_or_create_objs(self, character, attribute_data):
         self.update_or_create(
             character=character,
             defaults={

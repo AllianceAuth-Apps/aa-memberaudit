@@ -478,6 +478,12 @@ class Character(models.Model):
         if incoming_location_ids:
             self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
 
+    def update_attributes(self, force_update: bool = False):
+        """update the character's attributes"""
+        from .sections import CharacterAttributes
+
+        CharacterAttributes.objects.update_or_create_esi(self, force_update)
+
     def update_character_details(self, force_update: bool = False):
         """syncs the character details for the given character"""
         from .sections import CharacterDetails
@@ -948,26 +954,6 @@ class Character(models.Model):
             "esi-universe.read_structures.v1",
             "esi-wallet.read_character_wallet.v1",
         ]
-
-    @fetch_token_for_character("esi-skills.read_skills.v1")
-    def update_attributes(self, token: Token, force_update: bool = False):
-        """update the character's attributes"""
-        logger.info("%s: Fetching attributes from ESI", self)
-        from .sections import CharacterAttributes
-
-        attribute_data = esi.client.Skills.get_characters_character_id_attributes(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(attribute_data, "attributes")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.ATTRIBUTES, content=attribute_data
-        ):
-            CharacterAttributes.objects.update_for_character(self, attribute_data)
-        else:
-            logger.info("%s: Attributes have not changed", self)
 
     def update_sharing_consistency(self):
         """Update sharing to ensure consistency with permissions."""
