@@ -308,9 +308,12 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         """when preload objects failed then report the error"""
         mock_esi.client = esi_client_stub
 
-        with patch(MODELS_PATH + ".character.Location", spec=True) as m:
+        with patch(
+            MANAGERS_PATH + ".general.LocationManager.get_or_create_esi_async",
+            spec=True,
+        ) as m:
             exception = build_http_error(500, "Test exception")
-            m.objects.get_or_create_esi_async.side_effect = exception
+            m.side_effect = exception
             with self.assertRaises(OSError):
                 tasks.update_character_assets(self.character_1001.pk)
 

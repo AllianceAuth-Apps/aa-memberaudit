@@ -11,7 +11,7 @@ MODELS_PATH = "memberaudit.models.character"
 # TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(MODELS_PATH + ".Character._preload_all_locations", spec=True)
+@patch(MODELS_PATH + ".Location.objects.create_missing_esi", spec=True)
 @patch(MODELS_PATH + ".EveType.objects.bulk_get_or_create_esi", spec=True)
 class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     @classmethod
@@ -49,4 +49,4 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         self.assertEqual(set(kwargs["ids"]), {3, 4})
         self.assertTrue(mock_preload_locations.called)
         _, kwargs = mock_preload_locations.call_args
-        self.assertEqual(kwargs["incoming_ids"], {420, 421})
+        self.assertEqual(kwargs["location_ids"], {420, 421})

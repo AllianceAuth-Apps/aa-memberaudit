@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
@@ -302,6 +302,31 @@ class LocationManager(models.Manager):
                 "owner": owner,
             },
         )
+
+    def create_missing_esi(self, location_ids: Iterable, token: Token) -> Set[int]:
+        """Create missing locations from ESI based on given location IDs.
+        And return all existing location IDs.
+
+        Will do nothing when no IDs provided.
+        """
+        if not location_ids:
+            return set()
+
+        incoming_ids = set(location_ids)
+        existing_ids = set(self.values_list("id", flat=True))
+        missing_ids = incoming_ids.difference(existing_ids)
+        if missing_ids:
+            logger.info(
+                "%s: Loading %s missing locations from ESI", self, len(missing_ids)
+            )
+            for location_id in missing_ids:
+                try:
+                    self.get_or_create_esi_async(id=location_id, token=token)
+                except ValueError:
+                    pass
+                else:
+                    existing_ids.add(location_id)
+        return existing_ids
 
 
 class MailEntityManager(models.Manager):

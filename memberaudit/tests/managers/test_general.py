@@ -7,6 +7,7 @@ from celery_once import AlreadyQueued
 from django.core.cache import cache
 from django.test import override_settings
 from django.utils.timezone import now
+from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
@@ -895,6 +896,55 @@ class TestLocationManagerOther(NoSocketsTestCase):
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.owner)
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
+
+
+@patch(MANAGERS_PATH + ".esi")
+@patch(MANAGERS_PATH + ".LocationManager.get_or_create_esi_async")
+class TestLocationManagerPreload(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.token = MagicMock(spec=Token)
+
+    def test_can_preload_missing_locations(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        Location.objects.update_or_create_esi(id=60003760, token=self.token)
+        # when
+        result = Location.objects.create_missing_esi([60003760, 30002537], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 1)
+        _, kwargs = mock_get_or_create_esi_async.call_args
+        self.assertEqual(kwargs["id"], 30002537)
+        self.assertSetEqual(result, {60003760, 30002537})
+
+    def test_can_do_nothing_when_all_locations_found(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        Location.objects.update_or_create_esi(id=60003760, token=self.token)
+        Location.objects.update_or_create_esi(id=30002537, token=self.token)
+        # when
+        result = Location.objects.create_missing_esi([60003760, 30002537], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 0)
+        self.assertSetEqual(result, {60003760, 30002537})
+
+    def test_can_do_nothing_when_no_ids_provided(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        result = Location.objects.create_missing_esi([], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 0)
+        self.assertSetEqual(result, set())
 
 
 class TestLocationManagerAsync(NoSocketsTestCaseFixtures):

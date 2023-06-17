@@ -324,6 +324,8 @@ class CharacterContractManager(models.Manager):
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create contracts for a character from ESI."""
 
+        from memberaudit.models import Location
+
         contracts_list = self._fetch_contracts_from_esi(character, token)
         if not contracts_list:
             logger.info("%s: No contracts received from ESI", character)
@@ -347,10 +349,7 @@ class CharacterContractManager(models.Manager):
             incoming_location_ids |= {
                 obj["end_location_id"] for obj in contracts_list.values()
             }
-            if incoming_location_ids:
-                character._preload_all_locations(
-                    token=token, incoming_ids=incoming_location_ids
-                )
+            Location.objects.create_missing_esi(incoming_location_ids, token)
             self._update_or_create_objs(character, contracts_list)
             character.update_section_content_hash(
                 section=section, content=contracts_list
@@ -949,6 +948,7 @@ class CharacterJumpCloneManager(models.Manager):
     )
     def update_or_create_esi(self, character, token: Token, force_update: bool = False):
         """Update or create jump clones for a character from ESI."""
+        from memberaudit.models import Location
 
         logger.info("%s: Fetching jump clones from ESI", character)
         jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
@@ -971,8 +971,7 @@ class CharacterJumpCloneManager(models.Manager):
                     for record in jump_clones_info["jump_clones"]
                     if "location_id" in record
                 }
-                if incoming_location_ids:
-                    character._preload_all_locations(token, incoming_location_ids)
+                Location.objects.create_missing_esi(incoming_location_ids, token)
 
                 for jump_clone_info in jump_clones_list:
                     if jump_clone_info.get("implants"):
@@ -1934,7 +1933,7 @@ class CharacterWalletTransactionManager(models.Manager):
         incoming_location_ids = {
             row.get("location_id") for row in transaction_list.values()
         }
-        character._preload_all_locations(token, incoming_location_ids)
+        Location.objects.create_missing_esi(incoming_location_ids, token)
         type_ids = {row.get("type_id") for row in transaction_list.values()}
         EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
 

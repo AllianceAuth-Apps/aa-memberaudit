@@ -347,28 +347,6 @@ class Character(models.Model):
             return True
         return section_obj.is_updating
 
-    def _preload_all_locations(self, token: Token, incoming_ids: set) -> set:
-        """loads location objects specified by given set
-
-        returns list of existing location IDs after preload
-        """
-        existing_ids = set(Location.objects.values_list("id", flat=True))
-        missing_ids = incoming_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info(
-                "%s: Loading %s missing locations from ESI", self, len(missing_ids)
-            )
-            for location_id in missing_ids:
-                try:
-                    Location.objects.get_or_create_esi_async(
-                        id=location_id, token=token
-                    )
-                except ValueError:
-                    pass
-                else:
-                    existing_ids.add(location_id)
-        return existing_ids
-
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
 
@@ -470,8 +448,9 @@ class Character(models.Model):
             for x in assets_flat.values()
             if "location_id" in x and x["location_id"] not in assets_flat
         }
-        if incoming_location_ids:
-            self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
+        Location.objects.create_missing_esi(
+            location_ids=incoming_location_ids, token=token
+        )
 
     def update_attributes(self, force_update: bool = False):
         """update the character's attributes"""
