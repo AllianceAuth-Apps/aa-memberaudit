@@ -24,6 +24,7 @@ from memberaudit.models import (
     CharacterContactLabel,
     CharacterContract,
     CharacterContractBid,
+    CharacterContractItem,
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
@@ -374,7 +375,7 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContractsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_courier_contract(self, mock_esi):
         # given
@@ -409,65 +410,6 @@ class TestCharacterContractsManager(CharacterUpdateTestDataMixin, NoSocketsTestC
         self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
         self.assertEqual(obj.title, "Test 1")
         self.assertEqual(obj.volume, 486000.0)
-
-    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    # def test_update_contracts_2(self, mock_esi):
-    #     """can create new item exchange contract"""
-    #     mock_esi.client = esi_client_stub
-
-    #     self.character_1001.update_contract_headers()
-    #     obj = self.character_1001.contracts.get(contract_id=100000002)
-    #     self.assertEqual(obj.contract_type, CharacterContract.TYPE_ITEM_EXCHANGE)
-    #     self.assertEqual(float(obj.price), 270000000.0)
-    #     self.assertEqual(obj.volume, 486000.0)
-    #     self.assertEqual(obj.status, CharacterContract.STATUS_FINISHED)
-
-    #     self.character_1001.update_contract_items(contract=obj)
-
-    #     self.assertEqual(obj.items.count(), 2)
-
-    #     item = obj.items.get(record_id=1)
-    #     self.assertTrue(item.is_included)
-    #     self.assertFalse(item.is_singleton)
-    #     self.assertEqual(item.quantity, 3)
-    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
-
-    #     item = obj.items.get(record_id=2)
-    #     self.assertTrue(item.is_included)
-    #     self.assertFalse(item.is_singleton)
-    #     self.assertEqual(item.quantity, 5)
-    #     self.assertEqual(item.raw_quantity, -1)
-    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19551))
-
-    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    # def test_update_contracts_3(self, mock_esi):
-    #     """can create new auction contract"""
-    #     mock_esi.client = esi_client_stub
-
-    #     self.character_1001.update_contract_headers()
-    #     obj = self.character_1001.contracts.get(contract_id=100000003)
-    #     self.assertEqual(obj.contract_type, CharacterContract.TYPE_AUCTION)
-    #     self.assertEqual(float(obj.buyout), 200_000_000.0)
-    #     self.assertEqual(float(obj.price), 20_000_000.0)
-    #     self.assertEqual(obj.volume, 400.0)
-    #     self.assertEqual(obj.status, CharacterContract.STATUS_OUTSTANDING)
-
-    #     self.character_1001.update_contract_items(contract=obj)
-
-    #     self.assertEqual(obj.items.count(), 1)
-    #     item = obj.items.get(record_id=1)
-    #     self.assertTrue(item.is_included)
-    #     self.assertFalse(item.is_singleton)
-    #     self.assertEqual(item.quantity, 3)
-    #     self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
-
-    #     self.character_1001.update_contract_bids(contract=obj)
-
-    #     self.assertEqual(obj.bids.count(), 1)
-    #     bid = obj.bids.get(bid_id=1)
-    #     self.assertEqual(float(bid.amount), 1_000_000.23)
-    #     self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
-    #     self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
 
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_should_keep_old_contracts_when_updating(self, mock_esi):
@@ -542,50 +484,6 @@ class TestCharacterContractsManager(CharacterUpdateTestDataMixin, NoSocketsTestC
         self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
         self.assertEqual(obj.title, "Test 1")
         self.assertEqual(obj.volume, 486000.0)
-
-    # @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    # def test_update_contracts_6(self, mock_esi):
-    #     """can add new bids to auction contract"""
-    #     mock_esi.client = esi_client_stub
-    #     contract = CharacterContract.objects.create(
-    #         character=self.character_1001,
-    #         contract_id=100000003,
-    #         availability=CharacterContract.AVAILABILITY_PERSONAL,
-    #         contract_type=CharacterContract.TYPE_AUCTION,
-    #         assignee=EveEntity.objects.get(id=2101),
-    #         date_issued=parse_datetime("2019-10-02T13:15:21Z"),
-    #         date_expired=parse_datetime("2019-10-09T13:15:21Z"),
-    #         for_corporation=False,
-    #         issuer=EveEntity.objects.get(id=1001),
-    #         issuer_corporation=EveEntity.objects.get(id=2001),
-    #         status=CharacterContract.STATUS_OUTSTANDING,
-    #         start_location=self.jita_44,
-    #         end_location=self.jita_44,
-    #         buyout=200_000_000,
-    #         price=20_000_000,
-    #         volume=400,
-    #     )
-    #     CharacterContractBid.objects.create(
-    #         contract=contract,
-    #         bid_id=2,
-    #         amount=21_000_000,
-    #         bidder=EveEntity.objects.get(id=1003),
-    #         date_bid=now(),
-    #     )
-
-    #     self.character_1001.update_contract_headers()
-    #     obj = self.character_1001.contracts.get(contract_id=100000003)
-    #     self.character_1001.update_contract_bids(contract=obj)
-
-    #     self.assertEqual(obj.bids.count(), 2)
-
-    #     bid = obj.bids.get(bid_id=1)
-    #     self.assertEqual(float(bid.amount), 1_000_000.23)
-    #     self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
-    #     self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
-
-    #     bid = obj.bids.get(bid_id=2)
-    #     self.assertEqual(float(bid.amount), 21_000_000)
 
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_should_skip_updates_when_there_is_no_change(self, mock_esi):
@@ -667,6 +565,109 @@ class TestCharacterContractsManager(CharacterUpdateTestDataMixin, NoSocketsTestC
             {100000001, 100000002, 100000003},
         )
 
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_can_create_new_item_exchange_contract(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        contract = self.character_1001.contracts.get(contract_id=100000002)
+        self.assertEqual(contract.contract_type, CharacterContract.TYPE_ITEM_EXCHANGE)
+        self.assertEqual(float(contract.price), 270000000.0)
+        self.assertEqual(contract.volume, 486000.0)
+        self.assertEqual(contract.status, CharacterContract.STATUS_FINISHED)
+        # when
+        CharacterContractItem.objects.update_or_create_esi(
+            self.character_1001, contract
+        )
+        # then
+        self.assertEqual(contract.items.count(), 2)
+
+        item = contract.items.get(record_id=1)
+        self.assertTrue(item.is_included)
+        self.assertFalse(item.is_singleton)
+        self.assertEqual(item.quantity, 3)
+        self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
+
+        item = contract.items.get(record_id=2)
+        self.assertTrue(item.is_included)
+        self.assertFalse(item.is_singleton)
+        self.assertEqual(item.quantity, 5)
+        self.assertEqual(item.raw_quantity, -1)
+        self.assertEqual(item.eve_type, EveType.objects.get(id=19551))
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_can_create_auction_contract(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        contract = self.character_1001.contracts.get(contract_id=100000003)
+        self.assertEqual(contract.contract_type, CharacterContract.TYPE_AUCTION)
+        self.assertEqual(float(contract.buyout), 200_000_000.0)
+        self.assertEqual(float(contract.price), 20_000_000.0)
+        self.assertEqual(contract.volume, 400.0)
+        self.assertEqual(contract.status, CharacterContract.STATUS_OUTSTANDING)
+        CharacterContractItem.objects.update_or_create_esi(
+            self.character_1001, contract
+        )
+        self.assertEqual(contract.items.count(), 1)
+        item = contract.items.get(record_id=1)
+        self.assertTrue(item.is_included)
+        self.assertFalse(item.is_singleton)
+        self.assertEqual(item.quantity, 3)
+        self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
+        # when
+        CharacterContractBid.objects.update_or_create_esi(self.character_1001, contract)
+        # then
+        self.assertEqual(contract.bids.count(), 1)
+        bid = contract.bids.get(bid_id=1)
+        self.assertEqual(float(bid.amount), 1_000_000.23)
+        self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
+        self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
+
+    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    def test_can_add_new_bids_to_auction_contract(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        contract = CharacterContract.objects.create(
+            character=self.character_1001,
+            contract_id=100000003,
+            availability=CharacterContract.AVAILABILITY_PERSONAL,
+            contract_type=CharacterContract.TYPE_AUCTION,
+            assignee=EveEntity.objects.get(id=2101),
+            date_issued=parse_datetime("2019-10-02T13:15:21Z"),
+            date_expired=parse_datetime("2019-10-09T13:15:21Z"),
+            for_corporation=False,
+            issuer=EveEntity.objects.get(id=1001),
+            issuer_corporation=EveEntity.objects.get(id=2001),
+            status=CharacterContract.STATUS_OUTSTANDING,
+            start_location=self.jita_44,
+            end_location=self.jita_44,
+            buyout=200_000_000,
+            price=20_000_000,
+            volume=400,
+        )
+        CharacterContractBid.objects.create(
+            contract=contract,
+            bid_id=2,
+            amount=21_000_000,
+            bidder=EveEntity.objects.get(id=1003),
+            date_bid=now(),
+        )
+        self.character_1001.update_contract_headers()
+        # when
+        self.character_1001.update_contract_bids(contract=contract)
+        # then
+        contract.refresh_from_db()
+        self.assertEqual(contract.bids.count(), 2)
+
+        bid = contract.bids.get(bid_id=1)
+        self.assertEqual(float(bid.amount), 1_000_000.23)
+        self.assertEqual(bid.date_bid, parse_datetime("2017-01-01T10:10:10Z"))
+        self.assertEqual(bid.bidder, EveEntity.objects.get(id=1101))
+
+        bid = contract.bids.get(bid_id=2)
+        self.assertEqual(float(bid.amount), 21_000_000)
+
 
 class TestCharacterContractBidManager(TestCharacterUpdateBase):
     def test_should_do_nothing_when_there_are_no_bids(self):
@@ -675,7 +676,7 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
             character=self.character_1001, contract_type=CharacterContract.TYPE_AUCTION
         )
         # when
-        CharacterContractBid.objects.update_for_contract(
+        CharacterContractBid.objects._update_or_create_objs(
             contract=contract, bids_list=dict()
         )
         # then
@@ -697,7 +698,7 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
             }
         }
         # when
-        CharacterContractBid.objects.update_for_contract(
+        CharacterContractBid.objects._update_or_create_objs(
             contract=contract, bids_list=bids_list
         )
         # then

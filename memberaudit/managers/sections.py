@@ -483,8 +483,34 @@ class CharacterContractManager(models.Manager):
 
 
 class CharacterContractBidManager(models.Manager):
+    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    def update_or_create_esi(self, character, token: Token, contract):
+        """Update or create contract bids for a contract from ESI."""
+
+        if contract.contract_type != contract.TYPE_AUCTION:
+            logger.warning(
+                "%s, %s: Can not update bids. Wrong contract type.",
+                character,
+                contract.contract_id,
+            )
+            return
+
+        logger.info(
+            "%s, %s: Fetching contract bids from ESI", character, contract.contract_id
+        )
+        bids_data = (
+            esi.client.Contracts.get_characters_character_id_contracts_contract_id_bids(
+                character_id=character.eve_character.character_id,
+                contract_id=contract.contract_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+        bids_list = {int(x["bid_id"]): x for x in bids_data if "bid_id" in x}
+        self._update_or_create_objs(contract, bids_list)
+        EveEntity.objects.bulk_update_new_esi()
+
     @transaction.atomic()
-    def update_for_contract(self, contract: models.Model, bids_list):
+    def _update_or_create_objs(self, contract: models.Model, bids_list):
         incoming_ids = set(bids_list.keys())
         existing_ids = set(
             self.filter(contract=contract).values_list("bid_id", flat=True)
@@ -519,7 +545,34 @@ class CharacterContractBidManager(models.Manager):
 
 
 class CharacterContractItemManager(models.Manager):
-    def update_for_contract(self, contract: models.Model, items_data):
+    @fetch_token_for_character_2("esi-contracts.read_character_contracts.v1")
+    def update_or_create_esi(self, character, token: Token, contract):
+        """Update or create contract items for a contract from ESI."""
+
+        if contract.contract_type not in [
+            contract.TYPE_ITEM_EXCHANGE,
+            contract.TYPE_AUCTION,
+        ]:
+            logger.warning(
+                "%s, %s: Can not update items. Wrong contract type.",
+                character,
+                contract.contract_id,
+            )
+            return
+
+        logger.info(
+            "%s, %s: Fetching contract items from ESI", character, contract.contract_id
+        )
+        my_esi = esi.client.Contracts
+        items_data = my_esi.get_characters_character_id_contracts_contract_id_items(
+            character_id=character.eve_character.character_id,
+            contract_id=contract.contract_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        self._update_or_create_objs(contract, items_data)
+
+    def _update_or_create_objs(self, contract: models.Model, items_data):
         logger.info(
             "%s, %s: Storing %s contract items",
             self,

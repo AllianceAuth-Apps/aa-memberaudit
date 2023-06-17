@@ -19,7 +19,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveEntity, EveType
+from eveuniverse.models import EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
@@ -500,55 +500,13 @@ class Character(models.Model):
         """Update the character's contract headers."""
         self.contracts.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_items(self, token: Token, contract: models.Model):
-        """update the character's contract details"""
-        if contract.contract_type not in [
-            contract.TYPE_ITEM_EXCHANGE,
-            contract.TYPE_AUCTION,
-        ]:
-            logger.warning(
-                "%s, %s: Can not update items. Wrong contract type.",
-                self,
-                contract.contract_id,
-            )
-            return
+    def update_contract_items(self, contract):
+        """Update the character's contract items."""
+        contract.items.update_or_create_esi(self, contract)
 
-        logger.info(
-            "%s, %s: Fetching contract items from ESI", self, contract.contract_id
-        )
-        my_esi = esi.client.Contracts
-        items_data = my_esi.get_characters_character_id_contracts_contract_id_items(
-            character_id=self.eve_character.character_id,
-            contract_id=contract.contract_id,
-            token=token.valid_access_token(),
-        ).results()
-        contract.items.update_for_contract(contract, items_data)
-
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_bids(self, token: Token, contract: models.Model):
-        """update the character's contract details"""
-        if contract.contract_type != contract.TYPE_AUCTION:
-            logger.warning(
-                "%s, %s: Can not update bids. Wrong contract type.",
-                self,
-                contract.contract_id,
-            )
-            return
-
-        logger.info(
-            "%s, %s: Fetching contract bids from ESI", self, contract.contract_id
-        )
-        bids_data = (
-            esi.client.Contracts.get_characters_character_id_contracts_contract_id_bids(
-                character_id=self.eve_character.character_id,
-                contract_id=contract.contract_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        bids_list = {int(x["bid_id"]): x for x in bids_data if "bid_id" in x}
-        contract.bids.update_for_contract(contract, bids_list)
-        EveEntity.objects.bulk_update_new_esi()
+    def update_contract_bids(self, contract):
+        """Update the character's contract bids."""
+        contract.bids.update_or_create_esi(self, contract)
 
     def update_corporation_history(self, force_update: bool = False):
         """syncs the character's corporation history"""
