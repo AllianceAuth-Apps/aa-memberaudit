@@ -1581,7 +1581,29 @@ class CharacterWalletJournalEntryManager(models.Manager):
 
 
 class CharacterWalletTransactionManager(models.Manager):
-    def update_for_character(self, character, cutoff_datetime, transactions, token):
+    @fetch_token_for_character_2("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet transactions for a character from ESI."""
+
+        logger.info("%s: Fetching wallet transactions from ESI", character)
+        transactions = (
+            esi.client.Wallet.get_characters_character_id_wallet_transactions(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(transactions, "wallet_transactions")
+
+        self._update_or_create_objs(
+            character=character,
+            cutoff_datetime=data_retention_cutoff(),
+            transactions=transactions,
+            token=token,
+        )
+
+    def _update_or_create_objs(self, character, cutoff_datetime, transactions, token):
         from ..models import Location
 
         transaction_list = {

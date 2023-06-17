@@ -877,24 +877,9 @@ class Character(models.Model):
         """syncs the character's wallet journal"""
         self.wallet_journal.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_transactions(self, token):
+    def update_wallet_transactions(self):
         """syncs the character's wallet transactions"""
-        logger.info("%s: Fetching wallet transactions from ESI", self)
-        transactions = (
-            esi.client.Wallet.get_characters_character_id_wallet_transactions(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(transactions, "wallet_transactions")
-        self.wallet_transactions.update_for_character(
-            character=self,
-            cutoff_datetime=data_retention_cutoff(),
-            transactions=transactions,
-            token=token,
-        )
+        self.wallet_transactions.update_or_create_esi(self)
 
     def _store_list_to_disk(self, lst: Any, name: str):
         """stores the given list as JSON file to disk. For debugging

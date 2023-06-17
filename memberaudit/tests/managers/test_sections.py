@@ -35,6 +35,7 @@ from memberaudit.models import (
     CharacterSkill,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
+    CharacterWalletTransaction,
     Location,
 )
 
@@ -1370,3 +1371,65 @@ class TestCharacterWalletJournalManager(
             set(self.character_1001.wallet_journal.values_list("entry_id", flat=True)),
             {89, 91},
         )
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterWalletTransactionManager(
+    CharacterUpdateTestDataMixin, NoSocketsTestCase
+):
+    def test_should_add_wallet_transactions_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
+            CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertSetEqual(
+            set(
+                self.character_1001.wallet_transactions.values_list(
+                    "transaction_id", flat=True
+                )
+            ),
+            {42},
+        )
+        obj = self.character_1001.wallet_transactions.get(transaction_id=42)
+        self.assertEqual(obj.client, EveEntity.objects.get(id=1003))
+        self.assertEqual(obj.date, parse_datetime("2016-10-24T09:00:00Z"))
+        self.assertTrue(obj.is_buy)
+        self.assertTrue(obj.is_personal)
+        self.assertIsNone(obj.journal_ref)
+        self.assertEqual(obj.location, Location.objects.get(id=60003760))
+        self.assertEqual(obj.quantity, 3)
+        self.assertEqual(obj.eve_type, EveType.objects.get(id=603))
+        self.assertEqual(float(obj.unit_price), 450000.99)
+
+    def test_should_add_wallet_transactions_from_scratch_with_journal_ref(
+        self, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        journal_entry = CharacterWalletJournalEntry.objects.create(
+            character=self.character_1001,
+            entry_id=67890,
+            amount=450000.99,
+            balance=10_000_000,
+            context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+            date=parse_datetime("2016-10-24T09:00:00Z"),
+            description="dummy",
+            first_party=EveEntity.objects.get(id=1001),
+            second_party=EveEntity.objects.get(id=1003),
+        )
+        # when
+        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
+            CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertSetEqual(
+            set(
+                self.character_1001.wallet_transactions.values_list(
+                    "transaction_id", flat=True
+                )
+            ),
+            {42},
+        )
+        obj = self.character_1001.wallet_transactions.get(transaction_id=42)
+        self.assertEqual(obj.journal_ref, journal_entry)
