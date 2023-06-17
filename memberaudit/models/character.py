@@ -835,27 +835,9 @@ class Character(models.Model):
             return
         CharacterShip.objects.update_for_character(self, ship_info)
 
-    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
-    def update_skill_queue(self, token: Token, force_update: bool = False):
+    def update_skill_queue(self, force_update: bool = False):
         """update the character's skill queue"""
-        logger.info("%s: Fetching skill queue from ESI", self)
-        skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(skillqueue, "skill_queue")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.SKILL_QUEUE, content=skillqueue
-        ):
-            self.skillqueue.update_for_character(self, skillqueue)
-            self.update_section_content_hash(
-                section=self.UpdateSection.SKILL_QUEUE, content=skillqueue
-            )
-
-        else:
-            logger.info("%s: Skill queue has not changed", self)
+        self.skillqueue.update_or_create_esi(self, force_update)
 
     def update_skill_sets(self):
         """Checks if character has the skills needed for skill sets

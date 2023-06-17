@@ -6,8 +6,7 @@ from pytz import utc
 
 from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
-from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveType
+from eveuniverse.models import EveEntity
 
 from app_utils.esi import EsiStatus
 from app_utils.esi_testing import BravadoResponseStub, build_http_error
@@ -524,81 +523,6 @@ class TestCharacterUpdateShip(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
-
-
-@patch(MODELS_PATH + ".character.esi")
-class TestCharacterUpdateSkillQueue(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_create(self, mock_esi):
-        """can create skill queue from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_skill_queue()
-        self.assertEqual(self.character_1001.skillqueue.count(), 3)
-
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 3)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
-
-        entry = self.character_1001.skillqueue.get(queue_position=1)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 4)
-        self.assertEqual(entry.level_end_sp, 1000)
-        self.assertEqual(entry.level_start_sp, 100)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.training_start_sp, 50)
-
-        entry = self.character_1001.skillqueue.get(queue_position=2)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
-        self.assertEqual(entry.finished_level, 5)
-
-    def test_update_1(self, mock_esi):
-        """can update existing skill queue"""
-        mock_esi.client = esi_client_stub
-        self.character_1001.skillqueue.create(
-            queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
-            finish_date=now() + dt.timedelta(days=1),
-            finished_level=4,
-            start_date=now() - dt.timedelta(days=1),
-        )
-
-        self.character_1001.update_skill_queue()
-        self.assertEqual(self.character_1001.skillqueue.count(), 3)
-
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 3)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
-
-    def test_skip_update_1(self, mock_esi):
-        """when ESI data has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_skill_queue()
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        entry.finished_level = 4
-        entry.save()
-
-        self.character_1001.update_skill_queue()
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.finished_level, 4)
-
-    def test_skip_update_2(self, mock_esi):
-        """when ESI data has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_skill_queue()
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        entry.finished_level = 4
-        entry.save()
-
-        self.character_1001.update_skill_queue(force_update=True)
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.finished_level, 3)
 
 
 # class TestCharacterMailingList(CharacterUpdateTestDataMixin, NoSocketsTestCase):

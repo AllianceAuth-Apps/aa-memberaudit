@@ -1273,7 +1273,30 @@ class CharacterShipManager(models.Manager):
 
 
 class CharacterSkillqueueEntryManager(models.Manager):
-    def update_for_character(self, character: models.Model, skillqueue):
+    @fetch_token_for_character_2("esi-skills.read_skillqueue.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create skills queue for a character from ESI."""
+
+        logger.info("%s: Fetching skill queue from ESI", character)
+        skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(skillqueue, "skill_queue")
+
+        section = character.UpdateSection.SKILL_QUEUE
+        if force_update or character.has_section_changed(
+            section=section, content=skillqueue
+        ):
+            self._update_or_create_objs(character, skillqueue)
+            character.update_section_content_hash(section=section, content=skillqueue)
+
+        else:
+            logger.info("%s: Skill queue has not changed", character)
+
+    def _update_or_create_objs(self, character: models.Model, skillqueue):
         # TODO: Replace delete + create with create + update
         if skillqueue:
             entries = [

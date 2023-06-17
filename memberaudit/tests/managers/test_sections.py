@@ -33,6 +33,7 @@ from memberaudit.models import (
     CharacterMailLabel,
     CharacterPlanet,
     CharacterSkill,
+    CharacterSkillqueueEntry,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
@@ -1064,6 +1065,85 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
             eve_type=EveType.objects.get(name="Dense Veldspar"),
         )
         self.assertEqual(obj.quantity, 7004)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.skillqueue.count(), 3)
+
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 3)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
+
+        entry = self.character_1001.skillqueue.get(queue_position=1)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 4)
+        self.assertEqual(entry.level_end_sp, 1000)
+        self.assertEqual(entry.level_start_sp, 100)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.training_start_sp, 50)
+
+        entry = self.character_1001.skillqueue.get(queue_position=2)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(entry.finished_level, 5)
+
+    def test_can_update_existing_queue(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.skillqueue.create(
+            queue_position=0,
+            eve_type=EveType.objects.get(id=24311),
+            finish_date=now() + dt.timedelta(days=1),
+            finished_level=4,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.skillqueue.count(), 3)
+
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 3)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
+
+    def test_should_skip_update_when_no_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        entry.finished_level = 4
+        entry.save()
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.finished_level, 4)
+
+    def test_should_always_update_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        entry.finished_level = 4
+        entry.save()
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.finished_level, 3)
 
 
 @patch(MODULE_PATH + ".esi")
