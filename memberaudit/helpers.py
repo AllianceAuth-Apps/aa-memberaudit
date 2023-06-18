@@ -1,82 +1,19 @@
+"""Helpers for Member Audit."""
+
+import datetime as dt
 from typing import Optional
 
-import unidecode
+from django.utils.timezone import now
 
-from django.contrib.auth.models import User
-from django.db import models
-from django.utils.text import slugify
+from app_utils.datetime import datetime_round_hour
 
-from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
-
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
 
 
-def get_or_create_esi_or_none(
-    prop_name: str, dct: dict, Model: type
-) -> Optional[models.Model]:
-    """Gets or creates a new eveuniverse object from a dictionary entry.
-
-    return the object on success or None
-    """
-    if dct.get(prop_name):
-        obj, _ = Model.objects.get_or_create_esi(id=dct.get(prop_name))  # type: ignore
-    else:
-        obj = None
-
-    return obj
-
-
-def get_or_create_or_none(
-    prop_name: str, dct: dict, Model: type
-) -> Optional[models.Model]:
-    """Get or creates a Django object from a dictionary entry or returns None."""
-    if dct.get(prop_name):
-        obj, _ = Model.objects.get_or_create(id=dct.get(prop_name))  # type: ignore
-        return obj
-    return None
-
-
-def get_or_none(prop_name: str, dct: dict, Model: type) -> Optional[models.Model]:
-    """Gets a new Django object from a dictionary entry
-    or returns None if it does not exist."""
-    id = dct.get(prop_name)
-    if id:
-        try:
-            return Model.objects.get(id=id)  # type: ignore
-        except Model.DoesNotExist:  # type: ignore
-            pass
-    return None
-
-
-def filter_groups_available_to_user(
-    groups_qs: models.QuerySet, user: User
-) -> models.QuerySet:
-    """Filter out groups not available to user, e.g. due to state restrictions."""
-    return groups_qs.filter(authgroup__states=None) | groups_qs.filter(
-        authgroup__states=user.profile.state
+def data_retention_cutoff() -> Optional[dt.datetime]:
+    """returns cutoff datetime for data retention of None if unlimited"""
+    if MEMBERAUDIT_DATA_RETENTION_LIMIT is None:
+        return None
+    return datetime_round_hour(
+        now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
     )
-
-
-def clear_users_from_group(group):
-    """Remove all users from given group.
-
-    Workaround for using the clear method,
-    which can create problems due to Auth issue #1268
-    """
-    # TODO: Refactor once Auth issue is fixed
-    for user in group.user_set.all():
-        user.groups.remove(group)
-
-
-def get_unidecoded_slug(app_name: str = "Member Audit") -> str:
-    """Get an unidecoded slug from a string
-
-    :param app_name:
-    :type app_name:
-    :return:
-    :rtype:
-    """
-    return slugify(unidecode.unidecode(app_name), allow_unicode=True)

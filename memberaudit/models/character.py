@@ -8,8 +8,6 @@ import json
 import os
 from typing import Any, Optional
 
-from bravado.exception import HTTPInternalServerError, HTTPNotFound
-
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
@@ -19,48 +17,27 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.allianceauth import notify_throttled
-from app_utils.datetime import datetime_round_hour
-from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
-    MEMBERAUDIT_DATA_RETENTION_LIMIT,
-    MEMBERAUDIT_DEVELOPER_MODE,
-    MEMBERAUDIT_MAX_MAILS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
-from memberaudit.core.xml_converter import eve_xml_to_html
-from memberaudit.decorators import fetch_token_for_character
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.providers import esi
-
-from .general import Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
-
-
-def data_retention_cutoff() -> Optional[dt.datetime]:
-    """returns cutoff datetime for data retention of None if unlimited"""
-    if MEMBERAUDIT_DATA_RETENTION_LIMIT is None:
-        return None
-    else:
-        return datetime_round_hour(
-            now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
-        )
 
 
 class Character(models.Model):
@@ -70,6 +47,8 @@ class Character(models.Model):
     """
 
     class UpdateSection(models.TextChoices):
+        """A section of content for a character that can be updated separately."""
+
         ASSETS = "assets", _("assets")
         CHARACTER_DETAILS = "character_details", ("character details")
         CONTACTS = "contacts", _("contacts")
@@ -91,14 +70,16 @@ class Character(models.Model):
         WALLET_BALLANCE = "wallet_balance", _("wallet balance")
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
-        ATTRIBUTES = "attributes", _("attributes")
+        ATTRIBUTES = "attributes", _(
+            "attributes"
+        )  # TODO: Apply sort order with next DB change
 
         @classmethod
         def method_name(cls, section: str) -> str:
             """returns name of update method corresponding with the given section
 
             Raises:
-            - ValueError if secton is invalid
+            - ValueError if section is invalid
             """
             if section not in cls.values:
                 raise ValueError(f"Unknown section: {section}")
@@ -110,7 +91,7 @@ class Character(models.Model):
             """returns display name of given section
 
             Raises:
-            - ValueError if secton is invalid
+            - ValueError if section is invalid
             """
             for short_name, long_name in cls.choices:
                 if short_name == section:
@@ -359,28 +340,6 @@ class Character(models.Model):
             return True
         return section_obj.is_updating
 
-    def _preload_all_locations(self, token: Token, incoming_ids: set) -> set:
-        """loads location objects specified by given set
-
-        returns list of existing location IDs after preload
-        """
-        existing_ids = set(Location.objects.values_list("id", flat=True))
-        missing_ids = incoming_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info(
-                "%s: Loading %s missing locations from ESI", self, len(missing_ids)
-            )
-            for location_id in missing_ids:
-                try:
-                    Location.objects.get_or_create_esi_async(
-                        id=location_id, token=token
-                    )
-                except ValueError:
-                    pass
-                else:
-                    existing_ids.add(location_id)
-        return existing_ids
-
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
 
@@ -418,655 +377,112 @@ class Character(models.Model):
             raise TokenError(f"Could not find a matching token for {self}")
         return token
 
-    @fetch_token_for_character("esi-assets.read_assets.v1")
-    def assets_build_list_from_esi(
-        self, token: Token, force_update=False
-    ) -> Optional[list]:
+    def assets_build_list_from_esi(self, force_update=False) -> Optional[list]:
         """fetches assets from ESI and preloads related objects from ESI
 
         returns the asset_list or None if no update is required
         """
-        logger.info("%s: Fetching assets from ESI", self)
-        asset_list = esi.client.Assets.get_characters_character_id_assets(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
+        return self.assets.fetch_from_esi(self, force_update)
 
-        logger.info("%s: Fetching asset names from ESI", self)
-        names = list()
-        for asset_ids_chunk in chunks(list(assets_flat.keys()), 999):
-            names += esi.client.Assets.post_characters_character_id_assets_names(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-                item_ids=asset_ids_chunk,
-            ).results()
-
-        asset_names = {
-            int(x["item_id"]): x["name"] for x in names if x["name"] != "None"
-        }
-        for item_id in assets_flat.keys():
-            assets_flat[item_id]["name"] = asset_names.get(item_id, "")
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(assets_flat, "asset_list")
-
-        new_asset_list = list(assets_flat.values())
-        if force_update or self.has_section_changed(
-            section=Character.UpdateSection.ASSETS, content=new_asset_list
-        ):
-            self.update_section_content_hash(
-                section=Character.UpdateSection.ASSETS, content=new_asset_list
-            )
-            return new_asset_list
-        else:
-            logger.info("%s: Assets did not change", self)
-            return None
-
-    @fetch_token_for_character("esi-universe.read_structures.v1")
-    def assets_preload_objects(self, token: Token, asset_list: list) -> None:
+    def assets_preload_objects(self, asset_list: list) -> None:
         """preloads objects needed to build the asset tree"""
-        if not asset_list:
-            return
-        logger.info("%s: Preloading objects for asset tree", self)
-        required_ids = {x["type_id"] for x in asset_list if "type_id" in x}
-        existing_ids = set(EveType.objects.values_list("id", flat=True))
-        missing_ids = required_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info("%s: Loading %s missing types from ESI", self, len(missing_ids))
-            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+        self.assets.preload_objects_from_esi(self, asset_list)
 
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
-        incoming_location_ids = {
-            x["location_id"]
-            for x in assets_flat.values()
-            if "location_id" in x and x["location_id"] not in assets_flat
-        }
-        if incoming_location_ids:
-            self._preload_all_locations(token=token, incoming_ids=incoming_location_ids)
+    def update_attributes(self, force_update: bool = False):
+        """update the character's attributes"""
+        from .character_sections import CharacterAttributes
+
+        CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
     def update_character_details(self, force_update: bool = False):
         """syncs the character details for the given character"""
-        from .sections import CharacterDetails
+        from .character_sections import CharacterDetails
 
-        logger.info("%s: Fetching character details from ESI", self)
-        details = esi.client.Character.get_characters_character_id(
-            character_id=self.eve_character.character_id,
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(details, "character_details")
+        CharacterDetails.objects.update_or_create_esi(self, force_update)
 
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CHARACTER_DETAILS, content=details
-        ):
-            CharacterDetails.objects.update_for_character(self, details)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CHARACTER_DETAILS, content=details
-            )
+    def update_contact_labels(self, force_update: bool = False):
+        self.contact_labels.update_or_create_esi(self, force_update)
 
-        else:
-            logger.info("%s: Character details have not changed", self)
+    def update_contacts(self, force_update: bool = False):
+        self.contacts.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_contact_labels(self, token: Token, force_update: bool = False):
-        logger.info("%s: Fetching contact labels from ESI", self)
-        labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(labels, "contact_labels")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTACTS, content=labels, hash_num=2
-        ):
-            self.contact_labels.update_for_character(self, labels)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTACTS, content=labels, hash_num=2
-            )
-        else:
-            logger.info("%s: Contact labels have not changed", self)
+    def update_contract_headers(self, force_update: bool = False):
+        """Update the character's contract headers."""
+        self.contracts.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_contacts(self, token: Token, force_update: bool = False):
-        logger.info("%s: Fetching contacts from ESI", self)
-        contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(contacts_data, "contacts")
-        if contacts_data:
-            contacts_list = {int(x["contact_id"]): x for x in contacts_data}
-        else:
-            contacts_list = dict()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTACTS, content=contacts_list
-        ):
-            self.contacts.update_for_character(self, contacts_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTACTS, content=contacts_list
-            )
-        else:
-            logger.info("%s: Contacts have not changed", self)
+    def update_contract_items(self, contract):
+        """Update the character's contract items."""
+        contract.items.update_or_create_esi(self, contract)
 
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_headers(self, token: Token, force_update: bool = False):
-        """update the character's contract headers"""
-        contracts_list = self._fetch_contracts_from_esi(token)
-        if not contracts_list:
-            logger.info("%s: No contracts received from ESI", self)
-        cutoff_datetime = data_retention_cutoff()
-        if cutoff_datetime:
-            self.contracts.filter(date_expired__lt=cutoff_datetime).delete()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CONTRACTS, content=contracts_list
-        ):
-            existing_ids = set(self.contracts.values_list("contract_id", flat=True))
-            incoming_location_ids = {
-                obj["start_location_id"]
-                for contract_id, obj in contracts_list.items()
-                if contract_id not in existing_ids
-            }
-            incoming_location_ids |= {
-                obj["end_location_id"] for obj in contracts_list.values()
-            }
-            if incoming_location_ids:
-                self._preload_all_locations(
-                    token=token, incoming_ids=incoming_location_ids
-                )
-            self.contracts.update_for_character(self, contracts_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CONTRACTS, content=contracts_list
-            )
-        else:
-            logger.info("%s: Contracts have not changed", self)
-
-    def _fetch_contracts_from_esi(self, token) -> dict:
-        logger.info("%s: Fetching contracts from ESI", self)
-        contracts_data = esi.client.Contracts.get_characters_character_id_contracts(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(contracts_data, "contracts")
-
-        cutoff_datetime = data_retention_cutoff()
-        contracts_list = {
-            obj.get("contract_id"): obj
-            for obj in contracts_data
-            if cutoff_datetime is None or obj.get("date_expired") > cutoff_datetime
-        }
-        return contracts_list
-
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_items(self, token: Token, contract: models.Model):
-        """update the character's contract details"""
-        if contract.contract_type not in [
-            contract.TYPE_ITEM_EXCHANGE,
-            contract.TYPE_AUCTION,
-        ]:
-            logger.warning(
-                "%s, %s: Can not update items. Wrong contract type.",
-                self,
-                contract.contract_id,
-            )
-            return
-
-        logger.info(
-            "%s, %s: Fetching contract items from ESI", self, contract.contract_id
-        )
-        my_esi = esi.client.Contracts
-        items_data = my_esi.get_characters_character_id_contracts_contract_id_items(
-            character_id=self.eve_character.character_id,
-            contract_id=contract.contract_id,
-            token=token.valid_access_token(),
-        ).results()
-        contract.items.update_for_contract(contract, items_data)
-
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_contract_bids(self, token: Token, contract: models.Model):
-        """update the character's contract details"""
-        if contract.contract_type != contract.TYPE_AUCTION:
-            logger.warning(
-                "%s, %s: Can not update bids. Wrong contract type.",
-                self,
-                contract.contract_id,
-            )
-            return
-
-        logger.info(
-            "%s, %s: Fetching contract bids from ESI", self, contract.contract_id
-        )
-        bids_data = (
-            esi.client.Contracts.get_characters_character_id_contracts_contract_id_bids(
-                character_id=self.eve_character.character_id,
-                contract_id=contract.contract_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        bids_list = {int(x["bid_id"]): x for x in bids_data if "bid_id" in x}
-        contract.bids.update_for_contract(contract, bids_list)
-        EveEntity.objects.bulk_update_new_esi()
+    def update_contract_bids(self, contract):
+        """Update the character's contract bids."""
+        contract.bids.update_or_create_esi(self, contract)
 
     def update_corporation_history(self, force_update: bool = False):
         """syncs the character's corporation history"""
-        logger.info("%s: Fetching corporation history from ESI", self)
-        history = esi.client.Character.get_characters_character_id_corporationhistory(
-            character_id=self.eve_character.character_id,
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(history, "corporation_history")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.CORPORATION_HISTORY, content=history
-        ):
-            self.corporation_history.update_for_character(self, history)
-            self.update_section_content_hash(
-                section=self.UpdateSection.CORPORATION_HISTORY, content=history
-            )
-        else:
-            logger.info("%s: Corporation history has not changed", self)
+        self.corporation_history.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
-    def update_fw_stats(self, token: Token, force_update: bool = False):
+    def update_fw_stats(self, force_update: bool = False):
         """Update FW stats  for the given character"""
-        from .sections import CharacterFwStats
+        from .character_sections import CharacterFwStats
 
-        logger.info("%s: Fetching FW stats from ESI", self)
-        stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.FW_STATS, content=stats
-        ):
-            CharacterFwStats.objects.update_for_character(self, stats)
-            self.update_section_content_hash(
-                section=self.UpdateSection.FW_STATS, content=stats
-            )
-        else:
-            logger.info("%s: FW stats have not changed", self)
+        CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-clones.read_implants.v1")
-    def update_implants(self, token: Token, force_update: bool = False):
+    def update_implants(self, force_update: bool = False):
         """update the character's implants"""
-        logger.info("%s: Fetching implants from ESI", self)
-        implants_data = esi.client.Clones.get_characters_character_id_implants(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(implants_data, "implants")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.IMPLANTS, content=implants_data
-        ):
-            if implants_data:
-                EveType.objects.bulk_get_or_create_esi(ids=implants_data)
-            self.implants.update_for_character(self, implants_data)
-            self.update_section_content_hash(
-                section=self.UpdateSection.IMPLANTS, content=implants_data
-            )
-        else:
-            logger.info("%s: Implants have not changed", self)
+        self.implants.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character(
-        ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_location(self, token: Token):
+    def update_location(self):
         """update the location for the given character"""
-        from .sections import CharacterLocation
+        from .character_sections import CharacterLocation
 
-        logger.info("%s: Fetching location from ESI", self)
-        location_info = esi.client.Location.get_characters_character_id_location(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        CharacterLocation.objects.update_for_character(self, token, location_info)
+        CharacterLocation.objects.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-characters.read_loyalty.v1")
-    def update_loyalty(self, token: Token, force_update: bool = False):
+    def update_loyalty(self, force_update: bool = False):
         """syncs the character's loyalty entries"""
-        logger.info("%s: Fetching loyalty entries from ESI", self)
-        try:
-            loyalty_entries = (
-                esi.client.Loyalty.get_characters_character_id_loyalty_points(
-                    character_id=self.eve_character.character_id,
-                    token=token.valid_access_token(),
-                ).results()
-            )
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                self,
-                ex,
-            )
-            return
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(loyalty_entries, "loyalty")
+        self.loyalty_entries.update_or_create_esi(self, force_update)
 
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.LOYALTY, content=loyalty_entries
-        ):
-            self.loyalty_entries.update_for_character(self, loyalty_entries)
-            self.update_section_content_hash(
-                section=self.UpdateSection.LOYALTY, content=loyalty_entries
-            )
-            EveEntity.objects.bulk_update_new_esi()
-
-        else:
-            logger.info("%s: Loyalty entries have not changed", self)
-
-    @fetch_token_for_character(
-        ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_jump_clones(self, token: Token, force_update: bool = False):
+    def update_jump_clones(self, force_update: bool = False):
         """updates the character's jump clones"""
-        logger.info("%s: Fetching jump clones from ESI", self)
-        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(jump_clones_info, "jump_clones")
+        self.jump_clones.update_or_create_esi(self, force_update)
 
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.JUMP_CLONES, content=jump_clones_info
-        ):
-            jump_clones_list = jump_clones_info.get("jump_clones")
-            # fetch related objects ahead of transaction
-            if jump_clones_list:
-                incoming_location_ids = {
-                    record["location_id"]
-                    for record in jump_clones_info["jump_clones"]
-                    if "location_id" in record
-                }
-                if incoming_location_ids:
-                    self._preload_all_locations(token, incoming_location_ids)
+    def update_mailing_lists(self, force_update: bool = False):
+        """Update mailing lists with input from given character."""
+        self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
 
-                for jump_clone_info in jump_clones_list:
-                    if jump_clone_info.get("implants"):
-                        EveType.objects.bulk_get_or_create_esi(
-                            ids=jump_clone_info.get("implants", [])
-                        )
+    def update_mail_labels(self, force_update: bool = False):
+        """Update the mail labels for the given character"""
+        self.mail_labels.update_or_create_esi(self, force_update)
 
-            self.jump_clones.update_for_character(self, jump_clones_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.JUMP_CLONES, content=jump_clones_info
-            )
+    def update_mail_headers(self, force_update: bool = False):
+        self.mails.update_or_create_header_esi(self, force_update)
 
-        else:
-            logger.info("%s: Jump clones have not changed", self)
+    def update_mail_body(self, mail) -> None:
+        self.mails.update_or_create_body_esi(self, mail)
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mailing_lists(self, token: Token, force_update: bool = False):
-        """update mailing lists with input from given character
-
-        Note: Obsolete mailing lists must not be removed,
-        since they might still be referenced by older mails
-        """
-        logger.info("%s: Fetching mailing lists from ESI", self)
-        mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if mailing_lists_raw:
-            mailing_lists = {
-                obj["mailing_list_id"]: obj
-                for obj in mailing_lists_raw
-                if "mailing_list_id" in obj
-            }
-        else:
-            mailing_lists = dict()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mailing_lists, "mailing_lists")
-
-        # TODO: replace with bulk methods to optimize
-
-        incoming_ids = set(mailing_lists.keys())
-        # existing_ids = set(self.mailing_lists.values_list("list_id", flat=True))
-        if not incoming_ids:
-            logger.info("%s: No new mailing lists", self)
-            return
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.MAILS, content=mailing_lists, hash_num=2
-        ):
-            new_mailing_lists = self.mailing_lists.update_for_character(
-                character=self, mailing_lists=mailing_lists
-            )
-            self.mailing_lists.set(new_mailing_lists, clear=True)
-            self.update_section_content_hash(
-                section=self.UpdateSection.MAILS, content=mailing_lists, hash_num=2
-            )
-
-        else:
-            logger.info("%s: Mailng lists have not changed", self)
-
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_labels(self, token: Token, force_update: bool = False):
-        """update the mail lables for the given character"""
-        mail_labels_list = self._fetch_mail_labels_from_esi(token)
-        if not mail_labels_list:
-            logger.info("%s: No mail labels", self)
-            return
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.MAILS, content=mail_labels_list, hash_num=3
-        ):
-            self.mail_labels.update_for_character(self, mail_labels_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.MAILS, content=mail_labels_list, hash_num=3
-            )
-
-        else:
-            logger.info("%s: Mail labels have not changed", self)
-
-    def _fetch_mail_labels_from_esi(self, token) -> dict:
-        from .sections import CharacterMailUnreadCount
-
-        logger.info("%s: Fetching mail labels from ESI", self)
-        mail_labels_info = esi.client.Mail.get_characters_character_id_mail_labels(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_labels_info, "mail_labels")
-
-        if mail_labels_info.get("total_unread_count"):
-            CharacterMailUnreadCount.objects.update_or_create(
-                character=self,
-                defaults={"total": mail_labels_info.get("total_unread_count")},
-            )
-
-        mail_labels = mail_labels_info.get("labels")
-        if mail_labels:
-            return {obj["label_id"]: obj for obj in mail_labels if "label_id" in obj}
-        else:
-            return dict()
-
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_headers(self, token: Token, force_update: bool = False):
-        mail_headers = self._fetch_mail_headers(token)
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_headers, "mail_headers")
-        self.mails.update_for_character(
-            character=self,
-            cutoff_datetime=data_retention_cutoff(),
-            mail_headers=mail_headers,
-            force_update=force_update,
-        )
-
-    def _fetch_mail_headers(self, token) -> dict:
-        last_mail_id = None
-        mail_headers_all = list()
-        page = 1
-        while True:
-            logger.info("%s: Fetching mail headers from ESI - page %s", self, page)
-            mail_headers = esi.client.Mail.get_characters_character_id_mail(
-                character_id=self.eve_character.character_id,
-                last_mail_id=last_mail_id,
-                token=token.valid_access_token(),
-            ).results()
-            if MEMBERAUDIT_DEVELOPER_MODE:
-                self._store_list_to_disk(mail_headers, "mail_headers")
-
-            mail_headers_all += mail_headers
-            if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
-                break
-            else:
-                last_mail_id = min([x["mail_id"] for x in mail_headers])
-                page += 1
-
-        cutoff_datetime = data_retention_cutoff()
-        mail_headers_all_2 = {
-            obj["mail_id"]: obj
-            for obj in mail_headers_all
-            if cutoff_datetime is None
-            or not obj.get("timestamp")
-            or obj.get("timestamp") > cutoff_datetime
-        }
-        logger.info(
-            "%s: Received %s mail headers from ESI", self, len(mail_headers_all_2)
-        )
-        return mail_headers_all_2
-
-    @staticmethod
-    def _headers_list_subset(mail_headers, subset_ids) -> dict:
-        return {
-            mail_info["mail_id"]: mail_info
-            for mail_id, mail_info in mail_headers.items()
-            if mail_id in subset_ids
-        }
-
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_mail_body(self, token: Token, mail: models.Model) -> None:
-        logger.debug("%s: Fetching body from ESI for mail ID %s", self, mail.mail_id)
-        try:
-            mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
-                character_id=self.eve_character.character_id,
-                mail_id=mail.mail_id,
-                token=token.valid_access_token(),
-            ).result()
-        except HTTPNotFound:
-            logger.info(
-                "%s: Mail %s was deleted in game. Removing mail header.", self, mail
-            )
-            mail.delete()
-            return
-        mail.body = mail_body.get("body", "")
-        mail.save()
-        eve_xml_to_html(mail.body)  # resolve names early
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(mail_body, "mail_body")
-
-    @fetch_token_for_character("esi-industry.read_character_mining.v1")
-    def update_mining_ledger(self, token: Token):
+    def update_mining_ledger(self):
         """Update mining ledger from ESI for this character."""
-        logger.info("%s: Fetching mining ledger from ESI", self)
-        entries = esi.client.Industry.get_characters_character_id_mining(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(entries, self.UpdateSection.MINING_LEDGER)
-        for entry in entries:
-            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-                id=entry["solar_system_id"]
-            )
-            eve_type, _ = EveType.objects.get_or_create_esi(id=entry["type_id"])
-            self.mining_ledger.update_or_create(
-                date=entry["date"],
-                eve_solar_system=eve_solar_system,
-                eve_type=eve_type,
-                defaults={"quantity": entry["quantity"]},
-            )
+        self.mining_ledger.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-location.read_online.v1")
-    def update_online_status(self, token):
+    def update_online_status(self):
         """Update the character's online status"""
-        from .sections import CharacterOnlineStatus
+        from .character_sections import CharacterOnlineStatus
 
-        logger.info("%s: Fetching online status from ESI", self)
-        online_info = esi.client.Location.get_characters_character_id_online(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        CharacterOnlineStatus.objects.update_or_create(
-            character=self,
-            defaults={
-                "last_login": online_info.get("last_login"),
-                "last_logout": online_info.get("last_logout"),
-                "logins": online_info.get("logins"),
-            },
-        )
+        CharacterOnlineStatus.objects.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-planets.manage_planets.v1")
-    def update_planets(self, token, force_update: bool = False):
+    def update_planets(self, force_update: bool = False):
         """update the character's planets."""
-        logger.info("%s: Fetching planets from ESI", self)
-        planets_data = (
-            esi.client.Planetary_Interaction.get_characters_character_id_planets(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(planets_data, "planets")
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.PLANETS, content=planets_data
-        ):
-            self.planets.update_for_character(self, planets_data)
-            self.update_section_content_hash(
-                section=self.UpdateSection.PLANETS, content=planets_data
-            )
-        else:
-            logger.info("%s: Planets have not changed", self)
+        self.planets.update_or_create_esi(self, force_update)
 
-    @fetch_token_for_character("esi-location.read_ship_type.v1")
-    def update_ship(self, token: Token):
+    def update_ship(self):
         """Update the ship for the given character."""
-        from .sections import CharacterShip
+        from .character_sections import CharacterShip
 
-        logger.info("%s: Fetching ship from ESI", self)
-        try:
-            ship_info = esi.client.Location.get_characters_character_id_ship(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                self,
-                ex,
-            )
-            return
-        CharacterShip.objects.update_for_character(self, ship_info)
+        CharacterShip.objects.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
-    def update_skill_queue(self, token: Token, force_update: bool = False):
+    def update_skill_queue(self, force_update: bool = False):
         """update the character's skill queue"""
-        logger.info("%s: Fetching skill queue from ESI", self)
-        skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(skillqueue, "skill_queue")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.SKILL_QUEUE, content=skillqueue
-        ):
-            self.skillqueue.update_for_character(self, skillqueue)
-            self.update_section_content_hash(
-                section=self.UpdateSection.SKILL_QUEUE, content=skillqueue
-            )
-
-        else:
-            logger.info("%s: Skill queue has not changed", self)
+        self.skillqueue.update_or_create_esi(self, force_update)
 
     def update_skill_sets(self):
         """Checks if character has the skills needed for skill sets
@@ -1074,111 +490,23 @@ class Character(models.Model):
         """
         self.skill_set_checks.update_for_character(self)
 
-    @fetch_token_for_character("esi-skills.read_skills.v1")
-    def update_skills(self, token, force_update: bool = False):
+    def update_skills(self, force_update: bool = False):
         """update the character's skill"""
-        skills_list = self._fetch_skills_from_esi(token)
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.SKILLS, content=skills_list
-        ):
-            self._preload_types(skills_list)
-            self.skills.update_for_character(self, skills_list)
-            self.update_section_content_hash(
-                section=self.UpdateSection.SKILLS, content=skills_list
-            )
+        self.skills.update_or_create_esi(self, force_update)
 
-        else:
-            logger.info("%s: Skills have not changed", self)
-
-    def _fetch_skills_from_esi(self, token: Token) -> dict:
-        from .sections import CharacterSkillpoints
-
-        logger.info("%s: Fetching skills from ESI", self)
-        skills_info = esi.client.Skills.get_characters_character_id_skills(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(skills_info, "skills")
-
-        CharacterSkillpoints.objects.update_or_create(
-            character=self,
-            defaults={
-                "total": skills_info.get("total_sp"),
-                "unallocated": skills_info.get("unallocated_sp"),
-            },
-        )
-        if skills_info.get("skills"):
-            skills_list = {
-                obj["skill_id"]: obj
-                for obj in skills_info.get("skills")
-                if "skill_id" in obj
-            }
-        else:
-            skills_list = dict()
-
-        return skills_list
-
-    def _preload_types(self, skills_list: dict):
-        if skills_list:
-            incoming_ids = set(skills_list.keys())
-            existing_ids = set(self.skills.values_list("eve_type_id", flat=True))
-            new_ids = incoming_ids.difference(existing_ids)
-            EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
-
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_balance(self, token):
+    def update_wallet_balance(self):
         """syncs the character's wallet balance"""
-        from .sections import CharacterWalletBalance
+        from .character_sections import CharacterWalletBalance
 
-        logger.info("%s: Fetching wallet balance from ESI", self)
-        balance = esi.client.Wallet.get_characters_character_id_wallet(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(balance, "balance")
+        CharacterWalletBalance.objects.update_or_create_esi(self)
 
-        CharacterWalletBalance.objects.update_or_create(
-            character=self, defaults={"total": balance}
-        )
+    def update_wallet_journal(self) -> None:
+        """syncs the character's wallet journal"""
+        self.wallet_journal.update_or_create_esi(self)
 
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_journal(self, token: Token) -> None:
-        """syncs the character's wallet journal
-
-        Note: Does not update unknown EvEntities.
-        """
-        logger.info("%s: Fetching wallet journal from ESI", self)
-        journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(journal, "wallet_journal")
-
-        self.wallet_journal.update_for_character(
-            character=self, cutoff_datetime=data_retention_cutoff(), journal=journal
-        )
-
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_wallet_transactions(self, token):
+    def update_wallet_transactions(self):
         """syncs the character's wallet transactions"""
-        logger.info("%s: Fetching wallet transactions from ESI", self)
-        transactions = (
-            esi.client.Wallet.get_characters_character_id_wallet_transactions(
-                character_id=self.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(transactions, "wallet_transactions")
-        self.wallet_transactions.update_for_character(
-            character=self,
-            cutoff_datetime=data_retention_cutoff(),
-            transactions=transactions,
-            token=token,
-        )
+        self.wallet_transactions.update_or_create_esi(self)
 
     def _store_list_to_disk(self, lst: Any, name: str):
         """stores the given list as JSON file to disk. For debugging
@@ -1238,26 +566,6 @@ class Character(models.Model):
             "esi-universe.read_structures.v1",
             "esi-wallet.read_character_wallet.v1",
         ]
-
-    @fetch_token_for_character("esi-skills.read_skills.v1")
-    def update_attributes(self, token: Token, force_update: bool = False):
-        """update the character's attributes"""
-        logger.info("%s: Fetching attributes from ESI", self)
-        from .sections import CharacterAttributes
-
-        attribute_data = esi.client.Skills.get_characters_character_id_attributes(
-            character_id=self.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(attribute_data, "attributes")
-
-        if force_update or self.has_section_changed(
-            section=self.UpdateSection.ATTRIBUTES, content=attribute_data
-        ):
-            CharacterAttributes.objects.update_for_character(self, attribute_data)
-        else:
-            logger.info("%s: Attributes have not changed", self)
 
     def update_sharing_consistency(self):
         """Update sharing to ensure consistency with permissions."""

@@ -1,5 +1,5 @@
 import datetime as dt
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
@@ -19,6 +19,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
@@ -26,8 +27,9 @@ from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
 from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
-from memberaudit.helpers import filter_groups_available_to_user
+from memberaudit.decorators import fetch_token_for_character
 from memberaudit.providers import esi
+from memberaudit.utils import filter_groups_available_to_user
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -303,6 +305,31 @@ class LocationManager(models.Manager):
             },
         )
 
+    def create_missing_esi(self, location_ids: Iterable, token: Token) -> Set[int]:
+        """Create missing locations from ESI based on given location IDs.
+        And return all existing location IDs.
+
+        Will do nothing when no IDs provided.
+        """
+        if not location_ids:
+            return set()
+
+        incoming_ids = set(location_ids)
+        existing_ids = set(self.values_list("id", flat=True))
+        missing_ids = incoming_ids.difference(existing_ids)
+        if missing_ids:
+            logger.info(
+                "%s: Loading %s missing locations from ESI", self, len(missing_ids)
+            )
+            for location_id in missing_ids:
+                try:
+                    self.get_or_create_esi_async(id=location_id, token=token)
+                except ValueError:
+                    pass
+                else:
+                    existing_ids.add(location_id)
+        return existing_ids
+
 
 class MailEntityManager(models.Manager):
     def get_or_create_esi(
@@ -450,8 +477,56 @@ class MailEntityManager(models.Manager):
                 batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
             )
 
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def update_or_create_mailing_lists_esi(self, character, token: Token, force_update):
+        """Update or create wallet balance for a character from ESI.
+
+        Note: Obsolete mailing lists must not be removed,
+        since they might still be referenced by older mails.
+        """
+
+        logger.info("%s: Fetching mailing lists from ESI", character)
+        mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        if mailing_lists_raw:
+            mailing_lists = {
+                obj["mailing_list_id"]: obj
+                for obj in mailing_lists_raw
+                if "mailing_list_id" in obj
+            }
+        else:
+            mailing_lists = dict()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(mailing_lists, "mailing_lists")
+
+        # TODO: replace with bulk methods to optimize
+
+        incoming_ids = set(mailing_lists.keys())
+        # existing_ids = set(character.mailing_lists.values_list("list_id", flat=True))
+        if not incoming_ids:
+            logger.info("%s: No new mailing lists", character)
+            return
+
+        section = character.UpdateSection.MAILS
+        if force_update or character.has_section_changed(
+            section=section, content=mailing_lists, hash_num=2
+        ):
+            new_mailing_lists = self._update_or_create_mailing_list_objs(
+                character=character, mailing_lists=mailing_lists
+            )
+            character.mailing_lists.set(new_mailing_lists, clear=True)
+            character.update_section_content_hash(
+                section=section, content=mailing_lists, hash_num=2
+            )
+
+        else:
+            logger.info("%s: Mailing lists have not changed", character)
+
     # @transaction.atomic()
-    def update_for_character(self, character, mailing_lists):
+    def _update_or_create_mailing_list_objs(self, character, mailing_lists):
         logger.info(
             "%s: Updating %s mailing lists", character, set(mailing_lists.keys())
         )

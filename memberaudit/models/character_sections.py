@@ -26,7 +26,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.constants import EveFactionId
 from memberaudit.core.xml_converter import eve_xml_to_html
-from memberaudit.managers.sections import (
+from memberaudit.managers.character_sections_1 import (
     CharacterAssetManager,
     CharacterAttributesManager,
     CharacterContactLabelManager,
@@ -34,6 +34,8 @@ from memberaudit.managers.sections import (
     CharacterContractBidManager,
     CharacterContractItemManager,
     CharacterContractManager,
+)
+from memberaudit.managers.character_sections_2 import (
     CharacterCorporationHistoryManager,
     CharacterDetailsManager,
     CharacterFwStatsManager,
@@ -43,12 +45,16 @@ from memberaudit.managers.sections import (
     CharacterLoyaltyEntryManager,
     CharacterMailLabelManager,
     CharacterMailManager,
+)
+from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
+    CharacterOnlineStatusManager,
     CharacterPlanetManager,
     CharacterShipManager,
     CharacterSkillManager,
     CharacterSkillqueueEntryManager,
     CharacterSkillSetCheckManager,
+    CharacterWalletBalanceManager,
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
 )
@@ -117,6 +123,34 @@ class CharacterAsset(models.Model):
     def group_display(self) -> str:
         """group of this asset to be displayed to user"""
         return self.eve_type.name if self.name else self.eve_type.eve_group.name
+
+
+class CharacterAttributes(models.Model):
+    """The training attributes of the character"""
+
+    character = models.OneToOneField(
+        Character,
+        primary_key=True,
+        on_delete=models.CASCADE,
+        related_name="attributes",
+        help_text="character these attributes belongs to",
+    )
+
+    accrued_remap_cooldown_date = models.DateTimeField(default=None, null=True)
+    last_remap_date = models.DateTimeField(default=None, null=True)
+    bonus_remaps = models.PositiveIntegerField()
+    charisma = models.PositiveIntegerField()
+    intelligence = models.PositiveIntegerField()
+    memory = models.PositiveIntegerField()
+    perception = models.PositiveIntegerField()
+    willpower = models.PositiveIntegerField()
+    objects = CharacterAttributesManager()
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self) -> str:
+        return str(self.character)
 
 
 class CharacterContactLabel(models.Model):
@@ -934,6 +968,8 @@ class CharacterOnlineStatus(models.Model):
     last_logout = models.DateTimeField(default=None, null=True)
     logins = models.PositiveIntegerField(default=None, null=True)
 
+    objects = CharacterOnlineStatusManager()
+
     class Meta:
         default_permissions = ()
 
@@ -1121,6 +1157,8 @@ class CharacterWalletBalance(models.Model):
         max_digits=CURRENCY_MAX_DIGITS, decimal_places=CURRENCY_MAX_DECIMALS
     )
 
+    objects = CharacterWalletBalanceManager()
+
     class Meta:
         default_permissions = ()
 
@@ -1285,31 +1323,3 @@ class CharacterWalletTransaction(models.Model):
 
     def __str__(self) -> str:
         return str(self.character) + " " + str(self.transaction_id)
-
-
-class CharacterAttributes(models.Model):
-    """The training attributes of the character"""
-
-    character = models.OneToOneField(
-        Character,
-        primary_key=True,
-        on_delete=models.CASCADE,
-        related_name="attributes",
-        help_text="character these attributes belongs to",
-    )
-
-    accrued_remap_cooldown_date = models.DateTimeField(default=None, null=True)
-    last_remap_date = models.DateTimeField(default=None, null=True)
-    bonus_remaps = models.PositiveIntegerField()
-    charisma = models.PositiveIntegerField()
-    intelligence = models.PositiveIntegerField()
-    memory = models.PositiveIntegerField()
-    perception = models.PositiveIntegerField()
-    willpower = models.PositiveIntegerField()
-    objects = CharacterAttributesManager()
-
-    class Meta:
-        default_permissions = ()
-
-    def __str__(self) -> str:
-        return str(self.character)

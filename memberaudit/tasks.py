@@ -22,7 +22,7 @@ from app_utils.esi import (
 )
 from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, helpers
+from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOG_UPDATE_STATS,
@@ -264,7 +264,12 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "section", "force_update"]}},
+        **{
+            "once": {
+                "keys": ["character_pk", "section", "force_update"],
+                "graceful": True,
+            }
+        },
     }
 )
 def update_character_section(
@@ -359,7 +364,7 @@ def update_unresolved_eve_entities() -> None:
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"]}},
+        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
     }
 )
 def update_character_assets(
@@ -601,7 +606,7 @@ def assets_create_children(
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"]}},
+        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
     }
 )
 def update_character_mails(
@@ -733,7 +738,7 @@ def update_character_mail_bodies(self, character_pk: int) -> None:
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"]}},
+        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
     }
 )
 def update_character_contacts(
@@ -807,7 +812,7 @@ def update_character_contacts_2(
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"]}},
+        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
     }
 )
 def update_character_contracts(
@@ -939,7 +944,12 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 # special tasks for updating wallet
 
 
-@shared_task(**{**TASK_DEFAULTS_BIND_ONCE, **{"once": {"keys": ["character_pk"]}}})
+@shared_task(
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk"], "graceful": True}},
+    }
+)
 def update_character_wallet_journal(
     self,
     character_pk: int,
@@ -996,7 +1006,10 @@ def update_market_prices(self):
 
 
 @shared_task(
-    **{**TASK_DEFAULTS_BIND_ONCE, **{"once": {"keys": ["id"]}, "max_retries": None}}
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+    }
 )
 def update_structure_esi(self, id: int, token_pk: int):
     """Updates a structure object from ESI
@@ -1030,7 +1043,10 @@ def update_structure_esi(self, id: int, token_pk: int):
 
 
 @shared_task(
-    **{**TASK_DEFAULTS_ONCE, **{"once": {"keys": ["id"]}, "max_retries": None}}
+    **{
+        **TASK_DEFAULTS_ONCE,
+        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+    }
 )
 def update_mail_entity_esi(id: int, category: Optional[str] = None):
     """Updates a mail entity object from ESI
@@ -1154,4 +1170,4 @@ def add_compliant_users_to_group(group_pk: int):
 def clear_users_from_group(group_pk: int):
     """Clear all users from given group."""
     group = Group.objects.get(pk=group_pk)
-    helpers.clear_users_from_group(group)
+    utils.clear_users_from_group(group)

@@ -7,6 +7,7 @@ from celery_once import AlreadyQueued
 from django.core.cache import cache
 from django.test import override_settings
 from django.utils.timezone import now
+from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
@@ -38,6 +39,7 @@ from ..testdata.factories import (
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
+    CharacterUpdateTestDataMixin,
     NoSocketsTestCaseFixtures,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
@@ -170,7 +172,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertNotIn(compliance_group_2, user.groups.all())
         self.assertIn(other_group, user.groups.all())
 
-    def test_user_with_one_registered_and_one_unregistered_characater_is_not_compliant(
+    def test_user_with_one_registered_and_one_unregistered_character_is_not_compliant(
         self, mock_notify
     ):
         # given
@@ -897,6 +899,55 @@ class TestLocationManagerOther(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
 
 
+@patch(MANAGERS_PATH + ".esi")
+@patch(MANAGERS_PATH + ".LocationManager.get_or_create_esi_async")
+class TestLocationManagerPreload(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.token = MagicMock(spec=Token)
+
+    def test_can_preload_missing_locations(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        Location.objects.update_or_create_esi(id=60003760, token=self.token)
+        # when
+        result = Location.objects.create_missing_esi([60003760, 30002537], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 1)
+        _, kwargs = mock_get_or_create_esi_async.call_args
+        self.assertEqual(kwargs["id"], 30002537)
+        self.assertSetEqual(result, {60003760, 30002537})
+
+    def test_can_do_nothing_when_all_locations_found(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        Location.objects.update_or_create_esi(id=60003760, token=self.token)
+        Location.objects.update_or_create_esi(id=30002537, token=self.token)
+        # when
+        result = Location.objects.create_missing_esi([60003760, 30002537], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 0)
+        self.assertSetEqual(result, {60003760, 30002537})
+
+    def test_can_do_nothing_when_no_ids_provided(
+        self, mock_get_or_create_esi_async, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        result = Location.objects.create_missing_esi([], self.token)
+        # then
+        self.assertEqual(mock_get_or_create_esi_async.call_count, 0)
+        self.assertSetEqual(result, set())
+
+
 class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
     @classmethod
     def setUpClass(cls) -> None:
@@ -960,6 +1011,95 @@ class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.eve_type)
         self.assertTrue(mock_task_update_structure_esi.apply_async.called)
+
+
+@patch(MANAGERS_PATH + ".esi")
+class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_update_mailing_lists_1(self, mock_esi):
+        """can create new mailing lists from scratch"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
+
+        obj = MailEntity.objects.get(id=9002)
+        self.assertEqual(obj.name, "Dummy 2")
+
+    def test_update_mailing_lists_2(self, mock_esi):
+        """does not remove obsolete mailing lists"""
+        mock_esi.client = esi_client_stub
+        MailEntity.objects.create(
+            id=5, category=MailEntity.Category.MAILING_LIST, name="Obsolete"
+        )
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002, 5}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+
+    def test_update_mailing_lists_3(self, mock_esi):
+        """updates existing mailing lists"""
+        mock_esi.client = esi_client_stub
+        MailEntity.objects.create(
+            id=9001, category=MailEntity.Category.MAILING_LIST, name="Update me"
+        )
+
+        self.character_1001.update_mailing_lists()
+
+        self.assertSetEqual(
+            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
+        )
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            {9001, 9002},
+        )
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
+
+    def test_update_mailing_lists_4(self, mock_esi):
+        """when data from ESI has not changed, then skip update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        obj.name = "Extravaganza"
+        obj.save()
+        self.character_1001.mailing_lists.clear()
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Extravaganza")
+        self.assertSetEqual(
+            set(self.character_1001.mailing_lists.values_list("id", flat=True)), set()
+        )
+
+    def test_update_mailing_lists_5(self, mock_esi):
+        """when data from ESI has not changed and update is forced, then do update"""
+        mock_esi.client = esi_client_stub
+
+        self.character_1001.update_mailing_lists()
+        obj = MailEntity.objects.get(id=9001)
+        obj.name = "Extravaganza"
+        obj.save()
+
+        self.character_1001.update_mailing_lists(force_update=True)
+        obj = MailEntity.objects.get(id=9001)
+        self.assertEqual(obj.name, "Dummy 1")
 
 
 class TestSkillSetManager(NoSocketsTestCase):

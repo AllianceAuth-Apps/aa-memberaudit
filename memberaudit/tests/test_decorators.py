@@ -96,24 +96,24 @@ class TestFetchToken(TestCase):
 
     def test_defaults(self):
         @fetch_token_for_character()
-        def dummy(character, token):
+        def dummy(self, character, token):
             self.assertIsInstance(token, Token)
             self.assertSetEqual(scope_names_set(token), set(Character.get_esi_scopes()))
 
-        dummy(self.character)
+        dummy(self, self.character)
 
     def test_specified_scope(self):
         @fetch_token_for_character("esi-mail.read_mail.v1")
-        def dummy(character, token):
+        def dummy(self, character, token):
             self.assertIsInstance(token, Token)
             self.assertIn("esi-mail.read_mail.v1", scope_names_set(token))
 
-        dummy(self.character)
+        dummy(self, self.character)
 
     def test_exceptions_if_not_found(self):
         @fetch_token_for_character("invalid_scope")
-        def dummy(character, token):
+        def dummy(self, character, token):
             pass
 
         with self.assertRaises(TokenError):
-            dummy(self.character)
+            dummy(self, self.character)
