@@ -834,7 +834,7 @@ class TestCharacterMailLabelManager(TestCharacterUpdateBase):
 
     def test_empty(self):
         labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(labels, dict())
+        self.assertDictEqual(labels, {})
 
 
 @patch(MODULE_PATH + ".esi")

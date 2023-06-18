@@ -48,8 +48,8 @@ def launcher(request) -> HttpResponse:
         .order_by("character_name")
     )
     has_auth_characters = owned_chars_query.exists()
-    auth_characters = list()
-    unregistered_chars = list()
+    auth_characters = []
+    unregistered_chars = []
     for eve_character in owned_chars_query:
         try:
             character = eve_character.memberaudit_character

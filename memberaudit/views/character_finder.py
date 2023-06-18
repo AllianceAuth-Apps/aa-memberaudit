@@ -284,7 +284,7 @@ class CharacterFinderListJson(
 @permission_required("memberaudit.finder_access")
 def character_finder_list_fdd_data(request) -> JsonResponse:
     """Provide lists for drop down fields."""
-    result = dict()
+    result = {}
     qs = CharacterFinderListJson.initial_queryset(request)
     columns = request.GET.get("columns")
     if columns:

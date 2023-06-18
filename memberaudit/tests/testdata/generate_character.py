@@ -111,7 +111,7 @@ def create_wallet_journal(eve_character, character):
             :20
         ]
     )
-    objs = list()
+    objs = []
     balance = 10_000_000_000_000
     date = now() - dt.timedelta(days=5_000)
     for entry_id in range(1, WALLET_JOURNAL_ENTRIES):

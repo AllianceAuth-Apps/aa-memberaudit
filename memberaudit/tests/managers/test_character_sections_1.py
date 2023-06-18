@@ -676,7 +676,7 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
         )
         # when
         CharacterContractBid.objects._update_or_create_objs(
-            contract=contract, bids_list=dict()
+            contract=contract, bids_list={}
         )
         # then
         self.assertEqual(CharacterContractBid.objects.count(), 0)

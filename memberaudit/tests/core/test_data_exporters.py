@@ -114,7 +114,7 @@ class TestZipFile(TestCase):
 
 class NotTopicExporter(DataExporter):
     def format_obj(self, *args, **kwargs):
-        return dict()
+        return {}
 
     def get_queryset(self, *args, **kwargs):
         return None

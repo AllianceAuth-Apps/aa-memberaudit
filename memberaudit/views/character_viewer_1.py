@@ -136,10 +136,10 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         )
     )
     total_unread_count = sum(
-        [obj["unread_count_2"] for obj in mail_labels if obj["unread_count_2"]]
+        (obj["unread_count_2"] for obj in mail_labels if obj["unread_count_2"])
     )
     total_unread_count += sum(
-        [obj["unread_count"] for obj in mailing_lists if obj["unread_count"]]
+        (obj["unread_count"] for obj in mailing_lists if obj["unread_count"])
     )
     mail_labels.append(
         {
@@ -249,7 +249,7 @@ def _identify_user_characters(request, character):
 def character_assets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     asset_qs = (
         character.assets.annotate_pricing()
         .select_related(
@@ -373,7 +373,7 @@ def character_asset_container(
 def character_asset_container_data(
     request, character_pk: int, character: Character, parent_asset_pk: int
 ) -> JsonResponse:
-    data = list()
+    data = []
     try:
         parent_asset = character.assets.get(pk=parent_asset_pk)
     except CharacterAsset.DoesNotExist:
@@ -434,7 +434,7 @@ def character_attribute_data(
 def character_contacts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     for contact in character.contacts.select_related("eve_entity").all():
         is_watched = contact.is_watched is True
         is_blocked = contact.is_blocked is True
@@ -472,7 +472,7 @@ def character_contacts_data(
 def character_contracts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     for contract in character.contracts.select_related("issuer", "assignee").all():
         if now() < contract.date_expired:
             time_left = timeuntil(contract.date_expired, now())
@@ -591,7 +591,7 @@ def _character_contract_items_data(
     contract_pk: int,
     is_included: bool,
 ) -> JsonResponse:
-    data = list()
+    data = []
     try:
         contract = character.contracts.prefetch_related("items").get(pk=contract_pk)
     except CharacterAsset.DoesNotExist:
@@ -636,7 +636,7 @@ def _character_contract_items_data(
 def character_corporation_history(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
-    corporation_history = list()
+    corporation_history = []
     try:
         corporation_history_qs = character.corporation_history.select_related(
             "corporation"
@@ -700,7 +700,7 @@ def character_fw_stats(
 def character_implants_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     for implant in character.implants.select_related("eve_type").prefetch_related(
         "eve_type__dogma_attributes"
     ):
@@ -734,7 +734,7 @@ def character_implants_data(
 def character_loyalty_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     for entry in character.loyalty_entries.select_related("corporation"):
         corporation_html = bootstrap_icon_plus_name_html(
             entry.corporation.icon_url(DEFAULT_ICON_SIZE), entry.corporation.name

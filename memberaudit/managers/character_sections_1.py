@@ -461,7 +461,7 @@ class CharacterContractManager(models.Manager):
         from ..models import Location
 
         logger.info("%s: Storing %s new contracts", character, len(contract_ids))
-        new_contracts = list()
+        new_contracts = []
         for contract_id in contract_ids:
             contract_data = contracts_list.get(contract_id)
             if contract_data:

@@ -66,7 +66,7 @@ ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
 def character_jump_clones_data(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
-    data = list()
+    data = []
     try:
         for jump_clone in (
             character.jump_clones.select_related(
@@ -87,7 +87,7 @@ def character_jump_clones_data(
                 solar_system = "-"
                 region = "-"
 
-            implants_data = list()
+            implants_data = []
             for implant in jump_clone.implants.all():
                 dogma_attributes = {
                     obj.eve_dogma_attribute_id: obj.value
@@ -132,7 +132,7 @@ def character_jump_clones_data(
 
 
 def _character_mail_headers_data(request, character, mail_headers_qs) -> JsonResponse:
-    mails_data = list()
+    mails_data = []
     try:
         for mail in mail_headers_qs.select_related("sender").prefetch_related(
             "recipients"
@@ -269,7 +269,7 @@ def character_mining_ledger_data(
 def character_planets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     my_now = now()
     for planet in character.planets.select_related(
         "eve_planet",
@@ -318,7 +318,7 @@ def character_planets_data(
 def character_skillqueue_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = list()
+    data = []
     try:
         for row in character.skillqueue.select_related("eve_type").filter(
             character_id=character_pk
@@ -505,7 +505,7 @@ def character_skill_set_details(
         eve_type_id__in=skill_set_skills.keys()
     )
     character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
-    out_data = list()
+    out_data = []
     url = (
         skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
         if skill_set.ship_type
@@ -606,7 +606,7 @@ def character_skill_set_details(
 def character_skills_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    skills_data = list()
+    skills_data = []
     try:
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
             level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[skill.active_skill_level]
@@ -637,7 +637,7 @@ def character_skills_data(
 def character_wallet_journal_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    wallet_data = list()
+    wallet_data = []
     try:
         for row in character.wallet_journal.select_related(
             "first_party", "second_party"
@@ -668,7 +668,7 @@ def character_wallet_journal_data(
 def character_wallet_transactions_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    wallet_data = list()
+    wallet_data = []
     try:
         for row in character.wallet_transactions.select_related(
             "client", "eve_type", "location"
