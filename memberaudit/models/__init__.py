@@ -1,7 +1,7 @@
 # flake8: noqa
 
 from .character import Character, CharacterUpdateStatus
-from .character_sections import (
+from .character_sections_1 import (
     CharacterAsset,
     CharacterAttributes,
     CharacterContact,
@@ -9,6 +9,8 @@ from .character_sections import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
+)
+from .character_sections_2 import (
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
@@ -20,6 +22,8 @@ from .character_sections import (
     CharacterMail,
     CharacterMailLabel,
     CharacterMailUnreadCount,
+)
+from .character_sections_3 import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
