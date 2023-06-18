@@ -36,9 +36,9 @@ from memberaudit.constants import (
     MAP_ARABIC_TO_ROMAN_NUMBERS,
     MY_DATETIME_FORMAT,
     SKILL_SET_DEFAULT_ICON_TYPE_ID,
-    EveDogmaAttributeId,
 )
 from memberaudit.decorators import fetch_character_if_allowed
+from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
     Character,
     CharacterMail,
@@ -89,14 +89,7 @@ def character_jump_clones_data(
 
             implants_data = []
             for implant in jump_clone.implants.all():
-                dogma_attributes = {
-                    obj.eve_dogma_attribute_id: obj.value
-                    for obj in implant.eve_type.dogma_attributes.all()
-                }
-                try:
-                    slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
-                except KeyError:
-                    slot_num = 0
+                slot_num = implant_slot_num(implant.eve_type)
                 implants_data.append(
                     {
                         "name": implant.eve_type.name,

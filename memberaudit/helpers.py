@@ -7,10 +7,12 @@ from typing import Any, Optional
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
+from eveuniverse.models import EveType
 
 from app_utils.datetime import datetime_round_hour
 
 from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
+from memberaudit.constants import EveDogmaAttributeId
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:
@@ -40,3 +42,16 @@ def store_debug_data_to_disk(character, lst: Any, name: str):
 
     except OSError:
         pass
+
+
+def implant_slot_num(implant_type: EveType) -> int:  # TODO: Refactor into model
+    """Return slot number for an implant. Or 0 if not found."""
+    dogma_attributes = {
+        obj.eve_dogma_attribute_id: obj.value
+        for obj in implant_type.dogma_attributes.all()
+    }
+    try:
+        slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
+    except KeyError:
+        slot_num = 0
+    return slot_num

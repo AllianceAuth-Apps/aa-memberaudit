@@ -31,9 +31,9 @@ from memberaudit.constants import (
     MAIL_LABEL_ID_ALL_MAILS,
     MY_DATETIME_FORMAT,
     EveCategoryId,
-    EveDogmaAttributeId,
 )
 from memberaudit.decorators import fetch_character_if_allowed
+from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
     Character,
     CharacterAsset,
@@ -710,14 +710,7 @@ def character_implants_data(
             ),
             implant.eve_type.name,
         )
-        dogma_attributes = {
-            obj.eve_dogma_attribute_id: obj.value
-            for obj in implant.eve_type.dogma_attributes.all()
-        }
-        try:
-            slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
-        except KeyError:
-            slot_num = 0
+        slot_num = implant_slot_num(implant.eve_type)
         data.append(
             {
                 "id": implant.pk,
