@@ -24,7 +24,7 @@ from memberaudit.managers.character_sections_3 import (
     CharacterWalletTransactionManager,
 )
 
-from .character import Character
+from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS
 from .general import Location
 

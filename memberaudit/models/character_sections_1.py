@@ -22,7 +22,7 @@ from memberaudit.managers.character_sections_1 import (
     CharacterContractManager,
 )
 
-from .character import Character
+from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
 

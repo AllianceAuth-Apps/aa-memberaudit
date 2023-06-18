@@ -34,7 +34,7 @@ from memberaudit.managers.character_sections_2 import (
     CharacterMailManager,
 )
 
-from .character import Character
+from .characters import Character
 from .constants import NAMES_MAX_LENGTH
 from .general import Location
 

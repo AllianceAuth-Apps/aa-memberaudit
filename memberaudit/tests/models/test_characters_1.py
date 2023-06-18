@@ -380,7 +380,7 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
-    @patch(MODELS_PATH + ".character.notify_throttled")
+    @patch(MODELS_PATH + ".characters.notify_throttled")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
         self, mock_notify_throttled
     ):
@@ -936,7 +936,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
         self.assertTrue(self.character_1001.is_section_updating(section=self.section))
 
 
-@patch(MODELS_PATH + ".character.MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
+@patch(MODELS_PATH + ".characters.MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
 class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:

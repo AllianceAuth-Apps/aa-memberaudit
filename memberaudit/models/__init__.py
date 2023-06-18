@@ -1,6 +1,5 @@
 # flake8: noqa
 
-from .character import Character, CharacterUpdateStatus
 from .character_sections_1 import (
     CharacterAsset,
     CharacterAttributes,
@@ -36,6 +35,7 @@ from .character_sections_3 import (
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
 )
+from .characters import Character, CharacterUpdateStatus
 from .general import (
     ComplianceGroupDesignation,
     EveShipType,
