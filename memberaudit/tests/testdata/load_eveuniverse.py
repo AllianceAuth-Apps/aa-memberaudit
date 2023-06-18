@@ -1,3 +1,5 @@
+"""Helper for tests to load the current eveuniverse fixtures."""
+
 import json
 
 from eveuniverse.tools.testdata import load_testdata_from_dict

@@ -1,3 +1,5 @@
+"""Shared utils for tests."""
+
 import json
 import os
 from typing import Tuple
@@ -21,6 +23,8 @@ from .testdata.load_locations import load_locations
 
 
 class CharacterUpdateTestDataMixin:
+    """Mixin for TestCase class defining a complete character and setting up fixtures."""
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -39,6 +43,8 @@ class CharacterUpdateTestDataMixin:
 
 
 class TestCharacterUpdateBase(TestCase):
+    """TestCase variant defining a complete character and setting up fixtures."""
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -61,6 +67,7 @@ class TestCharacterUpdateBase(TestCase):
 def create_user_from_evecharacter_with_access(
     character_id: int,
 ) -> Tuple[User, CharacterOwnership]:
+    """Create user with access from an existing eve character and use it as main."""
     auth_character = EveCharacter.objects.get(character_id=character_id)
     user = AuthUtils.create_user(auth_character.character_name)
     user = AuthUtils.add_permission_to_user_by_name("memberaudit.basic_access", user)
@@ -71,6 +78,9 @@ def create_user_from_evecharacter_with_access(
 
 
 def create_memberaudit_character(character_id: int) -> Character:
+    """Create a memberaudit character from an existing auth character
+    incl. user and making it the main.
+    """
     _, character_ownership = create_user_from_evecharacter_with_access(character_id)
     return Character.objects.create(eve_character=character_ownership.character)
 

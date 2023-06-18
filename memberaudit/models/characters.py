@@ -5,7 +5,6 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-import os
 from typing import Any, Optional
 
 from django.contrib.auth.models import User
@@ -507,25 +506,6 @@ class Character(models.Model):
     def update_wallet_transactions(self):
         """syncs the character's wallet transactions"""
         self.wallet_transactions.update_or_create_esi(self)
-
-    def _store_list_to_disk(self, lst: Any, name: str):
-        """stores the given list as JSON file to disk. For debugging
-
-        Will store under memberaudit_logs/{DATE}/{CHARACTER_PK}_{NAME}.json
-        """
-        today_str = now().strftime("%Y%m%d")
-        now_str = now().strftime("%Y%m%d%H%M")
-        path = f"memberaudit_log/{today_str}"
-        if not os.path.isdir(path):
-            os.makedirs(path)
-
-        fullpath = os.path.join(path, f"character_{self.pk}_{name}_{now_str}.json")
-        try:
-            with open(fullpath, "w", encoding="utf-8") as f:
-                json.dump(lst, f, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
-
-        except OSError:
-            pass
 
     @classmethod
     def get_esi_scopes(cls) -> list:

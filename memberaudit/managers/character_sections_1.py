@@ -15,7 +15,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_DEVELOPER_MODE,
 )
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -85,7 +85,7 @@ class CharacterAssetManagerBase(models.Manager):
             assets_flat[item_id]["name"] = asset_names.get(item_id, "")
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(assets_flat, "asset_list")
+            store_debug_data_to_disk(character, assets_flat, "asset_list")
 
         new_asset_list = list(assets_flat.values())
         section = character.UpdateSection.ASSETS
@@ -146,7 +146,7 @@ class CharacterAttributesManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(attribute_data, "attributes")
+            store_debug_data_to_disk(character, attribute_data, "attributes")
 
         section = character.UpdateSection.ATTRIBUTES
         if force_update or character.has_section_changed(
@@ -189,7 +189,7 @@ class CharacterContactLabelManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(labels, "contact_labels")
+            store_debug_data_to_disk(character, labels, "contact_labels")
 
         section = character.UpdateSection.CONTACTS
         if force_update or character.has_section_changed(
@@ -242,7 +242,7 @@ class CharacterContactManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(contacts_data, "contacts")
+            store_debug_data_to_disk(character, contacts_data, "contacts")
         if contacts_data:
             contacts_list = {int(x["contact_id"]): x for x in contacts_data}
         else:
@@ -424,7 +424,7 @@ class CharacterContractManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(contracts_data, "contracts")
+            store_debug_data_to_disk(character, contracts_data, "contracts")
 
         cutoff_datetime = data_retention_cutoff()
         contracts_list = {

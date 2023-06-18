@@ -1,3 +1,5 @@
+"""Create testdata for eveuniverse models by fetching them from ESI."""
+
 from django.test import TestCase
 from eveuniverse.models import EveUniverseEntityModel
 from eveuniverse.tools.testdata import ModelSpec, create_testdata

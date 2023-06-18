@@ -17,14 +17,14 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 def get_or_create_esi_or_none(
-    prop_name: str, dct: dict, Model: type
+    prop_name: str, dct: dict, model_class: type
 ) -> Optional[models.Model]:
     """Gets or creates a new eveuniverse object from a dictionary entry.
 
     return the object on success or None
     """
     if dct.get(prop_name):
-        obj, _ = Model.objects.get_or_create_esi(id=dct.get(prop_name))  # type: ignore
+        obj, _ = model_class.objects.get_or_create_esi(id=dct.get(prop_name))  # type: ignore
     else:
         obj = None
 

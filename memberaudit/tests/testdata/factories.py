@@ -54,7 +54,7 @@ def create_character_from_user(user: User, **kwargs):
     try:
         character_ownership = user.profile.main_character.character_ownership
     except AttributeError:
-        raise ValueError("User needs to have a main character.")
+        raise ValueError("User needs to have a main character.") from None
     if hasattr(Character, "eve_character"):
         params = {"eve_character": character_ownership.character}
     else:
@@ -244,8 +244,8 @@ def create_fitting(**kwargs):
 def create_fitting_text(file_name: str) -> str:
     testdata_folder = Path(__file__).parent / "fittings"
     fitting_file = testdata_folder / file_name
-    with fitting_file.open("r") as fp:
-        return fp.read()
+    with fitting_file.open("r") as file:
+        return file.read()
 
 
 def create_skill(**kwargs) -> Skill:

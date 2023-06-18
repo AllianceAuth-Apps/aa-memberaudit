@@ -1,3 +1,5 @@
+"""Celery tasks for Member Audit."""
+
 import inspect
 import random
 from typing import Optional
@@ -538,7 +540,7 @@ def assets_create_children(
     logger.info("%s: Creating child assets - pass %s", character, cycle)
 
     # for debug
-    # character._store_list_to_disk(asset_list, f"child_asset_list_{cycle}")
+    # store_list_to_disk(character, asset_list, f"child_asset_list_{cycle}")
 
     new_assets = list()
     assets_flat = {int(x["item_id"]): x for x in asset_list}

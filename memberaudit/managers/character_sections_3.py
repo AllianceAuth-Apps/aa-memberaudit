@@ -14,7 +14,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_DEVELOPER_MODE,
 )
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -52,8 +52,8 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(
-                entries, character.UpdateSection.MINING_LEDGER
+            store_debug_data_to_disk(
+                character, entries, character.UpdateSection.MINING_LEDGER
             )
 
         for entry in entries:
@@ -108,7 +108,7 @@ class CharacterPlanetManager(models.Manager):
             ).results()
         )
         if MEMBERAUDIT_DEVELOPER_MODE:
-            self._store_list_to_disk(planets_data, "planets")
+            store_debug_data_to_disk(character, planets_data, "planets")
         section = character.UpdateSection.PLANETS
         if force_update or character.has_section_changed(
             section=section, content=planets_data
@@ -186,7 +186,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(skillqueue, "skill_queue")
+            store_debug_data_to_disk(character, skillqueue, "skill_queue")
 
         section = character.UpdateSection.SKILL_QUEUE
         if force_update or character.has_section_changed(
@@ -258,7 +258,7 @@ class CharacterSkillManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(skills_info, "skills")
+            store_debug_data_to_disk(character, skills_info, "skills")
 
         CharacterSkillpoints.objects.update_or_create(
             character=character,
@@ -436,7 +436,7 @@ class CharacterWalletBalanceManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(balance, "balance")
+            store_debug_data_to_disk(character, balance, "balance")
 
         self.update_or_create(character=character, defaults={"total": balance})
 
@@ -456,7 +456,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(journal, "wallet_journal")
+            store_debug_data_to_disk(character, journal, "wallet_journal")
 
         cutoff_datetime = data_retention_cutoff()
         entries_list = {
@@ -519,7 +519,7 @@ class CharacterWalletTransactionManager(models.Manager):
         )
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(transactions, "wallet_transactions")
+            store_debug_data_to_disk(character, transactions, "wallet_transactions")
 
         self._update_or_create_objs(
             character=character,

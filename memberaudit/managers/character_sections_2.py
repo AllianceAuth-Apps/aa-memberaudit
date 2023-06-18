@@ -26,7 +26,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -47,7 +47,7 @@ class CharacterCorporationHistoryManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(history, "corporation_history")
+            store_debug_data_to_disk(character, history, "corporation_history")
 
         section = character.UpdateSection.CORPORATION_HISTORY
         if force_update or character.has_section_changed(
@@ -94,7 +94,7 @@ class CharacterDetailsManager(models.Manager):
             character_id=character.eve_character.character_id,
         ).results()
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(details, "character_details")
+            store_debug_data_to_disk(character, details, "character_details")
 
         section = character.UpdateSection.CHARACTER_DETAILS
         if force_update or character.has_section_changed(
@@ -213,7 +213,7 @@ class CharacterImplantManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(implants_data, "implants")
+            store_debug_data_to_disk(character, implants_data, "implants")
 
         section = character.UpdateSection.IMPLANTS
         if force_update or character.has_section_changed(
@@ -311,7 +311,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
             return
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(loyalty_entries, "loyalty")
+            store_debug_data_to_disk(character, loyalty_entries, "loyalty")
 
         section = character.UpdateSection.LOYALTY
         if force_update or character.has_section_changed(
@@ -356,7 +356,7 @@ class CharacterJumpCloneManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(jump_clones_info, "jump_clones")
+            store_debug_data_to_disk(character, jump_clones_info, "jump_clones")
 
         section = character.UpdateSection.JUMP_CLONES
         if force_update or character.has_section_changed(
@@ -439,7 +439,7 @@ class CharacterMailManager(models.Manager):
         mail_headers = self._fetch_mail_headers(character, token)
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_headers, "mail_headers")
+            store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
         self._update_or_create_objs(
             character=character,
@@ -461,7 +461,7 @@ class CharacterMailManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
             if MEMBERAUDIT_DEVELOPER_MODE:
-                character._store_list_to_disk(mail_headers, "mail_headers")
+                store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
             mail_headers_all += mail_headers
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
@@ -695,7 +695,7 @@ class CharacterMailManager(models.Manager):
         eve_xml_to_html(mail.body)  # resolve names early
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_body, "mail_body")
+            store_debug_data_to_disk(character, mail_body, "mail_body")
 
 
 class CharacterMailLabelManager(models.Manager):
@@ -735,7 +735,7 @@ class CharacterMailLabelManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_labels_info, "mail_labels")
+            store_debug_data_to_disk(character, mail_labels_info, "mail_labels")
 
         if mail_labels_info.get("total_unread_count"):
             CharacterMailUnreadCount.objects.update_or_create(

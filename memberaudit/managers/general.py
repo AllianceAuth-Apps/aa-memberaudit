@@ -28,6 +28,7 @@ from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
+from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
@@ -500,7 +501,7 @@ class MailEntityManager(models.Manager):
             mailing_lists = dict()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mailing_lists, "mailing_lists")
+            store_debug_data_to_disk(character, mailing_lists, "mailing_lists")
 
         # TODO: replace with bulk methods to optimize
 
