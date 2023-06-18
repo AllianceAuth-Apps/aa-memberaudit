@@ -82,7 +82,7 @@ def _gather_export_files(destination_folder: str) -> dict:
         destination_path = default_destination()
     else:
         destination_path = Path(destination_folder)
-    files = [file for file in destination_path.glob(f"{_app_name()}_*.zip")]
+    files = list(destination_path.glob(f"{_app_name()}_*.zip"))
     export_files = {}
     if files:
         for file in files:

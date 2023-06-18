@@ -126,7 +126,7 @@ class Fitting:
         )
         types = {self.ship_type}
         for obj in [x for x in objs if x]:
-            types |= {eve_type for eve_type in obj.eve_types()}
+            types |= obj.eve_types()
         return types
 
     def required_skills(self) -> List[Skill]:
