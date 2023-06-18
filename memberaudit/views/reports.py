@@ -1,3 +1,5 @@
+"""Report views."""
+
 from collections import defaultdict
 
 from django.contrib.auth.decorators import login_required, permission_required
@@ -59,7 +61,7 @@ def user_compliance_report_data(request) -> JsonResponse:
         )
         .select_related("profile__main_character", "profile__state")
     )
-    user_data = list()
+    user_data = []
     for user in users_and_character_counts:
         if user.profile.main_character:
             main_character = user.profile.main_character
@@ -163,7 +165,7 @@ def corporation_compliance_report_data(request) -> JsonResponse:
             )
         )
     )
-    data = list()
+    data = []
     for corporation in corporations:
         organization_name = "{}{}".format(
             corporation["corporation_name"],
@@ -309,7 +311,7 @@ def skill_sets_report_data(request) -> JsonResponse:
     groups_map = SkillSet.objects.compile_groups_map()
     for group_map in groups_map.values():
         group = group_map["group"]
-        characters_map = dict()
+        characters_map = {}
         for skill_set in group_map["skill_sets"]:
             for skill_check in character_skill_checks[skill_set.pk]:
                 character = skill_check.character

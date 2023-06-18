@@ -28,6 +28,7 @@ from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
+from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
@@ -188,7 +189,8 @@ class LocationManager(models.Manager):
                 id=id,
                 defaults={"name": "ASSET SAFETY", "eve_type": eve_type},
             )
-        elif self.model.is_solar_system_id(id):
+
+        if self.model.is_solar_system_id(id):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=id)
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
@@ -199,16 +201,19 @@ class LocationManager(models.Manager):
                     "eve_type": eve_type,
                 },
             )
-        elif self.model.is_station_id(id):
+
+        if self.model.is_station_id(id):
             logger.info("%s: Fetching station from ESI", id)
             station = esi.client.Universe.get_universe_stations_station_id(
                 station_id=id
             ).results()
             return self._station_update_or_create_dict(id=id, station=station)
-        elif self.model.is_structure_id(id):
+
+        if self.model.is_structure_id(id):
             if update_async:
                 return self._structure_update_or_create_esi_async(id=id, token=token)
             return self.structure_update_or_create_esi(id=id, token=token)
+
         logger.warning(
             "%s: Creating empty location for ID not matching any known pattern:", id
         )
@@ -264,15 +269,15 @@ class LocationManager(models.Manager):
                 structure_id=id, token=token.valid_access_token()
             ).results()
         except (HTTPUnauthorized, HTTPForbidden) as http_error:
-            logger.warn(
+            logger.warning(
                 "%s: No access to structure #%s: %s",
                 token.character_name,
                 id,
                 http_error,
             )
             return self.get_or_create(id=id)
-        else:
-            return self._structure_update_or_create_dict(id=id, structure=structure)
+
+        return self._structure_update_or_create_dict(id=id, structure=structure)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
@@ -385,13 +390,14 @@ class MailEntityManager(models.Manager):
                 id=id,
                 defaults={"category": self.model.Category.MAILING_LIST},
             )
-        else:
-            if category == self.model.Category.MAILING_LIST:
-                return self.update_or_create(
-                    id=id,
-                    defaults={"category": self.model.Category.MAILING_LIST},
-                )
-            return self.update_or_create_from_eve_entity_id(id=id)
+
+        if category == self.model.Category.MAILING_LIST:
+            return self.update_or_create(
+                id=id,
+                defaults={"category": self.model.Category.MAILING_LIST},
+            )
+
+        return self.update_or_create_from_eve_entity_id(id=id)
 
     def update_or_create_esi_async(
         self, id: int, category: Optional[str] = None
@@ -402,13 +408,13 @@ class MailEntityManager(models.Manager):
         id = int(id)
         try:
             obj = self.get(id=id)
-            if obj.category == self.model.Category.MAILING_LIST:
-                return obj, False
-            else:
-                category = obj.category
-
         except self.model.DoesNotExist:
             pass
+        else:
+            if obj.category == self.model.Category.MAILING_LIST:
+                return obj, False
+
+            category = obj.category
 
         if category and category in self.model.Category.eve_entity_compatible():
             return self.update_or_create_esi(id=id, category=category)
@@ -497,10 +503,10 @@ class MailEntityManager(models.Manager):
                 if "mailing_list_id" in obj
             }
         else:
-            mailing_lists = dict()
+            mailing_lists = {}
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mailing_lists, "mailing_lists")
+            store_debug_data_to_disk(character, mailing_lists, "mailing_lists")
 
         # TODO: replace with bulk methods to optimize
 
@@ -530,7 +536,7 @@ class MailEntityManager(models.Manager):
         logger.info(
             "%s: Updating %s mailing lists", character, set(mailing_lists.keys())
         )
-        new_mailing_lists = list()
+        new_mailing_lists = []
         for list_id, mailing_list in mailing_lists.items():
             mailing_list_obj, _ = self.model.objects.update_or_create(
                 id=list_id,
@@ -628,7 +634,7 @@ class SkillSetManager(models.Manager):
                 groups_map[group_id] = {"group": group, "skill_sets": []}
             groups_map[group_id]["skill_sets"].append(skill_set)
 
-        groups_map = dict()
+        groups_map = {}
         for skill_set in (
             self.select_related("ship_type").prefetch_related("groups").all()
         ):

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Changed
+
+- Refactor character section updates (!88)
+- Refactor and improve codebase (!89)
+
 ## [2.9.0] - 2023-06-16
 
 ### Update notes

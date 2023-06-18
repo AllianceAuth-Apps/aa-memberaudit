@@ -26,7 +26,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -47,7 +47,7 @@ class CharacterCorporationHistoryManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(history, "corporation_history")
+            store_debug_data_to_disk(character, history, "corporation_history")
 
         section = character.UpdateSection.CORPORATION_HISTORY
         if force_update or character.has_section_changed(
@@ -94,7 +94,7 @@ class CharacterDetailsManager(models.Manager):
             character_id=character.eve_character.character_id,
         ).results()
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(details, "character_details")
+            store_debug_data_to_disk(character, details, "character_details")
 
         section = character.UpdateSection.CHARACTER_DETAILS
         if force_update or character.has_section_changed(
@@ -213,7 +213,7 @@ class CharacterImplantManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(implants_data, "implants")
+            store_debug_data_to_disk(character, implants_data, "implants")
 
         section = character.UpdateSection.IMPLANTS
         if force_update or character.has_section_changed(
@@ -311,7 +311,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
             return
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(loyalty_entries, "loyalty")
+            store_debug_data_to_disk(character, loyalty_entries, "loyalty")
 
         section = character.UpdateSection.LOYALTY
         if force_update or character.has_section_changed(
@@ -356,7 +356,7 @@ class CharacterJumpCloneManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(jump_clones_info, "jump_clones")
+            store_debug_data_to_disk(character, jump_clones_info, "jump_clones")
 
         section = character.UpdateSection.JUMP_CLONES
         if force_update or character.has_section_changed(
@@ -409,7 +409,7 @@ class CharacterJumpCloneManager(models.Manager):
             jump_clones,
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
-        implants = list()
+        implants = []
         for jump_clone_info in jump_clones_list:
             if jump_clone_info.get("implants"):
                 for implant in jump_clone_info["implants"]:
@@ -439,7 +439,7 @@ class CharacterMailManager(models.Manager):
         mail_headers = self._fetch_mail_headers(character, token)
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_headers, "mail_headers")
+            store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
         self._update_or_create_objs(
             character=character,
@@ -451,7 +451,7 @@ class CharacterMailManager(models.Manager):
     @staticmethod
     def _fetch_mail_headers(character, token) -> dict:
         last_mail_id = None
-        mail_headers_all = list()
+        mail_headers_all = []
         page = 1
         while True:
             logger.info("%s: Fetching mail headers from ESI - page %s", character, page)
@@ -461,14 +461,14 @@ class CharacterMailManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
             if MEMBERAUDIT_DEVELOPER_MODE:
-                character._store_list_to_disk(mail_headers, "mail_headers")
+                store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
             mail_headers_all += mail_headers
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
                 break
-            else:
-                last_mail_id = min([x["mail_id"] for x in mail_headers])
-                page += 1
+
+            last_mail_id = min((x["mail_id"] for x in mail_headers))
+            page += 1
 
         cutoff_datetime = data_retention_cutoff()
         mail_headers_all_2 = {
@@ -501,7 +501,7 @@ class CharacterMailManager(models.Manager):
         if force_update or character.has_section_changed(
             section=section, content=mail_headers
         ):
-            self._preload_mail_senders(character=character, mail_headers=mail_headers)
+            self._preload_mail_senders(mail_headers=mail_headers)
             with transaction.atomic():
                 incoming_ids = set(mail_headers.keys())
                 existing_ids = set(
@@ -531,7 +531,7 @@ class CharacterMailManager(models.Manager):
         else:
             logger.info("%s: Mails have not changed", character)
 
-    def _preload_mail_senders(self, character, mail_headers):
+    def _preload_mail_senders(self, mail_headers):
         from ..models import MailEntity
 
         incoming_ids = {o["from"] for o in mail_headers.values()}
@@ -550,7 +550,7 @@ class CharacterMailManager(models.Manager):
         )
 
         # create headers
-        new_headers = list()
+        new_headers = []
         for mail_id, header in new_mail_headers_list.items():
             new_headers.append(
                 self.model(
@@ -569,7 +569,7 @@ class CharacterMailManager(models.Manager):
         labels = character.mail_labels.get_all_labels()
         for mail_id, header in new_mail_headers_list.items():
             mail_obj = self.filter(character=character).get(mail_id=mail_id)
-            recipients = list()
+            recipients = []
             recipient_type_map = {
                 "alliance": MailEntity.Category.ALLIANCE,
                 "character": MailEntity.Category.CHARACTER,
@@ -632,7 +632,7 @@ class CharacterMailManager(models.Manager):
         """Updates the labels of a mail object from a dict"""
         mail.labels.clear()
         if label_ids:
-            labels_to_add = list()
+            labels_to_add = []
             for label_id in label_ids:
                 try:
                     labels_to_add.append(labels[label_id])
@@ -695,7 +695,7 @@ class CharacterMailManager(models.Manager):
         eve_xml_to_html(mail.body)  # resolve names early
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_body, "mail_body")
+            store_debug_data_to_disk(character, mail_body, "mail_body")
 
 
 class CharacterMailLabelManager(models.Manager):
@@ -735,7 +735,7 @@ class CharacterMailLabelManager(models.Manager):
         ).results()
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            character._store_list_to_disk(mail_labels_info, "mail_labels")
+            store_debug_data_to_disk(character, mail_labels_info, "mail_labels")
 
         if mail_labels_info.get("total_unread_count"):
             CharacterMailUnreadCount.objects.update_or_create(

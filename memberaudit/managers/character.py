@@ -202,7 +202,7 @@ class CharacterUpdateStatusManager(models.Manager):
         qs_base = qs_base.filter(root_task_id__in=root_task_ids.values()).annotate(
             duration=duration_expression
         )
-        update_stats = dict()
+        update_stats = {}
         if self.count() > 0:
             # per ring
             for ring in range(1, 4):

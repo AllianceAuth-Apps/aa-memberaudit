@@ -1,6 +1,6 @@
 # flake8: noqa
 """
-This is a standalone scripts that generates a test character
+This is a standalone scripts for profiling code sections of Member Audit.
 """
 
 import inspect

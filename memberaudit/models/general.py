@@ -1,6 +1,7 @@
 """
 Top level models
 """
+from typing import Set
 
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
@@ -64,6 +65,7 @@ class General(models.Model):
 
     @classmethod
     def users_with_basic_access(cls) -> models.QuerySet:
+        """Return users which have at least basic access to Member Audit."""
         return users_with_permission(cls.basic_permission())
 
     @classmethod
@@ -71,17 +73,20 @@ class General(models.Model):
         """Users that the given user can access."""
         if user.has_perm("memberaudit.view_everything"):
             return cls.users_with_basic_access()
-        elif (
+
+        if (
             user.has_perm("memberaudit.view_same_alliance")
             and user.profile.main_character.alliance_id
         ):
             return cls.users_with_basic_access().filter(
                 profile__main_character__alliance_id=user.profile.main_character.alliance_id
             )
-        elif user.has_perm("memberaudit.view_same_corporation"):
+
+        if user.has_perm("memberaudit.view_same_corporation"):
             return cls.users_with_basic_access().filter(
                 profile__main_character__corporation_id=user.profile.main_character.corporation_id
             )
+
         return User.objects.filter(pk=user.pk)
 
     @classmethod
@@ -442,7 +447,7 @@ class SkillSetSkill(models.Model):
         return self._skill_str(self.required_level) if self.required_level else ""
 
     @property
-    def recommened_skill_str(self) -> str:  # TODO: Add test
+    def recommended_skill_str(self) -> str:  # TODO: Add test
         return self._skill_str(self.recommended_level) if self.recommended_level else ""
 
     @property
@@ -469,6 +474,8 @@ class MailEntity(models.Model):
     """A sender or recipient in a mail"""
 
     class Category(models.TextChoices):
+        """A category of a mail entity."""
+
         ALLIANCE = "AL", _("Alliance")
         CHARACTER = "CH", _("Character")
         CORPORATION = "CO", _("Corporation")
@@ -476,7 +483,8 @@ class MailEntity(models.Model):
         UNKNOWN = "UN", _("Unknown")
 
         @classmethod
-        def eve_entity_compatible(cls) -> set:
+        def eve_entity_compatible(cls) -> Set["MailEntity.Category"]:
+            """Return categories, which are compatible with EveEntity."""
             return {cls.ALLIANCE, cls.CHARACTER, cls.CORPORATION}
 
     id = models.PositiveIntegerField(primary_key=True)
@@ -521,11 +529,10 @@ class MailEntity(models.Model):
         if self.category == self.Category.ALLIANCE and self.name:
             return dotlan.alliance_url(self.name)
 
-        elif self.category == self.Category.CHARACTER:
+        if self.category == self.Category.CHARACTER:
             return evewho.character_url(self.id)
 
-        elif self.category == self.Category.CORPORATION and self.name:
+        if self.category == self.Category.CORPORATION and self.name:
             return dotlan.corporation_url(self.name)
 
-        else:
-            return ""
+        return ""

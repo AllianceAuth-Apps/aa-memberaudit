@@ -1,4 +1,4 @@
-"""Eve Online Skill plans."""
+"""Eve Online skill plans."""
 
 from dataclasses import dataclass
 from typing import List, Tuple
@@ -18,6 +18,8 @@ class NoSkillsIdentified(SkillPlanError):
 
 @dataclass
 class SkillPlan:
+    """A skill plan."""
+
     name: str
     skills: List[Skill]
 

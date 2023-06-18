@@ -1,3 +1,5 @@
+"""Shared ESI client for Member Audit."""
+
 from pathlib import Path
 
 from esi.clients import EsiClientProvider

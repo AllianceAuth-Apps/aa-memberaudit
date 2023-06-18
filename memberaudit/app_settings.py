@@ -1,3 +1,5 @@
+"""Definition and parsing of Member Audit's settings."""
+
 from django.utils.translation import gettext_lazy as _
 
 from app_utils.app_settings import clean_setting

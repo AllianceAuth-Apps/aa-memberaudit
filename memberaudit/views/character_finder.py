@@ -1,3 +1,5 @@
+"""Character finder views."""
+
 from dj_datatables_view.base_datatable_view import BaseDatatableView
 
 from django.contrib.auth.decorators import login_required, permission_required
@@ -44,6 +46,8 @@ def character_finder(request) -> HttpResponse:
 class CharacterFinderListJson(
     PermissionRequiredMixin, LoginRequiredMixin, BaseDatatableView
 ):
+    """Server based datatable view for character finder."""
+
     model = EveCharacter
     permission_required = "memberaudit.finder_access"
     columns = [
@@ -280,7 +284,7 @@ class CharacterFinderListJson(
 @permission_required("memberaudit.finder_access")
 def character_finder_list_fdd_data(request) -> JsonResponse:
     """Provide lists for drop down fields."""
-    result = dict()
+    result = {}
     qs = CharacterFinderListJson.initial_queryset(request)
     columns = request.GET.get("columns")
     if columns:

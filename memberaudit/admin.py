@@ -1,3 +1,5 @@
+"""Define admin site for Member Audit."""
+
 from typing import List, Optional
 
 from django import forms
@@ -143,10 +145,10 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
         for status in Character.UpdateStatus:
             counts.append((status, qs.filter(update_status=status.value).count()))
         result = tuple(
-            [
+            (
                 (status.value, status.label.title() + f" ({count:,})")
                 for status, count in counts
-            ]
+            )
         )
         return result
 

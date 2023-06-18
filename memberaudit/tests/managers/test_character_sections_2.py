@@ -810,7 +810,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         create_mailing_list(id=9001)
         headers = {1: {"from": 9001, "mail_id": 1}, 2: {"from": 9002, "mail_id": 2}}
         # when
-        CharacterMail.objects._preload_mail_senders(self.character_1001, headers)
+        CharacterMail.objects._preload_mail_senders(headers)
         # then
         self.assertTrue(mock_get_or_create_esi_async.called)
         mail_entity_ids = {
@@ -834,7 +834,7 @@ class TestCharacterMailLabelManager(TestCharacterUpdateBase):
 
     def test_empty(self):
         labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(labels, dict())
+        self.assertDictEqual(labels, {})
 
 
 @patch(MODULE_PATH + ".esi")

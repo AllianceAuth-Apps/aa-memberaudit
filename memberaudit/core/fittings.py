@@ -1,4 +1,5 @@
-"""Eve Online Fittings"""
+"""Eve Online fittings."""
+
 from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple, Union
 
@@ -10,13 +11,16 @@ from .skills import Skill, compress_skills, required_skills_from_eve_types
 @dataclass(frozen=True)
 class _BaseFittingItem:
     def eve_types(self) -> Set[EveType]:
+        """Return types used in this fitting."""
         raise NotImplementedError()
 
     @property
     def is_empty(self) -> bool:
+        """Return True if fitting empty, else False."""
         raise NotImplementedError()
 
     def to_eft(self) -> str:
+        """Convert to EFT string format."""
         raise NotImplementedError()
 
     def __init__(self) -> None:
@@ -122,7 +126,7 @@ class Fitting:
         )
         types = {self.ship_type}
         for obj in [x for x in objs if x]:
-            types |= {eve_type for eve_type in obj.eve_types()}
+            types |= obj.eve_types()
         return types
 
     def required_skills(self) -> List[Skill]:

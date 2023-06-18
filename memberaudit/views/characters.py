@@ -1,3 +1,5 @@
+"""Character views."""
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Permission
@@ -46,8 +48,8 @@ def launcher(request) -> HttpResponse:
         .order_by("character_name")
     )
     has_auth_characters = owned_chars_query.exists()
-    auth_characters = list()
-    unregistered_chars = list()
+    auth_characters = []
+    unregistered_chars = []
     for eve_character in owned_chars_query:
         try:
             character = eve_character.memberaudit_character
@@ -82,17 +84,16 @@ def launcher(request) -> HttpResponse:
         "main_character_id": main_character_id,
     }
 
-    """
-    if has_auth_characters:
-        messages.warning(
-            request,
-            format_html(
-                "Please register all your characters. "
-                "You currently have <strong>{}</strong> unregistered characters.",
-                unregistered_chars,
-            ),
-        )
-    """
+    # if has_auth_characters:
+    #     messages.warning(
+    #         request,
+    #         format_html(
+    #             "Please register all your characters. "
+    #             "You currently have <strong>{}</strong> unregistered characters.",
+    #             unregistered_chars,
+    #         ),
+    #     )
+
     return render(
         request, "memberaudit/launcher.html", add_common_context(request, context)
     )

@@ -94,9 +94,9 @@ def load_entities():
         _generate_eve_entities_from_eve_universe(EveModel)
 
 
-def _generate_eve_entities_from_eve_universe(EveModel):
-    category = EveModel.eve_entity_category()
-    for obj in EveModel.objects.all():
+def _generate_eve_entities_from_eve_universe(model_class):
+    category = model_class.eve_entity_category()
+    for obj in model_class.objects.all():
         EveEntity.objects.create(
             id=obj.id,
             name=obj.name,

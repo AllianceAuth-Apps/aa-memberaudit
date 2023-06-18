@@ -1,13 +1,18 @@
 """Helpers for Member Audit."""
 
 import datetime as dt
-from typing import Optional
+import json
+import os
+from typing import Any, Optional
 
+from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
+from eveuniverse.models import EveType
 
 from app_utils.datetime import datetime_round_hour
 
 from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
+from memberaudit.constants import EveDogmaAttributeId
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:
@@ -17,3 +22,36 @@ def data_retention_cutoff() -> Optional[dt.datetime]:
     return datetime_round_hour(
         now() - dt.timedelta(days=MEMBERAUDIT_DATA_RETENTION_LIMIT)
     )
+
+
+def store_debug_data_to_disk(character, lst: Any, name: str):
+    """Store character related data as JSON file to disk. For debugging
+
+    Will store under memberaudit_logs/{DATE}/{CHARACTER_PK}_{NAME}.json
+    """
+    today_str = now().strftime("%Y%m%d")
+    now_str = now().strftime("%Y%m%d%H%M")
+    path = f"memberaudit_log/{today_str}"
+    if not os.path.isdir(path):
+        os.makedirs(path)
+
+    fullpath = os.path.join(path, f"character_{character.pk}_{name}_{now_str}.json")
+    try:
+        with open(fullpath, "w", encoding="utf-8") as f:
+            json.dump(lst, f, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
+
+    except OSError:
+        pass
+
+
+def implant_slot_num(implant_type: EveType) -> int:  # TODO: Refactor into model
+    """Return slot number for an implant. Or 0 if not found."""
+    dogma_attributes = {
+        obj.eve_dogma_attribute_id: obj.value
+        for obj in implant_type.dogma_attributes.all()
+    }
+    try:
+        slot_num = int(dogma_attributes[EveDogmaAttributeId.IMPLANT_SLOT])
+    except KeyError:
+        slot_num = 0
+    return slot_num

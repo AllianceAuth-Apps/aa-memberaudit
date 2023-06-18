@@ -5,7 +5,6 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-import os
 from typing import Any, Optional
 
 from django.contrib.auth.models import User
@@ -390,13 +389,13 @@ class Character(models.Model):
 
     def update_attributes(self, force_update: bool = False):
         """update the character's attributes"""
-        from .character_sections import CharacterAttributes
+        from memberaudit.models import CharacterAttributes
 
         CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
     def update_character_details(self, force_update: bool = False):
         """syncs the character details for the given character"""
-        from .character_sections import CharacterDetails
+        from memberaudit.models import CharacterDetails
 
         CharacterDetails.objects.update_or_create_esi(self, force_update)
 
@@ -424,7 +423,7 @@ class Character(models.Model):
 
     def update_fw_stats(self, force_update: bool = False):
         """Update FW stats  for the given character"""
-        from .character_sections import CharacterFwStats
+        from memberaudit.models import CharacterFwStats
 
         CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
@@ -434,7 +433,7 @@ class Character(models.Model):
 
     def update_location(self):
         """update the location for the given character"""
-        from .character_sections import CharacterLocation
+        from memberaudit.models import CharacterLocation
 
         CharacterLocation.objects.update_or_create_esi(self)
 
@@ -466,7 +465,7 @@ class Character(models.Model):
 
     def update_online_status(self):
         """Update the character's online status"""
-        from .character_sections import CharacterOnlineStatus
+        from memberaudit.models import CharacterOnlineStatus
 
         CharacterOnlineStatus.objects.update_or_create_esi(self)
 
@@ -476,7 +475,7 @@ class Character(models.Model):
 
     def update_ship(self):
         """Update the ship for the given character."""
-        from .character_sections import CharacterShip
+        from memberaudit.models import CharacterShip
 
         CharacterShip.objects.update_or_create_esi(self)
 
@@ -496,7 +495,7 @@ class Character(models.Model):
 
     def update_wallet_balance(self):
         """syncs the character's wallet balance"""
-        from .character_sections import CharacterWalletBalance
+        from memberaudit.models import CharacterWalletBalance
 
         CharacterWalletBalance.objects.update_or_create_esi(self)
 
@@ -507,25 +506,6 @@ class Character(models.Model):
     def update_wallet_transactions(self):
         """syncs the character's wallet transactions"""
         self.wallet_transactions.update_or_create_esi(self)
-
-    def _store_list_to_disk(self, lst: Any, name: str):
-        """stores the given list as JSON file to disk. For debugging
-
-        Will store under memberaudit_logs/{DATE}/{CHARACTER_PK}_{NAME}.json
-        """
-        today_str = now().strftime("%Y%m%d")
-        now_str = now().strftime("%Y%m%d%H%M")
-        path = f"memberaudit_log/{today_str}"
-        if not os.path.isdir(path):
-            os.makedirs(path)
-
-        fullpath = os.path.join(path, f"character_{self.pk}_{name}_{now_str}.json")
-        try:
-            with open(fullpath, "w", encoding="utf-8") as f:
-                json.dump(lst, f, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
-
-        except OSError:
-            pass
 
     @classmethod
     def get_esi_scopes(cls) -> list:
@@ -637,8 +617,8 @@ class CharacterUpdateStatus(models.Model):
     def is_updating(self) -> bool:
         if not self.started_at and not self.finished_at:
             return False
-        else:
-            return self.started_at is not None and self.finished_at is None
+
+        return self.started_at is not None and self.finished_at is None
 
     def has_changed(self, content: Any, hash_num: int = 1) -> bool:
         """returns True if given content is not the same as previous one, else False"""
