@@ -12,7 +12,6 @@ from pytz import utc
 
 from django.conf import settings
 from django.db import models
-from django.utils.functional import classproperty
 from django.utils.timezone import now
 
 from allianceauth.services.hooks import get_extension_logger
@@ -93,7 +92,7 @@ def _gather_export_files(destination_folder: str) -> dict:
 
 def _compile_topics(export_files):
     topics = []
-    for topic in DataExporter.topics:
+    for topic in DataExporter.topics():
         export_file = export_files[topic] if topic in export_files.keys() else None
         if export_file:
             timestamp = export_file.stat().st_mtime
@@ -184,15 +183,15 @@ class DataExporter(ABC):
                 writer.writerow(row)
         return output_file
 
-    @classproperty
+    @classmethod
     def _exporters(cls) -> list:
         """Supported exporter classes."""
         return [ContractExporter, ContractItemExporter, WalletJournalExporter]
 
-    @classproperty
+    @classmethod
     def topics(cls) -> list:
         """Available export topics."""
-        return sorted([exporter.topic for exporter in cls._exporters])
+        return sorted([exporter.topic for exporter in cls._exporters()])
 
     @classmethod
     def create_exporter(cls, topic: str) -> "DataExporter":
@@ -201,7 +200,7 @@ class DataExporter(ABC):
         Raises:
         - ValueError for invalid topics
         """
-        for exporter in cls._exporters:
+        for exporter in cls._exporters():
             if topic == exporter.topic:
                 return exporter()
         raise ValueError(f"Invalid topic: {topic}")

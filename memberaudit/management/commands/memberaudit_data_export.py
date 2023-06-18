@@ -17,7 +17,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "topic",
-            choices=sorted(DataExporter.topics),
+            choices=sorted(DataExporter.topics()),
             help="Section for exporting data from",
         )
         parser.add_argument(

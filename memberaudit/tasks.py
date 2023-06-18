@@ -1101,7 +1101,7 @@ def export_data(self, user_pk: Optional[int] = None) -> None:
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     tasks = [
         _export_data_for_topic.si(topic).set(priority=priority)
-        for topic in data_exporters.DataExporter.topics
+        for topic in data_exporters.DataExporter.topics()
     ]
     if user_pk:
         tasks.append(_export_data_inform_user.si(user_pk))
@@ -1138,7 +1138,7 @@ def _export_data_inform_user(user_pk: int, topic: Optional[str] = None):
             "Data export for all topics has been completed. "
             "It covers the following:\n"
         )
-        for obj in data_exporters.DataExporter.topics:
+        for obj in data_exporters.DataExporter.topics():
             message += f"- {obj}\n"
     notify(user=user, title=title, message=message, level="INFO")
 

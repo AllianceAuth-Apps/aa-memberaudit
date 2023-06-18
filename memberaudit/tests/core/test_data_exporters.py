@@ -154,7 +154,7 @@ class TestDataExporter(TestCase):
 
     def test_should_return_topics(self):
         self.assertListEqual(
-            DataExporter.topics, ["contract", "contract-item", "wallet-journal"]
+            DataExporter.topics(), ["contract", "contract-item", "wallet-journal"]
         )
 
     def test_can_not_init_exporter_without_topic(self):
