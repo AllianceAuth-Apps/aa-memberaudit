@@ -1,5 +1,5 @@
 import datetime as dt
-from unittest import skip
+from unittest import skipIf
 from unittest.mock import MagicMock, patch
 
 from celery.exceptions import Retry as CeleryRetry
@@ -39,7 +39,7 @@ from .testdata.factories import create_character, create_compliance_group_design
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import create_memberaudit_character
+from .utils import TOX_IS_RUNNING, create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -600,7 +600,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
-    @skip  # temporary disabled because it does not work in tox
+    @skipIf(TOX_IS_RUNNING, "does not work with tox")
     def test_should_update_normally(self):
         """can update from scratch"""
         # when

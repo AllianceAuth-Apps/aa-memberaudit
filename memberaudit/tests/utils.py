@@ -1,4 +1,5 @@
 import json
+import os
 from typing import Tuple
 
 from django.contrib.auth.models import User
@@ -133,3 +134,6 @@ class TestCaseWithFixtures(TestCase):
 
 class NoSocketsTestCaseFixtures(NoSocketsTestCase):
     fixtures = ["disable_analytics.json"]
+
+
+TOX_IS_RUNNING = bool(os.getenv("TOX_IS_RUNNING", False))
