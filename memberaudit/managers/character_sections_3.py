@@ -1,0 +1,588 @@
+from bravado.exception import HTTPInternalServerError
+
+from django.db import models, transaction
+from django.db.models import ExpressionWrapper, F
+from esi.models import Token
+from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
+
+from allianceauth.services.hooks import get_extension_logger
+from app_utils.logging import LoggerAddTag
+
+from memberaudit import __title__
+from memberaudit.app_settings import (
+    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+    MEMBERAUDIT_DEVELOPER_MODE,
+)
+from memberaudit.decorators import fetch_token_for_character
+from memberaudit.helpers import data_retention_cutoff
+from memberaudit.providers import esi
+from memberaudit.utils import (
+    get_or_create_esi_or_none,
+    get_or_create_or_none,
+    get_or_none,
+)
+
+logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+
+
+class CharacterMiningLedgerEntryQueryset(models.QuerySet):
+    def annotate_pricing(self) -> models.QuerySet:
+        """Annotate price and total columns."""
+        return (
+            self.select_related("eve_type__market_price")
+            .annotate(price=F("eve_type__market_price__average_price"))
+            .annotate(
+                total=ExpressionWrapper(
+                    F("eve_type__market_price__average_price") * F("quantity"),
+                    output_field=models.FloatField(),
+                ),
+            )
+        )
+
+
+class CharacterMiningLedgerEntryManagerBase(models.Manager):
+    @fetch_token_for_character("esi-industry.read_character_mining.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or create mining ledger for a character from ESI."""
+
+        logger.info("%s: Fetching mining ledger from ESI", character)
+        entries = esi.client.Industry.get_characters_character_id_mining(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(
+                entries, character.UpdateSection.MINING_LEDGER
+            )
+
+        for entry in entries:
+            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
+                id=entry["solar_system_id"]
+            )
+            eve_type, _ = EveType.objects.get_or_create_esi(id=entry["type_id"])
+            self.update_or_create(
+                date=entry["date"],
+                eve_solar_system=eve_solar_system,
+                eve_type=eve_type,
+                defaults={"quantity": entry["quantity"]},
+            )
+
+
+CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_queryset(
+    CharacterMiningLedgerEntryQueryset
+)
+
+
+class CharacterOnlineStatusManager(models.Manager):
+    @fetch_token_for_character("esi-location.read_online.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or online status for a character from ESI."""
+
+        logger.info("%s: Fetching online status from ESI", character)
+        online_info = esi.client.Location.get_characters_character_id_online(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        self.update_or_create(
+            character=character,
+            defaults={
+                "last_login": online_info.get("last_login"),
+                "last_logout": online_info.get("last_logout"),
+                "logins": online_info.get("logins"),
+            },
+        )
+
+
+class CharacterPlanetManager(models.Manager):
+    @fetch_token_for_character("esi-planets.manage_planets.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create planets for a character from ESI."""
+
+        logger.info("%s: Fetching planets from ESI", character)
+        planets_data = (
+            esi.client.Planetary_Interaction.get_characters_character_id_planets(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            self._store_list_to_disk(planets_data, "planets")
+        section = character.UpdateSection.PLANETS
+        if force_update or character.has_section_changed(
+            section=section, content=planets_data
+        ):
+            self._update_or_create_objs(character, planets_data)
+            character.update_section_content_hash(section=section, content=planets_data)
+        else:
+            logger.info("%s: Planets have not changed", character)
+
+    @transaction.atomic()
+    def _update_or_create_objs(self, character, planets_data):
+        self.filter(character=character).delete()
+        if planets_data:
+            planets = []
+            for obj in planets_data:
+                eve_planet, _ = EvePlanet.objects.get_or_create_esi(id=obj["planet_id"])
+                planets.append(
+                    self.model(
+                        character=character,
+                        eve_planet=eve_planet,
+                        num_pins=obj["num_pins"],
+                        upgrade_level=obj["upgrade_level"],
+                        last_update_at=obj["last_update"],
+                    )
+                )
+            logger.info("%s: Storing %s planets", character, len(planets))
+            self.bulk_create(planets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        else:
+            logger.info("%s: No planets", character)
+
+
+class CharacterShipManager(models.Manager):
+    @fetch_token_for_character("esi-location.read_ship_type.v1")
+    def update_or_create_esi(self, character, token: Token):
+        """Update or create ship for a character from ESI."""
+
+        logger.info("%s: Fetching ship from ESI", character)
+        try:
+            ship_info = esi.client.Location.get_characters_character_id_ship(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error from this endpoint "
+                "and ignoring it: %s ",
+                character,
+                ex,
+            )
+            return
+
+        ship_type_id = ship_info.get("ship_type_id")
+        if not ship_type_id:
+            return
+        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_type_id)
+        self.update_or_create(
+            character=character,
+            defaults={
+                "eve_type": eve_type,
+                "name": ship_info["ship_name"],
+            },
+        )
+
+
+class CharacterSkillqueueEntryManager(models.Manager):
+    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create skills queue for a character from ESI."""
+
+        logger.info("%s: Fetching skill queue from ESI", character)
+        skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(skillqueue, "skill_queue")
+
+        section = character.UpdateSection.SKILL_QUEUE
+        if force_update or character.has_section_changed(
+            section=section, content=skillqueue
+        ):
+            self._update_or_create_objs(character, skillqueue)
+            character.update_section_content_hash(section=section, content=skillqueue)
+
+        else:
+            logger.info("%s: Skill queue has not changed", character)
+
+    def _update_or_create_objs(self, character: models.Model, skillqueue):
+        # TODO: Replace delete + create with create + update
+        if skillqueue:
+            entries = [
+                self.model(
+                    character=character,
+                    eve_type=get_or_create_esi_or_none("skill_id", entry, EveType),
+                    finish_date=entry.get("finish_date"),
+                    finished_level=entry.get("finished_level"),
+                    level_end_sp=entry.get("level_end_sp"),
+                    level_start_sp=entry.get("level_start_sp"),
+                    queue_position=entry.get("queue_position"),
+                    start_date=entry.get("start_date"),
+                    training_start_sp=entry.get("training_start_sp"),
+                )
+                for entry in skillqueue
+            ]
+        else:
+            entries = list()
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if entries:
+                logger.info(
+                    "%s: Writing skill queue of size %s", character, len(entries)
+                )
+                self.bulk_create(
+                    entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+                )
+            else:
+                logger.info("%s: Skill queue is empty", character)
+
+
+class CharacterSkillManager(models.Manager):
+    @fetch_token_for_character("esi-skills.read_skills.v1")
+    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+        """Update or create skills for a character from ESI."""
+
+        skills_list = self._fetch_skills_from_esi(character, token)
+
+        section = character.UpdateSection.SKILLS
+        if force_update or character.has_section_changed(
+            section=section, content=skills_list
+        ):
+            self._preload_types(skills_list)
+            self._update_or_create_objs(character, skills_list)
+            character.update_section_content_hash(section=section, content=skills_list)
+
+        else:
+            logger.info("%s: Skills have not changed", character)
+
+    def _fetch_skills_from_esi(self, character, token: Token) -> dict:
+        from memberaudit.models import CharacterSkillpoints
+
+        logger.info("%s: Fetching skills from ESI", character)
+        skills_info = esi.client.Skills.get_characters_character_id_skills(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(skills_info, "skills")
+
+        CharacterSkillpoints.objects.update_or_create(
+            character=character,
+            defaults={
+                "total": skills_info.get("total_sp"),
+                "unallocated": skills_info.get("unallocated_sp"),
+            },
+        )
+
+        if not skills_info.get("skills"):
+            return {}
+
+        return {
+            obj["skill_id"]: obj
+            for obj in skills_info.get("skills")
+            if "skill_id" in obj
+        }
+
+    def _preload_types(self, skills_list: dict):
+        if skills_list:
+            incoming_ids = set(skills_list.keys())
+            existing_ids = set(self.values_list("eve_type_id", flat=True))
+            new_ids = incoming_ids.difference(existing_ids)
+            EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
+
+    @transaction.atomic()
+    def _update_or_create_objs(self, character, skills_list):
+        incoming_ids = set(skills_list.keys())
+        existing_ids = set(
+            self.filter(character=character).values_list("eve_type_id", flat=True)
+        )
+        obsolete_ids = existing_ids.difference(incoming_ids)
+        if obsolete_ids:
+            logger.info("%s: Removing %s obsolete skills", character, len(obsolete_ids))
+            self.filter(character=character, eve_type_id__in=obsolete_ids).delete()
+
+        create_ids = None
+        update_ids = None
+        if skills_list:
+            create_ids = incoming_ids.difference(existing_ids)
+            if create_ids:
+                self._create_from_dict(
+                    character=character, skills_list=skills_list, create_ids=create_ids
+                )
+
+            update_ids = incoming_ids.difference(create_ids)
+            if update_ids:
+                self._update_from_dict(
+                    character=character, skills_list=skills_list, update_ids=update_ids
+                )
+
+        if not obsolete_ids and not create_ids and not update_ids:
+            logger.info("%s: Skills have not changed", character)
+
+    def _create_from_dict(self, character, skills_list: dict, create_ids: set):
+        logger.info("%s: Storing %s new skills", character, len(create_ids))
+        skills = [
+            self.model(
+                character=character,
+                eve_type=EveType.objects.get(id=skill_info.get("skill_id")),
+                active_skill_level=skill_info.get("active_skill_level"),
+                skillpoints_in_skill=skill_info.get("skillpoints_in_skill"),
+                trained_skill_level=skill_info.get("trained_skill_level"),
+            )
+            for skill_id, skill_info in skills_list.items()
+            if skill_id in create_ids
+        ]
+        self.bulk_create(skills, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+
+    def _update_from_dict(self, character, skills_list: dict, update_ids: set):
+        logger.info("%s: Updating %s skills", character, len(update_ids))
+        update_pks = list(
+            self.filter(character=character, eve_type_id__in=update_ids).values_list(
+                "pk", flat=True
+            )
+        )
+        skills = self.in_bulk(update_pks)
+        for skill in skills.values():
+            skill_info = skills_list.get(skill.eve_type_id)
+            if skill_info:
+                skill.active_skill_level = skill_info.get("active_skill_level")
+                skill.skillpoints_in_skill = skill_info.get("skillpoints_in_skill")
+                skill.trained_skill_level = skill_info.get("trained_skill_level")
+
+        self.bulk_update(
+            skills.values(),
+            fields=[
+                "active_skill_level",
+                "skillpoints_in_skill",
+                "trained_skill_level",
+            ],
+            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+        )
+
+
+class CharacterSkillSetCheckManager(models.Manager):
+    @transaction.atomic()
+    def update_for_character(self, character):
+        from ..models import SkillSet
+
+        character_skills = {
+            obj["eve_type_id"]: obj["active_skill_level"]
+            for obj in character.skills.values("eve_type_id", "active_skill_level")
+        }
+        self.filter(character=character).all().delete()
+        skill_sets_qs = SkillSet.objects.prefetch_related(
+            "skills", "skills__eve_type"
+        ).all()
+        skill_sets_count = skill_sets_qs.count()
+        if skill_sets_count == 0:
+            logger.info("%s: No skill sets defined", character)
+            return
+
+        logger.info("%s: Checking %s skill sets", character, skill_sets_count)
+        skill_set_checks = [
+            self.model(character=character, skill_set=skill_set)
+            for skill_set in skill_sets_qs
+        ]
+        self.bulk_create(
+            skill_set_checks, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+        )
+
+        # add failed recommended / required skills to objects if any
+        obj_pks = list(self.filter(character=character).values_list("pk", flat=True))
+        skill_set_checks = self.in_bulk(obj_pks)
+        checks_by_skill_set_id = {
+            obj.skill_set_id: obj for obj in skill_set_checks.values()
+        }
+
+        # required skills
+        for skill_set in skill_sets_qs:
+            failed_skills = self._identify_failed_skills(
+                skill_set, character_skills, "required"
+            )
+            if failed_skills:
+                checks_by_skill_set_id[skill_set.id].failed_required_skills.add(
+                    *failed_skills
+                )
+
+        # required skills
+        for skill_set in skill_sets_qs:
+            failed_skills = self._identify_failed_skills(
+                skill_set, character_skills, "recommended"
+            )
+            if failed_skills:
+                checks_by_skill_set_id[skill_set.id].failed_recommended_skills.add(
+                    *failed_skills
+                )
+
+    @staticmethod
+    def _identify_failed_skills(
+        skill_set: models.Model, character_skills: dict, level_name: str
+    ) -> list:
+        failed_skills = list()
+        kwargs = {f"{level_name}_level__isnull": False}
+        for skill in skill_set.skills.filter(**kwargs):
+            eve_type_id = skill.eve_type_id
+            if eve_type_id not in character_skills or character_skills[
+                eve_type_id
+            ] < getattr(skill, f"{level_name}_level"):
+                failed_skills.append(skill)
+
+        return failed_skills
+
+
+class CharacterWalletBalanceManager(models.Manager):
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet balance for a character from ESI."""
+
+        logger.info("%s: Fetching wallet balance from ESI", character)
+        balance = esi.client.Wallet.get_characters_character_id_wallet(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(balance, "balance")
+
+        self.update_or_create(character=character, defaults={"total": balance})
+
+
+class CharacterWalletJournalEntryManager(models.Manager):
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet journal entries for character from ESI.
+
+        Note: Does not update unknown EveEntities.
+        """
+
+        logger.info("%s: Fetching wallet journal from ESI", character)
+        journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(journal, "wallet_journal")
+
+        cutoff_datetime = data_retention_cutoff()
+        entries_list = {
+            obj.get("id"): obj
+            for obj in journal
+            if cutoff_datetime is None or obj.get("date") > cutoff_datetime
+        }
+        if cutoff_datetime:
+            self.filter(character=character, date__lt=cutoff_datetime).delete()
+
+        with transaction.atomic():
+            incoming_ids = set(entries_list.keys())
+            existing_ids = set(self.values_list("entry_id", flat=True))
+            create_ids = incoming_ids.difference(existing_ids)
+            if not create_ids:
+                logger.info("%s: No new wallet journal entries", character)
+                return
+
+            logger.info(
+                "%s: Adding %s new wallet journal entries", character, len(create_ids)
+            )
+            entries = [
+                self.model(
+                    character=character,
+                    entry_id=entry_id,
+                    amount=row.get("amount"),
+                    balance=row.get("balance"),
+                    context_id=row.get("context_id"),
+                    context_id_type=(
+                        self.model.match_context_type_id(row.get("context_id_type"))
+                    ),
+                    date=row.get("date"),
+                    description=row.get("description"),
+                    first_party=get_or_create_or_none("first_party_id", row, EveEntity),
+                    reason=row.get("reason", ""),
+                    ref_type=row.get("ref_type"),
+                    second_party=get_or_create_or_none(
+                        "second_party_id", row, EveEntity
+                    ),
+                    tax=row.get("tax"),
+                    tax_receiver=row.get("tax_receiver"),
+                )
+                for entry_id, row in entries_list.items()
+                if entry_id in create_ids
+            ]
+            self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+
+
+class CharacterWalletTransactionManager(models.Manager):
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def update_or_create_esi(self, character, token):
+        """Update or create wallet transactions for a character from ESI."""
+
+        logger.info("%s: Fetching wallet transactions from ESI", character)
+        transactions = (
+            esi.client.Wallet.get_characters_character_id_wallet_transactions(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            character._store_list_to_disk(transactions, "wallet_transactions")
+
+        self._update_or_create_objs(
+            character=character,
+            cutoff_datetime=data_retention_cutoff(),
+            transactions=transactions,
+            token=token,
+        )
+
+    def _update_or_create_objs(self, character, cutoff_datetime, transactions, token):
+        from ..models import Location
+
+        transaction_list = {
+            obj.get("transaction_id"): obj
+            for obj in transactions
+            if cutoff_datetime is None or obj.get("date") > cutoff_datetime
+        }
+        if cutoff_datetime:
+            self.filter(character=character, date__lt=cutoff_datetime).delete()
+
+        incoming_location_ids = {
+            row.get("location_id") for row in transaction_list.values()
+        }
+        Location.objects.create_missing_esi(incoming_location_ids, token)
+        type_ids = {row.get("type_id") for row in transaction_list.values()}
+        EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
+
+        with transaction.atomic():
+            incoming_ids = set(transaction_list.keys())
+            existing_ids = set(self.values_list("transaction_id", flat=True))
+            create_ids = incoming_ids.difference(existing_ids)
+            if not create_ids:
+                logger.info("%s: No new wallet transactions", character)
+                return
+
+            logger.info(
+                "%s: Adding %s new wallet transactions",
+                character,
+                len(create_ids),
+            )
+            entries = []
+            for transaction_id, row in transaction_list.items():
+                if transaction_id in create_ids:
+                    try:
+                        journal_entry = character.wallet_journal.get(
+                            entry_id=row.get("journal_ref_id")
+                        )
+                    except character.wallet_journal.model.DoesNotExist:
+                        journal_entry = None
+                    entries.append(
+                        self.model(
+                            character=character,
+                            transaction_id=transaction_id,
+                            client=get_or_create_or_none("client_id", row, EveEntity),
+                            date=row.get("date"),
+                            is_buy=row.get("is_buy"),
+                            is_personal=row.get("is_personal"),
+                            journal_ref=journal_entry,
+                            location=get_or_none("location_id", row, Location),
+                            eve_type=EveType.objects.get(id=row.get("type_id")),
+                            quantity=row.get("quantity"),
+                            unit_price=row.get("unit_price"),
+                        )
+                    )
+            self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+
+        EveEntity.objects.bulk_update_new_esi()

@@ -390,13 +390,13 @@ class Character(models.Model):
 
     def update_attributes(self, force_update: bool = False):
         """update the character's attributes"""
-        from .sections import CharacterAttributes
+        from .character_sections import CharacterAttributes
 
         CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
     def update_character_details(self, force_update: bool = False):
         """syncs the character details for the given character"""
-        from .sections import CharacterDetails
+        from .character_sections import CharacterDetails
 
         CharacterDetails.objects.update_or_create_esi(self, force_update)
 
@@ -424,7 +424,7 @@ class Character(models.Model):
 
     def update_fw_stats(self, force_update: bool = False):
         """Update FW stats  for the given character"""
-        from .sections import CharacterFwStats
+        from .character_sections import CharacterFwStats
 
         CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
@@ -434,7 +434,7 @@ class Character(models.Model):
 
     def update_location(self):
         """update the location for the given character"""
-        from .sections import CharacterLocation
+        from .character_sections import CharacterLocation
 
         CharacterLocation.objects.update_or_create_esi(self)
 
@@ -466,7 +466,7 @@ class Character(models.Model):
 
     def update_online_status(self):
         """Update the character's online status"""
-        from .sections import CharacterOnlineStatus
+        from .character_sections import CharacterOnlineStatus
 
         CharacterOnlineStatus.objects.update_or_create_esi(self)
 
@@ -476,7 +476,7 @@ class Character(models.Model):
 
     def update_ship(self):
         """Update the ship for the given character."""
-        from .sections import CharacterShip
+        from .character_sections import CharacterShip
 
         CharacterShip.objects.update_or_create_esi(self)
 
@@ -496,7 +496,7 @@ class Character(models.Model):
 
     def update_wallet_balance(self):
         """syncs the character's wallet balance"""
-        from .sections import CharacterWalletBalance
+        from .character_sections import CharacterWalletBalance
 
         CharacterWalletBalance.objects.update_or_create_esi(self)
 

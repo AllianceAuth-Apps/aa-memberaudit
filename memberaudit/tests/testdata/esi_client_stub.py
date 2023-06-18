@@ -1,15 +1,18 @@
+"""Stubs for replacing the ESI client from the django-esi library."""
+
 import inspect
 import json
 import os
+from typing import NamedTuple
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 
-_currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+_current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 _FILENAME_ESI_TESTDATA = "esi_testdata.json"
 
 
 def load_test_data():
-    with open(f"{_currentdir}/{_FILENAME_ESI_TESTDATA}", "r", encoding="utf-8") as f:
+    with open(f"{_current_dir}/{_FILENAME_ESI_TESTDATA}", "r", encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -189,6 +192,23 @@ _endpoints = [
 ]
 
 esi_client_stub = EsiClientStub(load_test_data(), endpoints=_endpoints)
+
 esi_client_error_stub = EsiClientStub(
     load_test_data(), endpoints=_endpoints, http_error=True
 )
+
+
+class EsiStub(NamedTuple):
+    """This helper allows patching the esi object from a provider directly
+    and without required to define mock.
+
+    Example:
+
+    ``@patch(MANAGERS_PATH + ".general.esi", esi_stub)``
+    """
+
+    client: EsiClientStub
+
+
+esi_stub = EsiStub(esi_client_stub)
+esi_error_stub = EsiStub(esi_client_error_stub)

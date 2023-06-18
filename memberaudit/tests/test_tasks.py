@@ -34,7 +34,7 @@ from memberaudit.models import (
     Location,
 )
 
-from .testdata.esi_client_stub import esi_client_error_stub, esi_client_stub
+from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import create_character, create_compliance_group_designation
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
@@ -94,7 +94,7 @@ class TestOtherTasks(TestCaseTasks):
 
 @override_settings(CELERY_ALWAYS_EAGER=True)  # need to ignore exceptions
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-@patch(MANAGERS_PATH + ".sections.esi")
+@patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
@@ -329,7 +329,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         """when building the asset tree failed then report the error"""
         mock_esi.client = esi_client_stub
 
-        with patch(MANAGERS_PATH + ".sections.logger") as m:
+        with patch(MANAGERS_PATH + ".character_sections_1.logger") as m:
             exception = build_http_error(500, "Test exception")
             m.info.side_effect = exception
             with self.assertRaises(OSError):
@@ -385,7 +385,104 @@ class TestUpdateCharacterAssets(TestCaseTasks):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".sections.esi")
+@patch(MANAGERS_PATH + ".character_sections_1.esi")
+class TestUpdateCharacterContacts(TestCaseTasks):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.token = (
+            cls.character_1001.eve_character.character_ownership.user.token_set.first()
+        )
+
+    def test_update_ok(self, mock_esi):
+        """when update succeeded then report update success"""
+        mock_esi.client = esi_client_stub
+
+        tasks.update_character_contacts(self.character_1001.pk)
+
+        status = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.CONTACTS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+
+    def test_detect_error(self, mock_esi):
+        """when update failed then report the error"""
+        exception = build_http_error(500, "Test exception")
+        mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = (
+            exception
+        )
+
+        try:
+            tasks.update_character_contacts(self.character_1001.pk)
+        except Exception:
+            status = self.character_1001.update_status_set.get(
+                section=Character.UpdateSection.CONTACTS
+            )
+            self.assertFalse(status.is_success)
+            self.assertEqual(
+                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            )
+        else:
+            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.esi")
+class TestUpdateCharacterContracts(TestCaseTasks):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.token = (
+            cls.character_1001.eve_character.character_ownership.user.token_set.first()
+        )
+
+    def test_update_ok(self, mock_esi):
+        """when update succeeded then report update success"""
+        mock_esi.client = esi_client_stub
+
+        tasks.update_character_contracts(self.character_1001.pk)
+
+        status = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.CONTRACTS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+
+    def test_detect_error(self, mock_esi):
+        """when update failed then report the error"""
+        exception = build_http_error(500, "Test exception")
+        mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
+            exception
+        )
+
+        try:
+            tasks.update_character_contracts(self.character_1001.pk)
+        except Exception:
+            status = self.character_1001.update_status_set.get(
+                section=Character.UpdateSection.CONTRACTS
+            )
+            self.assertFalse(status.is_success)
+            self.assertEqual(
+                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            )
+        else:
+            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
 class TestUpdateCharacterMails(TestCaseTasks):
     @classmethod
@@ -437,104 +534,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".sections.esi")
-class TestUpdateCharacterContacts(TestCaseTasks):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
-        )
-
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
-        mock_esi.client = esi_client_stub
-
-        tasks.update_character_contacts(self.character_1001.pk)
-
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.CONTACTS
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
-        mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = (
-            exception
-        )
-
-        try:
-            tasks.update_character_contacts(self.character_1001.pk)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.CONTACTS
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
-
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".sections.esi")
-class TestUpdateCharacterContracts(TestCaseTasks):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
-        )
-
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
-        mock_esi.client = esi_client_stub
-
-        tasks.update_character_contracts(self.character_1001.pk)
-
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.CONTRACTS
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
-        mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
-            exception
-        )
-
-        try:
-            tasks.update_character_contracts(self.character_1001.pk)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.CONTRACTS
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
-
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".sections.esi")
+@patch(MANAGERS_PATH + ".character_sections_3.esi")
 class TestUpdateCharacterWalletJournal(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
@@ -579,13 +579,17 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
 
 
-@patch(MANAGERS_PATH + ".sections.data_retention_cutoff", lambda: None)
-@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
+@patch(TASKS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".sections.esi")
-@patch(MANAGERS_PATH + ".general.esi")
+@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
+@patch(MANAGERS_PATH + ".general.esi", esi_stub)
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharacter(TestCaseTasks):
+class TestCharacterUpdateFull(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -597,45 +601,17 @@ class TestUpdateCharacter(TestCaseTasks):
         self.character_1001 = create_memberaudit_character(1001)
 
     @skip  # temporary disabled because it does not work in tox
-    def test_should_update_normally(self, mock_esi_models, mock_esi_managers):
+    def test_should_update_normally(self):
         """can update from scratch"""
-        # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         # when
         result = tasks.update_character(self.character_1001.pk)
         # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    def test_should_report_errors_during_updates(
-        self, mock_esi_models, mock_esi_managers
-    ):
-        # given
-        mock_esi_models.client = esi_client_error_stub  # raises exception
-        mock_esi_managers.client = esi_client_stub
-        # when
-        with self.assertRaises(OSError):  # raised when trying to fetch attributes
-            tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(self.character_1001.is_update_status_ok())
-        status = self.character_1001.update_status_set.filter(
-            character=self.character_1001, is_success=False
-        ).first()
-        self.assertEqual(
-            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
-        )
-        self.assertTrue(status.finished_at)
-
     @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
-    def test_should_update_stale_sections_only_1(
-        self, update_loyalty, mock_esi_models, mock_esi_managers
-    ):
-        """normal section"""
-
+    def test_should_update_normal_section_only_when_stale(self, update_loyalty):
         # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.LOYALTY,
@@ -649,14 +625,10 @@ class TestUpdateCharacter(TestCaseTasks):
         self.assertFalse(update_loyalty.called)
 
     @patch(TASKS_PATH + ".update_character_mails", spec=True)
-    def test_should_update_stale_sections_only_2(
-        self, mock_update_character_mails, mock_esi_models, mock_esi_managers
+    def test_should_update_special_section_only_when_stale(
+        self, mock_update_character_mails
     ):
-        """special section"""
-
         # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.MAILS,
@@ -669,15 +641,11 @@ class TestUpdateCharacter(TestCaseTasks):
         # then
         self.assertFalse(mock_update_character_mails.apply_async.called)
 
-    def test_should_update_stale_sections_only_3(
-        self, mock_esi_models, mock_esi_managers
-    ):
+    def test_should_update_stale_sections_only_3(self):
         """When generic section has recently been updated and force_update is called
         then update again
         """
         # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         section: CharacterUpdateStatus = CharacterUpdateStatus.objects.create(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS.value,
@@ -692,12 +660,8 @@ class TestUpdateCharacter(TestCaseTasks):
         section.refresh_from_db()
         self.assertGreater(section.finished_at, last_finished)
 
-    def test_no_update_required(self, mock_esi_models, mock_esi_managers):
-        """Do not update anything when not required"""
-
+    def test_should_do_nothing_when_not_required(self):
         # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         for section in Character.UpdateSection.values:
             CharacterUpdateStatus.objects.create(
                 character=self.character_1001,
@@ -711,27 +675,57 @@ class TestUpdateCharacter(TestCaseTasks):
         # then
         self.assertFalse(result)
 
-    def test_update_forced(self, mock_esi_models, mock_esi_managers):
-        """Can do forced update"""
-        # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
+    def test_can_do_forced_update(self):
         # when
         result = tasks.update_character(self.character_1001.pk, force_update=True)
         # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    def test_skip_update_for_orphans(self, mock_esi_models, mock_esi_managers):
+    def test_skip_update_for_orphans(self):
         # given
-        mock_esi_models.client = esi_client_stub
-        mock_esi_managers.client = esi_client_stub
         character = create_character(EveCharacter.objects.get(character_id=1121))
         # when
         result = tasks.update_character(character.pk)
         # then
         self.assertFalse(result)
         self.assertIsNone(character.is_update_status_ok())
+
+
+@patch(TASKS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestCharacterUpdateErrorReporting(TestCaseTasks):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+
+    def setUp(self) -> None:
+        self.character_1001 = create_memberaudit_character(1001)
+
+    def test_should_report_errors_during_updates(self):
+        # when
+        with self.assertRaises(OSError):  # raised when trying to fetch attributes
+            tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertFalse(self.character_1001.is_update_status_ok())
+        status = self.character_1001.update_status_set.filter(
+            character=self.character_1001, is_success=False
+        ).first()
+        self.assertEqual(
+            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+        )
+        self.assertTrue(status.finished_at)
 
 
 @patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))

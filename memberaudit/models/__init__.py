@@ -1,16 +1,7 @@
-from .character import Character, CharacterUpdateStatus  # noqa: F401
-from .general import (  # noqa: F401
-    ComplianceGroupDesignation,
-    EveShipType,
-    EveSkillType,
-    General,
-    Location,
-    MailEntity,
-    SkillSet,
-    SkillSetGroup,
-    SkillSetSkill,
-)
-from .sections import (  # noqa: F401
+# flake8: noqa
+
+from .character import Character, CharacterUpdateStatus
+from .character_sections import (
     CharacterAsset,
     CharacterAttributes,
     CharacterContact,
@@ -40,4 +31,15 @@ from .sections import (  # noqa: F401
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
+)
+from .general import (
+    ComplianceGroupDesignation,
+    EveShipType,
+    EveSkillType,
+    General,
+    Location,
+    MailEntity,
+    SkillSet,
+    SkillSetGroup,
+    SkillSetSkill,
 )

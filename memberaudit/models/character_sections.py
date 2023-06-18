@@ -26,7 +26,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.constants import EveFactionId
 from memberaudit.core.xml_converter import eve_xml_to_html
-from memberaudit.managers.sections import (
+from memberaudit.managers.character_sections_1 import (
     CharacterAssetManager,
     CharacterAttributesManager,
     CharacterContactLabelManager,
@@ -34,6 +34,8 @@ from memberaudit.managers.sections import (
     CharacterContractBidManager,
     CharacterContractItemManager,
     CharacterContractManager,
+)
+from memberaudit.managers.character_sections_2 import (
     CharacterCorporationHistoryManager,
     CharacterDetailsManager,
     CharacterFwStatsManager,
@@ -43,6 +45,8 @@ from memberaudit.managers.sections import (
     CharacterLoyaltyEntryManager,
     CharacterMailLabelManager,
     CharacterMailManager,
+)
+from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
     CharacterOnlineStatusManager,
     CharacterPlanetManager,
