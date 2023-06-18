@@ -189,8 +189,7 @@ class CharacterContact(models.Model):
         if 0 > self.standing >= -5:
             return self.STANDING_BAD
 
-        else:
-            return self.STANDING_TERRIBLE
+        return self.STANDING_TERRIBLE
 
 
 class CharacterContract(models.Model):

@@ -146,4 +146,4 @@ class NoSocketsTestCaseFixtures(NoSocketsTestCase):
     fixtures = ["disable_analytics.json"]
 
 
-TOX_IS_RUNNING = bool(os.getenv("TOX_IS_RUNNING", False))
+TOX_IS_RUNNING = os.getenv("TOX_IS_RUNNING") == "1"

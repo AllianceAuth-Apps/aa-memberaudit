@@ -73,17 +73,20 @@ class General(models.Model):
         """Users that the given user can access."""
         if user.has_perm("memberaudit.view_everything"):
             return cls.users_with_basic_access()
-        elif (
+
+        if (
             user.has_perm("memberaudit.view_same_alliance")
             and user.profile.main_character.alliance_id
         ):
             return cls.users_with_basic_access().filter(
                 profile__main_character__alliance_id=user.profile.main_character.alliance_id
             )
-        elif user.has_perm("memberaudit.view_same_corporation"):
+
+        if user.has_perm("memberaudit.view_same_corporation"):
             return cls.users_with_basic_access().filter(
                 profile__main_character__corporation_id=user.profile.main_character.corporation_id
             )
+
         return User.objects.filter(pk=user.pk)
 
     @classmethod

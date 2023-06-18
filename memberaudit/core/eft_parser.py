@@ -115,7 +115,7 @@ class _EveTypes:
 
     @staticmethod
     def _fetch_types_from_esi(entity_ids) -> Dict[str, EveType]:
-        eve_types = dict()
+        eve_types = {}
         for entity_id in entity_ids:
             try:
                 obj, _ = EveType.objects.get_or_create_esi(
@@ -272,8 +272,10 @@ class _EftItem:
     def is_high_slot(self) -> bool:
         if self.slot_type is _EftSlotType.HIGH_SLOT:
             return True
-        elif self.is_empty:
+
+        if self.is_empty:
             return False
+
         effect_ids = {
             obj.eve_dogma_effect_id for obj in self.item_type.dogma_effects.all()
         }
@@ -302,8 +304,10 @@ class _EftItem:
     def is_rig_slot(self) -> bool:
         if self.slot_type is _EftSlotType.RIG_SLOT:
             return True
-        elif self.is_empty:
+
+        if self.is_empty:
             return False
+
         effect_ids = {
             obj.eve_dogma_effect_id for obj in self.item_type.dogma_effects.all()
         }
@@ -312,8 +316,10 @@ class _EftItem:
     def is_subsystem(self) -> bool:
         if self.slot_type is _EftSlotType.SUBSYSTEM_SLOT:
             return True
-        elif self.is_empty:
+
+        if self.is_empty:
             return False
+
         effect_ids = {
             obj.eve_dogma_effect_id for obj in self.item_type.dogma_effects.all()
         }

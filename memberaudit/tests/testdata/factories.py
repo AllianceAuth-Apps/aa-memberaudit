@@ -400,7 +400,7 @@ def next_number(key=None) -> int:
     try:
         return next_number._counter[key].__next__()
     except AttributeError:
-        next_number._counter = dict()
+        next_number._counter = {}
     except KeyError:
         pass
     next_number._counter[key] = count(start=1)

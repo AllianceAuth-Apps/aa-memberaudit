@@ -216,7 +216,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
                 for entry in skillqueue
             ]
         else:
-            entries = list()
+            entries = []
         with transaction.atomic():
             self.filter(character=character).delete()
             if entries:
@@ -412,7 +412,7 @@ class CharacterSkillSetCheckManager(models.Manager):
     def _identify_failed_skills(
         skill_set: models.Model, character_skills: dict, level_name: str
     ) -> list:
-        failed_skills = list()
+        failed_skills = []
         kwargs = {f"{level_name}_level__isnull": False}
         for skill in skill_set.skills.filter(**kwargs):
             eve_type_id = skill.eve_type_id

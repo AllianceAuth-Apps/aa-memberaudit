@@ -617,8 +617,8 @@ class CharacterUpdateStatus(models.Model):
     def is_updating(self) -> bool:
         if not self.started_at and not self.finished_at:
             return False
-        else:
-            return self.started_at is not None and self.finished_at is None
+
+        return self.started_at is not None and self.finished_at is None
 
     def has_changed(self, content: Any, hash_num: int = 1) -> bool:
         """returns True if given content is not the same as previous one, else False"""

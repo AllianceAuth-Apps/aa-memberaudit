@@ -70,7 +70,7 @@ class CharacterAssetManagerBase(models.Manager):
         assets_flat = {int(x["item_id"]): x for x in asset_list}
 
         logger.info("%s: Fetching asset names from ESI", character)
-        names = list()
+        names = []
         for asset_ids_chunk in chunks(list(assets_flat.keys()), 999):
             names += esi.client.Assets.post_characters_character_id_assets_names(
                 character_id=character.eve_character.character_id,
@@ -246,7 +246,7 @@ class CharacterContactManager(models.Manager):
         if contacts_data:
             contacts_list = {int(x["contact_id"]): x for x in contacts_data}
         else:
-            contacts_list = dict()
+            contacts_list = {}
         section = character.UpdateSection.CONTACTS
         if force_update or character.has_section_changed(
             section=section, content=contacts_list
@@ -334,7 +334,7 @@ class CharacterContactManager(models.Manager):
                 if not is_new:
                     character_contact.labels.clear()
 
-                labels = list()
+                labels = []
                 for label_id in contact_data.get("label_ids"):
                     try:
                         label = character.contact_labels.get(label_id=label_id)

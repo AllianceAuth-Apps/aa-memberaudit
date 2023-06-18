@@ -458,7 +458,7 @@ def assets_create_parents(
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
 
     assets_flat = {int(x["item_id"]): x for x in asset_list}
-    new_assets = list()
+    new_assets = []
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         if cycle == 1:
@@ -542,7 +542,7 @@ def assets_create_children(
     # for debug
     # store_list_to_disk(character, asset_list, f"child_asset_list_{cycle}")
 
-    new_assets = list()
+    new_assets = []
     assets_flat = {int(x["item_id"]): x for x in asset_list}
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
@@ -1138,8 +1138,8 @@ def _export_data_inform_user(user_pk: int, topic: Optional[str] = None):
             "Data export for all topics has been completed. "
             "It covers the following:\n"
         )
-        for topic in data_exporters.DataExporter.topics:
-            message += f"- {topic}\n"
+        for obj in data_exporters.DataExporter.topics:
+            message += f"- {obj}\n"
     notify(user=user, title=title, message=message, level="INFO")
 
 
