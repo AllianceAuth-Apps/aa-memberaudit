@@ -1,3 +1,5 @@
+"""Django app definition."""
+
 from django.apps import AppConfig
 
 from . import __version__

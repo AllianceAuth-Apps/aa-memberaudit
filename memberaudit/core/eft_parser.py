@@ -168,6 +168,7 @@ class _EftTextItem:
     slot_type: _EftSlotType = _EftSlotType.NONE
 
     def type_names(self) -> Set[str]:
+        """Return types used in the item."""
         types = set()
         if self.item_type:
             types.add(self.item_type)
@@ -217,13 +218,15 @@ class _EftTextSection:
     items: List[_EftTextItem] = field(default_factory=list)
 
     def type_names(self) -> Set[str]:
+        """Return types used in the section."""
         types = set()
         for item in self.items:
             types |= item.type_names()
         return types
 
     @classmethod
-    def create_from_lines(cls, lines):
+    def create_from_lines(cls, lines: Iterable[str]) -> "_EftTextSection":
+        """Create new object from lines."""
         items = [_EftTextItem.create_from_line(line) for line in lines]
         return cls(items=items)
 

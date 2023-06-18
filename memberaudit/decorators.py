@@ -1,3 +1,5 @@
+"""Decorators for Member Audit."""
+
 from functools import wraps
 
 from django.http import HttpResponseForbidden, HttpResponseNotFound

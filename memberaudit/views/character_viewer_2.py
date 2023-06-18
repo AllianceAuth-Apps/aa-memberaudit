@@ -1,3 +1,5 @@
+"""Character viewer views (2/2)."""
+
 import datetime as dt
 from typing import Optional
 

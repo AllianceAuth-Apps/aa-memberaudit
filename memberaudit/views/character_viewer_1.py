@@ -1,3 +1,5 @@
+"""Character viewer views (1/2)."""
+
 from typing import Optional, Tuple
 
 from django.contrib.auth.decorators import login_required, permission_required

@@ -1,7 +1,11 @@
+"""Shared constants for Member Audit."""
+
 from enum import IntEnum
 
 
 class EveCategoryId(IntEnum):
+    """Eve Online named category IDs"""
+
     ASTEROID = 25
     BLUEPRINT = 9
     CHARGE = 8
@@ -17,6 +21,8 @@ class EveCategoryId(IntEnum):
 
 
 class EveFactionId(IntEnum):
+    """Eve Online named faction IDs"""
+
     AMARR_EMPIRE = 500_003
     CALDARI_STATE = 500_001
     GALLENTE_FEDERATION = 500_004
@@ -24,16 +30,22 @@ class EveFactionId(IntEnum):
 
 
 class EveGroupId(IntEnum):
+    """Eve Online named group IDs"""
+
     CYBERIMPLANT = 300
     BOOSTER = 303
 
 
 class EveTypeId(IntEnum):
+    """Eve Online named type IDs"""
+
     ASSET_SAFETY_WRAP = 60
     SOLAR_SYSTEM = 5
 
 
 class EveDogmaAttributeId(IntEnum):
+    """Eve Online named dogma attribute IDs"""
+
     IMPLANT_SLOT = 331
     REQUIRED_SKILL_1 = 182
     REQUIRED_SKILL_1_LEVEL = 277
@@ -50,6 +62,8 @@ class EveDogmaAttributeId(IntEnum):
 
 
 class EveDogmaEffectId(IntEnum):
+    """Eve Online named dogma effect IDs"""
+
     LO_POWER = 11
     HI_POWER = 12
     MED_POWER = 13
@@ -58,6 +72,7 @@ class EveDogmaEffectId(IntEnum):
 
 
 MAP_ARABIC_TO_ROMAN_NUMBERS = {0: "-", 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
+"""Map to convert arabic to roman numbers (1 to 5 only)"""
 
 DATETIME_FORMAT = "%Y-%b-%d %H:%M"
 MY_DATETIME_FORMAT = "Y-M-d H:i"

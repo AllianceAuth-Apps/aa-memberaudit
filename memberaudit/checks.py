@@ -1,3 +1,5 @@
+"""Django system checks."""
+
 from django.core.checks import Critical, Tags, register
 
 

@@ -1,3 +1,5 @@
+"""Define admin site for Member Audit."""
+
 from typing import List, Optional
 
 from django import forms

@@ -1,3 +1,5 @@
+"""Define hooks for Alliance Auth like the sidebar menu entry."""
+
 from allianceauth import hooks
 from allianceauth.services.hooks import MenuItemHook, UrlHook
 

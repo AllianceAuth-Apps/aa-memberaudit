@@ -1,3 +1,5 @@
+"""Member Audit forms."""
+
 from django import forms
 from django.core.exceptions import ValidationError
 
@@ -47,7 +49,8 @@ class ImportFittingForm(forms.Form):
                         "This fitting does not appear to be a valid EFT format."
                     )
                 }
-            )
+            ) from None
+
         data["_fitting"] = fitting
         data["_errors"] = errors
         skill_set_name = data.get("skill_set_name") or fitting.name
@@ -98,7 +101,8 @@ class ImportSkillPlanForm(forms.Form):
         except SkillPlanError:
             raise ValidationError(
                 {"skill_plan_text": "This does not appear to be a valid skill plan."}
-            )
+            ) from None
+
         data["_skill_plan"] = skill_plan
         data["_errors"] = errors
         if (

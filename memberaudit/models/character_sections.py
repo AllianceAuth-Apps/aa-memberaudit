@@ -501,19 +501,22 @@ class CharacterContractItem(models.Model):
 
     @property
     def is_blueprint_original(self) -> bool:
+        """Return True if item is an original blueprint, else False"""
         return self.raw_quantity == -1
 
     @property
     def is_blueprint_copy(self) -> bool:
+        """Return True if item is a blueprint copy, else False"""
         return self.raw_quantity == -2
 
     @property
     def is_blueprint(self) -> bool:
+        """Return True if item is any kind of blueprint, else False"""
         return self.raw_quantity in [-1, -2]
 
     @property
     def name_display(self) -> str:
-        """name to be displayed to user"""
+        """Return name to be displayed to user."""
         name = self.eve_type.name
         if self.is_blueprint_copy:
             name += " [BPC]"
@@ -1113,6 +1116,8 @@ class CharacterSkillqueueEntry(models.Model):
 
 
 class CharacterSkillSetCheck(models.Model):
+    """The result of a skill check of a character against a skill set."""
+
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="skill_set_checks"
     )
@@ -1164,6 +1169,8 @@ class CharacterWalletBalance(models.Model):
 
 
 class CharacterWalletJournalEntry(models.Model):
+    """A wallet journal entry of a character in Eve Online."""
+
     CONTEXT_ID_TYPE_UNDEFINED = "NON"
     CONTEXT_ID_TYPE_STRUCTURE_ID = "STR"
     CONTEXT_ID_TYPE_STATION_ID = "STA"
@@ -1287,6 +1294,8 @@ class CharacterWalletJournalEntry(models.Model):
 
 
 class CharacterWalletTransaction(models.Model):
+    """A wallet transaction of a character in Eve Online."""
+
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="wallet_transactions"
     )

@@ -1,6 +1,7 @@
 """
 Top level models
 """
+from typing import Set
 
 from django.contrib.auth.models import Group, Permission, User
 from django.core.exceptions import ValidationError
@@ -64,6 +65,7 @@ class General(models.Model):
 
     @classmethod
     def users_with_basic_access(cls) -> models.QuerySet:
+        """Return users which have at least basic access to Member Audit."""
         return users_with_permission(cls.basic_permission())
 
     @classmethod
@@ -442,7 +444,7 @@ class SkillSetSkill(models.Model):
         return self._skill_str(self.required_level) if self.required_level else ""
 
     @property
-    def recommened_skill_str(self) -> str:  # TODO: Add test
+    def recommended_skill_str(self) -> str:  # TODO: Add test
         return self._skill_str(self.recommended_level) if self.recommended_level else ""
 
     @property
@@ -469,6 +471,8 @@ class MailEntity(models.Model):
     """A sender or recipient in a mail"""
 
     class Category(models.TextChoices):
+        """A category of a mail entity."""
+
         ALLIANCE = "AL", _("Alliance")
         CHARACTER = "CH", _("Character")
         CORPORATION = "CO", _("Corporation")
@@ -476,7 +480,8 @@ class MailEntity(models.Model):
         UNKNOWN = "UN", _("Unknown")
 
         @classmethod
-        def eve_entity_compatible(cls) -> set:
+        def eve_entity_compatible(cls) -> Set["MailEntity.Category"]:
+            """Return categories, which are compatible with EveEntity."""
             return {cls.ALLIANCE, cls.CHARACTER, cls.CORPORATION}
 
     id = models.PositiveIntegerField(primary_key=True)

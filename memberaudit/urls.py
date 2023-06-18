@@ -1,3 +1,5 @@
+"""Define routes for Member Audit."""
+
 from django.urls import path
 
 from memberaudit.views import (

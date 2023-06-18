@@ -75,7 +75,7 @@ ignore-patterns = ["test_.*.py,__init__.py", "generate_.*.py"]
 good-names = ["i", "j", "k", "x", "f", "ex"]
 
 [tool.pylint.'FORMAT']
-max-line-length = 100
+max-line-length = 120
 
 [tool.pylint.'MESSAGES CONTROL']
-disable = ["R", "C"]
+disable = ["R", "E0213", "E1101", "C0209"]  # , "C"

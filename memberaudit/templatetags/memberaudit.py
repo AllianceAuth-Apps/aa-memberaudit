@@ -1,3 +1,5 @@
+"""Template tags for Member Audit."""
+
 from django import template
 from django.urls import reverse
 
