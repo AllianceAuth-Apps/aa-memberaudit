@@ -276,8 +276,8 @@ class LocationManager(models.Manager):
                 http_error,
             )
             return self.get_or_create(id=id)
-        else:
-            return self._structure_update_or_create_dict(id=id, structure=structure)
+
+        return self._structure_update_or_create_dict(id=id, structure=structure)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
@@ -408,13 +408,13 @@ class MailEntityManager(models.Manager):
         id = int(id)
         try:
             obj = self.get(id=id)
-            if obj.category == self.model.Category.MAILING_LIST:
-                return obj, False
-            else:
-                category = obj.category
-
         except self.model.DoesNotExist:
             pass
+        else:
+            if obj.category == self.model.Category.MAILING_LIST:
+                return obj, False
+
+            category = obj.category
 
         if category and category in self.model.Category.eve_entity_compatible():
             return self.update_or_create_esi(id=id, category=category)

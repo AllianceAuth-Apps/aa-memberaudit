@@ -12,5 +12,4 @@ def navactive_2(request, url_name: str, *args):
     url = reverse(url_name, args=args)
     if request.path == url:
         return "active"
-    else:
-        return ""
+    return ""

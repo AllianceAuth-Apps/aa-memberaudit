@@ -529,11 +529,10 @@ class MailEntity(models.Model):
         if self.category == self.Category.ALLIANCE and self.name:
             return dotlan.alliance_url(self.name)
 
-        elif self.category == self.Category.CHARACTER:
+        if self.category == self.Category.CHARACTER:
             return evewho.character_url(self.id)
 
-        elif self.category == self.Category.CORPORATION and self.name:
+        if self.category == self.Category.CORPORATION and self.name:
             return dotlan.corporation_url(self.name)
 
-        else:
-            return ""
+        return ""

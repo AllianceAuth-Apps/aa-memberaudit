@@ -70,6 +70,7 @@ known_django = ["django", "django_webtest", "esi", "eveuniverse"]
 
 [tool.pylint.'MASTER']
 ignore-patterns = ["test_.*.py,__init__.py", "generate_.*.py"]
+ignore-paths = ["^.*//migrations//.*$"]
 
 [tool.pylint.'BASIC']
 good-names = ["i", "j", "k", "x", "f", "ex"]

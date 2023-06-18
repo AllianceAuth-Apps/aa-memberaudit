@@ -1,4 +1,5 @@
 """Parser for fitting in EFT Format"""
+
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
@@ -284,8 +285,10 @@ class _EftItem:
     def is_med_slot(self) -> bool:
         if self.slot_type is _EftSlotType.MEDIUM_SLOT:
             return True
-        elif self.is_empty:
+
+        if self.is_empty:
             return False
+
         effect_ids = {
             obj.eve_dogma_effect_id for obj in self.item_type.dogma_effects.all()
         }
@@ -294,8 +297,10 @@ class _EftItem:
     def is_low_slot(self) -> bool:
         if self.slot_type is _EftSlotType.LOW_SLOT:
             return True
-        elif self.is_empty:
+
+        if self.is_empty:
             return False
+
         effect_ids = {
             obj.eve_dogma_effect_id for obj in self.item_type.dogma_effects.all()
         }
