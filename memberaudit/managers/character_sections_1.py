@@ -259,7 +259,7 @@ class CharacterContactManager(models.Manager):
             logger.info("%s: Contacts have not changed", character)
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character: models.Model, contacts_list):
+    def _update_or_create_objs(self, character, contacts_list):
         incoming_ids = set(contacts_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("eve_entity_id", flat=True)
@@ -290,9 +290,7 @@ class CharacterContactManager(models.Manager):
         if not obsolete_ids and not create_ids and not update_ids:
             logger.info("%s: Contacts have not changed", character)
 
-    def _create_new_contacts(
-        self, character: models.Model, contacts_list: dict, contact_ids: list
-    ):
+    def _create_new_contacts(self, character, contacts_list: dict, contact_ids: list):
         logger.info("%s: Storing %s new contacts", character, len(contact_ids))
         new_contacts_list = {
             contact_id: obj
@@ -319,7 +317,7 @@ class CharacterContactManager(models.Manager):
 
     def _update_contact_contact_labels(
         self,
-        character: models.Model,
+        character,
         contacts_list: dict,
         contact_ids: list,
         is_new=False,
@@ -352,7 +350,7 @@ class CharacterContactManager(models.Manager):
                     character_contact.labels.add(*labels)
 
     def _update_existing_contacts(
-        self, character: models.Model, contacts_list: dict, contact_ids: list
+        self, character, contacts_list: dict, contact_ids: list
     ):
         logger.info("%s: Updating %s contacts", character, len(contact_ids))
         update_contact_pks = list(
@@ -435,7 +433,7 @@ class CharacterContractManager(models.Manager):
         return contracts_list
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character: models.Model, contracts_list):
+    def _update_or_create_objs(self, character, contracts_list):
         incoming_ids = set(contracts_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("contract_id", flat=True)
@@ -456,7 +454,7 @@ class CharacterContractManager(models.Manager):
             )
 
     def _create_new_contracts(
-        self, character: models.Model, contracts_list: dict, contract_ids: set
+        self, character, contracts_list: dict, contract_ids: set
     ) -> None:
         from ..models import Location
 
@@ -513,7 +511,7 @@ class CharacterContractManager(models.Manager):
         self.bulk_create(new_contracts, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
     def _update_existing_contracts(
-        self, character: models.Model, contracts_list: dict, contract_ids: set
+        self, character, contracts_list: dict, contract_ids: set
     ) -> None:
         logger.info("%s: Updating %s contracts", character, len(contract_ids))
         update_contract_pks = list(

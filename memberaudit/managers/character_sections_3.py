@@ -198,7 +198,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
         else:
             logger.info("%s: Skill queue has not changed", character)
 
-    def _update_or_create_objs(self, character: models.Model, skillqueue):
+    def _update_or_create_objs(self, character, skillqueue):
         # TODO: Replace delete + create with create + update
         if skillqueue:
             entries = [

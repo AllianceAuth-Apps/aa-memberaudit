@@ -418,7 +418,7 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterImplantsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterImplantManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_implants_1(self, mock_esi):
         """can create implants from scratch"""
         mock_esi.client = esi_client_stub

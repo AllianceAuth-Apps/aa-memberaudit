@@ -5,7 +5,7 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -26,11 +26,13 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
+    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
@@ -338,6 +340,25 @@ class Character(models.Model):
         except CharacterUpdateStatus.DoesNotExist:
             return True
         return section_obj.is_updating
+
+    def update_data_if_changed_or_forced(
+        self,
+        section: str,
+        fetch_func: Callable,
+        store_func: Callable,
+        force_update: bool = False,
+    ):
+        """Fetch data from ESI and store it if it has changed or it is forced."""
+
+        data = fetch_func(self)
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            store_debug_data_to_disk(self, data, str(section))
+
+        if force_update or self.has_section_changed(section=section, content=data):
+            store_func(self, data)
+            self.update_section_content_hash(section=section, content=data)
+        else:
+            logger.info("%s: %s has not changed", section, self)
 
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
