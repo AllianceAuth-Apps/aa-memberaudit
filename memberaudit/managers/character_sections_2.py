@@ -410,25 +410,18 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
 
 class CharacterMailManager(models.Manager):
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_headers_esi(
-        self, character, token: Token, force_update: bool = False
-    ):
+    def update_or_create_headers_esi(self, character, force_update: bool = False):
         """Update or create mail headers for a character from ESI."""
 
-        mail_headers = self._fetch_mail_headers(character, token)
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mail_headers, "mail_headers")
-
-        self._update_or_create_objs(
-            character=character,
-            mail_headers=mail_headers,
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.MAILS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
             force_update=force_update,
         )
 
-    @staticmethod
-    def _fetch_mail_headers(character, token) -> dict:
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
         last_mail_id = None
         mail_headers_all = []
         page = 1
@@ -439,8 +432,6 @@ class CharacterMailManager(models.Manager):
                 last_mail_id=last_mail_id,
                 token=token.valid_access_token(),
             ).results()
-            if MEMBERAUDIT_DEVELOPER_MODE:
-                store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
             mail_headers_all += mail_headers
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
@@ -457,57 +448,40 @@ class CharacterMailManager(models.Manager):
             or not obj.get("timestamp")
             or obj.get("timestamp") > cutoff_datetime
         }
-        logger.info(
+        logger.debug(
             "%s: Received %s mail headers from ESI", character, len(mail_headers_all_2)
         )
         return mail_headers_all_2
 
-    @staticmethod
-    def _headers_list_subset(mail_headers, subset_ids) -> dict:
-        return {
-            mail_info["mail_id"]: mail_info
-            for mail_id, mail_info in mail_headers.items()
-            if mail_id in subset_ids
-        }
-
-    def _update_or_create_objs(self, character, mail_headers, force_update):
-        cutoff_datetime = data_retention_cutoff()
-        if cutoff_datetime:
+    def _update_or_create_objs(self, character, mail_headers):
+        if cutoff_datetime := data_retention_cutoff():
             self.filter(character=character, timestamp__lt=cutoff_datetime).delete()
 
-        section = character.UpdateSection.MAILS
-        if force_update or character.has_section_changed(
-            section=section, content=mail_headers
-        ):
-            self._preload_mail_senders(mail_headers=mail_headers)
-            with transaction.atomic():
-                incoming_ids = set(mail_headers.keys())
-                existing_ids = set(
-                    self.filter(character=character).values_list("mail_id", flat=True)
+        self._preload_mail_senders(mail_headers=mail_headers)
+
+        with transaction.atomic():
+            incoming_ids = set(mail_headers.keys())
+            existing_ids = set(
+                self.filter(character=character).values_list("mail_id", flat=True)
+            )
+            create_ids = incoming_ids.difference(existing_ids)
+            if create_ids:
+                self._create_mail_headers(
+                    character=character,
+                    mail_headers=mail_headers,
+                    create_ids=create_ids,
                 )
-                create_ids = incoming_ids.difference(existing_ids)
-                if create_ids:
-                    self._create_mail_headers(
-                        character=character,
-                        mail_headers=mail_headers,
-                        create_ids=create_ids,
-                    )
 
-                update_ids = incoming_ids.difference(create_ids)
-                if update_ids:
-                    self._update_mail_headers(
-                        character=character,
-                        mail_headers=mail_headers,
-                        update_ids=update_ids,
-                    )
+            update_ids = incoming_ids.difference(create_ids)
+            if update_ids:
+                self._update_mail_headers(
+                    character=character,
+                    mail_headers=mail_headers,
+                    update_ids=update_ids,
+                )
 
-                if not create_ids and not update_ids:
-                    logger.info("%s: No mails", character)
-
-            character.update_section_content_hash(section=section, content=mail_headers)
-
-        else:
-            logger.info("%s: Mails have not changed", character)
+            if not create_ids and not update_ids:
+                logger.info("%s: No mails", character)
 
     def _preload_mail_senders(self, mail_headers):
         from ..models import MailEntity
@@ -522,7 +496,12 @@ class CharacterMailManager(models.Manager):
         from ..models import MailEntity
 
         logger.info("%s: Create %s new mail headers", character, len(create_ids))
-        new_mail_headers_list = self._headers_list_subset(mail_headers, create_ids)
+        new_mail_headers_list = {
+            mail_info["mail_id"]: mail_info
+            for mail_id, mail_info in mail_headers.items()
+            if mail_id in create_ids
+        }
+
         self._add_missing_mailing_lists_from_recipients(
             character=character, new_mail_headers_list=new_mail_headers_list
         )
