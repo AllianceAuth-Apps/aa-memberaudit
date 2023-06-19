@@ -683,25 +683,16 @@ class CharacterMailLabelManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
 
-        mail_labels_list = self._fetch_mail_labels_from_esi(character)
-        if not mail_labels_list:
-            logger.info("%s: No mail labels", character)
-            return
-
-        section = character.UpdateSection.MAILS
-        if force_update or character.has_section_changed(
-            section=section, content=mail_labels_list, hash_num=3
-        ):
-            self._update_or_create_esi(character, mail_labels_list)
-            character.update_section_content_hash(
-                section=section, content=mail_labels_list, hash_num=3
-            )
-
-        else:
-            logger.info("%s: Mail labels have not changed", character)
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.MAILS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+            hash_num=3,
+        )
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
-    def _fetch_mail_labels_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
         from memberaudit.models import CharacterMailUnreadCount
 
         logger.info("%s: Fetching mail labels from ESI", character)
@@ -709,9 +700,6 @@ class CharacterMailLabelManager(models.Manager):
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mail_labels_info, "mail_labels")
 
         if mail_labels_info.get("total_unread_count"):
             CharacterMailUnreadCount.objects.update_or_create(
@@ -725,7 +713,7 @@ class CharacterMailLabelManager(models.Manager):
         return {obj["label_id"]: obj for obj in mail_labels if "label_id" in obj}
 
     @transaction.atomic()
-    def _update_or_create_esi(self, character, mail_labels_list: dict):
+    def _update_or_create_objs(self, character, mail_labels_list: dict):
         logger.info("%s: Storing %s mail labels", character, len(mail_labels_list))
         incoming_ids = set(mail_labels_list.keys())
         existing_ids = set(
