@@ -240,6 +240,84 @@ class CharacterImplantManager(models.Manager):
                 logger.info("%s: No implants", character)
 
 
+class CharacterJumpCloneManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create jump clones for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.JUMP_CLONES,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-clones.read_clones.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
+        logger.info("%s: Fetching jump clones from ESI", character)
+        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        return jump_clones_info
+
+    @fetch_token_for_character("esi-universe.read_structures.v1")
+    def _update_or_create_objs(self, character, token: Token, jump_clones_info: dict):
+        from ..models import CharacterJumpCloneImplant, Location
+
+        jump_clones_list = jump_clones_info.get("jump_clones")
+        # fetch related objects ahead of transaction
+        if jump_clones_list:
+            incoming_location_ids = {
+                record["location_id"]
+                for record in jump_clones_info["jump_clones"]
+                if "location_id" in record
+            }
+            Location.objects.create_missing_esi(incoming_location_ids, token)
+
+            for jump_clone_info in jump_clones_list:
+                if jump_clone_info.get("implants"):
+                    EveType.objects.bulk_get_or_create_esi(
+                        ids=jump_clone_info.get("implants", [])
+                    )
+
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if not jump_clones_list:
+                logger.info("%s: No jump clones", character)
+                return
+
+            logger.info("%s: Storing %s jump clones", character, len(jump_clones_list))
+            jump_clones = [
+                self.model(
+                    character=character,
+                    jump_clone_id=record.get("jump_clone_id"),
+                    location=get_or_none("location_id", record, Location),
+                    name=record.get("name") if record.get("name") else "",
+                )
+                for record in jump_clones_list
+            ]
+            self.bulk_create(
+                jump_clones, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+            )
+            implants = []
+            for jump_clone_info in jump_clones_list:
+                if jump_clone_info.get("implants"):
+                    for implant in jump_clone_info["implants"]:
+                        jump_clone = character.jump_clones.get(
+                            jump_clone_id=jump_clone_info.get("jump_clone_id")
+                        )
+                        implants.append(
+                            CharacterJumpCloneImplant(
+                                jump_clone=jump_clone,
+                                eve_type=EveType.objects.get(id=implant),
+                            )
+                        )
+
+            CharacterJumpCloneImplant.objects.bulk_create(
+                implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+            )
+
+
 class CharacterLocationManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create location for a character from ESI."""
@@ -329,94 +407,6 @@ class CharacterLoyaltyEntryManager(models.Manager):
             ]
             self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
         EveEntity.objects.bulk_update_new_esi()
-
-
-class CharacterJumpCloneManager(models.Manager):
-    @fetch_token_for_character(
-        ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create jump clones for a character from ESI."""
-        from memberaudit.models import Location
-
-        logger.info("%s: Fetching jump clones from ESI", character)
-        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
-            character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, jump_clones_info, "jump_clones")
-
-        section = character.UpdateSection.JUMP_CLONES
-        if force_update or character.has_section_changed(
-            section=section, content=jump_clones_info
-        ):
-            jump_clones_list = jump_clones_info.get("jump_clones")
-            # fetch related objects ahead of transaction
-            if jump_clones_list:
-                incoming_location_ids = {
-                    record["location_id"]
-                    for record in jump_clones_info["jump_clones"]
-                    if "location_id" in record
-                }
-                Location.objects.create_missing_esi(incoming_location_ids, token)
-
-                for jump_clone_info in jump_clones_list:
-                    if jump_clone_info.get("implants"):
-                        EveType.objects.bulk_get_or_create_esi(
-                            ids=jump_clone_info.get("implants", [])
-                        )
-
-            self._update_or_create_objs(character, jump_clones_list)
-            character.update_section_content_hash(
-                section=section, content=jump_clones_info
-            )
-
-        else:
-            logger.info("%s: Jump clones have not changed", character)
-
-    @transaction.atomic()
-    def _update_or_create_objs(self, character, jump_clones_list: dict):
-        from ..models import CharacterJumpCloneImplant, Location
-
-        self.filter(character=character).delete()
-        if not jump_clones_list:
-            logger.info("%s: No jump clones", character)
-            return
-
-        logger.info("%s: Storing %s jump clones", character, len(jump_clones_list))
-        jump_clones = [
-            self.model(
-                character=character,
-                jump_clone_id=record.get("jump_clone_id"),
-                location=get_or_none("location_id", record, Location),
-                name=record.get("name") if record.get("name") else "",
-            )
-            for record in jump_clones_list
-        ]
-        self.bulk_create(
-            jump_clones,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
-        implants = []
-        for jump_clone_info in jump_clones_list:
-            if jump_clone_info.get("implants"):
-                for implant in jump_clone_info["implants"]:
-                    jump_clone = character.jump_clones.get(
-                        jump_clone_id=jump_clone_info.get("jump_clone_id")
-                    )
-                    implants.append(
-                        CharacterJumpCloneImplant(
-                            jump_clone=jump_clone,
-                            eve_type=EveType.objects.get(id=implant),
-                        )
-                    )
-
-        CharacterJumpCloneImplant.objects.bulk_create(
-            implants,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
 
 
 class CharacterMailManager(models.Manager):
