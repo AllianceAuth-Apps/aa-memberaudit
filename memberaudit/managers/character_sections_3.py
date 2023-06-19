@@ -1,5 +1,3 @@
-from bravado.exception import HTTPInternalServerError
-
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from esi.models import Token
@@ -165,29 +163,31 @@ class CharacterPlanetManager(models.Manager):
 
 
 class CharacterShipManager(models.Manager):
-    @fetch_token_for_character("esi-location.read_ship_type.v1")
-    def update_or_create_esi(self, character, token: Token):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create ship for a character from ESI."""
 
-        logger.info("%s: Fetching ship from ESI", character)
-        try:
-            ship_info = esi.client.Location.get_characters_character_id_ship(
-                character_id=character.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                character,
-                ex,
-            )
-            return
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.SHIP,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
 
+    @fetch_token_for_character("esi-location.read_ship_type.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
+        logger.info("%s: Fetching ship from ESI", character)
+        ship_info = esi.client.Location.get_characters_character_id_ship(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        return ship_info
+
+    def _update_or_create_objs(self, character, ship_info):
         ship_type_id = ship_info.get("ship_type_id")
         if not ship_type_id:
+            self.filter(character=character).delete()
             return
+
         eve_type, _ = EveType.objects.get_or_create_esi(id=ship_type_id)
         self.update_or_create(
             character=character,

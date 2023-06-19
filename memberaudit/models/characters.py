@@ -514,11 +514,11 @@ class Character(models.Model):
         """update the character's planets."""
         self.planets.update_or_create_esi(self, force_update)
 
-    def update_ship(self):
+    def update_ship(self, force_update: bool = False):
         """Update the ship for the given character."""
         from memberaudit.models import CharacterShip
 
-        CharacterShip.objects.update_or_create_esi(self)
+        CharacterShip.objects.update_or_create_esi(self, force_update)
 
     def update_skill_queue(self, force_update: bool = False):
         """update the character's skill queue"""

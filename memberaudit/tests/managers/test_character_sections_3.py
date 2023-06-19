@@ -6,7 +6,12 @@ from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
+from app_utils.esi_testing import (
+    BravadoOperationStub,
+    EsiClientStub,
+    EsiEndpoint,
+    build_http_error,
+)
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import (
@@ -211,6 +216,21 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_remove_ship_when_esi_returns_empty_response(self, mock_esi):
+        # given
+        mock_esi.client.Location.get_characters_character_id_ship.return_value = (
+            BravadoOperationStub(data={})
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertFalse(
+            CharacterShip.objects.filter(character=self.character_1001).exists()
+        )
 
 
 @patch(MODULE_PATH + ".esi")
