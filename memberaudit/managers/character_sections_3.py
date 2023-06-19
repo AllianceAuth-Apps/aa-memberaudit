@@ -120,10 +120,18 @@ class CharacterOnlineStatusManager(models.Manager):
 
 
 class CharacterPlanetManager(models.Manager):
-    @fetch_token_for_character("esi-planets.manage_planets.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create planets for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.PLANETS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-planets.manage_planets.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching planets from ESI", character)
         planets_data = (
             esi.client.Planetary_Interaction.get_characters_character_id_planets(
@@ -131,16 +139,8 @@ class CharacterPlanetManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
         )
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, planets_data, "planets")
-        section = character.UpdateSection.PLANETS
-        if force_update or character.has_section_changed(
-            section=section, content=planets_data
-        ):
-            self._update_or_create_objs(character, planets_data)
-            character.update_section_content_hash(section=section, content=planets_data)
-        else:
-            logger.info("%s: Planets have not changed", character)
+
+        return planets_data
 
     @transaction.atomic()
     def _update_or_create_objs(self, character, planets_data):
