@@ -7,6 +7,8 @@ import hashlib
 import json
 from typing import Any, Callable, Optional
 
+from bravado.exception import HTTPInternalServerError
+
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
@@ -350,15 +352,30 @@ class Character(models.Model):
     ):
         """Fetch data from ESI and store it if it has changed or it is forced."""
 
-        data = fetch_func(self)
+        try:
+            data = fetch_func(character=self)
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error "
+                "when trying to fetch %s: %s ",
+                self,
+                section,
+                ex,
+            )
+            return
+
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(self, data, str(section))
 
-        if force_update or self.has_section_changed(section=section, content=data):
-            store_func(self, data)
-            self.update_section_content_hash(section=section, content=data)
-        else:
+        if not force_update and not self.has_section_changed(
+            section=section, content=data
+        ):
             logger.info("%s: %s has not changed", section, self)
+            return
+
+        store_func(self, data)
+        self.update_section_content_hash(section=section, content=data)
 
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character

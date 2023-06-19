@@ -1,7 +1,7 @@
 import ast
 from typing import Dict, List
 
-from bravado.exception import HTTPInternalServerError, HTTPNotFound
+from bravado.exception import HTTPNotFound
 
 from django.db import models, transaction
 from esi.models import Token
@@ -293,57 +293,42 @@ class CharacterLocationManager(models.Manager):
 
 
 class CharacterLoyaltyEntryManager(models.Manager):
-    @fetch_token_for_character("esi-characters.read_loyalty.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOYALTY,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_loyalty.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching loyalty entries from ESI", character)
-        try:
-            loyalty_entries = (
-                esi.client.Loyalty.get_characters_character_id_loyalty_points(
-                    character_id=character.eve_character.character_id,
-                    token=token.valid_access_token(),
-                ).results()
-            )
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                character,
-                ex,
-            )
-            return
+        loyalty_entries = esi.client.Loyalty.get_characters_character_id_loyalty_points(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, loyalty_entries, "loyalty")
+        return loyalty_entries
 
-        section = character.UpdateSection.LOYALTY
-        if force_update or character.has_section_changed(
-            section=section, content=loyalty_entries
-        ):
-            self._update_or_create_objs(character, loyalty_entries)
-            character.update_section_content_hash(
-                section=section, content=loyalty_entries
-            )
-            EveEntity.objects.bulk_update_new_esi()
-
-        else:
-            logger.info("%s: Loyalty entries have not changed", character)
-
-    @transaction.atomic()
     def _update_or_create_objs(self, character, loyalty_entries):
-        self.filter(character=character).delete()
-        new_entries = [
-            self.model(
-                character=character,
-                corporation=get_or_create_or_none("corporation_id", entry, EveEntity),
-                loyalty_points=entry.get("loyalty_points"),
-            )
-            for entry in loyalty_entries
-            if "corporation_id" in entry and "loyalty_points" in entry
-        ]
-        self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            new_entries = [
+                self.model(
+                    character=character,
+                    corporation=get_or_create_or_none(
+                        "corporation_id", entry, EveEntity
+                    ),
+                    loyalty_points=entry.get("loyalty_points"),
+                )
+                for entry in loyalty_entries
+                if "corporation_id" in entry and "loyalty_points" in entry
+            ]
+            self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        EveEntity.objects.bulk_update_new_esi()
 
 
 class CharacterJumpCloneManager(models.Manager):
