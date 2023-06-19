@@ -367,7 +367,7 @@ class Character(models.Model):
             return
 
         if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(self, data, str(section))
+            store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
 
         if not force_update and not self.has_section_changed(
             section=section, content=data, hash_num=hash_num
@@ -544,9 +544,9 @@ class Character(models.Model):
         """syncs the character's wallet journal"""
         self.wallet_journal.update_or_create_esi(self, force_update)
 
-    def update_wallet_transactions(self):
+    def update_wallet_transactions(self, force_update: bool = False):
         """syncs the character's wallet transactions"""
-        self.wallet_transactions.update_or_create_esi(self)
+        self.wallet_transactions.update_or_create_esi(self, force_update)
 
     @classmethod
     def get_esi_scopes(cls) -> list:

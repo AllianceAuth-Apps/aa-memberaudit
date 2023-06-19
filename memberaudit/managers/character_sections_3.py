@@ -7,12 +7,9 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.app_settings import (
-    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
-)
+from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
+from memberaudit.helpers import data_retention_cutoff
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -537,10 +534,18 @@ class CharacterWalletJournalEntryManager(models.Manager):
 
 
 class CharacterWalletTransactionManager(models.Manager):
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_or_create_esi(self, character, token):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create wallet transactions for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.WALLET_TRANSACTIONS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching wallet transactions from ESI", character)
         transactions = (
             esi.client.Wallet.get_characters_character_id_wallet_transactions(
@@ -548,20 +553,13 @@ class CharacterWalletTransactionManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
         )
+        return transactions
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, transactions, "wallet_transactions")
-
-        self._update_or_create_objs(
-            character=character,
-            cutoff_datetime=data_retention_cutoff(),
-            transactions=transactions,
-            token=token,
-        )
-
-    def _update_or_create_objs(self, character, cutoff_datetime, transactions, token):
+    @fetch_token_for_character("esi-universe.read_structures.v1")
+    def _update_or_create_objs(self, character, token: Token, transactions):
         from ..models import Location
 
+        cutoff_datetime = data_retention_cutoff()
         transaction_list = {
             obj.get("transaction_id"): obj
             for obj in transactions
