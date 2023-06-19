@@ -199,28 +199,25 @@ class CharacterShipManager(models.Manager):
 
 
 class CharacterSkillqueueEntryManager(models.Manager):
-    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create skills queue for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.SKILL_QUEUE,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-skills.read_skillqueue.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching skill queue from ESI", character)
         skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, skillqueue, "skill_queue")
-
-        section = character.UpdateSection.SKILL_QUEUE
-        if force_update or character.has_section_changed(
-            section=section, content=skillqueue
-        ):
-            self._update_or_create_objs(character, skillqueue)
-            character.update_section_content_hash(section=section, content=skillqueue)
-
-        else:
-            logger.info("%s: Skill queue has not changed", character)
+        return skillqueue
 
     def _update_or_create_objs(self, character, skillqueue):
         # TODO: Replace delete + create with create + update
