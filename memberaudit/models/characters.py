@@ -504,11 +504,11 @@ class Character(models.Model):
         """Update mining ledger from ESI for this character."""
         self.mining_ledger.update_or_create_esi(self, force_update)
 
-    def update_online_status(self):
+    def update_online_status(self, force_update: bool = False):
         """Update the character's online status"""
         from memberaudit.models import CharacterOnlineStatus
 
-        CharacterOnlineStatus.objects.update_or_create_esi(self)
+        CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
     def update_planets(self, force_update: bool = False):
         """update the character's planets."""

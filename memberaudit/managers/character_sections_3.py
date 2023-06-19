@@ -88,16 +88,27 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 
 class CharacterOnlineStatusManager(models.Manager):
-    @fetch_token_for_character("esi-location.read_online.v1")
-    def update_or_create_esi(self, character, token: Token):
-        """Update or online status for a character from ESI."""
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create online status for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.ONLINE_STATUS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-location.read_online.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching online status from ESI", character)
         online_info = esi.client.Location.get_characters_character_id_online(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
 
+        return online_info
+
+    def _update_or_create_objs(self, character, online_info):
         self.update_or_create(
             character=character,
             defaults={
