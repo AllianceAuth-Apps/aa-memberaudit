@@ -241,24 +241,30 @@ class CharacterImplantManager(models.Manager):
 
 
 class CharacterLocationManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create location for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
     @fetch_token_for_character(
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
     )
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create location for a character from ESI."""
-
-        location_info = self._fetch_data_from_esi(character, token)
-        self._update_or_create_objs(character, token, location_info)
-
     def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching location from ESI", character)
         location_info = esi.client.Location.get_characters_character_id_location(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
         return location_info
 
+    @fetch_token_for_character(
+        ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
+    )
     def _update_or_create_objs(self, character, token: Token, location_info):
         from ..models.general import Location
 

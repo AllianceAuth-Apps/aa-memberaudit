@@ -452,11 +452,11 @@ class Character(models.Model):
         """update the character's implants"""
         self.implants.update_or_create_esi(self, force_update)
 
-    def update_location(self):
+    def update_location(self, force_update: bool = False):
         """update the location for the given character"""
         from memberaudit.models import CharacterLocation
 
-        CharacterLocation.objects.update_or_create_esi(self)
+        CharacterLocation.objects.update_or_create_esi(self, force_update)
 
     def update_loyalty(self, force_update: bool = False):
         """syncs the character's loyalty entries"""

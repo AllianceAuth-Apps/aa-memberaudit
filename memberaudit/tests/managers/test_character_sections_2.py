@@ -538,6 +538,8 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
         self.assertEqual(self.character_1002.location.location, self.structure_1)
 
+    # TODO: Add tests for no change and forced update
+
 
 @patch(MODULE_PATH + ".esi")
 class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
