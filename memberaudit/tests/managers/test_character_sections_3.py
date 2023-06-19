@@ -234,9 +234,7 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterSkillqueueEntryManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_create_new_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
