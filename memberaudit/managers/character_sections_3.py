@@ -442,19 +442,26 @@ class CharacterSkillSetCheckManager(models.Manager):
 
 
 class CharacterWalletBalanceManager(models.Manager):
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_or_create_esi(self, character, token):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create wallet balance for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.WALLET_BALLANCE,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching wallet balance from ESI", character)
         balance = esi.client.Wallet.get_characters_character_id_wallet(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        return balance
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, balance, "balance")
-
+    def _update_or_create_objs(self, character, balance):
         self.update_or_create(character=character, defaults={"total": balance})
 
 

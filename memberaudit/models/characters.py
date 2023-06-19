@@ -534,11 +534,11 @@ class Character(models.Model):
         """update the character's skill"""
         self.skills.update_or_create_esi(self, force_update)
 
-    def update_wallet_balance(self):
+    def update_wallet_balance(self, force_update: bool = False):
         """syncs the character's wallet balance"""
         from memberaudit.models import CharacterWalletBalance
 
-        CharacterWalletBalance.objects.update_or_create_esi(self)
+        CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
     def update_wallet_journal(self) -> None:
         """syncs the character's wallet journal"""
