@@ -411,7 +411,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
 class CharacterMailManager(models.Manager):
     @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_header_esi(
+    def update_or_create_headers_esi(
         self, character, token: Token, force_update: bool = False
     ):
         """Update or create mail headers for a character from ESI."""
@@ -423,7 +423,6 @@ class CharacterMailManager(models.Manager):
 
         self._update_or_create_objs(
             character=character,
-            cutoff_datetime=data_retention_cutoff(),
             mail_headers=mail_headers,
             force_update=force_update,
         )
@@ -471,9 +470,8 @@ class CharacterMailManager(models.Manager):
             if mail_id in subset_ids
         }
 
-    def _update_or_create_objs(
-        self, character, cutoff_datetime, mail_headers, force_update
-    ):
+    def _update_or_create_objs(self, character, mail_headers, force_update):
+        cutoff_datetime = data_retention_cutoff()
         if cutoff_datetime:
             self.filter(character=character, timestamp__lt=cutoff_datetime).delete()
 
@@ -682,11 +680,10 @@ class CharacterMailLabelManager(models.Manager):
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
 
-        mail_labels_list = self._fetch_mail_labels_from_esi(character, token)
+        mail_labels_list = self._fetch_mail_labels_from_esi(character)
         if not mail_labels_list:
             logger.info("%s: No mail labels", character)
             return
@@ -703,7 +700,8 @@ class CharacterMailLabelManager(models.Manager):
         else:
             logger.info("%s: Mail labels have not changed", character)
 
-    def _fetch_mail_labels_from_esi(self, character, token) -> dict:
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def _fetch_mail_labels_from_esi(self, character, token: Token) -> dict:
         from memberaudit.models import CharacterMailUnreadCount
 
         logger.info("%s: Fetching mail labels from ESI", character)

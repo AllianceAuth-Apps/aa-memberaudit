@@ -349,6 +349,7 @@ class Character(models.Model):
         fetch_func: Callable,
         store_func: Callable,
         force_update: bool = False,
+        hash_num: int = 1,
     ):
         """Fetch data from ESI and store it if it has changed or it is forced."""
 
@@ -369,13 +370,15 @@ class Character(models.Model):
             store_debug_data_to_disk(self, data, str(section))
 
         if not force_update and not self.has_section_changed(
-            section=section, content=data
+            section=section, content=data, hash_num=hash_num
         ):
             logger.info("%s: %s has not changed", section, self)
             return
 
         store_func(self, data)
-        self.update_section_content_hash(section=section, content=data)
+        self.update_section_content_hash(
+            section=section, content=data, hash_num=hash_num
+        )
 
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
@@ -492,7 +495,7 @@ class Character(models.Model):
         self.mail_labels.update_or_create_esi(self, force_update)
 
     def update_mail_headers(self, force_update: bool = False):
-        self.mails.update_or_create_header_esi(self, force_update)
+        self.mails.update_or_create_headers_esi(self, force_update)
 
     def update_mail_body(self, mail) -> None:
         self.mails.update_or_create_body_esi(self, mail)

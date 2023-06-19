@@ -450,6 +450,7 @@ class TestCharacterUserHasScope(TestCase):
         self.assertFalse(character_1001.user_has_scope(user_3))
 
 
+@patch(MODULE_PATH + ".Character.update_section_content_hash")
 @patch(MODULE_PATH + ".Character.has_section_changed")
 class TestCharacterUpdateDataIfChangedOrForced(TestCase):
     @classmethod
@@ -465,7 +466,9 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
     def _store_func_template(character, data):
         pass
 
-    def test_should_store_data_when_changed(self, mock_has_section_changed):
+    def test_should_store_data_when_changed(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
         # given
         character = create_memberaudit_character(1001)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
@@ -483,8 +486,13 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(store_func_mock.called)
         args, _ = store_func_mock.call_args
         self.assertEqual(args[1], ["alpha"])
+        self.assertTrue(mock_update_section_content_hash.called)
+        _, kwargs = mock_update_section_content_hash.call_args
+        self.assertEqual(kwargs["content"], ["alpha"])
 
-    def test_should_not_store_data_when_not_changed(self, mock_has_section_changed):
+    def test_should_not_store_data_when_not_changed(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
         # given
         character = create_memberaudit_character(1001)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
@@ -500,8 +508,11 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(store_func_mock.called)
+        self.assertFalse(mock_update_section_content_hash.called)
 
-    def test_should_always_store_data_when_forced(self, mock_has_section_changed):
+    def test_should_always_store_data_when_forced(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
         # given
         character = create_memberaudit_character(1001)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
@@ -517,9 +528,10 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertTrue(store_func_mock.called)
+        self.assertTrue(mock_update_section_content_hash.called)
 
     def test_should_not_store_anything_when_esi_returns_http_500(
-        self, mock_has_section_changed
+        self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
         character = create_memberaudit_character(1001)
@@ -536,3 +548,30 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(store_func_mock.called)
+        self.assertFalse(mock_update_section_content_hash.called)
+
+    def test_should_store_data_when_changed_and_use_hash_num(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=False,
+            hash_num=2,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(store_func_mock.called)
+        args, _ = store_func_mock.call_args
+        self.assertEqual(args[1], ["alpha"])
+        _, kwargs = mock_has_section_changed.call_args
+        self.assertEqual(kwargs["hash_num"], 2)
+        _, kwargs = mock_update_section_content_hash.call_args
+        self.assertEqual(kwargs["hash_num"], 2)

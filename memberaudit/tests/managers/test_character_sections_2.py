@@ -21,7 +21,7 @@ from memberaudit.models import (
     MailEntity,
 )
 
-from ..testdata.esi_client_stub import esi_client_stub
+from ..testdata.esi_client_stub import esi_client_stub, esi_stub
 from ..testdata.factories import (
     create_character_mail_label,
     create_mail_entity_from_eve_entity,
@@ -29,11 +29,7 @@ from ..testdata.factories import (
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
-    CharacterUpdateTestDataMixin,
-    TestCharacterUpdateBase,
-    create_memberaudit_character,
-)
+from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
@@ -821,7 +817,8 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.assertSetEqual(mail_entity_ids, {9002})
 
 
-class TestCharacterMailLabelManager(TestCharacterUpdateBase):
+@patch(MODULE_PATH + ".esi", esi_stub)
+class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
     def test_normal(self):
         label_1 = CharacterMailLabel.objects.create(
             character=self.character_1001, label_id=1, name="Alpha"
@@ -838,13 +835,8 @@ class TestCharacterMailLabelManager(TestCharacterUpdateBase):
         labels = CharacterMailLabel.objects.get_all_labels()
         self.assertDictEqual(labels, {})
 
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterMailLabelManagerEsi(CharacterUpdateTestDataMixin, TestCase):
-    def test_update_mail_labels_1(self, mock_esi):
+    def test_update_mail_labels_1(self):
         """can create from scratch"""
-        mock_esi.client = esi_client_stub
-
         self.character_1001.update_mail_labels()
 
         self.assertEqual(self.character_1001.unread_mail_count.total, 5)
@@ -863,9 +855,8 @@ class TestCharacterMailLabelManagerEsi(CharacterUpdateTestDataMixin, TestCase):
         self.assertEqual(obj.unread_count, 1)
         self.assertEqual(obj.color, "#ffffff")
 
-    def test_update_mail_labels_2(self, mock_esi):
+    def test_update_mail_labels_2(self):
         """will remove obsolete labels"""
-        mock_esi.client = esi_client_stub
         CharacterMailLabel.objects.create(
             character=self.character_1001, label_id=666, name="Obsolete"
         )
@@ -877,9 +868,8 @@ class TestCharacterMailLabelManagerEsi(CharacterUpdateTestDataMixin, TestCase):
             {3, 17},
         )
 
-    def test_update_mail_labels_3(self, mock_esi):
+    def test_update_mail_labels_3(self):
         """will update existing labels"""
-        mock_esi.client = esi_client_stub
         CharacterMailLabel.objects.create(
             character=self.character_1001,
             label_id=3,
@@ -900,10 +890,8 @@ class TestCharacterMailLabelManagerEsi(CharacterUpdateTestDataMixin, TestCase):
         self.assertEqual(obj.unread_count, 4)
         self.assertEqual(obj.color, "#660066")
 
-    def test_update_mail_labels_4(self, mock_esi):
+    def test_update_mail_labels_4(self):
         """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
         self.character_1001.update_mail_labels()
         obj = self.character_1001.mail_labels.get(label_id=3)
         obj.name = "MAGENTA"
@@ -914,9 +902,8 @@ class TestCharacterMailLabelManagerEsi(CharacterUpdateTestDataMixin, TestCase):
         obj = self.character_1001.mail_labels.get(label_id=3)
         self.assertEqual(obj.name, "MAGENTA")
 
-    def test_update_mail_labels_5(self, mock_esi):
+    def test_update_mail_labels_5(self):
         """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
 
         self.character_1001.update_mail_labels()
         obj = self.character_1001.mail_labels.get(label_id=3)
