@@ -584,7 +584,7 @@ class CharacterMailManager(models.Manager):
                 )
 
     def _update_labels_of_mail(
-        self, character, mail: models.Model, label_ids: List[int], labels: list
+        self, character, mail, label_ids: List[int], labels: list
     ) -> None:
         """Updates the labels of a mail object from a dict"""
         mail.labels.clear()

@@ -152,7 +152,7 @@ class DataExporter(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def format_obj(self, obj: models.Model) -> dict:
+    def format_obj(self, obj) -> dict:
         """Format object into row for output."""
         raise NotImplementedError()
 
@@ -222,7 +222,7 @@ class ContractExporter(DataExporter):
             "character",
         ).order_by("date_issued")
 
-    def format_obj(self, obj: models.Model) -> dict:
+    def format_obj(self, obj) -> dict:
         return {
             "owner character": obj.character.eve_character.character_name,
             "owner corporation": obj.character.eve_character.corporation_name,
@@ -262,7 +262,7 @@ class ContractItemExporter(DataExporter):
             "contract", "eve_type"
         ).order_by("contract", "record_id")
 
-    def format_obj(self, obj: models.Model) -> dict:
+    def format_obj(self, obj) -> dict:
         return {
             "contract pk": obj.contract.pk,
             "record id": obj.record_id,
@@ -286,7 +286,7 @@ class WalletJournalExporter(DataExporter):
             "first_party", "second_party", "character"
         ).order_by("date")
 
-    def format_obj(self, obj: models.Model) -> dict:
+    def format_obj(self, obj) -> dict:
         if not obj:
             return {}
         return {

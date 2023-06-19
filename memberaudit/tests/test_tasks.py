@@ -288,7 +288,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
     def test_update_assets_6(self, mock_esi):
         """when update failed then report the error"""
         # given
-        exception = build_http_error(500, "Test exception")
+        exception = build_http_error(502, "Test exception")
         mock_esi.client.Assets.get_characters_character_id_assets.side_effect = (
             exception
         )
@@ -301,7 +301,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         )
         self.assertFalse(status.is_success)
         self.assertEqual(
-            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
     def test_update_assets_7(self, mock_esi):
@@ -312,7 +312,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             MANAGERS_PATH + ".general.LocationManager.get_or_create_esi_async",
             spec=True,
         ) as m:
-            exception = build_http_error(500, "Test exception")
+            exception = build_http_error(502, "Test exception")
             m.side_effect = exception
             with self.assertRaises(OSError):
                 tasks.update_character_assets(self.character_1001.pk)
@@ -322,7 +322,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         )
         self.assertFalse(status.is_success)
         self.assertEqual(
-            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
     def test_update_assets_8(self, mock_esi):
@@ -330,7 +330,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         mock_esi.client = esi_client_stub
 
         with patch(MANAGERS_PATH + ".character_sections_1.logger") as m:
-            exception = build_http_error(500, "Test exception")
+            exception = build_http_error(502, "Test exception")
             m.info.side_effect = exception
             with self.assertRaises(OSError):
                 tasks.update_character_assets(self.character_1001.pk)
@@ -340,7 +340,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         )
         self.assertFalse(status.is_success)
         self.assertEqual(
-            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
     def test_update_assets_9(self, mock_esi):
@@ -411,7 +411,7 @@ class TestUpdateCharacterContacts(TestCaseTasks):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
+        exception = build_http_error(502, "Test exception")
         mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = (
             exception
         )
@@ -424,7 +424,7 @@ class TestUpdateCharacterContacts(TestCaseTasks):
             )
             self.assertFalse(status.is_success)
             self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+                status.last_error_message, "HTTPBadGateway: 502 Test exception"
             )
         else:
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
@@ -460,7 +460,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
+        exception = build_http_error(502, "Test exception")
         mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
             exception
         )
@@ -473,7 +473,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
             )
             self.assertFalse(status.is_success)
             self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+                status.last_error_message, "HTTPBadGateway: 502 Test exception"
             )
         else:
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
@@ -510,7 +510,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
 
     def test_detect_error(self, mock_esi_character, mock_esi_sections):
         """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
+        exception = build_http_error(502, "Test exception")
         mock_esi_character.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
@@ -525,7 +525,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
             )
             self.assertFalse(status.is_success)
             self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+                status.last_error_message, "HTTPBadGateway: 502 Test exception"
             )
         else:
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
@@ -560,7 +560,7 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
-        exception = build_http_error(500, "Test exception")
+        exception = build_http_error(502, "Test exception")
         mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = (
             exception
         )
@@ -573,7 +573,7 @@ class TestUpdateCharacterWalletJournal(TestCaseTasks):
             )
             self.assertFalse(status.is_success)
             self.assertEqual(
-                status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+                status.last_error_message, "HTTPBadGateway: 502 Test exception"
             )
         else:
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
@@ -723,7 +723,7 @@ class TestCharacterUpdateErrorReporting(TestCaseTasks):
             character=self.character_1001, is_success=False
         ).first()
         self.assertEqual(
-            status.last_error_message, "HTTPInternalServerError: 500 Test exception"
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
         self.assertTrue(status.finished_at)
 

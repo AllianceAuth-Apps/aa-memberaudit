@@ -551,7 +551,7 @@ class CharacterContractBidManager(models.Manager):
         EveEntity.objects.bulk_update_new_esi()
 
     @transaction.atomic()
-    def _update_or_create_objs(self, contract: models.Model, bids_list):
+    def _update_or_create_objs(self, contract, bids_list):
         incoming_ids = set(bids_list.keys())
         existing_ids = set(
             self.filter(contract=contract).values_list("bid_id", flat=True)
@@ -642,7 +642,7 @@ class CharacterContractItemManagerBase(models.Manager):
 
         self._update_or_create_objs(contract, items_data)
 
-    def _update_or_create_objs(self, contract: models.Model, items_data):
+    def _update_or_create_objs(self, contract, items_data):
         logger.info(
             "%s, %s: Storing %s contract items",
             self,

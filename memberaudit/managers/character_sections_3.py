@@ -424,7 +424,7 @@ class CharacterSkillSetCheckManager(models.Manager):
 
     @staticmethod
     def _identify_failed_skills(
-        skill_set: models.Model, character_skills: dict, level_name: str
+        skill_set, character_skills: dict, level_name: str
     ) -> list:
         failed_skills = []
         kwargs = {f"{level_name}_level__isnull": False}
