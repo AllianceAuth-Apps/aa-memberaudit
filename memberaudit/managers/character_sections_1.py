@@ -173,29 +173,25 @@ class CharacterAttributesManager(models.Manager):
 
 
 class CharacterContactLabelManager(models.Manager):
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.CONTACTS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+            hash_num=2,
+        )
+
+    @fetch_token_for_character("esi-characters.read_contacts.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching contact labels from ESI", character)
         labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, labels, "contact_labels")
-
-        section = character.UpdateSection.CONTACTS
-        if force_update or character.has_section_changed(
-            section=section, content=labels, hash_num=2
-        ):
-            self._update_or_create_objs(character, labels)
-            character.update_section_content_hash(
-                section=section, content=labels, hash_num=2
-            )
-        else:
-            logger.info("%s: Contact labels have not changed", character)
+        return labels
 
     @transaction.atomic()
     def _update_or_create_objs(self, character, labels):

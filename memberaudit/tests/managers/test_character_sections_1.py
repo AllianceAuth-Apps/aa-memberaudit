@@ -173,8 +173,9 @@ class TestCharacterAttributesManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(self.character_1001.attributes.willpower, 20)
 
 
-class TestCharacterContactLabelManager(TestCharacterUpdateBase):
-    def test_should_do_nothing(self):
+@patch(MODULE_PATH + ".esi")
+class TestCharacterContactLabelManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_should_do_nothing(self, mock_esi):
         # when
         CharacterContactLabel.objects._update_or_create_objs(
             character=self.character_1001, labels=[]
@@ -182,10 +183,6 @@ class TestCharacterContactLabelManager(TestCharacterUpdateBase):
         # then
         self.assertEqual(CharacterContactLabel.objects.count(), 0)
 
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
-class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_contact_labels_1(self, mock_esi):
         """can create new contact labels from scratch"""
         mock_esi.client = esi_client_stub
@@ -256,6 +253,10 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         label = self.character_1001.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
 
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@patch(MODULE_PATH + ".esi")
+class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_contacts_1(self, mock_esi):
         """can create contacts"""
         mock_esi.client = esi_client_stub
