@@ -475,7 +475,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
         # when
-        character.update_data_if_changed_or_forced(
+        result = character.update_data_if_changed_or_forced(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -489,6 +489,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(mock_update_section_content_hash.called)
         _, kwargs = mock_update_section_content_hash.call_args
         self.assertEqual(kwargs["content"], ["alpha"])
+        self.assertListEqual(result, ["alpha"])
 
     def test_should_not_store_data_when_not_changed(
         self, mock_has_section_changed, mock_update_section_content_hash
@@ -530,7 +531,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(store_func_mock.called)
         self.assertTrue(mock_update_section_content_hash.called)
 
-    def test_should_not_store_anything_when_esi_returns_http_500(
+    def test_should_not_store_anything_when_esi_returns_http_500_and_return_none(
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
@@ -539,7 +540,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when
-        character.update_data_if_changed_or_forced(
+        result = character.update_data_if_changed_or_forced(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -549,6 +550,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(store_func_mock.called)
         self.assertFalse(mock_update_section_content_hash.called)
+        self.assertIsNone(result)
 
     def test_should_store_data_when_changed_and_use_hash_num(
         self, mock_has_section_changed, mock_update_section_content_hash

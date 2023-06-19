@@ -350,8 +350,11 @@ class Character(models.Model):
         store_func: Callable,
         force_update: bool = False,
         hash_num: int = 1,
-    ):
-        """Fetch data from ESI and store it if it has changed or it is forced."""
+    ) -> Any:
+        """Fetch data from ESI and store it if it has changed or it is forced.
+
+        Also returns data.
+        """
 
         try:
             data = fetch_func(character=self)
@@ -364,7 +367,7 @@ class Character(models.Model):
                 section,
                 ex,
             )
-            return
+            return None
 
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
@@ -379,6 +382,7 @@ class Character(models.Model):
         self.update_section_content_hash(
             section=section, content=data, hash_num=hash_num
         )
+        return data
 
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
