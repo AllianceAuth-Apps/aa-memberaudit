@@ -41,30 +41,43 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
-    @fetch_token_for_character("esi-industry.read_character_mining.v1")
-    def update_or_create_esi(self, character, token: Token):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mining ledger for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.MINING_LEDGER,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-industry.read_character_mining.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching mining ledger from ESI", character)
         entries = esi.client.Industry.get_characters_character_id_mining(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        return entries
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(
-                character, entries, character.UpdateSection.MINING_LEDGER
-            )
+    def _update_or_create_objs(self, character, entries):
+        # preload solar systems
+        solar_system_ids = {entry["solar_system_id"] for entry in entries}
+        for solar_system_id in solar_system_ids:
+            EveSolarSystem.objects.get_or_create_esi(id=solar_system_id)
 
+        # preload eve types
+        type_ids = {entry["type_id"] for entry in entries}
+        for type_id in type_ids:
+            EveType.objects.get_or_create_esi(id=type_id)
+
+        # store entries
         for entry in entries:
-            eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-                id=entry["solar_system_id"]
-            )
-            eve_type, _ = EveType.objects.get_or_create_esi(id=entry["type_id"])
             self.update_or_create(
+                character=character,
                 date=entry["date"],
-                eve_solar_system=eve_solar_system,
-                eve_type=eve_type,
+                eve_solar_system_id=entry["solar_system_id"],
+                eve_type_id=entry["type_id"],
                 defaults={"quantity": entry["quantity"]},
             )
 

@@ -500,9 +500,9 @@ class Character(models.Model):
     def update_mail_body(self, mail) -> None:
         self.mails.update_or_create_body_esi(self, mail)
 
-    def update_mining_ledger(self):
+    def update_mining_ledger(self, force_update: bool = False):
         """Update mining ledger from ESI for this character."""
-        self.mining_ledger.update_or_create_esi(self)
+        self.mining_ledger.update_or_create_esi(self, force_update)
 
     def update_online_status(self):
         """Update the character's online status"""
