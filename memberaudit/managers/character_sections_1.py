@@ -222,35 +222,30 @@ class CharacterContactLabelManager(models.Manager):
 
 
 class CharacterContactManager(models.Manager):
-    @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.CONTACTS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_contacts.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching contacts from ESI", character)
         contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, contacts_data, "contacts")
-        if contacts_data:
-            contacts_list = {int(x["contact_id"]): x for x in contacts_data}
-        else:
-            contacts_list = {}
-        section = character.UpdateSection.CONTACTS
-        if force_update or character.has_section_changed(
-            section=section, content=contacts_list
-        ):
-            self._update_or_create_objs(character, contacts_list)
-            character.update_section_content_hash(
-                section=section, content=contacts_list
-            )
-        else:
-            logger.info("%s: Contacts have not changed", character)
+        return contacts_data
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character, contacts_list):
+    def _update_or_create_objs(self, character, contacts_data):
+        contacts_list = (
+            {int(x["contact_id"]): x for x in contacts_data} if contacts_data else {}
+        )
         incoming_ids = set(contacts_list.keys())
         existing_ids = set(
             self.filter(character=character).values_list("eve_entity_id", flat=True)
