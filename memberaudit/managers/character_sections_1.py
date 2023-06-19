@@ -135,29 +135,24 @@ CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQu
 
 
 class CharacterAttributesManager(models.Manager):
-    @fetch_token_for_character("esi-skills.read_skills.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create attributes for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.ATTRIBUTES,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-skills.read_skills.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching attributes from ESI", character)
         attribute_data = esi.client.Skills.get_characters_character_id_attributes(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, attribute_data, "attributes")
-
-        section = character.UpdateSection.ATTRIBUTES
-        if force_update or character.has_section_changed(
-            section=section, content=attribute_data
-        ):
-            self._update_or_create_objs(character, attribute_data)
-            character.update_section_content_hash(
-                section=section, content=attribute_data
-            )
-        else:
-            logger.info("%s: Attributes have not changed", character)
+        return attribute_data
 
     def _update_or_create_objs(self, character, attribute_data):
         self.update_or_create(
