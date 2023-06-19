@@ -540,9 +540,9 @@ class Character(models.Model):
 
         CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
-    def update_wallet_journal(self) -> None:
+    def update_wallet_journal(self, force_update: bool = False) -> None:
         """syncs the character's wallet journal"""
-        self.wallet_journal.update_or_create_esi(self)
+        self.wallet_journal.update_or_create_esi(self, force_update)
 
     def update_wallet_transactions(self):
         """syncs the character's wallet transactions"""

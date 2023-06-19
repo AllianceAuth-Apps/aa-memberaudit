@@ -466,22 +466,29 @@ class CharacterWalletBalanceManager(models.Manager):
 
 
 class CharacterWalletJournalEntryManager(models.Manager):
-    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def update_or_create_esi(self, character, token):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create wallet journal entries for character from ESI.
 
         Note: Does not update unknown EveEntities.
         """
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.WALLET_JOURNAL,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching wallet journal from ESI", character)
         journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        return journal
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, journal, "wallet_journal")
-
+    def _update_or_create_objs(self, character, journal):
         cutoff_datetime = data_retention_cutoff()
         entries_list = {
             obj.get("id"): obj
