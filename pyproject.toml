@@ -34,7 +34,7 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "allianceauth-app-utils>=1.18.0",
+    "allianceauth-app-utils>=1.18.1",
     "allianceauth>=3",
     "bleach",
     "dj-datatables-view",

@@ -1,7 +1,7 @@
 import ast
 from typing import Dict, List
 
-from bravado.exception import HTTPInternalServerError, HTTPNotFound
+from bravado.exception import HTTPNotFound
 
 from django.db import models, transaction
 from esi.models import Token
@@ -41,24 +41,22 @@ class CharacterCorporationHistoryManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create corporation history for character."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.CORPORATION_HISTORY,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    def _fetch_data_from_esi(self, character):
         logger.info("%s: Fetching corporation history from ESI", character)
         history = esi.client.Character.get_characters_character_id_corporationhistory(
             character_id=character.eve_character.character_id,
         ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, history, "corporation_history")
+        return history
 
-        section = character.UpdateSection.CORPORATION_HISTORY
-        if force_update or character.has_section_changed(
-            section=section, content=history
-        ):
-            self._update_or_create_objs(character, history)
-            character.update_section_content_hash(section=section, content=history)
-        else:
-            logger.info("%s: Corporation history has not changed", character)
-
-    def _update_or_create_objs(self, character: models.Model, history):
+    def _update_or_create_objs(self, character, history):
         entries = [
             self.model(
                 character=character,
@@ -89,22 +87,20 @@ class CharacterDetailsManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create character details from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.CHARACTER_DETAILS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    def _fetch_data_from_esi(self, character):
         logger.info("%s: Fetching character details from ESI", character)
         details = esi.client.Character.get_characters_character_id(
             character_id=character.eve_character.character_id,
         ).results()
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, details, "character_details")
 
-        section = character.UpdateSection.CHARACTER_DETAILS
-        if force_update or character.has_section_changed(
-            section=section, content=details
-        ):
-            self._update_or_create_objs(character, details)
-            character.update_section_content_hash(section=section, content=details)
-
-        else:
-            logger.info("%s: Character details have not changed", character)
+        return details
 
     def _update_or_create_objs(self, character, details):
         description = (
@@ -161,25 +157,26 @@ class CharacterDetailsManager(models.Manager):
 
 
 class CharacterFwStatsManager(models.Manager):
-    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create fw stats for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.FW_STATS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_fw_stats.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching FW stats from ESI", character)
         stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        return stats
 
-        section = character.UpdateSection.FW_STATS
-        if force_update or character.has_section_changed(
-            section=section, content=stats
-        ):
-            self._update_or_create_objs(character, stats)
-            character.update_section_content_hash(section=section, content=stats)
-        else:
-            logger.info("%s: FW stats have not changed", character)
-
-    def _update_or_create_objs(self, character: models.Model, stats: dict):
+    def _update_or_create_objs(self, character, stats: dict):
         if faction_id := stats.get("faction_id"):
             faction, _ = EveFaction.objects.get_or_create_esi(id=faction_id)
         else:
@@ -202,65 +199,151 @@ class CharacterFwStatsManager(models.Manager):
 
 
 class CharacterImplantManager(models.Manager):
-    @fetch_token_for_character("esi-clones.read_implants.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create implants for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.IMPLANTS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-clones.read_implants.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching implants from ESI", character)
         implants_data = esi.client.Clones.get_characters_character_id_implants(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        return implants_data
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, implants_data, "implants")
-
-        section = character.UpdateSection.IMPLANTS
-        if force_update or character.has_section_changed(
-            section=section, content=implants_data
-        ):
-            if implants_data:
-                EveType.objects.bulk_get_or_create_esi(ids=implants_data)
-            self._update_or_create_objs(character, implants_data)
-            character.update_section_content_hash(
-                section=section, content=implants_data
-            )
-        else:
-            logger.info("%s: Implants have not changed", character)
-
-    @transaction.atomic()
     def _update_or_create_objs(self, character, implants_data):
-        self.filter(character=character).delete()
         if implants_data:
-            implants = [
-                self.model(
-                    character=character, eve_type=EveType.objects.get(id=eve_type_id)
+            EveType.objects.bulk_get_or_create_esi(ids=implants_data)
+
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if implants_data:
+                implants = [
+                    self.model(
+                        character=character,
+                        eve_type=EveType.objects.get(id=eve_type_id),
+                    )
+                    for eve_type_id in implants_data
+                ]
+                logger.info("%s: Storing %s implants", character, len(implants))
+                self.bulk_create(
+                    implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
                 )
-                for eve_type_id in implants_data
+            else:
+                logger.info("%s: No implants", character)
+
+
+class CharacterJumpCloneManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create jump clones for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.JUMP_CLONES,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-clones.read_clones.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
+        logger.info("%s: Fetching jump clones from ESI", character)
+        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        return jump_clones_info
+
+    @fetch_token_for_character("esi-universe.read_structures.v1")
+    def _update_or_create_objs(self, character, token: Token, jump_clones_info: dict):
+        from ..models import CharacterJumpCloneImplant, Location
+
+        jump_clones_list = jump_clones_info.get("jump_clones")
+        # fetch related objects ahead of transaction
+        if jump_clones_list:
+            incoming_location_ids = {
+                record["location_id"]
+                for record in jump_clones_info["jump_clones"]
+                if "location_id" in record
+            }
+            Location.objects.create_missing_esi(incoming_location_ids, token)
+
+            for jump_clone_info in jump_clones_list:
+                if jump_clone_info.get("implants"):
+                    EveType.objects.bulk_get_or_create_esi(
+                        ids=jump_clone_info.get("implants", [])
+                    )
+
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if not jump_clones_list:
+                logger.info("%s: No jump clones", character)
+                return
+
+            logger.info("%s: Storing %s jump clones", character, len(jump_clones_list))
+            jump_clones = [
+                self.model(
+                    character=character,
+                    jump_clone_id=record.get("jump_clone_id"),
+                    location=get_or_none("location_id", record, Location),
+                    name=record.get("name") if record.get("name") else "",
+                )
+                for record in jump_clones_list
             ]
-            logger.info("%s: Storing %s implants", character, len(implants))
-            self.bulk_create(implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        else:
-            logger.info("%s: No implants", character)
+            self.bulk_create(
+                jump_clones, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+            )
+            implants = []
+            for jump_clone_info in jump_clones_list:
+                if jump_clone_info.get("implants"):
+                    for implant in jump_clone_info["implants"]:
+                        jump_clone = character.jump_clones.get(
+                            jump_clone_id=jump_clone_info.get("jump_clone_id")
+                        )
+                        implants.append(
+                            CharacterJumpCloneImplant(
+                                jump_clone=jump_clone,
+                                eve_type=EveType.objects.get(id=implant),
+                            )
+                        )
+
+            CharacterJumpCloneImplant.objects.bulk_create(
+                implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+            )
 
 
 class CharacterLocationManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create location for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
     @fetch_token_for_character(
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
     )
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create location for a character from ESI."""
-
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching location from ESI", character)
         location_info = esi.client.Location.get_characters_character_id_location(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-        self._update_or_create_objs(character, token, location_info)
+        return location_info
 
-    def _update_or_create_objs(
-        self, character: models.Model, token: Token, location_info
-    ):
+    @fetch_token_for_character(
+        ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
+    )
+    def _update_or_create_objs(self, character, token: Token, location_info):
         from ..models.general import Location
 
         eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
@@ -288,168 +371,57 @@ class CharacterLocationManager(models.Manager):
 
 
 class CharacterLoyaltyEntryManager(models.Manager):
-    @fetch_token_for_character("esi-characters.read_loyalty.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
 
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOYALTY,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_loyalty.v1")
+    def _fetch_data_from_esi(self, character, token):
         logger.info("%s: Fetching loyalty entries from ESI", character)
-        try:
-            loyalty_entries = (
-                esi.client.Loyalty.get_characters_character_id_loyalty_points(
-                    character_id=character.eve_character.character_id,
-                    token=token.valid_access_token(),
-                ).results()
-            )
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error from this endpoint "
-                "and ignoring it: %s ",
-                character,
-                ex,
-            )
-            return
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, loyalty_entries, "loyalty")
-
-        section = character.UpdateSection.LOYALTY
-        if force_update or character.has_section_changed(
-            section=section, content=loyalty_entries
-        ):
-            self._update_or_create_objs(character, loyalty_entries)
-            character.update_section_content_hash(
-                section=section, content=loyalty_entries
-            )
-            EveEntity.objects.bulk_update_new_esi()
-
-        else:
-            logger.info("%s: Loyalty entries have not changed", character)
-
-    @transaction.atomic()
-    def _update_or_create_objs(self, character: models.Model, loyalty_entries):
-        self.filter(character=character).delete()
-        new_entries = [
-            self.model(
-                character=character,
-                corporation=get_or_create_or_none("corporation_id", entry, EveEntity),
-                loyalty_points=entry.get("loyalty_points"),
-            )
-            for entry in loyalty_entries
-            if "corporation_id" in entry and "loyalty_points" in entry
-        ]
-        self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-
-
-class CharacterJumpCloneManager(models.Manager):
-    @fetch_token_for_character(
-        ["esi-clones.read_clones.v1", "esi-universe.read_structures.v1"]
-    )
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
-        """Update or create jump clones for a character from ESI."""
-        from memberaudit.models import Location
-
-        logger.info("%s: Fetching jump clones from ESI", character)
-        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
+        loyalty_entries = esi.client.Loyalty.get_characters_character_id_loyalty_points(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, jump_clones_info, "jump_clones")
+        return loyalty_entries
 
-        section = character.UpdateSection.JUMP_CLONES
-        if force_update or character.has_section_changed(
-            section=section, content=jump_clones_info
-        ):
-            jump_clones_list = jump_clones_info.get("jump_clones")
-            # fetch related objects ahead of transaction
-            if jump_clones_list:
-                incoming_location_ids = {
-                    record["location_id"]
-                    for record in jump_clones_info["jump_clones"]
-                    if "location_id" in record
-                }
-                Location.objects.create_missing_esi(incoming_location_ids, token)
-
-                for jump_clone_info in jump_clones_list:
-                    if jump_clone_info.get("implants"):
-                        EveType.objects.bulk_get_or_create_esi(
-                            ids=jump_clone_info.get("implants", [])
-                        )
-
-            self._update_or_create_objs(character, jump_clones_list)
-            character.update_section_content_hash(
-                section=section, content=jump_clones_info
-            )
-
-        else:
-            logger.info("%s: Jump clones have not changed", character)
-
-    @transaction.atomic()
-    def _update_or_create_objs(self, character: models.Model, jump_clones_list: dict):
-        from ..models import CharacterJumpCloneImplant, Location
-
-        self.filter(character=character).delete()
-        if not jump_clones_list:
-            logger.info("%s: No jump clones", character)
-            return
-
-        logger.info("%s: Storing %s jump clones", character, len(jump_clones_list))
-        jump_clones = [
-            self.model(
-                character=character,
-                jump_clone_id=record.get("jump_clone_id"),
-                location=get_or_none("location_id", record, Location),
-                name=record.get("name") if record.get("name") else "",
-            )
-            for record in jump_clones_list
-        ]
-        self.bulk_create(
-            jump_clones,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
-        implants = []
-        for jump_clone_info in jump_clones_list:
-            if jump_clone_info.get("implants"):
-                for implant in jump_clone_info["implants"]:
-                    jump_clone = character.jump_clones.get(
-                        jump_clone_id=jump_clone_info.get("jump_clone_id")
-                    )
-                    implants.append(
-                        CharacterJumpCloneImplant(
-                            jump_clone=jump_clone,
-                            eve_type=EveType.objects.get(id=implant),
-                        )
-                    )
-
-        CharacterJumpCloneImplant.objects.bulk_create(
-            implants,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
+    def _update_or_create_objs(self, character, loyalty_entries):
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            new_entries = [
+                self.model(
+                    character=character,
+                    corporation=get_or_create_or_none(
+                        "corporation_id", entry, EveEntity
+                    ),
+                    loyalty_points=entry.get("loyalty_points"),
+                )
+                for entry in loyalty_entries
+                if "corporation_id" in entry and "loyalty_points" in entry
+            ]
+            self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        EveEntity.objects.bulk_update_new_esi()
 
 
 class CharacterMailManager(models.Manager):
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_header_esi(
-        self, character, token: Token, force_update: bool = False
-    ):
+    def update_or_create_headers_esi(self, character, force_update: bool = False):
         """Update or create mail headers for a character from ESI."""
 
-        mail_headers = self._fetch_mail_headers(character, token)
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mail_headers, "mail_headers")
-
-        self._update_or_create_objs(
-            character=character,
-            cutoff_datetime=data_retention_cutoff(),
-            mail_headers=mail_headers,
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.MAILS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
             force_update=force_update,
         )
 
-    @staticmethod
-    def _fetch_mail_headers(character, token) -> dict:
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
         last_mail_id = None
         mail_headers_all = []
         page = 1
@@ -460,14 +432,12 @@ class CharacterMailManager(models.Manager):
                 last_mail_id=last_mail_id,
                 token=token.valid_access_token(),
             ).results()
-            if MEMBERAUDIT_DEVELOPER_MODE:
-                store_debug_data_to_disk(character, mail_headers, "mail_headers")
 
             mail_headers_all += mail_headers
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
                 break
 
-            last_mail_id = min((x["mail_id"] for x in mail_headers))
+            last_mail_id = min((mail["mail_id"] for mail in mail_headers))
             page += 1
 
         cutoff_datetime = data_retention_cutoff()
@@ -478,58 +448,40 @@ class CharacterMailManager(models.Manager):
             or not obj.get("timestamp")
             or obj.get("timestamp") > cutoff_datetime
         }
-        logger.info(
+        logger.debug(
             "%s: Received %s mail headers from ESI", character, len(mail_headers_all_2)
         )
         return mail_headers_all_2
 
-    @staticmethod
-    def _headers_list_subset(mail_headers, subset_ids) -> dict:
-        return {
-            mail_info["mail_id"]: mail_info
-            for mail_id, mail_info in mail_headers.items()
-            if mail_id in subset_ids
-        }
-
-    def _update_or_create_objs(
-        self, character, cutoff_datetime, mail_headers, force_update
-    ):
-        if cutoff_datetime:
+    def _update_or_create_objs(self, character, mail_headers):
+        if cutoff_datetime := data_retention_cutoff():
             self.filter(character=character, timestamp__lt=cutoff_datetime).delete()
 
-        section = character.UpdateSection.MAILS
-        if force_update or character.has_section_changed(
-            section=section, content=mail_headers
-        ):
-            self._preload_mail_senders(mail_headers=mail_headers)
-            with transaction.atomic():
-                incoming_ids = set(mail_headers.keys())
-                existing_ids = set(
-                    self.filter(character=character).values_list("mail_id", flat=True)
+        self._preload_mail_senders(mail_headers=mail_headers)
+
+        with transaction.atomic():
+            incoming_ids = set(mail_headers.keys())
+            existing_ids = set(
+                self.filter(character=character).values_list("mail_id", flat=True)
+            )
+            create_ids = incoming_ids.difference(existing_ids)
+            if create_ids:
+                self._create_mail_headers(
+                    character=character,
+                    mail_headers=mail_headers,
+                    create_ids=create_ids,
                 )
-                create_ids = incoming_ids.difference(existing_ids)
-                if create_ids:
-                    self._create_mail_headers(
-                        character=character,
-                        mail_headers=mail_headers,
-                        create_ids=create_ids,
-                    )
 
-                update_ids = incoming_ids.difference(create_ids)
-                if update_ids:
-                    self._update_mail_headers(
-                        character=character,
-                        mail_headers=mail_headers,
-                        update_ids=update_ids,
-                    )
+            update_ids = incoming_ids.difference(create_ids)
+            if update_ids:
+                self._update_mail_headers(
+                    character=character,
+                    mail_headers=mail_headers,
+                    update_ids=update_ids,
+                )
 
-                if not create_ids and not update_ids:
-                    logger.info("%s: No mails", character)
-
-            character.update_section_content_hash(section=section, content=mail_headers)
-
-        else:
-            logger.info("%s: Mails have not changed", character)
+            if not create_ids and not update_ids:
+                logger.info("%s: No mails", character)
 
     def _preload_mail_senders(self, mail_headers):
         from ..models import MailEntity
@@ -544,7 +496,12 @@ class CharacterMailManager(models.Manager):
         from ..models import MailEntity
 
         logger.info("%s: Create %s new mail headers", character, len(create_ids))
-        new_mail_headers_list = self._headers_list_subset(mail_headers, create_ids)
+        new_mail_headers_list = {
+            mail_info["mail_id"]: mail_info
+            for mail_id, mail_info in mail_headers.items()
+            if mail_id in create_ids
+        }
+
         self._add_missing_mailing_lists_from_recipients(
             character=character, new_mail_headers_list=new_mail_headers_list
         )
@@ -627,7 +584,7 @@ class CharacterMailManager(models.Manager):
                 )
 
     def _update_labels_of_mail(
-        self, character, mail: models.Model, label_ids: List[int], labels: list
+        self, character, mail, label_ids: List[int], labels: list
     ) -> None:
         """Updates the labels of a mail object from a dict"""
         mail.labels.clear()
@@ -667,9 +624,7 @@ class CharacterMailManager(models.Manager):
         self.bulk_update(mails.values(), ["is_read"])
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_body_esi(
-        self, character, token: Token, mail, force_update: bool = False
-    ):
+    def update_or_create_body_esi(self, character, token: Token, mail):
         """Update or create mail body for a character from ESI."""
 
         logger.debug(
@@ -704,28 +659,19 @@ class CharacterMailLabelManager(models.Manager):
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_esi(self, character, token: Token, force_update: bool = False):
+    def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
 
-        mail_labels_list = self._fetch_mail_labels_from_esi(character, token)
-        if not mail_labels_list:
-            logger.info("%s: No mail labels", character)
-            return
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.MAILS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+            hash_num=3,
+        )
 
-        section = character.UpdateSection.MAILS
-        if force_update or character.has_section_changed(
-            section=section, content=mail_labels_list, hash_num=3
-        ):
-            self._update_or_create_esi(character, mail_labels_list)
-            character.update_section_content_hash(
-                section=section, content=mail_labels_list, hash_num=3
-            )
-
-        else:
-            logger.info("%s: Mail labels have not changed", character)
-
-    def _fetch_mail_labels_from_esi(self, character, token) -> dict:
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
         from memberaudit.models import CharacterMailUnreadCount
 
         logger.info("%s: Fetching mail labels from ESI", character)
@@ -733,9 +679,6 @@ class CharacterMailLabelManager(models.Manager):
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mail_labels_info, "mail_labels")
 
         if mail_labels_info.get("total_unread_count"):
             CharacterMailUnreadCount.objects.update_or_create(
@@ -749,7 +692,7 @@ class CharacterMailLabelManager(models.Manager):
         return {obj["label_id"]: obj for obj in mail_labels if "label_id" in obj}
 
     @transaction.atomic()
-    def _update_or_create_esi(self, character: models.Model, mail_labels_list: dict):
+    def _update_or_create_objs(self, character, mail_labels_list: dict):
         logger.info("%s: Storing %s mail labels", character, len(mail_labels_list))
         incoming_ids = set(mail_labels_list.keys())
         existing_ids = set(

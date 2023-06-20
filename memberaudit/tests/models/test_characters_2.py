@@ -1,7 +1,10 @@
+from unittest.mock import MagicMock, patch
+
 from django.test import TestCase
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.esi_testing import build_http_error
 from app_utils.testing import create_user_from_evecharacter
 
 from ..testdata.factories import create_character
@@ -12,9 +15,7 @@ from ..utils import (
     create_user_from_evecharacter_with_access,
 )
 
-MODELS_PATH = "memberaudit.models"
-MANAGERS_PATH = "memberaudit.managers"
-TASKS_PATH = "memberaudit.tasks"
+MODULE_PATH = "memberaudit.models.characters"
 
 
 class TestCharacterUserHasAccess(TestCase):
@@ -447,3 +448,157 @@ class TestCharacterUserHasScope(TestCase):
         )
         # when/then
         self.assertFalse(character_1001.user_has_scope(user_3))
+
+
+@patch(MODULE_PATH + ".Character.update_section_content_hash")
+@patch(MODULE_PATH + ".Character.has_section_changed")
+class TestCharacterUpdateDataIfChangedOrForced(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    @staticmethod
+    def _fetch_func_template(character):
+        return ["alpha"]
+
+    @staticmethod
+    def _store_func_template(character, data):
+        pass
+
+    def test_should_store_data_when_changed(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        result, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=False,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(store_func_mock.called)
+        args, _ = store_func_mock.call_args
+        self.assertEqual(args[1], ["alpha"])
+        self.assertTrue(mock_update_section_content_hash.called)
+        _, kwargs = mock_update_section_content_hash.call_args
+        self.assertEqual(kwargs["content"], ["alpha"])
+        self.assertListEqual(result, ["alpha"])
+        self.assertTrue(changed)
+
+    def test_should_not_store_data_when_not_changed(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.return_value = False
+        # when
+        result, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=False,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertFalse(store_func_mock.called)
+        self.assertFalse(mock_update_section_content_hash.called)
+        self.assertIsNone(result)
+        self.assertFalse(changed)
+
+    def test_should_always_store_data_when_forced(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.return_value = False
+        # when
+        result, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=True,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(store_func_mock.called)
+        self.assertTrue(mock_update_section_content_hash.called)
+        self.assertListEqual(result, ["alpha"])
+        self.assertTrue(changed)
+
+    def test_should_not_store_anything_when_esi_returns_http_500_and_return_none(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=build_http_error(500, "Test exception"))
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.side_effect = RuntimeError("Should not be called")
+        # when
+        result, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=False,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertFalse(store_func_mock.called)
+        self.assertFalse(mock_update_section_content_hash.called)
+        self.assertIsNone(result)
+        self.assertIsNone(changed)
+
+    def test_should_store_data_when_changed_and_use_hash_num(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        store_func_mock = MagicMock(side_effect=self._store_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=store_func_mock,
+            force_update=False,
+            hash_num=2,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(store_func_mock.called)
+        args, _ = store_func_mock.call_args
+        self.assertEqual(args[1], ["alpha"])
+        _, kwargs = mock_has_section_changed.call_args
+        self.assertEqual(kwargs["hash_num"], 2)
+        _, kwargs = mock_update_section_content_hash.call_args
+        self.assertEqual(kwargs["hash_num"], 2)
+
+    def test_should_skip_storing_data_when_no_store_func_provided(
+        self, mock_has_section_changed, mock_update_section_content_hash
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        result, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=None,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(mock_update_section_content_hash.called)
+        self.assertListEqual(result, ["alpha"])
+        self.assertTrue(changed)

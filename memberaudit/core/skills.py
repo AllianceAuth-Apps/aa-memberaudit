@@ -62,7 +62,7 @@ def required_skills_from_eve_types(
         Skill(eve_type=skill_types[type_id], level=level)
         for type_id, level in skills_raw
     ]
-    return sorted(skills, key=lambda x: x.eve_type.name)
+    return sorted(skills, key=lambda o: o.eve_type.name)
 
 
 def _identify_skills_from_eve_types(

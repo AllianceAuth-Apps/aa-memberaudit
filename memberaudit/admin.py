@@ -343,7 +343,7 @@ class CharacterAdmin(admin.ModelAdmin):
         return obj.last_update_at
 
     def _missing_sections(self, obj):
-        existing = {x.section for x in obj.update_status_set.all()}
+        existing = {status.section for status in obj.update_status_set.all()}
         all_sections = set(Character.UpdateSection.values)
         missing = all_sections.difference(existing)
         if missing:
@@ -545,7 +545,9 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
         )
 
     def _skill_sets(self, obj):
-        return format_html("<br>".join([x.name for x in obj.skill_sets_ordered]))
+        return format_html(
+            "<br>".join([skill_set.name for skill_set in obj.skill_sets_ordered])
+        )
 
     def save_model(self, request, obj, form, change):
         obj.last_modified_by = request.user

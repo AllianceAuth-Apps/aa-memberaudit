@@ -194,7 +194,7 @@ _endpoints = [
 esi_client_stub = EsiClientStub(load_test_data(), endpoints=_endpoints)
 
 esi_client_error_stub = EsiClientStub(
-    load_test_data(), endpoints=_endpoints, http_error=True
+    load_test_data(), endpoints=_endpoints, http_error=502
 )
 
 

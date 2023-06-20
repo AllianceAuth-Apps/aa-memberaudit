@@ -5,7 +5,9 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Optional
+from typing import Any, Callable, Optional, Tuple
+
+from bravado.exception import HTTPInternalServerError
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -26,11 +28,13 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
+    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.character import (
     CharacterManager,
     CharacterUpdateStatusManager,
@@ -339,6 +343,61 @@ class Character(models.Model):
             return True
         return section_obj.is_updating
 
+    def update_data_if_changed_or_forced(
+        self,
+        section: str,
+        fetch_func: Callable,
+        store_func: Optional[Callable],
+        force_update: bool = False,
+        hash_num: int = 1,
+    ) -> Tuple[Any, Optional[bool]]:
+        """Fetch data from ESI and store it if it has changed or it is forced.
+
+        Args:
+            - section: Name of the section this update related to
+            - fetch_func: A function that fetched the data from ESI
+            - store_func: A function that stored the data in the DB.
+                This can be skipped by providing None
+            - forced_update: Data will always be stored when set to True
+            - hash_num: To access sub-sections by ID
+
+
+        Returns:
+            - A tuple of the result data or None if data is unchanged
+                and a flag that is True if data was changed,
+                False when it was not change, else None
+        """
+
+        try:
+            data = fetch_func(character=self)
+        except HTTPInternalServerError as ex:
+            # handle the occasional occurring http 500 error from this endpoint
+            logger.warning(
+                "%s: Received an HTTP internal server error "
+                "when trying to fetch %s: %s ",
+                self,
+                section,
+                ex,
+            )
+            return None, None
+
+        if MEMBERAUDIT_DEVELOPER_MODE:
+            store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
+
+        if not force_update and not self.has_section_changed(
+            section=section, content=data, hash_num=hash_num
+        ):
+            logger.info("%s: %s has not changed", section, self)
+            return None, False
+
+        if store_func:
+            store_func(self, data)
+
+        self.update_section_content_hash(
+            section=section, content=data, hash_num=hash_num
+        )
+        return data, True
+
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character
 
@@ -431,11 +490,11 @@ class Character(models.Model):
         """update the character's implants"""
         self.implants.update_or_create_esi(self, force_update)
 
-    def update_location(self):
+    def update_location(self, force_update: bool = False):
         """update the location for the given character"""
         from memberaudit.models import CharacterLocation
 
-        CharacterLocation.objects.update_or_create_esi(self)
+        CharacterLocation.objects.update_or_create_esi(self, force_update)
 
     def update_loyalty(self, force_update: bool = False):
         """syncs the character's loyalty entries"""
@@ -454,30 +513,30 @@ class Character(models.Model):
         self.mail_labels.update_or_create_esi(self, force_update)
 
     def update_mail_headers(self, force_update: bool = False):
-        self.mails.update_or_create_header_esi(self, force_update)
+        self.mails.update_or_create_headers_esi(self, force_update)
 
     def update_mail_body(self, mail) -> None:
         self.mails.update_or_create_body_esi(self, mail)
 
-    def update_mining_ledger(self):
+    def update_mining_ledger(self, force_update: bool = False):
         """Update mining ledger from ESI for this character."""
-        self.mining_ledger.update_or_create_esi(self)
+        self.mining_ledger.update_or_create_esi(self, force_update)
 
-    def update_online_status(self):
+    def update_online_status(self, force_update: bool = False):
         """Update the character's online status"""
         from memberaudit.models import CharacterOnlineStatus
 
-        CharacterOnlineStatus.objects.update_or_create_esi(self)
+        CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
     def update_planets(self, force_update: bool = False):
         """update the character's planets."""
         self.planets.update_or_create_esi(self, force_update)
 
-    def update_ship(self):
+    def update_ship(self, force_update: bool = False):
         """Update the ship for the given character."""
         from memberaudit.models import CharacterShip
 
-        CharacterShip.objects.update_or_create_esi(self)
+        CharacterShip.objects.update_or_create_esi(self, force_update)
 
     def update_skill_queue(self, force_update: bool = False):
         """update the character's skill queue"""
@@ -493,19 +552,19 @@ class Character(models.Model):
         """update the character's skill"""
         self.skills.update_or_create_esi(self, force_update)
 
-    def update_wallet_balance(self):
+    def update_wallet_balance(self, force_update: bool = False):
         """syncs the character's wallet balance"""
         from memberaudit.models import CharacterWalletBalance
 
-        CharacterWalletBalance.objects.update_or_create_esi(self)
+        CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
-    def update_wallet_journal(self) -> None:
+    def update_wallet_journal(self, force_update: bool = False) -> None:
         """syncs the character's wallet journal"""
-        self.wallet_journal.update_or_create_esi(self)
+        self.wallet_journal.update_or_create_esi(self, force_update)
 
-    def update_wallet_transactions(self):
+    def update_wallet_transactions(self, force_update: bool = False):
         """syncs the character's wallet transactions"""
-        self.wallet_transactions.update_or_create_esi(self)
+        self.wallet_transactions.update_or_create_esi(self, force_update)
 
     @classmethod
     def get_esi_scopes(cls) -> list:

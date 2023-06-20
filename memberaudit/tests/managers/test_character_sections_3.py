@@ -6,7 +6,12 @@ from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
+from app_utils.esi_testing import (
+    BravadoOperationStub,
+    EsiClientStub,
+    EsiEndpoint,
+    build_http_error,
+)
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import (
@@ -106,115 +111,6 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_should_update_all_fields(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        # when
-        CharacterShip.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
-        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
-
-    def test_should_ignore_error_500(self, mock_esi):
-        # given
-        error_500 = build_http_error(
-            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
-        )
-        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
-            error_500
-        )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
-        )
-        # when
-        CharacterShip.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
-        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
-
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_can_create_from_scratch(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        # when
-        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.skillqueue.count(), 3)
-
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 3)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
-
-        entry = self.character_1001.skillqueue.get(queue_position=1)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 4)
-        self.assertEqual(entry.level_end_sp, 1000)
-        self.assertEqual(entry.level_start_sp, 100)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.training_start_sp, 50)
-
-        entry = self.character_1001.skillqueue.get(queue_position=2)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
-        self.assertEqual(entry.finished_level, 5)
-
-    def test_can_update_existing_queue(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.skillqueue.create(
-            queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
-            finish_date=now() + dt.timedelta(days=1),
-            finished_level=4,
-            start_date=now() - dt.timedelta(days=1),
-        )
-        # when
-        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.skillqueue.count(), 3)
-
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
-        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
-        self.assertEqual(entry.finished_level, 3)
-        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
-
-    def test_should_skip_update_when_no_change(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        entry.finished_level = 4
-        entry.save()
-        # when
-        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.finished_level, 4)
-
-    def test_should_always_update_when_forced(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        entry.finished_level = 4
-        entry.save()
-        # when
-        CharacterSkillqueueEntry.objects.update_or_create_esi(
-            self.character_1001, force_update=True
-        )
-        # then
-        entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.finished_level, 3)
-
-
-@patch(MODULE_PATH + ".esi")
 class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_online_status(self, mock_esi):
         # given
@@ -293,7 +189,52 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterSkillsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_should_update_all_fields(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_ignore_error_500(self, mock_esi):
+        # given
+        error_500 = build_http_error(
+            500, '{"error":"Undefined 404 response. Original message: Ship not found"}'
+        )
+        mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
+            error_500
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.ship.eve_type_id, 603)
+        self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+
+    def test_should_remove_ship_when_esi_returns_empty_response(self, mock_esi):
+        # given
+        mock_esi.client.Location.get_characters_character_id_ship.return_value = (
+            BravadoOperationStub(data={})
+        )
+        CharacterShip.objects.create(
+            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        )
+        # when
+        CharacterShip.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertFalse(
+            CharacterShip.objects.filter(character=self.character_1001).exists()
+        )
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_create_new_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -382,6 +323,85 @@ class TestCharacterSkillsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         self.character_1001.update_skills(force_update=True)
         skill = self.character_1001.skills.get(eve_type_id=24311)
         self.assertEqual(skill.active_skill_level, 3)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.skillqueue.count(), 3)
+
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 3)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
+
+        entry = self.character_1001.skillqueue.get(queue_position=1)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 4)
+        self.assertEqual(entry.level_end_sp, 1000)
+        self.assertEqual(entry.level_start_sp, 100)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.training_start_sp, 50)
+
+        entry = self.character_1001.skillqueue.get(queue_position=2)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(entry.finished_level, 5)
+
+    def test_can_update_existing_queue(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.skillqueue.create(
+            queue_position=0,
+            eve_type=EveType.objects.get(id=24311),
+            finish_date=now() + dt.timedelta(days=1),
+            finished_level=4,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.skillqueue.count(), 3)
+
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
+        self.assertEqual(entry.finished_level, 3)
+        self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
+
+    def test_should_skip_update_when_no_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        entry.finished_level = 4
+        entry.save()
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        # then
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.finished_level, 4)
+
+    def test_should_always_update_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterSkillqueueEntry.objects.update_or_create_esi(self.character_1001)
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        entry.finished_level = 4
+        entry.save()
+        # when
+        CharacterSkillqueueEntry.objects.update_or_create_esi(
+            self.character_1001, force_update=True
+        )
+        # then
+        entry = self.character_1001.skillqueue.get(queue_position=0)
+        self.assertEqual(entry.finished_level, 3)
 
 
 @patch(MODULE_PATH + ".esi")
