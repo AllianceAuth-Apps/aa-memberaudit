@@ -56,12 +56,22 @@ class CharacterAssetQuerySet(models.QuerySet):
 
 
 class CharacterAssetManagerBase(models.Manager):
-    @fetch_token_for_character("esi-assets.read_assets.v1")
-    def fetch_from_esi(
-        self, character, token: Token, force_update: bool = False
-    ) -> Optional[list]:  # TODO: Add test
+    def fetch_from_esi(self, character, force_update: bool = False) -> Optional[list]:
         """Fetch assets from ESI and preload related objects from ESI."""
 
+        asset_list, changed = character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.ASSETS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=None,
+            force_update=force_update,
+        )
+        if changed:
+            return asset_list
+
+        return None
+
+    @fetch_token_for_character("esi-assets.read_assets.v1")
+    def _fetch_data_from_esi(self, character, token: Token):
         logger.info("%s: Fetching assets from ESI", character)
         asset_list = esi.client.Assets.get_characters_character_id_assets(
             character_id=character.eve_character.character_id,
@@ -86,21 +96,8 @@ class CharacterAssetManagerBase(models.Manager):
         for item_id in assets_flat.keys():
             assets_flat[item_id]["name"] = asset_names.get(item_id, "")
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, assets_flat, "asset_list")
-
         new_asset_list = list(assets_flat.values())
-        section = character.UpdateSection.ASSETS
-        if force_update or character.has_section_changed(
-            section=section, content=new_asset_list
-        ):
-            character.update_section_content_hash(
-                section=section, content=new_asset_list
-            )
-            return new_asset_list
-
-        logger.info("%s: Assets did not change", character)
-        return None
+        return new_asset_list
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def preload_objects_from_esi(

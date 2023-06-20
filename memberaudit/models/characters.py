@@ -5,7 +5,7 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Tuple
 
 from bravado.exception import HTTPInternalServerError
 
@@ -347,13 +347,25 @@ class Character(models.Model):
         self,
         section: str,
         fetch_func: Callable,
-        store_func: Callable,
+        store_func: Optional[Callable],
         force_update: bool = False,
         hash_num: int = 1,
-    ) -> Any:
+    ) -> Tuple[Any, Optional[bool]]:
         """Fetch data from ESI and store it if it has changed or it is forced.
 
-        Also returns data.
+        Args:
+            - section: Name of the section this update related to
+            - fetch_func: A function that fetched the data from ESI
+            - store_func: A function that stored the data in the DB.
+                This can be skipped by providing None
+            - forced_update: Data will always be stored when set to True
+            - hash_num: To access sub-sections by ID
+
+
+        Returns:
+            - A tuple of the result data or None if data is unchanged
+                and a flag that is True if data was changed,
+                False when it was not change, else None
         """
 
         try:
@@ -367,7 +379,7 @@ class Character(models.Model):
                 section,
                 ex,
             )
-            return None
+            return None, None
 
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
@@ -376,13 +388,15 @@ class Character(models.Model):
             section=section, content=data, hash_num=hash_num
         ):
             logger.info("%s: %s has not changed", section, self)
-            return
+            return None, False
 
-        store_func(self, data)
+        if store_func:
+            store_func(self, data)
+
         self.update_section_content_hash(
             section=section, content=data, hash_num=hash_num
         )
-        return data
+        return data, True
 
     def fetch_token(self, scopes=None) -> Token:
         """returns valid token for character

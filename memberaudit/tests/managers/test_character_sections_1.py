@@ -77,6 +77,58 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         self.assertIsNone(asset.total)
 
 
+@patch(MODULE_PATH + ".esi")
+class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_can_fetch_new_assets(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        result = CharacterAsset.objects.fetch_from_esi(self.character)
+        # then
+        assets = {item["item_id"]: item for item in result}
+        self.assertSetEqual(
+            set(assets.keys()),
+            {
+                1100000000001,
+                1100000000002,
+                1100000000003,
+                1100000000004,
+                1100000000005,
+                1100000000006,
+                1100000000007,
+                1100000000008,
+            },
+        )
+        self.assertEqual(assets[1100000000001]["name"], "Parent Item 1")
+
+    def test_should_return_none_if_assets_did_not_change(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterAsset.objects.fetch_from_esi(self.character)
+        # when
+        result = CharacterAsset.objects.fetch_from_esi(self.character)
+        # then
+        self.assertIsNone(result)
+
+    def test_should_always_return_assets_when_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        CharacterAsset.objects.fetch_from_esi(self.character)
+        # when
+        result = CharacterAsset.objects.fetch_from_esi(
+            self.character, force_update=True
+        )
+        # then
+        self.assertIsNotNone(result)
+
+
 @patch("memberaudit.models.Location.objects.create_missing_esi", spec=True)
 @patch(MODULE_PATH + ".EveType.objects.bulk_get_or_create_esi", spec=True)
 class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
