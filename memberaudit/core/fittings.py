@@ -125,7 +125,7 @@ class Fitting:
             + self.cargo_bay
         )
         types = {self.ship_type}
-        for obj in [x for x in objs if x]:
+        for obj in [o for o in objs if o]:
             types |= obj.eve_types()
         return types
 

@@ -102,9 +102,9 @@ def character_jump_clones_data(
             if implants_data:
                 implants = "<br>".join(
                     bootstrap_icon_plus_name_html(
-                        x["icon_url"], no_wrap_html(x["name"]), size=24
+                        implant["icon_url"], no_wrap_html(implant["name"]), size=24
                     )
-                    for x in sorted(implants_data, key=lambda k: k["slot_num"])
+                    for implant in sorted(implants_data, key=lambda k: k["slot_num"])
                 )
             else:
                 implants = "(none)"

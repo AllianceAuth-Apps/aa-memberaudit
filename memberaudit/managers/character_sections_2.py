@@ -437,7 +437,7 @@ class CharacterMailManager(models.Manager):
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
                 break
 
-            last_mail_id = min((x["mail_id"] for x in mail_headers))
+            last_mail_id = min((mail["mail_id"] for mail in mail_headers))
             page += 1
 
         cutoff_datetime = data_retention_cutoff()

@@ -457,7 +457,7 @@ def assets_create_parents(
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
 
-    assets_flat = {int(x["item_id"]): x for x in asset_list}
+    assets_flat = {int(item["item_id"]): item for item in asset_list}
     new_assets = []
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
@@ -543,7 +543,7 @@ def assets_create_children(
     # store_list_to_disk(character, asset_list, f"child_asset_list_{cycle}")
 
     new_assets = []
-    assets_flat = {int(x["item_id"]): x for x in asset_list}
+    assets_flat = {int(item["item_id"]): item for item in asset_list}
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         parent_asset_ids = set(character.assets.values_list("item_id", flat=True))

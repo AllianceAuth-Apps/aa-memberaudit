@@ -259,7 +259,7 @@ def skill_sets_report_data(request) -> JsonResponse:
                 ),
                 obj.name,
             )
-            for obj in sorted(skill_sets, key=lambda x: x.name.lower())
+            for obj in sorted(skill_sets, key=lambda o: o.name.lower())
         ]
         has_required_html = (
             "<br>".join(has_required)

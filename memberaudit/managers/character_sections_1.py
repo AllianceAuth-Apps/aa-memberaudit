@@ -67,7 +67,7 @@ class CharacterAssetManagerBase(models.Manager):
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
+        assets_flat = {int(item["item_id"]): item for item in asset_list}
 
         logger.info("%s: Fetching asset names from ESI", character)
         names = []
@@ -79,7 +79,9 @@ class CharacterAssetManagerBase(models.Manager):
             ).results()
 
         asset_names = {
-            int(x["item_id"]): x["name"] for x in names if x["name"] != "None"
+            int(item["item_id"]): item["name"]
+            for item in names
+            if item["name"] != "None"
         }
         for item_id in assets_flat.keys():
             assets_flat[item_id]["name"] = asset_names.get(item_id, "")
@@ -111,7 +113,7 @@ class CharacterAssetManagerBase(models.Manager):
             return
 
         logger.info("%s: Preloading objects for asset tree", character)
-        required_ids = {x["type_id"] for x in asset_list if "type_id" in x}
+        required_ids = {item["type_id"] for item in asset_list if "type_id" in item}
         existing_ids = set(EveType.objects.values_list("id", flat=True))
         missing_ids = required_ids.difference(existing_ids)
         if missing_ids:
@@ -120,11 +122,11 @@ class CharacterAssetManagerBase(models.Manager):
             )
             EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
 
-        assets_flat = {int(x["item_id"]): x for x in asset_list}
+        assets_flat = {int(item["item_id"]): item for item in asset_list}
         incoming_location_ids = {
-            x["location_id"]
-            for x in assets_flat.values()
-            if "location_id" in x and x["location_id"] not in assets_flat
+            item["location_id"]
+            for item in assets_flat.values()
+            if "location_id" in item and item["location_id"] not in assets_flat
         }
         Location.objects.create_missing_esi(
             location_ids=incoming_location_ids, token=token
@@ -197,7 +199,7 @@ class CharacterContactLabelManager(models.Manager):
     def _update_or_create_objs(self, character, labels):
         # TODO: replace with bulk methods to optimize
         if labels:
-            incoming_ids = {x["label_id"] for x in labels}
+            incoming_ids = {label["label_id"] for label in labels}
         else:
             incoming_ids = set()
         existing_ids = set(
@@ -244,7 +246,9 @@ class CharacterContactManager(models.Manager):
     @transaction.atomic()
     def _update_or_create_objs(self, character, contacts_data):
         contacts_list = (
-            {int(x["contact_id"]): x for x in contacts_data} if contacts_data else {}
+            {int(obj["contact_id"]): obj for obj in contacts_data}
+            if contacts_data
+            else {}
         )
         incoming_ids = set(contacts_list.keys())
         existing_ids = set(
@@ -546,7 +550,7 @@ class CharacterContractBidManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
         )
-        bids_list = {int(x["bid_id"]): x for x in bids_data if "bid_id" in x}
+        bids_list = {int(obj["bid_id"]): obj for obj in bids_data if "bid_id" in obj}
         self._update_or_create_objs(contract, bids_list)
         EveEntity.objects.bulk_update_new_esi()
 

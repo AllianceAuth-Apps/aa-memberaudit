@@ -135,7 +135,7 @@ def json_response_to_python_2(response: JsonResponse, data_key="data") -> object
 
 def json_response_to_dict_2(response: JsonResponse, key="id", data_key="data") -> dict:
     """Convert JSON response into dict by given key."""
-    return {x[key]: x for x in json_response_to_python_2(response, data_key)}
+    return {o[key]: o for o in json_response_to_python_2(response, data_key)}
 
 
 class TestCaseWithFixtures(TestCase):
