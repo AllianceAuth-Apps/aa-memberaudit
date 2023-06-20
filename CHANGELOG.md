@@ -7,8 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.9.1] - 2023-06-20
+
 ### Changed
 
+- All character sections will now skip storing the data if it has not changed
 - Refactor character section updates (!88)
 - Refactor and improve codebase (!89)
 
