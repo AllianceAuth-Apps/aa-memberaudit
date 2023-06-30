@@ -4,7 +4,6 @@ import datetime as dt
 from typing import Optional
 
 import humanize
-from humanize import naturaltime
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
@@ -13,7 +12,6 @@ from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.timezone import now
 from django.utils.translation import gettext, gettext_lazy
 from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
@@ -263,7 +261,6 @@ def character_planets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = []
-    my_now = now()
     for planet in character.planets.select_related(
         "eve_planet",
         "eve_planet__eve_type",
@@ -278,7 +275,7 @@ def character_planets_data(
         last_update_html = format_html(
             '<span title="{}">{}</span>',
             planet.last_update_at.strftime(DATETIME_FORMAT),
-            naturaltime(planet.last_update_at, when=my_now),
+            humanize.naturaltime(planet.last_update_at),
         )
         data.append(
             {
