@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.9.2] - 2023-06-30
+
+### Fixed
+
+- Datatable for PI in character viewer does not load (#145)
+
 ## [2.9.1] - 2023-06-20
 
 ### Changed

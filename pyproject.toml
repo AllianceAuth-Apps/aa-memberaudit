@@ -39,7 +39,7 @@ dependencies = [
     "bleach",
     "dj-datatables-view",
     "django-eveuniverse>=1.2",
-    "humanize",
+    "humanize>=4.7.0",
     "unidecode",
 ]
 
