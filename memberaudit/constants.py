@@ -1,5 +1,6 @@
 """Shared constants for Member Audit."""
 
+import sys
 from enum import IntEnum
 
 
@@ -79,3 +80,6 @@ MY_DATETIME_FORMAT = "Y-M-d H:i"
 DEFAULT_ICON_SIZE = 32
 SKILL_SET_DEFAULT_ICON_TYPE_ID = 3327
 MAIL_LABEL_ID_ALL_MAILS = 0
+
+IS_TESTING = sys.argv[1:2] == ["test"]
+"""True when tests are currently running, else False."""

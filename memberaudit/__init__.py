@@ -4,5 +4,5 @@ and related reports for auditing, vetting and monitoring.
 
 default_app_config = "memberaudit.apps.MemberAuditConfig"
 
-__version__ = "2.9.3"
+__version__ = "2.9.3a1"
 __title__ = "Member Audit"

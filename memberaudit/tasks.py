@@ -16,12 +16,7 @@ from eveuniverse.models import EveEntity, EveMarketPrice
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.esi import (
-    EsiDailyDowntime,
-    EsiErrorLimitExceeded,
-    EsiOffline,
-    fetch_esi_status,
-)
+from app_utils.esi import EsiErrorLimitExceeded, EsiOffline
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, utils
@@ -36,6 +31,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
 from memberaudit.core import data_exporters
+from memberaudit.decorators import when_esi_is_available
 from memberaudit.models import (
     Character,
     CharacterAsset,
@@ -81,17 +77,13 @@ def run_regular_updates() -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_all_characters(self, force_update: bool = False) -> None:
     """Start the update of all registered characters
 
     Args:
     - force_update: When set to True will always update regardless of stale status
     """
-    try:
-        fetch_esi_status().raise_for_status()
-    except EsiDailyDowntime:
-        logger.info("Daily Downtime detected. Aborting.")
-        return
     if MEMBERAUDIT_LOG_UPDATE_STATS:
         stats = CharacterUpdateStatus.objects.statistics()
         logger.info(f"Update statistics: {stats}")
@@ -274,6 +266,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         },
     }
 )
+@when_esi_is_available
 def update_character_section(
     self,
     character_pk: int,
@@ -284,7 +277,6 @@ def update_character_section(
     **kwargs,
 ) -> None:
     """Task that updates the section of a character"""
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -349,9 +341,9 @@ def _log_character_update_success(character: Character, section: str):
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
+@when_esi_is_available
 def update_unresolved_eve_entities() -> None:
     """Bulk resolved all unresolved EveEntity objects in database."""
-    fetch_esi_status().raise_for_status()
     unresolved_ids = EveEntity.objects.filter(name="")[
         :POST_UNIVERSE_NAMES_MAX_ITEMS
     ].values_list("id", flat=True)
@@ -399,11 +391,11 @@ def update_character_assets(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def assets_build_list_from_esi(
     self, character_pk: int, force_update: bool = False
 ) -> dict:
     """Building asset list"""
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -646,10 +638,10 @@ def update_character_mails(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_character_mailing_lists(
     self, character_pk: int, force_update: bool = False
 ) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -663,10 +655,10 @@ def update_character_mailing_lists(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_character_mail_labels(
     self, character_pk: int, force_update: bool = False
 ) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -680,10 +672,10 @@ def update_character_mail_labels(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_character_mail_headers(
     self, character_pk: int, force_update: bool = False
 ) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -697,9 +689,9 @@ def update_character_mail_headers(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_mail_body_esi(self, character_pk: int, mail_pk: int):
     """Task for updating the body of a mail from ESI"""
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -774,10 +766,10 @@ def update_character_contacts(
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
+@when_esi_is_available
 def update_character_contact_labels(
     self, character_pk: int, force_update: bool = False
 ) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -791,10 +783,10 @@ def update_character_contact_labels(
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
+@when_esi_is_available
 def update_character_contacts_2(
     self, character_pk: int, force_update: bool = False
 ) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -847,10 +839,10 @@ def update_character_contracts(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_character_contract_headers(
     self, character_pk: int, force_update: bool = False
 ):
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -894,9 +886,9 @@ def update_character_contracts_items(self, character_pk: int):
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
+@when_esi_is_available
 def update_contract_items_esi(character_pk: int, contract_pk: int):
     """Task for updating the items of a contract from ESI"""
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -933,9 +925,9 @@ def update_character_contracts_bids(self, character_pk: int):
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
+@when_esi_is_available
 def update_contract_bids_esi(character_pk: int, contract_pk: int):
     """Task for updating the bids of a contract from ESI"""
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -977,8 +969,8 @@ def update_character_wallet_journal(
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_character_wallet_journal_entries(self, character_pk: int) -> None:
-    fetch_esi_status().raise_for_status()
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -995,13 +987,9 @@ def update_character_wallet_journal_entries(self, character_pk: int) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@when_esi_is_available
 def update_market_prices(self):
     """Update market prices from ESI"""
-    try:
-        fetch_esi_status().raise_for_status()
-    except EsiDailyDowntime:
-        logger.info("Daily Downtime detected. Aborting.")
-        return
     EveMarketPrice.objects.update_from_esi(
         minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2
     )

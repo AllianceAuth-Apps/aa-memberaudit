@@ -1,5 +1,5 @@
 import datetime as dt
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -9,7 +9,7 @@ from django_webtest import WebTest
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.esi import EsiStatus, fetch_esi_status
+from app_utils.esi import EsiStatus
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit import tasks
@@ -41,7 +41,6 @@ MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(TASKS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestUILauncher(WebTest):
     fixtures = ["disable_analytics.json"]
 
@@ -332,7 +331,6 @@ class TestUICharacterViewer(WebTest):
     TASKS_PATH + ".Character.objects.get_cached",
     lambda pk, timeout: Character.objects.get(pk=pk),
 )
-@patch(TASKS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)

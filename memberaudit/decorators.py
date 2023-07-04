@@ -5,9 +5,11 @@ from functools import wraps
 from django.http import HttpResponseForbidden, HttpResponseNotFound
 
 from allianceauth.services.hooks import get_extension_logger
+from app_utils.esi import EsiDailyDowntime, fetch_esi_status
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
+from memberaudit.constants import IS_TESTING
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -75,3 +77,26 @@ def fetch_token_for_character(scopes=None):
         return _wrapped_view
 
     return decorator
+
+
+def when_esi_is_available(func):
+    """Makes sure the decorated task only runs when esi is available.
+
+    Raised exception when ESI is offline.
+    Completes the task without running it when downtime is detected.
+
+    Automatically disabled during tests.
+    """
+
+    @wraps(func)
+    def outer(*args, **kwargs):
+        if IS_TESTING is not True:
+            try:
+                fetch_esi_status().raise_for_status()
+            except EsiDailyDowntime:
+                logger.info("Daily Downtime detected. Aborting.")
+                return  # function will not run
+
+        return func(*args, **kwargs)
+
+    return outer
