@@ -706,7 +706,7 @@ def update_mail_body_esi(self, character_pk: int, mail_pk: int):
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_mail_bodies(self, character_pk: int) -> None:
+def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
