@@ -11,13 +11,17 @@
                 {% if character.memberaudit_character_pk and character.has_access %}
                     <li class="sidebar_character character-{{ character.memberaudit_character_pk }}{% if auth_character.character_name == character.character_name %} active{% endif %}" title="{{ character.character_name }}">
                         <a href="{% url 'memberaudit:character_viewer' character.memberaudit_character_pk %}">
-                            {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}
+                            <span class="sidebar-character-list-item text-nowrap">
+                                {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}
+                            </span>
                         </a>
                     </li>
                 {% else %}
                     <li class="sidebar_character_disabled">
-                        {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}&nbsp;
-                        <i class="fas fa-exclamation-triangle text-muted" title="{% translate 'Unregistered character' %}"></i>
+                        <span class="sidebar-character-list-item text-nowrap">
+                            {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}&nbsp;
+                            <i class="sidebar-character-list-item-icon fas fa-exclamation-triangle text-muted" title="{% translate 'Unregistered character' %}"></i>
+                        </span>
                     </li>
                 {% endif %}
             {% empty %}
