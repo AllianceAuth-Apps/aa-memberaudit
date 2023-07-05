@@ -234,7 +234,6 @@
         list-style-type: none;
         margin: 0;
         padding: 0;
-        overflow-x: auto;
     }
 
     .sidebar_character {
@@ -254,6 +253,9 @@
         display: block;
         padding: 0.2rem 0.4rem;
         text-decoration: none;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 100%;
     }
 
     .template-light-mode .sidebar_character>a {
