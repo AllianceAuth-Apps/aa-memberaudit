@@ -253,9 +253,19 @@
         display: block;
         padding: 0.2rem 0.4rem;
         text-decoration: none;
-        overflow: hidden;
+
+    }
+
+    .sidebar-character-list-item {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .sidebar-character-list-item-name {
         text-overflow: ellipsis;
-        max-width: 100%;
+        white-space: nowrap;
+        overflow: hidden;
     }
 
     .template-light-mode .sidebar_character>a {
