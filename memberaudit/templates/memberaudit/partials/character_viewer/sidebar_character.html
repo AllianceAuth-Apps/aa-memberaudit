@@ -7,7 +7,7 @@
         {{ character.character_name }}
 
         {% if character.character_id == main_character_id %}
-            &nbsp;<i class="fas fa-crown" title="{% translate 'Main character' %}"></i>
+            <i class="fas fa-crown" title="{% translate 'Main character' %}"></i>
         {% endif %}
 
         {% if character.is_shared %}
