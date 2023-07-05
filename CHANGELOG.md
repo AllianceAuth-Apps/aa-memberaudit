@@ -7,11 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.9.3] - 2023-06-30
+## [2.9.3] - 2023-07-05
 
 ### Changed
 
 - Removed local swagger spec file
+- Tasks no longer fail during downtime
+- Refactored ESI available handling for tasks into decorator
+
+### Fixed
+
+- Attempt: Extend params for task update_character_mail_bodies()
+- Prevent character names overflowing the sidebar menu (!92) - Thanks @maxtsero!
+- Characters no longer wrap in sidebar
 
 ## [2.9.2] - 2023-06-30
 
