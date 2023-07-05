@@ -239,6 +239,7 @@
 
     .sidebar_character {
         margin: 0.2rem 0;
+        white-space: nowrap;
     }
 
     .sidebar_character_disabled {
@@ -246,6 +247,7 @@
         display: block;
         padding: 0.2rem 0.4rem;
         text-decoration: none;
+        white-space: nowrap;
     }
 
     .sidebar_character>a {
