@@ -398,16 +398,7 @@ class CharacterAdmin(admin.ModelAdmin):
             )
 
     @admin.display(
-        description=(
-            _(
-                "Update %s for selected characters from EVE server"
-                % {
-                    Character.UpdateSection.display_name(
-                        Character.UpdateSection.LOCATION
-                    )
-                }
-            )
-        )
+        description=(_("Update location for selected characters from EVE server"))
     )
     def update_location(self, request, queryset):
         section = Character.UpdateSection.LOCATION

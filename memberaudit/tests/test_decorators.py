@@ -1,16 +1,25 @@
+from unittest.mock import patch
+
 from django.http import HttpResponse
 from django.test import RequestFactory, TestCase
 from esi.errors import TokenError
 from esi.models import Token
 
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.esi import EsiDailyDowntime, EsiOffline, EsiStatus
 from app_utils.testing import NoSocketsTestCase, generate_invalid_pk
 
-from memberaudit.decorators import fetch_character_if_allowed, fetch_token_for_character
+from memberaudit.decorators import (
+    fetch_character_if_allowed,
+    fetch_token_for_character,
+    when_esi_is_available,
+)
 from memberaudit.models import Character
 
 from .testdata.load_entities import load_entities
 from .utils import create_memberaudit_character, scope_names_set
+
+MODULE_PATH = "memberaudit.decorators"
 
 DUMMY_URL = "http://www.example.com"
 
@@ -117,3 +126,35 @@ class TestFetchToken(TestCase):
 
         with self.assertRaises(TokenError):
             dummy(self, self.character)
+
+
+@when_esi_is_available
+def my_func():
+    return "ok"
+
+
+@patch(MODULE_PATH + ".IS_TESTING", False)
+@patch(MODULE_PATH + ".fetch_esi_status")
+class TestEsiIsAvailable(NoSocketsTestCase):
+    def test_should_run_task_when_esi_is_available(self, mock_fetch_esi_status):
+        # given
+        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+        # when/then
+        result = my_func()
+        # then
+        self.assertEqual(result, "ok")
+
+    def test_should_raise_error_when_esi_is_offline(self, mock_fetch_esi_status):
+        # given
+        mock_fetch_esi_status.return_value = EsiStatus(False, 99, 60)
+        # when/then
+        with self.assertRaises(EsiOffline):
+            my_func()
+
+    def test_should_complete_task_early_when_downtime(self, mock_fetch_esi_status):
+        # given
+        mock_fetch_esi_status.side_effect = EsiDailyDowntime
+        # when/then
+        result = my_func()
+        # then
+        self.assertIsNone(result)
