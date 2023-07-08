@@ -19,6 +19,7 @@ from memberaudit.managers.character_sections_3 import (
     CharacterSkillManager,
     CharacterSkillqueueEntryManager,
     CharacterSkillSetCheckManager,
+    CharacterStandingManager,
     CharacterWalletBalanceManager,
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
@@ -249,6 +250,33 @@ class CharacterSkillSetCheck(models.Model):
     @property
     def can_fly(self) -> bool:
         return self.failed_required_skills.count() == 0
+
+
+class CharacterStanding(models.Model):
+    """Standing of a character with an NPC entity in Eve Online."""
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="standings"
+    )
+    eve_entity = models.ForeignKey(
+        EveEntity, on_delete=models.CASCADE, related_name="+"
+    )
+
+    standing = models.FloatField()
+
+    objects = CharacterStandingManager()
+
+    class Meta:
+        default_permissions = ()
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=["character", "eve_entity"],
+        #         name="functional_pk_characterstanding",
+        #     )
+        # ]
+
+    def __str__(self) -> str:
+        return f"{self.character}-{self.eve_entity}"
 
 
 class CharacterWalletBalance(models.Model):

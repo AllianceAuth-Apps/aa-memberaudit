@@ -21,6 +21,7 @@ from memberaudit.models import (
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
+    CharacterStanding,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
@@ -402,6 +403,26 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         # then
         entry = self.character_1001.skillqueue.get(queue_position=0)
         self.assertEqual(entry.finished_level, 3)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+    def test_can_create_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterStanding.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.standings.count(), 3)
+
+        entry = self.character_1001.standings.get(eve_entity_id=1901)
+        self.assertEqual(entry.standing, 0.1)
+
+        entry = self.character_1001.standings.get(eve_entity_id=2901)
+        self.assertEqual(entry.standing, 0)
+
+        entry = self.character_1001.standings.get(eve_entity_id=500001)
+        self.assertEqual(entry.standing, -1)
 
 
 @patch(MODULE_PATH + ".esi")

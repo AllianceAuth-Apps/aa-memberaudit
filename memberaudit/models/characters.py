@@ -70,6 +70,7 @@ class Character(models.Model):
         SKILLS = "skills", _("skills")
         SKILL_QUEUE = "skill_queue", _("skill queue")
         SKILL_SETS = "skill_sets", _("skill sets")
+        STANDINGS = "standings", _("standings")
         WALLET_BALLANCE = "wallet_balance", _("wallet balance")
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
@@ -122,6 +123,7 @@ class Character(models.Model):
         UpdateSection.SKILLS: 2,
         UpdateSection.SKILL_SETS: 2,
         UpdateSection.SKILL_QUEUE: 1,
+        UpdateSection.STANDINGS: 21,
         UpdateSection.WALLET_BALLANCE: 2,
         UpdateSection.WALLET_JOURNAL: 2,
         UpdateSection.WALLET_TRANSACTIONS: 2,
@@ -551,6 +553,10 @@ class Character(models.Model):
     def update_skills(self, force_update: bool = False):
         """update the character's skill"""
         self.skills.update_or_create_esi(self, force_update)
+
+    def update_standings(self, force_update: bool = False):
+        """Update the character's standings."""
+        self.standings.update_or_create_esi(self, force_update)
 
     def update_wallet_balance(self, force_update: bool = False):
         """syncs the character's wallet balance"""

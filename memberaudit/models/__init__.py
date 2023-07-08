@@ -31,6 +31,7 @@ from .character_sections_3 import (
     CharacterSkillpoints,
     CharacterSkillqueueEntry,
     CharacterSkillSetCheck,
+    CharacterStanding,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,

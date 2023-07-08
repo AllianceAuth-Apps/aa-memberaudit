@@ -137,6 +137,16 @@
             "id": 2021,
             "category": "corporation",
             "name": "Dummy Corp 1"
+        },
+        {
+            "id": 1901,
+            "category": "character",
+            "name": "Agent"
+        },
+        {
+            "id": 2901,
+            "category": "corporation",
+            "name": "Agent"
         }
     ]
 }
