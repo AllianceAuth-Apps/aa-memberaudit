@@ -32,6 +32,7 @@ from memberaudit.constants import (
     MY_DATETIME_FORMAT,
     EveCategoryId,
 )
+from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
 from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
@@ -448,6 +449,7 @@ def character_contacts_data(
         name_html = bootstrap_icon_plus_name_html(
             contact.eve_entity.icon_url(DEFAULT_ICON_SIZE), name_plus, avatar=True
         )
+        standing = Standing.from_value(contact.standing)
         data.append(
             {
                 "id": contact.eve_entity_id,
@@ -459,7 +461,8 @@ def character_contacts_data(
                 "is_watched_str": yesno_str(is_watched),
                 "is_blocked_str": yesno_str(is_blocked),
                 "is_npc_str": yesno_str(is_npc),
-                "level": contact.standing_level.title(),
+                "group_name": standing.label.title(),
+                "group_sort": standing.value,
             }
         )
 

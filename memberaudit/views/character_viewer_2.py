@@ -35,6 +35,7 @@ from memberaudit.constants import (
     MY_DATETIME_FORMAT,
     SKILL_SET_DEFAULT_ICON_TYPE_ID,
 )
+from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
 from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
@@ -628,17 +629,26 @@ def character_standings_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     data = []
-    for standing in character.standings.select_related("eve_entity").all():
-        name = standing.eve_entity.name
+    for obj in character.standings.select_related("eve_entity").all():
+        name = obj.eve_entity.name
         name_html = bootstrap_icon_plus_name_html(
-            standing.eve_entity.icon_url(DEFAULT_ICON_SIZE), name, avatar=True
+            obj.eve_entity.icon_url(DEFAULT_ICON_SIZE), name, avatar=True
         )
+        standing = Standing.from_value(obj.standing)
+        map_category = {
+            "character": gettext_lazy("Agent"),
+            "corporation": gettext_lazy("Corporation"),
+            "faction": gettext_lazy("Faction"),
+        }
+        npc_type = map_category.get(obj.eve_entity.get_category_display(), "")
         data.append(
             {
-                "id": standing.eve_entity_id,
+                "id": obj.eve_entity_id,
+                "group_name": standing.label.title(),
+                "group_sort": standing.value,
                 "name": {"display": name_html, "sort": name},
-                "standing": standing.standing,
-                "type": standing.eve_entity.get_category_display().title(),
+                "standing": obj.standing,
+                "type": npc_type,
             }
         )
 

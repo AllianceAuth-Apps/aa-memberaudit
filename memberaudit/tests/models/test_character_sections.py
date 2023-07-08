@@ -1,12 +1,9 @@
-from typing import NamedTuple
-
 from django.test import TestCase
-from eveuniverse.models import EveEntity
 
 from memberaudit.constants import EveFactionId
-from memberaudit.models import CharacterContact, CharacterFwStats
+from memberaudit.models import CharacterFwStats
 
-from ..testdata.factories import create_character_contact, create_fw_stats
+from ..testdata.factories import create_fw_stats
 from ..utils import create_memberaudit_character, load_entities, load_eveuniverse
 
 
@@ -47,37 +44,3 @@ class TestCharacterFwStatsRankNameObject(TestCase):
         obj = create_fw_stats(character=self.character, faction=None)
         # when/then
         self.assertEqual(obj.current_rank_name(), "")
-
-
-class TestCharacterContactStandingLevel(TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-
-    class MyTestCase(NamedTuple):
-        standing: float
-        expected_result: str
-
-    def test_should_determine_correct_standing(self):
-        # given
-        character = create_memberaudit_character(1001)
-        contact_character = EveEntity.objects.get(id=1101)
-
-        test_cases = [
-            self.MyTestCase(9.9, CharacterContact.STANDING_EXCELLENT),
-            self.MyTestCase(4.9, CharacterContact.STANDING_GOOD),
-            self.MyTestCase(0.0, CharacterContact.STANDING_NEUTRAL),
-            self.MyTestCase(-4.9, CharacterContact.STANDING_BAD),
-            self.MyTestCase(-9.9, CharacterContact.STANDING_TERRIBLE),
-        ]
-        for test_case in test_cases:
-            with self.subTest(standing=test_case.standing):
-                contact = create_character_contact(
-                    character=character,
-                    eve_entity=contact_character,
-                    standing=test_case.standing,
-                )
-                self.assertEqual(contact.standing_level, test_case.expected_result)
-                contact.delete()
