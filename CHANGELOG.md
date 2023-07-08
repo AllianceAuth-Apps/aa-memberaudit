@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.9.4] - 2023-07-05
+
+### Changed
+
+- Use ellipsis instead of a scrollbar for character sidebar (!94) - Thanks @ppfeufer
+
 ## [2.9.3] - 2023-07-05
 
 ### Changed
