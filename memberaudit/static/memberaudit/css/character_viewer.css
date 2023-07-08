@@ -234,7 +234,6 @@
         list-style-type: none;
         margin: 0;
         padding: 0;
-        overflow-x: auto;
     }
 
     .sidebar_character {
@@ -254,6 +253,18 @@
         display: block;
         padding: 0.2rem 0.4rem;
         text-decoration: none;
+    }
+
+    .sidebar-character-list-item {
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+    }
+
+    .sidebar-character-list-item-name {
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
     }
 
     .template-light-mode .sidebar_character>a {
