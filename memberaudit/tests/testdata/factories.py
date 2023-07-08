@@ -29,6 +29,7 @@ from memberaudit.models import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterStanding,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
@@ -271,6 +272,18 @@ def create_skill_plan(**kwargs) -> SkillPlan:
         params["skills"] = [create_skill() for _ in range(random.randint(1, 5))]
     params.update(kwargs)
     return SkillPlan(**params)
+
+
+def create_character_standing(
+    character: Character, eve_entity: EveEntity, **kwargs
+) -> CharacterStanding:
+    params = {
+        "character": character,
+        "eve_entity": eve_entity,
+        "standing": 0.0,
+    }
+    params.update(kwargs)
+    return CharacterStanding.objects.create(**params)
 
 
 def create_mail_entity_from_eve_entity(id: int) -> MailEntity:

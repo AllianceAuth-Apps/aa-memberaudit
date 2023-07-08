@@ -624,6 +624,30 @@ def character_skills_data(
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed()
+def character_standings_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    data = []
+    for standing in character.standings.select_related("eve_entity").all():
+        name = standing.eve_entity.name
+        name_html = bootstrap_icon_plus_name_html(
+            standing.eve_entity.icon_url(DEFAULT_ICON_SIZE), name, avatar=True
+        )
+        data.append(
+            {
+                "id": standing.eve_entity_id,
+                "name": {"display": name_html, "sort": name},
+                "standing": standing.standing,
+                "type": standing.eve_entity.get_category_display().title(),
+            }
+        )
+
+    return JsonResponse({"data": data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
 def character_wallet_journal_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
