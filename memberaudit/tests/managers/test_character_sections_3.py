@@ -444,6 +444,14 @@ class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         entry = self.character_1001.standings.get(eve_entity_id=500001)
         self.assertEqual(entry.standing, -1)
 
+    def test_can_handle_no_standings(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        CharacterStanding.objects.update_or_create_esi(self.character_1002)
+        # then
+        self.assertEqual(self.character_1002.standings.count(), 0)
+
 
 @patch(MODULE_PATH + ".esi")
 class TestCharacterWalletBalanceManager(
