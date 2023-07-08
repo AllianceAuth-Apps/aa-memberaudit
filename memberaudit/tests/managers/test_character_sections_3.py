@@ -32,6 +32,7 @@ from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
+    create_character_standing,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -410,6 +411,25 @@ class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
+        # when
+        CharacterStanding.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.assertEqual(self.character_1001.standings.count(), 3)
+
+        entry = self.character_1001.standings.get(eve_entity_id=1901)
+        self.assertEqual(entry.standing, 0.1)
+
+        entry = self.character_1001.standings.get(eve_entity_id=2901)
+        self.assertEqual(entry.standing, 0)
+
+        entry = self.character_1001.standings.get(eve_entity_id=500001)
+        self.assertEqual(entry.standing, -1)
+
+    def test_can_update_existing(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        npc_corp = EveEntity.objects.get(id=2901)
+        create_character_standing(self.character_1001, npc_corp, standing=-5)
         # when
         CharacterStanding.objects.update_or_create_esi(self.character_1001)
         # then
