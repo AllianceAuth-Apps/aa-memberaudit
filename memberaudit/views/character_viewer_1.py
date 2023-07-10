@@ -31,6 +31,7 @@ from memberaudit.constants import (
     MAIL_LABEL_ID_ALL_MAILS,
     MY_DATETIME_FORMAT,
     EveCategoryId,
+    EveSkillTypeId,
 )
 from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
@@ -178,6 +179,18 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     except ObjectDoesNotExist:
         last_updates = None
 
+    # connection skills
+    connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CONNECTIONS
+    )
+    criminal_connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CRIMINAL_CONNECTIONS
+    )
+    connection_skills_differ = (
+        connections_skill_level != criminal_connections_skill_level
+    )
+
+    # page title
     page_title = _("Character Sheet")
     if not character.user_is_owner(request.user):
         page_title = format_html(
@@ -200,6 +213,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "last_updates": last_updates,
         "character_assets_total": character_assets_total,
         "has_implants": has_implants,
+        "connection_skills_differ": connection_skills_differ,
         "is_assets_updating": character.is_section_updating(
             Character.UpdateSection.ASSETS
         ),
