@@ -11,6 +11,7 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
+from memberaudit.core import standings
 from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
     CharacterOnlineStatusManager,
@@ -295,8 +296,8 @@ class CharacterStanding(models.Model):
             skill_modifier = 0.04
 
         max_possible_standing = 10
-        effective_standing = unadjusted_standing + (
-            (max_possible_standing - unadjusted_standing) * skill_modifier * skill_level
+        effective_standing = standings.calc_effective_standing(
+            unadjusted_standing, skill_level, skill_modifier, max_possible_standing
         )
         return effective_standing
 

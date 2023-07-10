@@ -1,16 +1,13 @@
 from typing import NamedTuple
 from unittest import TestCase
 
-from memberaudit.core.standings import Standing
-
-from ..testdata.load_entities import load_entities
+from memberaudit.core.standings import Standing, calc_effective_standing
 
 
 class TestCharacterContactStandingLevel(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        load_entities()
 
     class MyTestCase(NamedTuple):
         standing: float
@@ -31,3 +28,19 @@ class TestCharacterContactStandingLevel(TestCase):
                 standing = Standing.from_value(test_case.standing)
                 # then
                 self.assertEqual(standing, test_case.expected_result)
+
+
+class TestCalcEffectiveStanding(TestCase):
+    def test_should_calc_correct_standing(self):
+        # given
+        unadjusted_standing = 0.9
+        skill_level = 2
+        skill_modifier = 0.04
+        max_possible_standing = 10
+        # when
+        result = calc_effective_standing(
+            unadjusted_standing, skill_level, skill_modifier, max_possible_standing
+        )
+        # then
+        # 0.9 +(10-0.9)*0.04*2=
+        self.assertAlmostEqual(result, 1.628, 3)

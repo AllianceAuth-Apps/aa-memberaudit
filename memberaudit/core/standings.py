@@ -24,3 +24,13 @@ class Standing(models.IntegerChoices):
             return cls.BAD
 
         return cls.TERRIBLE
+
+
+def calc_effective_standing(
+    unadjusted_standing, skill_level, skill_modifier, max_possible_standing
+):
+    """Calculate effective after applying skill."""
+    effective_standing = unadjusted_standing + (
+        (max_possible_standing - unadjusted_standing) * skill_modifier * skill_level
+    )
+    return effective_standing
