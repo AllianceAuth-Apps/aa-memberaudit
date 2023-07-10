@@ -759,7 +759,10 @@
                 { data: 'type' },
                 {
                     data: 'standing',
-                    render: $.fn.dataTable.render.number(',', '.', 2)
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
                 },
                 { data: 'group_sort'}
 

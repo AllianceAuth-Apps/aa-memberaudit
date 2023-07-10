@@ -278,6 +278,28 @@ class CharacterStanding(models.Model):
     def __str__(self) -> str:
         return f"{self.character}-{self.eve_entity}"
 
+    def effective_standing(
+        self,
+        connections_skill_level: int,
+        criminal_connections_skill_level: int,
+        diplomacy_skill_level: int,
+    ) -> float:
+        """Return effective standing for this NPC after applying social skill."""
+        unadjusted_standing = self.standing
+        if unadjusted_standing >= 0:
+            skill_level = connections_skill_level
+            skill_modifier = 0.04
+            # TODO: Add variant for criminal connection
+        else:
+            skill_level = diplomacy_skill_level
+            skill_modifier = 0.04
+
+        max_possible_standing = 10
+        effective_standing = unadjusted_standing + (
+            (max_possible_standing - unadjusted_standing) * skill_modifier * skill_level
+        )
+        return effective_standing
+
 
 class CharacterWalletBalance(models.Model):
     """Wallet balance of a character"""

@@ -10,11 +10,14 @@
                     <th>{% translate 'Standing' %}</th>
                     <th>{% translate 'Name' %}</th>
                     <th>{% translate 'NPC Type' %}</th>
-                    <th>{% translate 'Standing (unmodified)' %}</th>
+                    <th>{% translate 'Eff. Standing (unmodifed)' %}</th>
                 </tr>
             </thead>
             <tbody></tbody>
         </table>
     </div>
+    <p class="text-muted">
+        Note: Modfied standings for criminal organizations with positive standing can currently not be relied on.
+    </p>
     {% include 'memberaudit/partials/character_viewer/tabs/last_updated.html' with update_section=last_updates.standings %}
 </div>

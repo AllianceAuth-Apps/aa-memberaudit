@@ -367,6 +367,14 @@ class CharacterSkillManager(models.Manager):
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
 
+    def find_active_skill_level(self, skill_id: int) -> int:
+        """Return active skill level for a skill or 0 if not found."""
+        try:
+            skill = self.get(eve_type_id=skill_id)
+        except self.model.DoesNotExist:
+            return 0
+        return skill.active_skill_level
+
 
 class CharacterSkillSetCheckManager(models.Manager):
     @transaction.atomic()

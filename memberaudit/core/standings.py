@@ -10,7 +10,7 @@ class Standing(models.IntegerChoices):
     TERRIBLE = -10, _("terrible standing")
 
     @classmethod
-    def from_value(cls, value: float) -> str:
+    def from_value(cls, value: float) -> "Standing":
         if value > 5:
             return cls.EXCELLENT
 

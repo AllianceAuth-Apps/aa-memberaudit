@@ -631,7 +631,7 @@ class TestStandings(LoadTestDataMixin, TestCase):
         obj = data[2901]
         self.assertEqual("NPC corporation", obj["name"]["sort"])
         self.assertEqual(obj["type"], "Corporation")
-        self.assertEqual(obj["standing"], 5.0)
+        self.assertEqual(obj["standing"]["sort"], 5.0)
 
 
 class TestWallet(LoadTestDataMixin, TestCase):
