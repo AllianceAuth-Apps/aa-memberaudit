@@ -53,6 +53,7 @@ class Character(models.Model):
         """A section of content for a character that can be updated separately."""
 
         ASSETS = "assets", _("assets")
+        ATTRIBUTES = "attributes", _("attributes")
         CHARACTER_DETAILS = "character_details", ("character details")
         CONTACTS = "contacts", _("contacts")
         CONTRACTS = "contracts", _("contracts")
@@ -74,9 +75,6 @@ class Character(models.Model):
         WALLET_BALLANCE = "wallet_balance", _("wallet balance")
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
-        ATTRIBUTES = "attributes", _(
-            "attributes"
-        )  # TODO: Apply sort order with next DB change
 
         @classmethod
         def method_name(cls, section: str) -> str:
