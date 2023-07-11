@@ -146,6 +146,11 @@ urlpatterns = [
         name="character_skill_sets_data",
     ),
     path(
+        "character_standings_data/<int:character_pk>/",
+        character_viewer_2.character_standings_data,
+        name="character_standings_data",
+    ),
+    path(
         "character_wallet_journal_data/<int:character_pk>/",
         character_viewer_2.character_wallet_journal_data,
         name="character_wallet_journal_data",

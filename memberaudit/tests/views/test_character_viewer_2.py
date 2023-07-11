@@ -36,6 +36,7 @@ from memberaudit.views.character_viewer_2 import (
     character_skill_sets_data,
     character_skillqueue_data,
     character_skills_data,
+    character_standings_data,
     character_wallet_journal_data,
     character_wallet_transactions_data,
 )
@@ -45,6 +46,7 @@ from ..testdata.factories import (
     create_character_mail_label,
     create_character_mining_ledger_entry,
     create_character_planet,
+    create_character_standing,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
     create_skill_set,
@@ -610,8 +612,31 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         self.assertFalse(row["is_active"])
 
 
+class TestStandings(LoadTestDataMixin, TestCase):
+    def test_should_produce_character_standings_data(self):
+        # given
+        npc_corp = EveEntity.objects.get(id=2901)
+        create_character_standing(
+            character=self.character, eve_entity=npc_corp, standing=5.0
+        )
+        request = self.factory.get(
+            reverse("memberaudit:character_standings_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_standings_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_dict_2(response)
+        obj = data[2901]
+        self.assertEqual("NPC corporation", obj["name"]["sort"])
+        self.assertEqual(obj["type"], "Corporation")
+        self.assertEqual(obj["standing"]["sort"], 5.0)
+
+
 class TestWallet(LoadTestDataMixin, TestCase):
     def test_character_wallet_journal_data(self):
+        # given
         CharacterWalletJournalEntry.objects.create(
             character=self.character,
             entry_id=1,
@@ -629,7 +654,9 @@ class TestWallet(LoadTestDataMixin, TestCase):
             )
         )
         request.user = self.user
+        # when
         response = character_wallet_journal_data(request, self.character.pk)
+        # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)

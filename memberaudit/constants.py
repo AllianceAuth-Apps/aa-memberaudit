@@ -44,6 +44,14 @@ class EveTypeId(IntEnum):
     SOLAR_SYSTEM = 5
 
 
+class EveSkillTypeId(IntEnum):
+    """Eve Online named skill type IDs"""
+
+    CONNECTIONS = 3359
+    CRIMINAL_CONNECTIONS = 3361
+    DIPLOMACY = 3357
+
+
 class EveDogmaAttributeId(IntEnum):
     """Eve Online named dogma attribute IDs"""
 

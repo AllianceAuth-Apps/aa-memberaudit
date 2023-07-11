@@ -42,6 +42,7 @@
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
                         {% endif %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
                     </div>
@@ -243,7 +244,7 @@
                 cache: false
             },
             columns: [
-                { data: 'level' },
+                { data: 'group_name' },
                 {
                     data: 'name',
                     render: {
@@ -252,7 +253,10 @@
                     }
                 },
                 { data: 'type' },
-                { data: 'standing' },
+                {
+                    data: 'standing',
+                    render: $.fn.dataTable.render.number(',', '.', 2)
+                },
                 { data: 'is_watched' },
                 { data: 'is_blocked' },
 
@@ -260,15 +264,16 @@
                 { data: 'is_watched_str' },
                 { data: 'is_blocked_str' },
                 { data: 'is_npc_str' },
+                { data: 'group_sort' },
             ],
-            order: [[3, "desc"], [0, "asc"], [1, "asc"]],
+            order: [[3, "desc"], [1, "asc"]],
             rowGroup: {
-                dataSrc: 'level',
+                dataSrc: 'group_name',
                 className: 'table-group'
             },
             columnDefs: [
                 {
-                    "visible": false, "targets": [0, 6, 7, 8]
+                    "visible": false, "targets": [0, 6, 7, 8, 9]
                 },
                 {
                     /* render bools as icon */
@@ -728,6 +733,58 @@
                         idx: 2,
                         title: "{% translate 'Level' %}"
                     }
+                ],
+                autoSize: false,
+                bootstrap: true
+            }
+        });
+
+        /* Standings */
+        $('#tab_standings').DataTable({
+            "paging": true,
+            ajax: {
+                url: "{% url 'memberaudit:character_standings_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'group_name' },
+                {
+                    data: 'name',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                { data: 'type' },
+                {
+                    data: 'standing',
+                    render: {
+                        _: 'display',
+                        sort: 'sort'
+                    }
+                },
+                { data: 'group_sort'}
+
+            ],
+            order: [[3, "desc"], [1, "asc"]],
+            rowGroup: {
+                dataSrc: 'group_name',
+                className: 'table-group'
+            },
+            columnDefs: [
+                {
+                    "visible": false, "targets": [0, 4]
+                }
+            ],
+            filterDropDown: {
+                columns: [
+                    {
+                        idx: 0
+                    },
+                    {
+                        idx: 2
+                    },
                 ],
                 autoSize: false,
                 bootstrap: true

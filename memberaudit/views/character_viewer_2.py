@@ -34,13 +34,16 @@ from memberaudit.constants import (
     MAP_ARABIC_TO_ROMAN_NUMBERS,
     MY_DATETIME_FORMAT,
     SKILL_SET_DEFAULT_ICON_TYPE_ID,
+    EveSkillTypeId,
 )
+from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
 from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
     Character,
     CharacterMail,
     CharacterPlanet,
+    CharacterStanding,
     SkillSet,
     SkillSetSkill,
 )
@@ -619,6 +622,55 @@ def character_skills_data(
         pass
 
     return JsonResponse({"data": skills_data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
+def character_standings_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CONNECTIONS
+    )
+    diplomacy_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.DIPLOMACY
+    )
+    criminal_connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CRIMINAL_CONNECTIONS
+    )
+    data = []
+    for obj in character.standings.select_related("eve_entity").all():
+        obj: CharacterStanding
+        name = obj.eve_entity.name
+        name_html = bootstrap_icon_plus_name_html(
+            obj.eve_entity.icon_url(DEFAULT_ICON_SIZE), name, avatar=True
+        )
+        map_category = {
+            "character": gettext_lazy("Agent"),
+            "corporation": gettext_lazy("Corporation"),
+            "faction": gettext_lazy("Faction"),
+        }
+        npc_type = map_category.get(obj.eve_entity.get_category_display(), "")
+        effective_standing = obj.effective_standing(
+            connections_skill_level=connections_skill_level,
+            criminal_connections_skill_level=criminal_connections_skill_level,
+            diplomacy_skill_level=diplomacy_skill_level,
+        )
+        standing_str = f"{effective_standing:.2f} ({obj.standing:.2f})"
+        standing_group = Standing.from_value(effective_standing)
+        data.append(
+            {
+                "id": obj.eve_entity.id,
+                "group_name": standing_group.label.title(),
+                "group_sort": standing_group.value,
+                "name": {"display": name_html, "sort": name},
+                "standing": {"display": standing_str, "sort": effective_standing},
+                "type": npc_type,
+            }
+        )
+
+    return JsonResponse({"data": data})
 
 
 @login_required

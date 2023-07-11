@@ -31,7 +31,9 @@ from memberaudit.constants import (
     MAIL_LABEL_ID_ALL_MAILS,
     MY_DATETIME_FORMAT,
     EveCategoryId,
+    EveSkillTypeId,
 )
+from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
 from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
@@ -177,6 +179,18 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     except ObjectDoesNotExist:
         last_updates = None
 
+    # connection skills
+    connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CONNECTIONS
+    )
+    criminal_connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CRIMINAL_CONNECTIONS
+    )
+    connection_skills_differ = (
+        connections_skill_level != criminal_connections_skill_level
+    )
+
+    # page title
     page_title = _("Character Sheet")
     if not character.user_is_owner(request.user):
         page_title = format_html(
@@ -199,6 +213,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "last_updates": last_updates,
         "character_assets_total": character_assets_total,
         "has_implants": has_implants,
+        "connection_skills_differ": connection_skills_differ,
         "is_assets_updating": character.is_section_updating(
             Character.UpdateSection.ASSETS
         ),
@@ -436,30 +451,38 @@ def character_contacts_data(
 ) -> JsonResponse:
     data = []
     for contact in character.contacts.select_related("eve_entity").all():
-        is_watched = contact.is_watched is True
-        is_blocked = contact.is_blocked is True
-        name = contact.eve_entity.name
-        is_npc = contact.eve_entity.is_npc
+        eve_entity = contact.eve_entity
+        name = eve_entity.name
+        if not name:
+            continue
+
+        is_npc = eve_entity.is_npc
         if is_npc:
             name_plus = format_html("{} {}", name, bootstrap_label_html("NPC", "info"))
         else:
             name_plus = name
 
         name_html = bootstrap_icon_plus_name_html(
-            contact.eve_entity.icon_url(DEFAULT_ICON_SIZE), name_plus, avatar=True
+            eve_entity.icon_url(DEFAULT_ICON_SIZE), name_plus, avatar=True
         )
+        standing = Standing.from_value(contact.standing)
+        is_watched = contact.is_watched is True
+        is_blocked = contact.is_blocked is True
+        category_name = eve_entity.get_category_display().title()
+
         data.append(
             {
                 "id": contact.eve_entity_id,
                 "name": {"display": name_html, "sort": name},
                 "standing": contact.standing,
-                "type": contact.eve_entity.get_category_display().title(),
+                "type": category_name,
                 "is_watched": is_watched,
                 "is_blocked": is_blocked,
                 "is_watched_str": yesno_str(is_watched),
                 "is_blocked_str": yesno_str(is_blocked),
                 "is_npc_str": yesno_str(is_npc),
-                "level": contact.standing_level.title(),
+                "group_name": standing.label.title(),
+                "group_sort": standing.value,
             }
         )
 

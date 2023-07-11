@@ -182,6 +182,26 @@
                 }
             ],
             "1002": []
+        },
+        "get_characters_character_id_standings": {
+            "1001": [
+                {
+                    "from_id": 1901,
+                    "from_type": "agent",
+                    "standing": 0.1
+                },
+                {
+                    "from_id": 2901,
+                    "from_type": "npc_corp",
+                    "standing": 0
+                },
+                {
+                    "from_id": 500001,
+                    "from_type": "faction",
+                    "standing": -1
+                }
+            ],
+            "1002": []
         }
     },
     "Contacts": {

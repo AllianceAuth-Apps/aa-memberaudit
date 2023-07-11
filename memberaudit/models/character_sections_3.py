@@ -11,6 +11,7 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
+from memberaudit.core import standings
 from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
     CharacterOnlineStatusManager,
@@ -19,6 +20,7 @@ from memberaudit.managers.character_sections_3 import (
     CharacterSkillManager,
     CharacterSkillqueueEntryManager,
     CharacterSkillSetCheckManager,
+    CharacterStandingManager,
     CharacterWalletBalanceManager,
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
@@ -249,6 +251,55 @@ class CharacterSkillSetCheck(models.Model):
     @property
     def can_fly(self) -> bool:
         return self.failed_required_skills.count() == 0
+
+
+class CharacterStanding(models.Model):
+    """Standing of a character with an NPC entity in Eve Online."""
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="standings"
+    )
+    eve_entity = models.ForeignKey(
+        EveEntity, on_delete=models.CASCADE, related_name="+"
+    )
+
+    standing = models.FloatField()
+
+    objects = CharacterStandingManager()
+
+    class Meta:
+        default_permissions = ()
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=["character", "eve_entity"],
+        #         name="functional_pk_characterstanding",
+        #     )
+        # ]
+
+    def __str__(self) -> str:
+        return f"{self.character}-{self.eve_entity}"
+
+    def effective_standing(
+        self,
+        connections_skill_level: int,
+        criminal_connections_skill_level: int,
+        diplomacy_skill_level: int,
+    ) -> float:
+        """Return effective standing for this NPC after applying social skill."""
+        unadjusted_standing = self.standing
+        if unadjusted_standing >= 0:
+            skill_level = connections_skill_level
+            skill_modifier = 0.04
+            # TODO: Add variant for criminal connection
+        else:
+            skill_level = diplomacy_skill_level
+            skill_modifier = 0.04
+
+        max_possible_standing = 10
+        effective_standing = standings.calc_effective_standing(
+            unadjusted_standing, skill_level, skill_modifier, max_possible_standing
+        )
+        return effective_standing
 
 
 class CharacterWalletBalance(models.Model):

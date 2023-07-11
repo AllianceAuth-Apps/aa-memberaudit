@@ -22,22 +22,22 @@ class Skill:
 
     def __lt__(self, other):
         if self.eve_type != other.eve_type:
-            raise TypeError("'<' not supported for skills of different type")
+            raise ValueError("'<' not supported for skills of different type")
         return self.level < other.level
 
     def __le__(self, other):
         if self.eve_type != other.eve_type:
-            raise TypeError("'<=' not supported for skills of different type")
+            raise ValueError("'<=' not supported for skills of different type")
         return self.level <= other.level
 
     def __gt__(self, other):
         if self.eve_type != other.eve_type:
-            raise TypeError("'>' not supported for skills of different type")
+            raise ValueError("'>' not supported for skills of different type")
         return self.level > other.level
 
     def __ge__(self, other):
         if self.eve_type != other.eve_type:
-            raise TypeError("'>=' not supported for skills of different type")
+            raise ValueError("'>=' not supported for skills of different type")
         return self.level >= other.level
 
 

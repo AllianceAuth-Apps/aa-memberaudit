@@ -143,12 +143,6 @@ class CharacterContactLabel(models.Model):
 class CharacterContact(models.Model):
     """An Eve Online contact belonging to a Character"""
 
-    STANDING_EXCELLENT = _("excellent standing")
-    STANDING_GOOD = _("good standing")
-    STANDING_NEUTRAL = _("neutral standing")
-    STANDING_BAD = _("bad standing")
-    STANDING_TERRIBLE = _("terrible standing")
-
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="contacts"
     )
@@ -174,22 +168,6 @@ class CharacterContact(models.Model):
 
     def __str__(self) -> str:
         return f"{self.character}-{self.eve_entity.name}"
-
-    @property
-    def standing_level(self) -> str:
-        if self.standing > 5:
-            return self.STANDING_EXCELLENT
-
-        if 5 >= self.standing > 0:
-            return self.STANDING_GOOD
-
-        if self.standing == 0:
-            return self.STANDING_NEUTRAL
-
-        if 0 > self.standing >= -5:
-            return self.STANDING_BAD
-
-        return self.STANDING_TERRIBLE
 
 
 class CharacterContract(models.Model):

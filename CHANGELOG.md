@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.10.0] - 2023-07-11
+
+### Added
+
+- NPC standings for agents, corporations and factions (#143)
+
 ## [2.9.4] - 2023-07-05
 
 ### Changed

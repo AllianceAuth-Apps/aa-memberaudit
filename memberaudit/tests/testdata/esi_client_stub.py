@@ -40,6 +40,12 @@ _endpoints = [
         "character_id",
     ),
     EsiEndpoint(
+        "Character",
+        "get_characters_character_id_standings",
+        "character_id",
+        needs_token=True,
+    ),
+    EsiEndpoint(
         "Contacts",
         "get_characters_character_id_contacts",
         "character_id",

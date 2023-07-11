@@ -367,6 +367,14 @@ class CharacterSkillManager(models.Manager):
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
 
+    def find_active_skill_level(self, skill_id: int) -> int:
+        """Return active skill level for a skill or 0 if not found."""
+        try:
+            skill = self.get(eve_type_id=skill_id)
+        except self.model.DoesNotExist:
+            return 0
+        return skill.active_skill_level
+
 
 class CharacterSkillSetCheckManager(models.Manager):
     @transaction.atomic()
@@ -436,6 +444,53 @@ class CharacterSkillSetCheckManager(models.Manager):
                 failed_skills.append(skill)
 
         return failed_skills
+
+
+class CharacterStandingManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create standing for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.STANDINGS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_standings.v1")
+    def _fetch_data_from_esi(self, character, token):
+        logger.info("%s: Fetching character standings from ESI", character)
+        standings = esi.client.Character.get_characters_character_id_standings(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+
+        return standings
+
+    def _update_or_create_objs(self, character, standings):
+        # TODO: Replace delete + create with create + update
+        if standings:
+            entries = [
+                self.model(
+                    character=character,
+                    eve_entity=EveEntity.objects.get_or_create(id=entry["from_id"])[0],
+                    standing=entry.get("standing"),
+                )
+                for entry in standings
+            ]
+        else:
+            entries = []
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if entries:
+                logger.info("%s: Writing %d standings", character, len(entries))
+                self.bulk_create(
+                    entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+                )
+            else:
+                logger.info("%s: No standings for this character", character)
+
+        EveEntity.objects.bulk_update_new_esi()
 
 
 class CharacterWalletBalanceManager(models.Manager):

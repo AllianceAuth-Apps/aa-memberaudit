@@ -392,7 +392,7 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         self.assertEqual(row["type"], "Character")
         self.assertEqual(row["is_watched"], False)
         self.assertEqual(row["is_blocked"], True)
-        self.assertEqual(row["level"], "Terrible Standing")
+        self.assertEqual(row["group_name"], "Terrible Standing")
 
         row = data[2001]
         self.assertEqual(row["name"]["sort"], "Wayne Technologies")
@@ -400,7 +400,7 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         self.assertEqual(row["type"], "Corporation")
         self.assertEqual(row["is_watched"], False)
         self.assertEqual(row["is_blocked"], False)
-        self.assertEqual(row["level"], "Excellent Standing")
+        self.assertEqual(row["group_name"], "Excellent Standing")
 
     def test_character_loyalty_data(self):
         CharacterLoyaltyEntry.objects.create(
