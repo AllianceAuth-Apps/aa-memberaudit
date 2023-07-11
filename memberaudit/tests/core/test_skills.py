@@ -77,3 +77,87 @@ class TestSkill(NoSocketsTestCase):
         self.assertEqual(len(results), 2)
         self.assertIn(skill_2, results)
         self.assertIn(skill_3, results)
+
+    def test_can_compare_skills_lesser(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        params = [(1, 1, 2, True), (2, 1, 1, False), (3, 2, 1, False)]
+        for num, level_1, level_2, expected_result in params:
+            with self.subTest(num=num):
+                skill_1 = create_skill(eve_type=drones, level=level_1)
+                skill_2 = create_skill(eve_type=drones, level=level_2)
+                # when/then
+                self.assertIs(skill_1 < skill_2, expected_result)
+
+    def test_should_raise_error_for_lesser(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        gunnery = EveType.objects.get(name="Gunnery")
+        skill_1 = create_skill(eve_type=drones, level=1)
+        skill_2 = create_skill(eve_type=gunnery, level=2)
+        # when/then
+        with self.assertRaises(ValueError):
+            self.assertLess(skill_1, skill_2)
+
+    def test_can_compare_skills_lesser_or_equal(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        params = [(1, 1, 2, True), (2, 1, 1, True), (3, 2, 1, False)]
+        for num, level_1, level_2, expected_result in params:
+            with self.subTest(num=num):
+                skill_1 = create_skill(eve_type=drones, level=level_1)
+                skill_2 = create_skill(eve_type=drones, level=level_2)
+                # when/then
+                self.assertIs(skill_1 <= skill_2, expected_result)
+
+    def test_should_raise_error_for_lesser_or_equal(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        gunnery = EveType.objects.get(name="Gunnery")
+        skill_1 = create_skill(eve_type=drones, level=1)
+        skill_2 = create_skill(eve_type=gunnery, level=1)
+        # when/then
+        with self.assertRaises(ValueError):
+            self.assertLessEqual(skill_1, skill_2)
+
+    def test_can_compare_skills_greater(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        params = [(1, 1, 2, False), (2, 1, 1, False), (3, 2, 1, True)]
+        for num, level_1, level_2, expected_result in params:
+            with self.subTest(num=num):
+                skill_1 = create_skill(eve_type=drones, level=level_1)
+                skill_2 = create_skill(eve_type=drones, level=level_2)
+                # when/then
+                self.assertIs(skill_1 > skill_2, expected_result)
+
+    def test_should_raise_error_for_greater(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        gunnery = EveType.objects.get(name="Gunnery")
+        skill_1 = create_skill(eve_type=drones, level=1)
+        skill_2 = create_skill(eve_type=gunnery, level=2)
+        # when/then
+        with self.assertRaises(ValueError):
+            self.assertGreater(skill_1, skill_2)
+
+    def test_can_compare_skills_greater_or_equal(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        params = [(1, 1, 2, False), (2, 1, 1, True), (3, 2, 1, True)]
+        for num, level_1, level_2, expected_result in params:
+            with self.subTest(num=num):
+                skill_1 = create_skill(eve_type=drones, level=level_1)
+                skill_2 = create_skill(eve_type=drones, level=level_2)
+                # when/then
+                self.assertIs(skill_1 >= skill_2, expected_result)
+
+    def test_should_raise_error_for_greater_or_equal(self):
+        # given
+        drones = EveType.objects.get(name="Drones")
+        gunnery = EveType.objects.get(name="Gunnery")
+        skill_1 = create_skill(eve_type=drones, level=1)
+        skill_2 = create_skill(eve_type=gunnery, level=2)
+        # when/then
+        with self.assertRaises(ValueError):
+            self.assertGreaterEqual(skill_1, skill_2)
