@@ -142,12 +142,12 @@ class CharacterSkill(models.Model):
     eve_type = models.ForeignKey(EveType, on_delete=models.CASCADE, related_name="+")
 
     active_skill_level = models.PositiveIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
-    )  # TODO: Set min to 0 with next migration
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
     skillpoints_in_skill = models.PositiveBigIntegerField()
     trained_skill_level = models.PositiveBigIntegerField(
-        validators=[MinValueValidator(1), MaxValueValidator(5)]
-    )  # TODO: Set min to 0 with next migration
+        validators=[MinValueValidator(0), MaxValueValidator(5)]
+    )
 
     objects = CharacterSkillManager()
 
@@ -269,12 +269,12 @@ class CharacterStanding(models.Model):
 
     class Meta:
         default_permissions = ()
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=["character", "eve_entity"],
-        #         name="functional_pk_characterstanding",
-        #     )
-        # ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character", "eve_entity"],
+                name="functional_pk_characterstanding",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.character}-{self.eve_entity}"

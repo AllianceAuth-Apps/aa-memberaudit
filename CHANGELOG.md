@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.10.1] - 2023-07-11
+
+### Changed
+
+- Adds missing index for CharacterStanding
+- Applies some minor improvements that require a new migration
+
 ## [2.10.0] - 2023-07-11
 
 ### Added
