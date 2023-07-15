@@ -1,4 +1,5 @@
 """Celery tasks for Member Audit."""
+# pylint: disable=redefined-builtin
 
 import inspect
 import random
@@ -405,8 +406,8 @@ def assets_build_list_from_esi(character_pk: int, force_update: bool = False) ->
     return asset_list
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
-def assets_preload_objects(self, asset_list: dict, character_pk: int) -> Optional[dict]:
+@shared_task(**TASK_DEFAULTS)
+def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict]:
     """Task for preloading asset objects"""
     if asset_list is None:
         return None
@@ -950,9 +951,9 @@ def update_character_wallet_journal(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_character_wallet_journal_entries(self, character_pk: int) -> None:
+def update_character_wallet_journal_entries(character_pk: int) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -967,9 +968,9 @@ def update_character_wallet_journal_entries(self, character_pk: int) -> None:
 # Tasks for other objects
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_market_prices(self):
+def update_market_prices():
     """Update market prices from ESI"""
     EveMarketPrice.objects.update_from_esi(
         minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2

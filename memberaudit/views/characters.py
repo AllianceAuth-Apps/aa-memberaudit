@@ -7,7 +7,7 @@ from django.db import transaction
 from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
-from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext_lazy as __
 from esi.decorators import token_required
 
 from allianceauth.eveonline.models import EveCharacter
@@ -76,7 +76,7 @@ def launcher(request) -> HttpResponse:
         main_character_id = None
 
     context = {
-        "page_title": _("My Characters"),
+        "page_title": __("My Characters"),
         "auth_characters": auth_characters,
         "has_auth_characters": has_auth_characters,
         "unregistered_chars": unregistered_chars,
@@ -105,7 +105,7 @@ def launcher(request) -> HttpResponse:
 def add_character(request, token) -> HttpResponse:
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)
     with transaction.atomic():
-        character, created = Character.objects.update_or_create(
+        character, _ = Character.objects.update_or_create(
             eve_character=eve_character, defaults={"is_disabled": False}
         )
     tasks.update_character.apply_async(
@@ -117,7 +117,7 @@ def add_character(request, token) -> HttpResponse:
         format_html(
             "<strong>{}</strong> {}",
             eve_character,
-            _(
+            __(
                 "has been registered. "
                 "Note that it can take a minute until all character data is visible."
             ),
@@ -147,8 +147,8 @@ def remove_character(request, character_pk: int) -> HttpResponse:
             content_type__app_label=Character._meta.app_label,
             codename="notified_on_character_removal",
         )
-        title = _("%s: Character has been removed!") % __title__
-        message = _("%(user)s has removed character %(character)s") % {
+        title = __("%s: Character has been removed!") % __title__
+        message = __("%(user)s has removed character %(character)s") % {
             "user": request.user,
             "character": character_name,
         }
@@ -158,7 +158,7 @@ def remove_character(request, character_pk: int) -> HttpResponse:
 
         character.delete()
         messages.success(
-            request, _("Removed character %s as requested.") % character_name
+            request, __("Removed character %s as requested.") % character_name
         )
         if ComplianceGroupDesignation.objects.exists():
             tasks.update_compliance_groups_for_user.apply_async(

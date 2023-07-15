@@ -1,4 +1,5 @@
 """Character viewer views (1/2)."""
+# pylint: disable=unused-argument
 
 from typing import Optional, Tuple
 

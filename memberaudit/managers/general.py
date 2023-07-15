@@ -1,3 +1,6 @@
+"""Managers for general models."""
+# pylint: disable=redefined-builtin
+
 import datetime as dt
 from typing import Iterable, List, Optional, Set, Tuple
 

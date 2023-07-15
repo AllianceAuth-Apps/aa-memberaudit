@@ -282,7 +282,7 @@ class CharacterStanding(models.Model):
     def effective_standing(
         self,
         connections_skill_level: int,
-        criminal_connections_skill_level: int,
+        criminal_connections_skill_level: int,  # pylint: disable=unused-argument
         diplomacy_skill_level: int,
     ) -> float:
         """Return effective standing for this NPC after applying social skill."""

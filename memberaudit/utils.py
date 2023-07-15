@@ -44,10 +44,10 @@ def get_or_create_or_none(
 def get_or_none(prop_name: str, dct: dict, Model: type) -> Optional[models.Model]:
     """Gets a new Django object from a dictionary entry
     or returns None if it does not exist."""
-    id = dct.get(prop_name)
-    if id:
+    obj_id = dct.get(prop_name)
+    if obj_id:
         try:
-            return Model.objects.get(id=id)  # type: ignore
+            return Model.objects.get(id=obj_id)  # type: ignore
         except Model.DoesNotExist:  # type: ignore
             pass
     return None

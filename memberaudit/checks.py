@@ -4,7 +4,7 @@ from django.core.checks import Critical, Tags, register
 
 
 @register(Tags.database)
-def upgrade_from_1_x_check(app_configs, **kwargs):
+def upgrade_from_1_x_check(*args, **kwargs):
     """Ensure users are upgrading to 2.0 first, when coming from 1.x"""
     from packaging.version import Version
 
