@@ -3,8 +3,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 
-from memberaudit.core.eft_parser import EftParserError
-from memberaudit.core.fittings import Fitting
+from memberaudit.core.eft_parser import EftParserError, create_fitting_from_eft
 from memberaudit.core.skill_plans import SkillPlan, SkillPlanError
 from memberaudit.models import SkillSet, SkillSetGroup
 from memberaudit.models.constants import NAMES_MAX_LENGTH
@@ -41,7 +40,7 @@ class ImportFittingForm(forms.Form):
     def clean(self):
         data = super().clean()
         try:
-            fitting, errors = Fitting.create_from_eft(data["fitting_text"])
+            fitting, errors = create_fitting_from_eft(data["fitting_text"])
         except EftParserError:
             raise ValidationError(
                 {
