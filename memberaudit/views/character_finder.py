@@ -43,6 +43,7 @@ def character_finder(request) -> HttpResponse:
     )
 
 
+# pylint: disable=too-many-ancestors
 class CharacterFinderListJson(
     PermissionRequiredMixin, LoginRequiredMixin, BaseDatatableView
 ):

@@ -490,13 +490,6 @@ def character_skill_sets_data(
 def character_skill_set_details(
     request, character_pk: int, character: Character, skill_set_pk: int
 ) -> HttpResponse:
-    def _calc_character_skills(character, skill_set_skills):
-        character_skills_qs = character.skills.select_related("eve_type").filter(
-            eve_type_id__in=skill_set_skills.keys()
-        )
-        character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
-        return character_skills
-
     def _compile_row(character_skills, missing_skills, skill_id, skill):
         character_skill = character_skills.get(skill_id)
         recommended_level_str = "-"
@@ -605,6 +598,14 @@ def _calc_skill_set_skills(skill_set_pk):
     )
     skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
     return skill_set_skills
+
+
+def _calc_character_skills(character, skill_set_skills):
+    character_skills_qs = character.skills.select_related("eve_type").filter(
+        eve_type_id__in=skill_set_skills.keys()
+    )
+    character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
+    return character_skills
 
 
 @login_required
