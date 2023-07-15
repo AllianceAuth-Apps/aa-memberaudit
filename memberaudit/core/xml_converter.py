@@ -1,3 +1,5 @@
+"""Logic for converting Eve Online XML into other formats."""
+
 import unicodedata
 
 import bleach
@@ -103,8 +105,8 @@ def _convert_a_tag(soup: bs4.BeautifulSoup):
 
 def _add_default_style(soup: bs4.BeautifulSoup):
     """Add default style to all unstyled fragments."""
-    for el in soup.children:
-        if isinstance(el, bs4.NavigableString):
+    for element in soup.children:
+        if isinstance(element, bs4.NavigableString):
             new_tag = soup.new_tag("span")
             new_tag["style"] = f"font-size: {DEFAULT_FONT_SIZE}px"
-            el.wrap(new_tag)
+            element.wrap(new_tag)

@@ -1,3 +1,5 @@
+"""Manager for Character model."""
+
 from copy import deepcopy
 from math import floor
 
@@ -38,7 +40,7 @@ class CharacterQuerySet(models.QuerySet):
 
     def annotate_update_status(self):
         num_sections_total = len(self.model.UpdateSection.choices)
-        UpdateStatus = self.model.UpdateStatus
+        UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
         return (
             self.annotate(num_sections_total=Count("update_status_set"))
             .annotate(
@@ -73,6 +75,8 @@ class CharacterQuerySet(models.QuerySet):
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
     def unregistered_characters_of_user_count(self, user: User) -> int:
+        """Return count of unregistered character for a user."""
+
         return CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True
         ).count()
@@ -348,9 +352,9 @@ class CharacterUpdateStatusManager(models.Manager):
         }
         schedule = deepcopy(auth_settings.CELERYBEAT_SCHEDULE)
         for name, details in schedule.items():
-            for k, v in details.items():
-                if k == "schedule":
-                    schedule[name][k] = str(v)
+            for key, value in details.items():
+                if key == "schedule":
+                    schedule[name][key] = str(value)
 
         settings["CELERYBEAT_SCHEDULE"] = schedule
         return settings

@@ -638,6 +638,7 @@ def update_character_mails(
 def update_character_mailing_lists(
     character_pk: int, force_update: bool = False
 ) -> None:
+    """Update mailing list for a character."""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -652,6 +653,7 @@ def update_character_mailing_lists(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_mail_labels(character_pk: int, force_update: bool = False) -> None:
+    """Update mail labels for a character."""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -668,6 +670,8 @@ def update_character_mail_labels(character_pk: int, force_update: bool = False) 
 def update_character_mail_headers(
     character_pk: int, force_update: bool = False
 ) -> None:
+    """Update mail headers for a character."""
+
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -697,6 +701,8 @@ def update_mail_body_esi(character_pk: int, mail_pk: int):
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> None:
+    """Update mail bodies for a character."""
+
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -760,6 +766,8 @@ def update_character_contacts(
 def update_character_contact_labels(
     character_pk: int, force_update: bool = False
 ) -> None:
+    """Update contact labels for a character."""
+
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -774,6 +782,8 @@ def update_character_contact_labels(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_contacts_2(character_pk: int, force_update: bool = False) -> None:
+    """Update contacts for a character."""
+
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -827,6 +837,8 @@ def update_character_contracts(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_contract_headers(character_pk: int, force_update: bool = False):
+    """Update contract headers for a character."""
+
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -954,6 +966,7 @@ def update_character_wallet_journal(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_wallet_journal_entries(character_pk: int) -> None:
+    """Update wallet journal for a character."""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -1080,6 +1093,7 @@ def export_data(self, user_pk: Optional[int] = None) -> None:
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def export_data_for_topic(self, topic: str, user_pk: int):
+    """Export data for a topic."""
     priority = _get_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         _export_data_for_topic.si(topic).set(priority=priority),

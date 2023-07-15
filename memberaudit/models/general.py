@@ -197,13 +197,11 @@ class Location(models.Model):
         return self.name
 
     def __repr__(self) -> str:
-        return "{}(id={}, name='{}')".format(
-            self.__class__.__name__, self.id, self.name
-        )
+        return f"{self.__class__.__name__}(id={self.id}, name='{self.name}')"
 
     @property
     def name_plus(self) -> str:
-        """return the actual name or 'Unknown location' for empty locations"""
+        """Return the actual name or 'Unknown location' for empty locations."""
         if self.is_empty:
             return f"Unknown location #{self.id}"
 
@@ -211,11 +209,12 @@ class Location(models.Model):
 
     @property
     def is_empty(self) -> bool:
+        """Return True if this location is empty, else False."""
         return not self.eve_solar_system and not self.eve_type
 
     @property
     def solar_system_url(self) -> str:
-        """returns dotlan URL for this solar system"""
+        """Return dotlan URL for this solar system."""
         try:
             return dotlan.solar_system_url(self.eve_solar_system.name)
         except AttributeError:
@@ -223,30 +222,37 @@ class Location(models.Model):
 
     @property
     def is_solar_system(self) -> bool:
+        """Return True if this location is a solar system, else False."""
         return self.is_solar_system_id(self.id)
 
     @property
     def is_station(self) -> bool:
+        """Return True if this location is a station, else False."""
         return self.is_station_id(self.id)
 
     @property
     def is_structure(self) -> bool:
+        """Return True if this location is a structure, else False."""
         return self.is_structure_id(self.id)
 
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
+        """Return True if this location ID is a solar system, else False."""
         return cls._SOLAR_SYSTEM_ID_START <= location_id <= cls._SOLAR_SYSTEM_ID_END
 
     @classmethod
     def is_station_id(cls, location_id: int) -> bool:
+        """Return True, if this location ID is a station."""
         return cls._STATION_ID_START <= location_id <= cls._STATION_ID_END
 
     @classmethod
     def is_structure_id(cls, location_id: int) -> bool:
+        """Return True, if this location ID is a structure."""
         return location_id >= cls._STRUCTURE_ID_START
 
     @classmethod
     def is_asset_safety_id(cls, location_id: int) -> bool:
+        """Return True, if this location ID is asset safety."""
         return location_id == cls._ASSET_SAFETY_ID
 
 
@@ -309,7 +315,8 @@ class SkillSetGroup(models.Model):
 
     @property
     def name_plus(self) -> str:
-        return "{}{}".format(_("Doctrine: ") if self.is_doctrine else "", self.name)
+        prefix = _("Doctrine: ") if self.is_doctrine else ""
+        return f"{prefix}{self.name}"
 
 
 class SkillSet(models.Model):
@@ -440,6 +447,7 @@ class SkillSetSkill(models.Model):
 
     @property
     def is_required(self) -> bool:  # TODO: Add test
+        """Return True when skill is required, else False."""
         return bool(self.required_level)
 
     @property

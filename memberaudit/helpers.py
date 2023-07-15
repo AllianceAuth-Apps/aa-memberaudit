@@ -37,8 +37,8 @@ def store_debug_data_to_disk(character, lst: Any, name: str):
 
     fullpath = os.path.join(path, f"character_{character.pk}_{name}_{now_str}.json")
     try:
-        with open(fullpath, "w", encoding="utf-8") as f:
-            json.dump(lst, f, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
+        with open(fullpath, "w", encoding="utf-8") as file:
+            json.dump(lst, file, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
 
     except OSError:
         pass

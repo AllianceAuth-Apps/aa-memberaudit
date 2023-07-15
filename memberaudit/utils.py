@@ -32,23 +32,23 @@ def get_or_create_esi_or_none(
 
 
 def get_or_create_or_none(
-    prop_name: str, dct: dict, Model: type
+    prop_name: str, dct: dict, model_class: type
 ) -> Optional[models.Model]:
     """Get or creates a Django object from a dictionary entry or returns None."""
     if dct.get(prop_name):
-        obj, _ = Model.objects.get_or_create(id=dct.get(prop_name))  # type: ignore
+        obj, _ = model_class.objects.get_or_create(id=dct.get(prop_name))  # type: ignore
         return obj
     return None
 
 
-def get_or_none(prop_name: str, dct: dict, Model: type) -> Optional[models.Model]:
+def get_or_none(prop_name: str, dct: dict, model_class: type) -> Optional[models.Model]:
     """Gets a new Django object from a dictionary entry
     or returns None if it does not exist."""
     obj_id = dct.get(prop_name)
     if obj_id:
         try:
-            return Model.objects.get(id=obj_id)  # type: ignore
-        except Model.DoesNotExist:  # type: ignore
+            return model_class.objects.get(id=obj_id)  # type: ignore
+        except model_class.DoesNotExist:  # type: ignore
             pass
     return None
 

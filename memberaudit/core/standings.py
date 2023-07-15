@@ -1,8 +1,12 @@
+"""Logic for standings in Eve Online."""
+
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
 class Standing(models.IntegerChoices):
+    """An Eve Online standing."""
+
     EXCELLENT = 10, _("excellent standing")
     GOOD = 5, _("good standing")
     NEUTRAL = 0, _("neutral standing")

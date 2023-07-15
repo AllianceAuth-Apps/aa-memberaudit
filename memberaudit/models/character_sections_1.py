@@ -71,7 +71,7 @@ class CharacterAsset(models.Model):
 
     @property
     def name_display(self) -> str:
-        """name of this asset to be displayed to user"""
+        """Return name of this asset to be displayed to user."""
         name = self.name if self.name else self.eve_type.name
         if self.is_blueprint_copy:
             name += " [BPC]"
@@ -79,12 +79,13 @@ class CharacterAsset(models.Model):
 
     @property
     def icon_url(self) -> str:
+        """Return URL for an icon."""
         variant = self.eve_type.IconVariant.BPC if self.is_blueprint_copy else None
         return self.eve_type.icon_url(variant=variant)
 
     @property
     def group_display(self) -> str:
-        """group of this asset to be displayed to user"""
+        """Return group name of this asset to be displayed to user."""
         return self.eve_type.name if self.name else self.eve_type.eve_group.name
 
 
@@ -364,26 +365,31 @@ class CharacterContract(models.Model):
 
     @property
     def is_in_progress(self) -> bool:
+        """Return True when contract is in progress, else False."""
         return self.status == self.STATUS_IN_PROGRESS
 
     @property
     def is_failed(self) -> bool:
+        """Return True when contract is failed, else False."""
         return self.status == self.STATUS_FAILED
 
     @property
     def has_expired(self) -> bool:
-        """returns true if this contract is expired"""
+        """Return True when this contract is expired, else False"""
         return self.date_expired < now()
 
     @property
     def hours_issued_2_completed(self) -> Optional[float]:
+        """Return amount of hours between issues and completed.
+        Or return None if still pending.
+        """
         if not self.date_completed:
             return None
-        td = self.date_completed - self.date_issued
-        return td.days * 24 + (td.seconds / 3600)
+        deadline = self.date_completed - self.date_issued
+        return deadline.days * 24 + (deadline.seconds / 3600)
 
     def summary(self) -> str:
-        """return summary text for this contract"""
+        """Return summary text for this contract."""
         if self.contract_type == CharacterContract.TYPE_COURIER:
             if not self.start_location or not self.end_location:
                 return ""
@@ -401,6 +407,8 @@ class CharacterContract(models.Model):
 
 
 class CharacterContractBid(models.Model):
+    """A bid belonging to a character contract."""
+
     contract = models.ForeignKey(
         CharacterContract, on_delete=models.CASCADE, related_name="bids"
     )
@@ -420,6 +428,8 @@ class CharacterContractBid(models.Model):
 
 
 class CharacterContractItem(models.Model):
+    """An item belonging to a character contract."""
+
     contract = models.ForeignKey(
         CharacterContract, on_delete=models.CASCADE, related_name="items"
     )

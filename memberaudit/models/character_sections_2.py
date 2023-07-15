@@ -42,6 +42,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterCorporationHistory(models.Model):
+    """A corporation history entry for a character."""
+
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="corporation_history"
     )

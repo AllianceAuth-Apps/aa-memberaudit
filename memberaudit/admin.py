@@ -1,4 +1,5 @@
 """Define admin site for Member Audit."""
+# pylint: disable=missing-class-docstring
 
 from typing import List, Optional
 
