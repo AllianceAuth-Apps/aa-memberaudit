@@ -490,25 +490,14 @@ def character_skill_sets_data(
 def character_skill_set_details(
     request, character_pk: int, character: Character, skill_set_pk: int
 ) -> HttpResponse:
-    skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
-    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
-        skill_set_id=skill_set_pk
-    )
-    skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
-    character_skills_qs = character.skills.select_related("eve_type").filter(
-        eve_type_id__in=skill_set_skills.keys()
-    )
-    character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
-    out_data = []
-    url = (
-        skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
-        if skill_set.ship_type
-        else eveimageserver.type_icon_url(
-            SKILL_SET_DEFAULT_ICON_TYPE_ID, size=ICON_SIZE_64
+    def _calc_character_skills(character, skill_set_skills):
+        character_skills_qs = character.skills.select_related("eve_type").filter(
+            eve_type_id__in=skill_set_skills.keys()
         )
-    )
-    missing_skills = []
-    for skill_id, skill in skill_set_skills.items():
+        character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
+        return character_skills
+
+    def _compile_row(character_skills, missing_skills, skill_id, skill):
         character_skill = character_skills.get(skill_id)
         recommended_level_str = "-"
         required_level_str = "-"
@@ -555,16 +544,22 @@ def character_skill_set_details(
         ):
             missing_skills.append(skill.maximum_skill_str)
 
-        out_data.append(
-            {
-                "name": skill.eve_type.name,
-                "required": required_level_str,
-                "recommended": recommended_level_str,
-                "current": current_str,
-                "result_icon": result_icon,
-                "met_required": met_required,
-            }
-        )
+        return {
+            "name": skill.eve_type.name,
+            "required": required_level_str,
+            "recommended": recommended_level_str,
+            "current": current_str,
+            "result_icon": result_icon,
+            "met_required": met_required,
+        }
+
+    skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
+    skill_set_skills = _calc_skill_set_skills(skill_set_pk)
+    character_skills = _calc_character_skills(character, skill_set_skills)
+    out_data = []
+    missing_skills = []
+    for skill_id, skill in skill_set_skills.items():
+        out_data.append(_compile_row(character_skills, missing_skills, skill_id, skill))
 
     met_all_required = True
     for data in out_data:
@@ -572,19 +567,17 @@ def character_skill_set_details(
             met_all_required = False
             break
 
-    out_data = sorted(out_data, key=lambda k: (k["name"].lower()))
-    missing_skills_str = "\n".join(missing_skills) if missing_skills else ""
     context = {
         "name": skill_set.name,
         "description": skill_set.description,
-        "ship_url": url,
-        "skills": out_data,
+        "ship_url": _calc_url_for_skill_set(skill_set),
+        "skills": sorted(out_data, key=lambda k: (k["name"].lower())),
         "met_all_required": met_all_required,
         "icon_failed": ICON_FAILED,
         "icon_partial": ICON_PARTIAL,
         "icon_full": ICON_FULL,
         "icon_met_all_required": ICON_MET_ALL_REQUIRED,
-        "missing_skills_str": missing_skills_str,
+        "missing_skills_str": "\n".join(missing_skills) if missing_skills else "",
     }
 
     return render(
@@ -592,6 +585,26 @@ def character_skill_set_details(
         "memberaudit/modals/character_viewer/skill_set_content.html",
         context,
     )
+
+
+def _calc_url_for_skill_set(skill_set):
+    url = (
+        skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
+        if skill_set.ship_type
+        else eveimageserver.type_icon_url(
+            SKILL_SET_DEFAULT_ICON_TYPE_ID, size=ICON_SIZE_64
+        )
+    )
+
+    return url
+
+
+def _calc_skill_set_skills(skill_set_pk):
+    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
+        skill_set_id=skill_set_pk
+    )
+    skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
+    return skill_set_skills
 
 
 @login_required

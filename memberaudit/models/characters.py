@@ -43,7 +43,7 @@ from memberaudit.managers.character import (
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class Character(models.Model):  # pylint: disable: too-many-public-methods
+class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character synced by this app
 
     This is the head model for all characters
@@ -209,6 +209,13 @@ class Character(models.Model):  # pylint: disable: too-many-public-methods
     def is_orphan(self) -> bool:
         """Whether this character is not owned by a user."""
         return self.character_ownership is None
+
+    def details_or_none(self):
+        """Return character details or None if it does not exist."""
+        try:
+            return self.details
+        except ObjectDoesNotExist:
+            return None
 
     def user_is_owner(self, user: User) -> bool:
         """Return True if the given user is owner of this character"""

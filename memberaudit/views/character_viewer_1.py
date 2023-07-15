@@ -99,112 +99,21 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     GET Params:
     - tab: ID of tab to be shown  (optional)
     """
-    # character details
-    try:
-        character_details = character.details
-    except ObjectDoesNotExist:
-        character_details = None
-
-    # main character
-    if character.is_orphan:
-        main = "(orphan)"
-        main_character_id = None
-    elif character.main_character:
-        main = (
-            f"[{character.main_character.corporation_ticker}] "
-            f"{character.main_character.character_name}"
-        )
-        main_character_id = character.main_character.character_id
-    else:
-        main = "-"
-        main_character_id = None
-
-    # mailing lists
-    mailing_lists_qs = character.mailing_lists.all().annotate(
-        unread_count=Count("recipient_mails", filter=Q(recipient_mails__is_read=False))
-    )
-    mailing_lists = [
-        {
-            "list_id": obj.id,
-            "name_plus": obj.name_plus,
-            "unread_count": obj.unread_count,
-        }
-        for obj in mailing_lists_qs
-    ]
-
-    # mail labels
-    mail_labels = list(
-        character.mail_labels.values(
-            "label_id", "name", unread_count_2=F("unread_count")
-        )
-    )
-    total_unread_count = sum(
-        (obj["unread_count_2"] for obj in mail_labels if obj["unread_count_2"])
-    )
-    total_unread_count += sum(
-        (obj["unread_count"] for obj in mailing_lists if obj["unread_count"])
-    )
-    mail_labels.append(
-        {
-            "label_id": MAIL_LABEL_ID_ALL_MAILS,
-            "name": "All Mails",
-            "unread_count_2": total_unread_count,
-        }
-    )
-
+    main, main_character_id = _mail_for_character(character)
+    mailing_lists = _mailing_lists_for_character(character)
+    mail_labels = _mail_labels_for_character(character, mailing_lists)
     all_characters = _identify_user_characters(request, character)
-
-    # assets total value
-    character_assets_total = (
-        character.assets.exclude(is_blueprint_copy=True)
-        .aggregate(
-            total=Sum(
-                F("quantity") * F("eve_type__market_price__average_price"),
-                output_field=models.FloatField(),
-            )
-        )
-        .get("total")
-    )
-
-    # implants
+    character_assets_total = _asset_total_for_character(character)
     has_implants = character.implants.exists()
-
-    # last updates
-    try:
-        last_updates = {
-            obj["section"]: obj["finished_at"]
-            for obj in character.update_status_set.filter(is_success=True).values(
-                "section", "finished_at"
-            )
-        }
-    except ObjectDoesNotExist:
-        last_updates = None
-
-    # connection skills
-    connections_skill_level = character.skills.find_active_skill_level(
-        EveSkillTypeId.CONNECTIONS
-    )
-    criminal_connections_skill_level = character.skills.find_active_skill_level(
-        EveSkillTypeId.CRIMINAL_CONNECTIONS
-    )
-    connection_skills_differ = (
-        connections_skill_level != criminal_connections_skill_level
-    )
-
-    # page title
-    page_title = _("Character Sheet")
-    if not character.user_is_owner(request.user):
-        page_title = format_html(
-            '{}&nbsp;<i class="far fa-eye" title="{}"></i>',
-            page_title,
-            _("You do not own this character"),
-        )
+    last_updates = _last_update_for_character(character)
+    connection_skills_differ = _connection_skills_differ_for_character(character)
+    page_title = _page_title_for_character(request, character)
 
     context = {
         "page_title": page_title,
         "character": character,
         "auth_character": character.eve_character,
-        "character_details": character_details,
+        "character_details": character.details_or_none(),
         "mail_labels": mail_labels,
         "mailing_lists": mailing_lists,
         "main": main,
@@ -224,6 +133,115 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "memberaudit/character_viewer.html",
         add_common_context(request, context),
     )
+
+
+def _asset_total_for_character(character):
+    character_assets_total = (
+        character.assets.exclude(is_blueprint_copy=True)
+        .aggregate(
+            total=Sum(
+                F("quantity") * F("eve_type__market_price__average_price"),
+                output_field=models.FloatField(),
+            )
+        )
+        .get("total")
+    )
+
+    return character_assets_total
+
+
+def _mail_for_character(character):
+    if character.is_orphan:
+        main = "(orphan)"
+        main_character_id = None
+    elif character.main_character:
+        main = (
+            f"[{character.main_character.corporation_ticker}] "
+            f"{character.main_character.character_name}"
+        )
+        main_character_id = character.main_character.character_id
+    else:
+        main = "-"
+        main_character_id = None
+    return main, main_character_id
+
+
+def _page_title_for_character(request, character):
+    page_title = _("Character Sheet")
+    if not character.user_is_owner(request.user):
+        page_title = format_html(
+            '{}&nbsp;<i class="far fa-eye" title="{}"></i>',
+            page_title,
+            _("You do not own this character"),
+        )
+
+    return page_title
+
+
+def _connection_skills_differ_for_character(character):
+    connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CONNECTIONS
+    )
+    criminal_connections_skill_level = character.skills.find_active_skill_level(
+        EveSkillTypeId.CRIMINAL_CONNECTIONS
+    )
+    connection_skills_differ = (
+        connections_skill_level != criminal_connections_skill_level
+    )
+
+    return connection_skills_differ
+
+
+def _last_update_for_character(character):
+    try:
+        last_updates = {
+            obj["section"]: obj["finished_at"]
+            for obj in character.update_status_set.filter(is_success=True).values(
+                "section", "finished_at"
+            )
+        }
+    except ObjectDoesNotExist:
+        last_updates = None
+    return last_updates
+
+
+def _mail_labels_for_character(character, mailing_lists):
+    mail_labels = list(
+        character.mail_labels.values(
+            "label_id", "name", unread_count_2=F("unread_count")
+        )
+    )
+    total_unread_count = sum(
+        (obj["unread_count_2"] for obj in mail_labels if obj["unread_count_2"])
+    )
+    total_unread_count += sum(
+        (obj["unread_count"] for obj in mailing_lists if obj["unread_count"])
+    )
+    mail_labels.append(
+        {
+            "label_id": MAIL_LABEL_ID_ALL_MAILS,
+            "name": "All Mails",
+            "unread_count_2": total_unread_count,
+        }
+    )
+
+    return mail_labels
+
+
+def _mailing_lists_for_character(character):
+    mailing_lists_qs = character.mailing_lists.all().annotate(
+        unread_count=Count("recipient_mails", filter=Q(recipient_mails__is_read=False))
+    )
+    mailing_lists = [
+        {
+            "list_id": obj.id,
+            "name_plus": obj.name_plus,
+            "unread_count": obj.unread_count,
+        }
+        for obj in mailing_lists_qs
+    ]
+
+    return mailing_lists
 
 
 def _identify_user_characters(request, character):
@@ -265,7 +283,66 @@ def _identify_user_characters(request, character):
 def character_assets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    data = []
+    def _combine_row(character, asset_qs, assets_with_children_ids, location_counts):
+        data = []
+        location_totals = {}
+        for asset in asset_qs:
+            if asset.location.eve_solar_system:
+                region = (
+                    asset.location.eve_solar_system.eve_constellation.eve_region.name
+                )
+                solar_system = asset.location.eve_solar_system.name
+            else:
+                region = ""
+                solar_system = ""
+
+            is_ship = yesno_str(
+                asset.eve_type.eve_group.eve_category_id == EveCategoryId.SHIP
+            )
+
+            if asset.item_id in assets_with_children_ids:
+                ajax_children_url = reverse(
+                    "memberaudit:character_asset_container",
+                    args=[character.pk, asset.pk],
+                )
+                actions_html = (
+                    '<button type="button" class="btn btn-default btn-sm" '
+                    'data-toggle="modal" data-target="#modalCharacterAssetContainer" '
+                    f"data-ajax_children_url={ajax_children_url}>"
+                    '<i class="fas fa-search"></i></button>'
+                )
+            else:
+                actions_html = ""
+
+            location_name = (
+                f"{asset.location.name_plus} "
+                f"({location_counts.get(asset.location_id, 0)})"
+            )
+            if location_name not in location_totals:
+                location_totals[location_name] = 0.0
+            if asset.total is not None:
+                location_totals[location_name] += asset.total
+
+            name_html, name = item_icon_plus_name_html(asset)
+            data.append(
+                {
+                    "item_id": asset.item_id,
+                    "location": location_name,
+                    "name": {"display": name_html, "sort": name},
+                    "quantity": asset.quantity if not asset.is_singleton else "",
+                    "group": asset.group_display,
+                    "volume": asset.eve_type.volume,
+                    "price": asset.price,
+                    "total": asset.total,
+                    "actions": actions_html,
+                    "region": region,
+                    "solar_system": solar_system,
+                    "is_ship": is_ship,
+                }
+            )
+
+        return data, location_totals
+
     asset_qs = (
         character.assets.annotate_pricing()
         .select_related(
@@ -292,61 +369,13 @@ def character_assets_data(
             .values("id", "items_count")
         )
     }
-    location_totals = {}
-    for asset in asset_qs:
-        if asset.location.eve_solar_system:
-            region = asset.location.eve_solar_system.eve_constellation.eve_region.name
-            solar_system = asset.location.eve_solar_system.name
-        else:
-            region = ""
-            solar_system = ""
-
-        is_ship = yesno_str(
-            asset.eve_type.eve_group.eve_category_id == EveCategoryId.SHIP
-        )
-
-        if asset.item_id in assets_with_children_ids:
-            ajax_children_url = reverse(
-                "memberaudit:character_asset_container",
-                args=[character.pk, asset.pk],
-            )
-            actions_html = (
-                '<button type="button" class="btn btn-default btn-sm" '
-                'data-toggle="modal" data-target="#modalCharacterAssetContainer" '
-                f"data-ajax_children_url={ajax_children_url}>"
-                '<i class="fas fa-search"></i></button>'
-            )
-        else:
-            actions_html = ""
-
-        location_name = (
-            f"{asset.location.name_plus} ({location_counts.get(asset.location_id, 0)})"
-        )
-        if location_name not in location_totals:
-            location_totals[location_name] = 0.0
-        if asset.total is not None:
-            location_totals[location_name] += asset.total
-
-        name_html, name = item_icon_plus_name_html(asset)
-        data.append(
-            {
-                "item_id": asset.item_id,
-                "location": location_name,
-                "name": {"display": name_html, "sort": name},
-                "quantity": asset.quantity if not asset.is_singleton else "",
-                "group": asset.group_display,
-                "volume": asset.eve_type.volume,
-                "price": asset.price,
-                "total": asset.total,
-                "actions": actions_html,
-                "region": region,
-                "solar_system": solar_system,
-                "is_ship": is_ship,
-            }
-        )
+    data, location_totals = _combine_row(
+        character, asset_qs, assets_with_children_ids, location_counts
+    )
     for row in data:
         sum_str = humanize_number(location_totals[row["location"]])
         row["location"] = row["location"] + f" ({sum_str} ISK)"
+
     return JsonResponse({"data": data})
 
 
