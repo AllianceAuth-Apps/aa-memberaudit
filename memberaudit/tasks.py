@@ -257,7 +257,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_BIND_ONCE,
+        **TASK_DEFAULTS_ONCE,
         **{
             "once": {
                 "keys": ["character_pk", "section", "force_update"],
@@ -268,7 +268,6 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 )
 @when_esi_is_available
 def update_character_section(
-    self,
     character_pk: int,
     section: str,
     force_update: bool = False,
@@ -285,7 +284,7 @@ def update_character_section(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
     update_method = getattr(character, Character.UpdateSection.method_name(section))
-    args = [self, character, section, update_method]
+    args = [character, section, update_method]
     if not kwargs:
         kwargs = {}
 
@@ -298,7 +297,7 @@ def update_character_section(
 
 
 def _character_update_with_error_logging(
-    self, character: Character, section: str, method: object, *args, **kwargs
+    character: Character, section: str, method: object, *args, **kwargs
 ):
     """Facilitate catching and logging of exceptions potentially occurring
     during a character update.
@@ -390,17 +389,14 @@ def update_character_assets(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def assets_build_list_from_esi(
-    self, character_pk: int, force_update: bool = False
-) -> dict:
+def assets_build_list_from_esi(character_pk: int, force_update: bool = False) -> dict:
     """Building asset list"""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     asset_list = _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.ASSETS,
         character.assets_build_list_from_esi,
@@ -419,7 +415,6 @@ def assets_preload_objects(self, asset_list: dict, character_pk: int) -> Optiona
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.ASSETS,
         character.assets_preload_objects,
@@ -637,16 +632,15 @@ def update_character_mails(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_mailing_lists(
-    self, character_pk: int, force_update: bool = False
+    character_pk: int, force_update: bool = False
 ) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.MAILS,
         character.update_mailing_lists,
@@ -654,16 +648,13 @@ def update_character_mailing_lists(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_character_mail_labels(
-    self, character_pk: int, force_update: bool = False
-) -> None:
+def update_character_mail_labels(character_pk: int, force_update: bool = False) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.MAILS,
         character.update_mail_labels,
@@ -671,16 +662,15 @@ def update_character_mail_labels(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_mail_headers(
-    self, character_pk: int, force_update: bool = False
+    character_pk: int, force_update: bool = False
 ) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.MAILS,
         character.update_mail_headers,
@@ -688,16 +678,15 @@ def update_character_mail_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_mail_body_esi(self, character_pk: int, mail_pk: int):
+def update_mail_body_esi(character_pk: int, mail_pk: int):
     """Task for updating the body of a mail from ESI"""
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     mail = CharacterMail.objects.get(pk=mail_pk)
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.MAILS,
         character.update_mail_body,
@@ -765,16 +754,15 @@ def update_character_contacts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_contact_labels(
-    self, character_pk: int, force_update: bool = False
+    character_pk: int, force_update: bool = False
 ) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.CONTACTS,
         character.update_contact_labels,
@@ -782,16 +770,13 @@ def update_character_contact_labels(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_character_contacts_2(
-    self, character_pk: int, force_update: bool = False
-) -> None:
+def update_character_contacts_2(character_pk: int, force_update: bool = False) -> None:
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.CONTACTS,
         character.update_contacts,
@@ -838,16 +823,13 @@ def update_character_contracts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_character_contract_headers(
-    self, character_pk: int, force_update: bool = False
-):
+def update_character_contract_headers(character_pk: int, force_update: bool = False):
     character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.CONTRACTS,
         character.update_contract_headers,
@@ -975,7 +957,6 @@ def update_character_wallet_journal_entries(self, character_pk: int) -> None:
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        self,
         character,
         Character.UpdateSection.WALLET_JOURNAL,
         character.update_wallet_journal,
