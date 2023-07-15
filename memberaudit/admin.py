@@ -546,13 +546,6 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
-class MinValidatedInlineMixIn:
-    validate_min = True
-
-    def get_formset(self, *args, **kwargs):
-        return super().get_formset(validate_min=self.validate_min, *args, **kwargs)
-
-
 class SkillSetSkillAdminFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
@@ -575,7 +568,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                         )
 
 
-class SkillSetSkillAdminInline(MinValidatedInlineMixIn, admin.TabularInline):
+class SkillSetSkillAdminInline(admin.TabularInline):
     model = SkillSetSkill
     verbose_name = "skill"
     verbose_name_plural = "skills"
@@ -586,6 +579,9 @@ class SkillSetSkillAdminInline(MinValidatedInlineMixIn, admin.TabularInline):
     def get_queryset(self, request):
         qs = super().get_queryset(request)
         return qs.select_related("eve_type", "skill_set__ship_type")
+
+    def get_formset(self, *args, **kwargs):
+        return super().get_formset(validate_min=True, *args, **kwargs)
 
     # def get_formset(self, *args, **kwargs):
     #     formset = super().get_formset(*args, **kwargs)
