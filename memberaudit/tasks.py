@@ -1109,7 +1109,7 @@ def _export_data_inform_user(user_pk: int, topic: Optional[str] = None):
             "It covers the following:\n"
         )
         for obj in data_exporters.DataExporter.topics():
-            message += f"- {obj}\n"
+            message += f"- {obj}\n"  # pylint: disable=consider-using-join
     notify(user=user, title=title, message=message, level="INFO")
 
 

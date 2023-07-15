@@ -43,7 +43,7 @@ from memberaudit.managers.character import (
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class Character(models.Model):
+class Character(models.Model):  # pylint: disable: too-many-public-methods
     """A character synced by this app
 
     This is the head model for all characters

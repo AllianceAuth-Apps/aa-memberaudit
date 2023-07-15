@@ -79,5 +79,5 @@ good-names = ["i", "j", "k", "ex"]
 max-line-length = 120
 
 [tool.pylint.'MESSAGES CONTROL']
-disable = ["E5142", "E1101", "W0511","R0902", "R0903", "R", "C"]
+disable = ["E5142", "E1101", "W0511","R0902", "R0903", "R0913", "R0911", "C"]
 # disable = ["E0213", "C0209", "C"]  # , "C"
