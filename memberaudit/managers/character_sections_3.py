@@ -382,7 +382,8 @@ class CharacterSkillManager(models.Manager):
 class CharacterSkillSetCheckManager(models.Manager):
     @transaction.atomic()
     def update_for_character(self, character):
-        from ..models import SkillSet
+        """Update or create skill sets for a character."""
+        from memberaudit.models import SkillSet
 
         character_skills = {
             obj["eve_type_id"]: obj["active_skill_level"]

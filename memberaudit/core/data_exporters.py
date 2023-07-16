@@ -119,6 +119,7 @@ def _compile_topics(export_files):
 
 
 def default_destination() -> Path:
+    """Return default destination path."""
     return Path(settings.BASE_DIR) / _app_name() / "data_exports"
 
 
@@ -140,10 +141,12 @@ class DataExporter(ABC):
 
     @property
     def title(self) -> str:
+        """Return title."""
         return self.topic.replace("-", " ").title()
 
     @property
     def output_basename(self) -> Path:
+        """Return basename for output."""
         return Path(f"{_app_name()}_{self.topic}")
 
     @abstractmethod

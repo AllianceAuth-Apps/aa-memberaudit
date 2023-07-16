@@ -137,6 +137,8 @@ class Fitting:
         return compress_skills(skills)
 
     def to_eft(self) -> str:
+        """Return this fitting in EFT format."""
+
         def add_section(objs, keyword: Optional[str] = None) -> List[str]:
             lines = [""]
             for obj in objs:

@@ -3,6 +3,7 @@
 
 from copy import deepcopy
 from math import floor
+from typing import Set
 
 from django.conf import settings as auth_settings
 from django.contrib.auth.models import Permission, User
@@ -32,7 +33,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterQuerySet(models.QuerySet):
-    def eve_character_ids(self) -> set:
+    def eve_character_ids(self) -> Set[int]:
+        """Return EveCharacter IDs of all characters in this QuerySet."""
         return set(self.values_list("eve_character__character_id", flat=True))
 
     def owned_by_user(self, user: User) -> models.QuerySet:
@@ -40,6 +42,7 @@ class CharacterQuerySet(models.QuerySet):
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
 
     def annotate_update_status(self):
+        """Add update_status annotations."""
         num_sections_total = len(self.model.UpdateSection.choices)
         UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
         return (

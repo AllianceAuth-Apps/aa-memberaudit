@@ -315,6 +315,7 @@ class SkillSetGroup(models.Model):
 
     @property
     def name_plus(self) -> str:
+        """Return name with potential doctrine prefix."""
         prefix = _("Doctrine: ") if self.is_doctrine else ""
         return f"{prefix}{self.name}"
 
@@ -452,11 +453,21 @@ class SkillSetSkill(models.Model):
 
     @property
     def required_skill_str(self) -> str:  # TODO: Add test
-        return self._skill_str(self.required_level) if self.required_level else ""
+        """Return required skill with level in roman numbers."""
+        return (
+            self._skill_with_roman_level(self.required_level)
+            if self.required_level
+            else ""
+        )
 
     @property
     def recommended_skill_str(self) -> str:  # TODO: Add test
-        return self._skill_str(self.recommended_level) if self.recommended_level else ""
+        """Return recommended skill with level in roman numbers."""
+        return (
+            self._skill_with_roman_level(self.recommended_level)
+            if self.recommended_level
+            else ""
+        )
 
     @property
     def maximum_level(self) -> int:  # TODO: Add test
@@ -471,9 +482,10 @@ class SkillSetSkill(models.Model):
     @property
     def maximum_skill_str(self) -> str:  # TODO: Add test
         """Skill with maximum level as string."""
-        return self._skill_str(self.maximum_level)
+        return self._skill_with_roman_level(self.maximum_level)
 
-    def _skill_str(self, level) -> str:
+    def _skill_with_roman_level(self, level) -> str:
+        """Return skill with level in roman numbers."""
         level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[level]
         return f"{self.eve_type.name} {level_str}"
 

@@ -15,6 +15,7 @@ class Standing(models.IntegerChoices):
 
     @classmethod
     def from_value(cls, value: float) -> "Standing":
+        """Create new objects from standing number."""
         if value > 5:
             return cls.EXCELLENT
 

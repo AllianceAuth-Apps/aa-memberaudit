@@ -97,6 +97,7 @@ class ComplianceGroupDesignationManager(models.Manager):
 
 class EveShipTypeManger(models.Manager):
     def get_queryset(self):
+        """Overridden default queryset to filter on ship types."""
         return (
             super()
             .get_queryset()
@@ -108,6 +109,7 @@ class EveShipTypeManger(models.Manager):
 
 class EveSkillTypeManger(models.Manager):
     def get_queryset(self):
+        """Overridden default queryset to filter on skill types."""
         return (
             super()
             .get_queryset()
@@ -460,6 +462,7 @@ class MailEntityManager(models.Manager):
         )
 
     def update_or_create_from_eve_entity_id(self, id: int) -> Tuple[models.Model, bool]:
+        """Update or create from an eve entity by ID."""
         eve_entity, _ = EveEntity.objects.get_or_create_esi(id=int(id))
         return self.update_or_create_from_eve_entity(eve_entity)
 
