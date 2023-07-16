@@ -35,7 +35,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
 from memberaudit.helpers import store_debug_data_to_disk
-from memberaudit.managers.character import (
+from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
