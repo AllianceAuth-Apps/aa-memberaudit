@@ -1,4 +1,5 @@
 """Managers for character section models (3/3)."""
+# pylint: disable=missing-class-docstring
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F

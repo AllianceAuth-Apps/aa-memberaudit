@@ -1,5 +1,5 @@
 """Define admin site for Member Audit."""
-# pylint: disable=missing-class-docstring
+# pylint: disable=missing-class-docstring,missing-function-docstring
 
 from typing import List, Optional
 
@@ -659,14 +659,15 @@ class SkillSetAdmin(admin.ModelAdmin):
         )
 
     def _skills(self, obj):
-        return [
-            "{} {} {}".format(
-                skill.eve_type.name,
-                skill.required_level if skill.required_level else "",
-                f"[{skill.recommended_level}]" if skill.recommended_level else "",
+        skills = []
+        for skill in obj.skills_ordered:
+            skill_name = skill.eve_type.name
+            required_level = skill.required_level if skill.required_level else ""
+            recommended_level = (
+                f"[{skill.recommended_level}]" if skill.recommended_level else ""
             )
-            for skill in obj.skills_ordered
-        ]
+            skills.append(f"{skill_name} {required_level} {recommended_level}")
+        return skills
 
     def _groups(self, obj) -> Optional[List[str]]:
         groups = [f"{group.name}" for group in obj.groups_ordered]

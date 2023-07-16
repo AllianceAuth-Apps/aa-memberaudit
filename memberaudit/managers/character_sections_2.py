@@ -1,4 +1,5 @@
 """Managers for character section models (2/3)."""
+# pylint: disable=missing-class-docstring
 
 import ast
 from typing import Dict, List
@@ -40,8 +41,6 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterCorporationHistoryManager(models.Manager):
-    """Manager for CharacterCorporationHistory."""
-
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create corporation history for character."""
 
@@ -88,8 +87,6 @@ class CharacterCorporationHistoryManager(models.Manager):
 
 
 class CharacterDetailsManager(models.Manager):
-    """Manager for CharacterDetail."""
-
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create character details from ESI."""
 

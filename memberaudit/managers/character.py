@@ -1,4 +1,5 @@
 """Manager for Character model."""
+# pylint: disable=missing-class-docstring
 
 from copy import deepcopy
 from math import floor
