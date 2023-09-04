@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.11.0] - TBD
+## [2.11.0] - 2023-09-04
 
 ### Added
 
-- Added pylint checks
+- Added mandatory pylint checks
 
 ### Changed
 
-- Lots of refactoring to fix pylint issues
+- Refactoring to address pylint issues
 
 ## [2.10.1] - 2023-07-11
 
