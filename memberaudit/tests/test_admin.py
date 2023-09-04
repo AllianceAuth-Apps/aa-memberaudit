@@ -61,6 +61,7 @@ class TestComplianceGroupDesignationAdmin(TestCase):
             model=ComplianceGroupDesignation, admin_site=AdminSite()
         )
         load_entities()
+        cls.superuser = User.objects.create_superuser("Superman")
 
     def test_should_remove_deleted_compliance_group_from_users(self):
         # given
@@ -134,6 +135,34 @@ class TestComplianceGroupDesignationAdmin(TestCase):
         self.modeladmin.save_model(request, obj, form, False)
         # then
         self.assertNotIn(compliance_group, user_compliant.groups.all())
+
+    def test_should_return_group_name(self):
+        # given
+        compliance_group = create_compliance_group(name="alpha")
+        obj = compliance_group.compliancegroupdesignation
+        # when
+        result = self.modeladmin._group_name(obj)
+        # then
+        self.assertEqual(result, "alpha")
+
+    def test_should_return_states_when_defined(self):
+        # given
+        my_state = create_state(priority=200, name="bravo")
+        compliance_group = create_compliance_group(states=[my_state])
+        obj = compliance_group.compliancegroupdesignation
+        # when
+        result = self.modeladmin._states(obj)
+        # then
+        self.assertIn("bravo", result)
+
+    def test_should_return_empty_when_no_state_defined(self):
+        # given
+        compliance_group = create_compliance_group()
+        obj = compliance_group.compliancegroupdesignation
+        # when
+        result = self.modeladmin._states(obj)
+        # then
+        self.assertEqual(result, "-")
 
 
 class TestCharacterAdmin(TestCase):

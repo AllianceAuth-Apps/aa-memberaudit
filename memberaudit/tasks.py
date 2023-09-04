@@ -1,5 +1,5 @@
 """Celery tasks for Member Audit."""
-# pylint: disable=redefined-builtin
+# pylint: disable=redefined-builtin, too-many-lines
 
 import inspect
 import random
@@ -126,6 +126,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     if character.is_orphan:
         logger.info("%s: Skipping update for orphaned character", character)
         return False
+
     all_sections = set(Character.UpdateSection.values)
     needs_update = force_update
     for section in all_sections:
