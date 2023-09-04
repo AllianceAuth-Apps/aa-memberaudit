@@ -4,11 +4,22 @@ from unittest.mock import patch
 from django.test import TestCase
 from eveuniverse.models import EveType
 
-from memberaudit.helpers import data_retention_cutoff, implant_slot_num
+from memberaudit.helpers import (
+    data_retention_cutoff,
+    determine_task_priority,
+    implant_slot_num,
+)
 
 from .testdata.load_eveuniverse import load_eveuniverse
 
 MODULE_PATH = "memberaudit.helpers"
+
+
+class TaskStub:
+    def __init__(self, *, properties: dict = None) -> None:
+        if not properties:
+            properties = {}
+        self.request = {"properties": properties}
 
 
 class TestDataRetentionCutoff(TestCase):
@@ -42,3 +53,17 @@ class TestImplantSlotNum(TestCase):
         implant = EveType.objects.get(name="Merlin")
         # when/then
         self.assertEqual(implant_slot_num(implant), 0)
+
+
+class TestDetermineTaskPriority(TestCase):
+    def test_should_return_task_priority_when_it_exists(self):
+        # given
+        task = TaskStub(properties={"priority": 3})
+        # when/then
+        self.assertEqual(determine_task_priority(task), 3)
+
+    def test_should_return_none_when_no_task_priority_exists(self):
+        # given
+        task = TaskStub()
+        # when/then
+        self.assertIsNone(determine_task_priority(task))
