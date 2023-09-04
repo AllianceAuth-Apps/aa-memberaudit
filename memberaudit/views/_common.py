@@ -31,6 +31,7 @@ def add_common_context(request, context: dict) -> dict:
 
 
 def eve_solar_system_to_html(solar_system: EveSolarSystem, show_region=True) -> str:
+    """Convert solar system to HTML."""
     if solar_system.is_high_sec:
         css_class = "text-high-sec"
     elif solar_system.is_low_sec:

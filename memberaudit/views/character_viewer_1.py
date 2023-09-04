@@ -283,6 +283,8 @@ def _identify_user_characters(request, character):
 def character_assets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character assets."""
+
     def _combine_row(character, asset_qs, assets_with_children_ids, location_counts):
         data = []
         location_totals = {}
@@ -385,6 +387,7 @@ def character_assets_data(
 def character_asset_container(
     request, character_pk: int, character: Character, parent_asset_pk: int
 ) -> HttpResponse:
+    """Render view for character asset container."""
     try:
         parent_asset = character.assets.select_related(
             "location", "eve_type", "eve_type__eve_group"
@@ -418,6 +421,7 @@ def character_asset_container(
 def character_asset_container_data(
     request, character_pk: int, character: Character, parent_asset_pk: int
 ) -> JsonResponse:
+    """Render data view for character asset container."""
     data = []
     try:
         parent_asset = character.assets.get(pk=parent_asset_pk)
@@ -458,7 +462,8 @@ def character_asset_container_data(
 @fetch_character_if_allowed()
 def character_attribute_data(
     request, character_pk: int, character: Character
-) -> HttpResponse:
+) -> JsonResponse:
+    """Render data view for character attributes."""
     try:
         character_attributes = character.attributes
     except ObjectDoesNotExist:
@@ -479,6 +484,7 @@ def character_attribute_data(
 def character_contacts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character contacts."""
     data = []
     for contact in character.contacts.select_related("eve_entity").all():
         eve_entity = contact.eve_entity
@@ -525,6 +531,7 @@ def character_contacts_data(
 def character_contracts_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character contracts."""
     data = []
     for contract in character.contracts.select_related("issuer", "assignee").all():
         if now() < contract.date_expired:
@@ -567,6 +574,7 @@ def character_contracts_data(
 def character_contract_details(
     request, character_pk: int, character: Character, contract_pk: int
 ) -> HttpResponse:
+    """Render view for character contract details."""
     error_msg = None
     try:
         contract = (
@@ -613,6 +621,7 @@ def character_contract_details(
 def character_contract_items_included_data(
     request, character_pk: int, character: Character, contract_pk: int
 ) -> JsonResponse:
+    """Render data view for included character contract items."""
     return _character_contract_items_data(
         request=request,
         character_pk=character_pk,
@@ -628,6 +637,7 @@ def character_contract_items_included_data(
 def character_contract_items_requested_data(
     request, character_pk: int, character: Character, contract_pk: int
 ) -> JsonResponse:
+    """Render data view for requested character contract items."""
     return _character_contract_items_data(
         request=request,
         character_pk=character_pk,
@@ -689,6 +699,7 @@ def _character_contract_items_data(
 def character_corporation_history(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
+    """Render view for character corporation history."""
     corporation_history = []
     try:
         corporation_history_qs = character.corporation_history.select_related(
@@ -731,6 +742,7 @@ def character_corporation_history(
 def character_fw_stats(
     request, character_pk: int, character: Character
 ) -> HttpResponse:
+    """Render view for character FW stats."""
     try:
         fw_stats: Optional[CharacterFwStats] = character.fw_stats
     except ObjectDoesNotExist:
@@ -753,6 +765,7 @@ def character_fw_stats(
 def character_implants_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character implants."""
     data = []
     for implant in character.implants.select_related("eve_type").prefetch_related(
         "eve_type__dogma_attributes"
@@ -780,6 +793,7 @@ def character_implants_data(
 def character_loyalty_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character loyalty points."""
     data = []
     for entry in character.loyalty_entries.select_related("corporation"):
         corporation_html = bootstrap_icon_plus_name_html(

@@ -67,7 +67,8 @@ ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
 @fetch_character_if_allowed()
 def character_jump_clones_data(
     request, character_pk: int, character: Character
-) -> HttpResponse:
+) -> JsonResponse:
+    """Return data for character jump clones."""
     data = []
     try:
         for jump_clone in (
@@ -171,6 +172,7 @@ def _character_mail_headers_data(request, character, mail_headers_qs) -> JsonRes
 def character_mail_headers_by_label_data(
     request, character_pk: int, character: Character, label_id: int
 ) -> JsonResponse:
+    """Return data for character mail headers by label."""
     if label_id == MAIL_LABEL_ID_ALL_MAILS:
         mail_headers_qs = character.mails.all()
     else:
@@ -185,6 +187,7 @@ def character_mail_headers_by_label_data(
 def character_mail_headers_by_list_data(
     request, character_pk: int, character: Character, list_id: int
 ) -> JsonResponse:
+    """Render data view for character mail headers by list."""
     mail_headers_qs = character.mails.filter(recipients__id=list_id)
     return _character_mail_headers_data(request, character, mail_headers_qs)
 
@@ -195,6 +198,7 @@ def character_mail_headers_by_list_data(
 def character_mail(
     request, character_pk: int, character: Character, mail_pk: int
 ) -> HttpResponse:
+    """Render character mail view."""
     try:
         mail = (
             character.mails.select_related("sender")
@@ -202,11 +206,13 @@ def character_mail(
             .get(pk=mail_pk)
         )
     except CharacterMail.DoesNotExist:
-        error_msg = gettext_lazy(
-            "Mail with pk %s not found for character %s" % (mail_pk, character)
+        error_msg = gettext_lazy("Mail with pk %s not found for character %s") % (
+            mail_pk,
+            character,
         )
         logger.warning(error_msg)
         return HttpResponseNotFound(error_msg)
+
     recipients = sorted(
         [
             {
@@ -238,6 +244,7 @@ def character_mail(
 def character_mining_ledger_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character mining ledger."""
     qs = character.mining_ledger.select_related(
         "eve_solar_system",
         "eve_solar_system__eve_constellation__eve_region",
@@ -264,6 +271,7 @@ def character_mining_ledger_data(
 def character_planets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character planets."""
     data = []
     for planet in character.planets.select_related(
         "eve_planet",
@@ -312,6 +320,7 @@ def character_planets_data(
 def character_skillqueue_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skillqueue."""
     data = []
     try:
         for row in character.skillqueue.select_related("eve_type").filter(
@@ -363,6 +372,8 @@ def character_skillqueue_data(
 def character_skill_sets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skill sets."""
+
     def _create_row(skill_check):
         def _skill_set_name_html(skill_set):
             url = (
@@ -490,6 +501,8 @@ def character_skill_sets_data(
 def character_skill_set_details(
     request, character_pk: int, character: Character, skill_set_pk: int
 ) -> HttpResponse:
+    """Render view for character skill set details."""
+
     def _compile_row(character_skills, missing_skills, skill_id, skill):
         character_skill = character_skills.get(skill_id)
         recommended_level_str = "-"
@@ -614,6 +627,7 @@ def _calc_character_skills(character, skill_set_skills):
 def character_skills_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skills."""
     skills_data = []
     try:
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
@@ -645,6 +659,7 @@ def character_skills_data(
 def character_standings_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character standings."""
     connections_skill_level = character.skills.find_active_skill_level(
         EveSkillTypeId.CONNECTIONS
     )
@@ -694,6 +709,7 @@ def character_standings_data(
 def character_wallet_journal_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character wallet journal."""
     wallet_data = []
     try:
         for row in character.wallet_journal.select_related(
@@ -725,6 +741,7 @@ def character_wallet_journal_data(
 def character_wallet_transactions_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character wallet transactions."""
     wallet_data = []
     try:
         for row in character.wallet_transactions.select_related(
