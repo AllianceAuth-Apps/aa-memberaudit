@@ -28,12 +28,14 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 @login_required
 @permission_required("memberaudit.basic_access")
 def index(request):
+    """Render index view."""
     return redirect("memberaudit:launcher")
 
 
 @login_required
 @permission_required("memberaudit.basic_access")
 def launcher(request) -> HttpResponse:
+    """Render launcher view."""
     owned_chars_query = (
         EveCharacter.objects.filter(character_ownership__user=request.user)
         .select_related(
@@ -103,6 +105,7 @@ def launcher(request) -> HttpResponse:
 @permission_required("memberaudit.basic_access")
 @token_required(scopes=Character.get_esi_scopes())
 def add_character(request, token) -> HttpResponse:
+    """Render add character view."""
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)
     with transaction.atomic():
         character, _ = Character.objects.update_or_create(
@@ -133,6 +136,7 @@ def add_character(request, token) -> HttpResponse:
 @login_required
 @permission_required("memberaudit.basic_access")
 def remove_character(request, character_pk: int) -> HttpResponse:
+    """Render remove character view."""
     try:
         character = Character.objects.select_related(
             "eve_character__character_ownership__user", "eve_character"
@@ -174,6 +178,7 @@ def remove_character(request, character_pk: int) -> HttpResponse:
 @login_required
 @permission_required(["memberaudit.basic_access", "memberaudit.share_characters"])
 def share_character(request, character_pk: int) -> HttpResponse:
+    """Render share character view."""
     try:
         character = Character.objects.select_related(
             "eve_character__character_ownership__user", "eve_character"
@@ -193,6 +198,7 @@ def share_character(request, character_pk: int) -> HttpResponse:
 @login_required
 @permission_required("memberaudit.basic_access")
 def unshare_character(request, character_pk: int) -> HttpResponse:
+    """Render unshare character view."""
     try:
         character = Character.objects.select_related(
             "eve_character__character_ownership__user", "eve_character"
