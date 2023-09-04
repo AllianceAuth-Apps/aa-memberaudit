@@ -2,7 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
-from django.http import FileResponse, Http404
+from django.http import FileResponse, Http404, HttpResponse
 from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 
@@ -21,7 +21,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 @login_required
 @permission_required("memberaudit.exports_access")
-def data_export(request):
+def data_export(request) -> HttpResponse:
+    """Render data export view."""
     topics = data_exporters.topics_and_export_files()
     context = {
         "page_title": _("Data Export"),
@@ -37,6 +38,7 @@ def data_export(request):
 @login_required
 @permission_required("memberaudit.exports_access")
 def download_export_file(request, topic: str) -> FileResponse:
+    """Render file view for downloading an export file."""
     exporter = data_exporters.DataExporter.create_exporter(topic)
     destination = data_exporters.default_destination()
     zip_file = destination / exporter.output_basename.with_suffix(".zip")
@@ -49,6 +51,7 @@ def download_export_file(request, topic: str) -> FileResponse:
 @login_required
 @permission_required("memberaudit.exports_access")
 def data_export_run_update(request, topic: str):
+    """Render view for running data export update."""
     tasks.export_data_for_topic.delay(topic=topic, user_pk=request.user.pk)
     messages.info(
         request,

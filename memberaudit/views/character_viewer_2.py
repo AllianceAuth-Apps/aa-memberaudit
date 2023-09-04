@@ -1,4 +1,5 @@
 """Character viewer views (2/2)."""
+# pylint: disable=unused-argument
 
 import datetime as dt
 from typing import Optional
@@ -66,7 +67,8 @@ ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
 @fetch_character_if_allowed()
 def character_jump_clones_data(
     request, character_pk: int, character: Character
-) -> HttpResponse:
+) -> JsonResponse:
+    """Return data for character jump clones."""
     data = []
     try:
         for jump_clone in (
@@ -170,6 +172,7 @@ def _character_mail_headers_data(request, character, mail_headers_qs) -> JsonRes
 def character_mail_headers_by_label_data(
     request, character_pk: int, character: Character, label_id: int
 ) -> JsonResponse:
+    """Return data for character mail headers by label."""
     if label_id == MAIL_LABEL_ID_ALL_MAILS:
         mail_headers_qs = character.mails.all()
     else:
@@ -184,6 +187,7 @@ def character_mail_headers_by_label_data(
 def character_mail_headers_by_list_data(
     request, character_pk: int, character: Character, list_id: int
 ) -> JsonResponse:
+    """Render data view for character mail headers by list."""
     mail_headers_qs = character.mails.filter(recipients__id=list_id)
     return _character_mail_headers_data(request, character, mail_headers_qs)
 
@@ -194,6 +198,7 @@ def character_mail_headers_by_list_data(
 def character_mail(
     request, character_pk: int, character: Character, mail_pk: int
 ) -> HttpResponse:
+    """Render character mail view."""
     try:
         mail = (
             character.mails.select_related("sender")
@@ -201,11 +206,13 @@ def character_mail(
             .get(pk=mail_pk)
         )
     except CharacterMail.DoesNotExist:
-        error_msg = gettext_lazy(
-            "Mail with pk %s not found for character %s" % (mail_pk, character)
+        error_msg = gettext_lazy("Mail with pk %s not found for character %s") % (
+            mail_pk,
+            character,
         )
         logger.warning(error_msg)
         return HttpResponseNotFound(error_msg)
+
     recipients = sorted(
         [
             {
@@ -237,6 +244,7 @@ def character_mail(
 def character_mining_ledger_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character mining ledger."""
     qs = character.mining_ledger.select_related(
         "eve_solar_system",
         "eve_solar_system__eve_constellation__eve_region",
@@ -263,6 +271,7 @@ def character_mining_ledger_data(
 def character_planets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character planets."""
     data = []
     for planet in character.planets.select_related(
         "eve_planet",
@@ -311,6 +320,7 @@ def character_planets_data(
 def character_skillqueue_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skillqueue."""
     data = []
     try:
         for row in character.skillqueue.select_related("eve_type").filter(
@@ -362,6 +372,8 @@ def character_skillqueue_data(
 def character_skill_sets_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skill sets."""
+
     def _create_row(skill_check):
         def _skill_set_name_html(skill_set):
             url = (
@@ -489,25 +501,9 @@ def character_skill_sets_data(
 def character_skill_set_details(
     request, character_pk: int, character: Character, skill_set_pk: int
 ) -> HttpResponse:
-    skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
-    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
-        skill_set_id=skill_set_pk
-    )
-    skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
-    character_skills_qs = character.skills.select_related("eve_type").filter(
-        eve_type_id__in=skill_set_skills.keys()
-    )
-    character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
-    out_data = []
-    url = (
-        skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
-        if skill_set.ship_type
-        else eveimageserver.type_icon_url(
-            SKILL_SET_DEFAULT_ICON_TYPE_ID, size=ICON_SIZE_64
-        )
-    )
-    missing_skills = []
-    for skill_id, skill in skill_set_skills.items():
+    """Render view for character skill set details."""
+
+    def _compile_row(character_skills, missing_skills, skill_id, skill):
         character_skill = character_skills.get(skill_id)
         recommended_level_str = "-"
         required_level_str = "-"
@@ -554,16 +550,22 @@ def character_skill_set_details(
         ):
             missing_skills.append(skill.maximum_skill_str)
 
-        out_data.append(
-            {
-                "name": skill.eve_type.name,
-                "required": required_level_str,
-                "recommended": recommended_level_str,
-                "current": current_str,
-                "result_icon": result_icon,
-                "met_required": met_required,
-            }
-        )
+        return {
+            "name": skill.eve_type.name,
+            "required": required_level_str,
+            "recommended": recommended_level_str,
+            "current": current_str,
+            "result_icon": result_icon,
+            "met_required": met_required,
+        }
+
+    skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
+    skill_set_skills = _calc_skill_set_skills(skill_set_pk)
+    character_skills = _calc_character_skills(character, skill_set_skills)
+    out_data = []
+    missing_skills = []
+    for skill_id, skill in skill_set_skills.items():
+        out_data.append(_compile_row(character_skills, missing_skills, skill_id, skill))
 
     met_all_required = True
     for data in out_data:
@@ -571,19 +573,17 @@ def character_skill_set_details(
             met_all_required = False
             break
 
-    out_data = sorted(out_data, key=lambda k: (k["name"].lower()))
-    missing_skills_str = "\n".join(missing_skills) if missing_skills else ""
     context = {
         "name": skill_set.name,
         "description": skill_set.description,
-        "ship_url": url,
-        "skills": out_data,
+        "ship_url": _calc_url_for_skill_set(skill_set),
+        "skills": sorted(out_data, key=lambda k: (k["name"].lower())),
         "met_all_required": met_all_required,
         "icon_failed": ICON_FAILED,
         "icon_partial": ICON_PARTIAL,
         "icon_full": ICON_FULL,
         "icon_met_all_required": ICON_MET_ALL_REQUIRED,
-        "missing_skills_str": missing_skills_str,
+        "missing_skills_str": "\n".join(missing_skills) if missing_skills else "",
     }
 
     return render(
@@ -593,12 +593,41 @@ def character_skill_set_details(
     )
 
 
+def _calc_url_for_skill_set(skill_set):
+    url = (
+        skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
+        if skill_set.ship_type
+        else eveimageserver.type_icon_url(
+            SKILL_SET_DEFAULT_ICON_TYPE_ID, size=ICON_SIZE_64
+        )
+    )
+
+    return url
+
+
+def _calc_skill_set_skills(skill_set_pk):
+    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
+        skill_set_id=skill_set_pk
+    )
+    skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
+    return skill_set_skills
+
+
+def _calc_character_skills(character, skill_set_skills):
+    character_skills_qs = character.skills.select_related("eve_type").filter(
+        eve_type_id__in=skill_set_skills.keys()
+    )
+    character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
+    return character_skills
+
+
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed()
 def character_skills_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character skills."""
     skills_data = []
     try:
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
@@ -630,6 +659,7 @@ def character_skills_data(
 def character_standings_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character standings."""
     connections_skill_level = character.skills.find_active_skill_level(
         EveSkillTypeId.CONNECTIONS
     )
@@ -679,6 +709,7 @@ def character_standings_data(
 def character_wallet_journal_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character wallet journal."""
     wallet_data = []
     try:
         for row in character.wallet_journal.select_related(
@@ -710,6 +741,7 @@ def character_wallet_journal_data(
 def character_wallet_transactions_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
+    """Render data view for character wallet transactions."""
     wallet_data = []
     try:
         for row in character.wallet_transactions.select_related(

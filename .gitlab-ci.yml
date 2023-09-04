@@ -14,7 +14,7 @@ stages:
 #   MYSQL_HOST: mysql
 
 
-pre-commit-check:
+pre-commit:
   stage: checks
   image: python:3.10-bullseye
   variables:
@@ -27,7 +27,7 @@ pre-commit-check:
   script:
     - pre-commit run --all-files
 
-.test:
+.tox_setup:
   stage: test
   before_script:
     - apt-get update
@@ -36,27 +36,35 @@ pre-commit-check:
     - python -V
     - pip install tox
 
+pylint:
+  stage: checks
+  extends: .tox_setup
+  image: python:3.10-bullseye
+  script:
+    - tox -e pylint
+  allow_failure: true
+
 test-py38-dj40:
-  extends: .test
+  extends: .tox_setup
   image: python:3.8-bullseye
   script:
     - tox -e py38-django40
 
 test-py39-dj40:
-  extends: .test
+  extends: .tox_setup
   image: python:3.9-bullseye
   script:
     - tox -e py39-django40
 
 test-py310-dj40:
-  extends: .test
+  extends: .tox_setup
   image: python:3.10-bullseye
   script:
     - tox -e py310-django40
     - bash <(curl -s https://codecov.io/bash)
 
 test-py311-dj40:
-  extends: .test
+  extends: .tox_setup
   image: python:3.11-bullseye
   script:
   - tox -e py311-django40

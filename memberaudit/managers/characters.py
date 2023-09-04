@@ -1,6 +1,11 @@
+"""Manager for Character model."""
+# pylint: disable=missing-class-docstring
+
 from copy import deepcopy
 from math import floor
+from typing import Set
 
+from django.conf import settings as auth_settings
 from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.db.models import (
@@ -22,13 +27,14 @@ from app_utils.caching import ObjectCacheMixin
 from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
+from memberaudit import __title__, app_settings
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterQuerySet(models.QuerySet):
-    def eve_character_ids(self) -> set:
+    def eve_character_ids(self) -> Set[int]:
+        """Return EveCharacter IDs of all characters in this QuerySet."""
         return set(self.values_list("eve_character__character_id", flat=True))
 
     def owned_by_user(self, user: User) -> models.QuerySet:
@@ -36,8 +42,9 @@ class CharacterQuerySet(models.QuerySet):
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
 
     def annotate_update_status(self):
+        """Add update_status annotations."""
         num_sections_total = len(self.model.UpdateSection.choices)
-        UpdateStatus = self.model.UpdateStatus
+        UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
         return (
             self.annotate(num_sections_total=Count("update_status_set"))
             .annotate(
@@ -72,6 +79,8 @@ class CharacterQuerySet(models.QuerySet):
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
     def unregistered_characters_of_user_count(self, user: User) -> int:
+        """Return count of unregistered character for a user."""
+
         return CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True
         ).count()
@@ -148,10 +157,8 @@ CharacterManager = CharacterManagerBase.from_queryset(CharacterQuerySet)
 class CharacterUpdateStatusManager(models.Manager):
     def statistics(self) -> dict:
         """returns detailed statistics about the last update run and the app"""
-        from django.conf import settings as auth_settings
 
-        from .. import app_settings
-        from ..models import (
+        from memberaudit.models import (
             Character,
             CharacterAsset,
             CharacterContact,
@@ -161,146 +168,11 @@ class CharacterUpdateStatusManager(models.Manager):
             SkillSetGroup,
         )
 
-        def root_task_id_or_none(obj):
-            try:
-                return obj.root_task_id
-            except AttributeError:
-                return None
-
         all_characters_count = Character.objects.count()
 
-        settings = {
-            name: value
-            for name, value in vars(app_settings).items()
-            if name.startswith("MEMBERAUDIT_")
-        }
-        schedule = deepcopy(auth_settings.CELERYBEAT_SCHEDULE)
-        for name, details in schedule.items():
-            for k, v in details.items():
-                if k == "schedule":
-                    schedule[name][k] = str(v)
+        settings = self._fetch_settings()
 
-        settings["CELERYBEAT_SCHEDULE"] = schedule
-
-        qs_base = self.filter(
-            is_success=True,
-            started_at__isnull=False,
-            finished_at__isnull=False,
-        ).exclude(root_task_id="", parent_task_id="")
-        root_task_ids = {
-            ring: root_task_id_or_none(
-                qs_base.filter(section__in=Character.sections_in_ring(ring))
-                .order_by("-finished_at")
-                .first()
-            )
-            for ring in range(1, 4)
-        }
-        duration_expression = ExpressionWrapper(
-            F("finished_at") - F("started_at"),
-            output_field=models.fields.DurationField(),
-        )
-        qs_base = qs_base.filter(root_task_id__in=root_task_ids.values()).annotate(
-            duration=duration_expression
-        )
-        update_stats = {}
-        if self.count() > 0:
-            # per ring
-            for ring in range(1, 4):
-                sections = Character.sections_in_ring(ring)
-
-                # calc totals
-                qs = qs_base.filter(section__in=sections)
-                try:
-                    first = qs.order_by("started_at").first()
-                    last = qs.order_by("finished_at").last()
-                    started_at = first.started_at
-                    finished_at = last.finished_at
-                    duration = round((finished_at - started_at).total_seconds(), 1)
-                except (KeyError, AttributeError):
-                    first = None
-                    last = None
-                    duration = None
-                    started_at = None
-                    finished_at = None
-
-                available_time = (
-                    settings[f"MEMBERAUDIT_UPDATE_STALE_RING_{ring}"]
-                    - settings["MEMBERAUDIT_UPDATE_STALE_OFFSET"]
-                ) * 60
-                throughput = (
-                    floor(all_characters_count / duration * 3600) if duration else None
-                )
-                within_boundaries = duration < available_time if duration else None
-                update_stats[f"ring_{ring}"] = {
-                    "total": {
-                        "duration": duration,
-                        "started_at": started_at,
-                        "finished_at": finished_at,
-                        "root_task_id": root_task_ids.get(ring),
-                        "throughput_est": throughput,
-                        "available_time": available_time,
-                        "within_available_time": within_boundaries,
-                    },
-                    "max": {},
-                    "sections": {},
-                }
-
-                # add longest running section w/ character
-                obj = qs.order_by("-duration").first()
-                update_stats[f"ring_{ring}"]["max"] = self._info_from_obj(obj)
-
-                # add first and last section
-                update_stats[f"ring_{ring}"]["first"] = self._info_from_obj(first)
-                update_stats[f"ring_{ring}"]["last"] = self._info_from_obj(last)
-
-                # calc section stats
-                for section in sections:
-                    try:
-                        section_max = round(
-                            qs_base.filter(section=section)
-                            .aggregate(Max("duration"))["duration__max"]
-                            .total_seconds(),
-                            1,
-                        )
-                        section_avg = round(
-                            qs_base.filter(section=section)
-                            .aggregate(Avg("duration"))["duration__avg"]
-                            .total_seconds(),
-                            1,
-                        )
-                        section_min = round(
-                            qs_base.filter(section=section)
-                            .aggregate(Min("duration"))["duration__min"]
-                            .total_seconds(),
-                            1,
-                        )
-                    except (KeyError, AttributeError):
-                        section_max = (None,)
-                        section_avg = None
-                        section_min = None
-
-                    update_stats[f"ring_{ring}"]["sections"].update(
-                        {
-                            str(section): {
-                                "max": section_max,
-                                "avg": section_avg,
-                                "min": section_min,
-                            }
-                        }
-                    )
-
-                ring_characters_count = (
-                    Character.objects.filter(update_status_set__in=qs)
-                    .annotate(num_sections=Count("update_status_set__section"))
-                    .filter(num_sections=len(sections))
-                    .count()
-                )
-                update_stats[f"ring_{ring}"]["total"][
-                    "characters_count"
-                ] = ring_characters_count
-                update_stats[f"ring_{ring}"]["total"]["completed"] = (
-                    ring_characters_count == all_characters_count
-                )
+        update_stats = self._calc_update_stats(all_characters_count, settings)
 
         return {
             "app_totals": {
@@ -320,6 +192,183 @@ class CharacterUpdateStatusManager(models.Manager):
             "settings": settings,
             "update_statistics": update_stats,
         }
+
+    def _calc_update_stats(self, all_characters_count, settings):
+        from memberaudit.models import Character
+
+        update_stats = {}
+        if self.count() > 0:
+            qs_base, root_task_ids = self._calc_qs_base()
+            # per ring
+            for ring in range(1, 4):
+                sections = Character.sections_in_ring(ring)
+
+                # calc totals
+                qs_ring = qs_base.filter(section__in=sections)
+                self._calc_totals(
+                    all_characters_count,
+                    settings,
+                    root_task_ids,
+                    update_stats,
+                    ring,
+                    qs_ring,
+                )
+
+                # calc section stats
+                for section in sections:
+                    self._update_section(qs_base, section, update_stats, ring)
+
+                self._update_character_ring_counts(
+                    all_characters_count, update_stats, ring, sections, qs_ring
+                )
+
+        return update_stats
+
+    def _update_character_ring_counts(
+        self, all_characters_count, update_stats, ring, sections, qs
+    ):
+        from memberaudit.models import Character
+
+        ring_characters_count = (
+            Character.objects.filter(update_status_set__in=qs)
+            .annotate(num_sections=Count("update_status_set__section"))
+            .filter(num_sections=len(sections))
+            .count()
+        )
+        update_stats[f"ring_{ring}"]["total"][
+            "characters_count"
+        ] = ring_characters_count
+        update_stats[f"ring_{ring}"]["total"]["completed"] = (
+            ring_characters_count == all_characters_count
+        )
+
+    def _calc_qs_base(self):
+        from memberaudit.models import Character
+
+        qs_base = self.filter(
+            is_success=True,
+            started_at__isnull=False,
+            finished_at__isnull=False,
+        ).exclude(root_task_id="", parent_task_id="")
+        root_task_ids = {
+            ring: self._root_task_id_or_none(
+                qs_base.filter(section__in=Character.sections_in_ring(ring))
+                .order_by("-finished_at")
+                .first()
+            )
+            for ring in range(1, 4)
+        }
+        duration_expression = ExpressionWrapper(
+            F("finished_at") - F("started_at"),
+            output_field=models.fields.DurationField(),
+        )
+        qs_base = qs_base.filter(root_task_id__in=root_task_ids.values()).annotate(
+            duration=duration_expression
+        )
+        return qs_base, root_task_ids
+
+    def _calc_totals(
+        self, all_characters_count, settings, root_task_ids, update_stats, ring, qs
+    ):  # pylint: disable=too-many-locals
+        try:
+            first = qs.order_by("started_at").first()
+            last = qs.order_by("finished_at").last()
+            started_at = first.started_at
+            finished_at = last.finished_at
+            duration = round((finished_at - started_at).total_seconds(), 1)
+        except (KeyError, AttributeError):
+            first = None
+            last = None
+            duration = None
+            started_at = None
+            finished_at = None
+
+        available_time = (
+            settings[f"MEMBERAUDIT_UPDATE_STALE_RING_{ring}"]
+            - settings["MEMBERAUDIT_UPDATE_STALE_OFFSET"]
+        ) * 60
+        throughput = floor(all_characters_count / duration * 3600) if duration else None
+        within_boundaries = duration < available_time if duration else None
+        update_stats[f"ring_{ring}"] = {
+            "total": {
+                "duration": duration,
+                "started_at": started_at,
+                "finished_at": finished_at,
+                "root_task_id": root_task_ids.get(ring),
+                "throughput_est": throughput,
+                "available_time": available_time,
+                "within_available_time": within_boundaries,
+            },
+            "max": {},
+            "sections": {},
+        }
+
+        # add longest running section w/ character
+        obj = qs.order_by("-duration").first()
+        update_stats[f"ring_{ring}"]["max"] = self._info_from_obj(obj)
+
+        # add first and last section
+        update_stats[f"ring_{ring}"]["first"] = self._info_from_obj(first)
+        update_stats[f"ring_{ring}"]["last"] = self._info_from_obj(last)
+
+        return first, last
+
+    def _update_section(self, qs_base, section, update_stats, ring):
+        try:
+            section_max = round(
+                qs_base.filter(section=section)
+                .aggregate(Max("duration"))["duration__max"]
+                .total_seconds(),
+                1,
+            )
+            section_avg = round(
+                qs_base.filter(section=section)
+                .aggregate(Avg("duration"))["duration__avg"]
+                .total_seconds(),
+                1,
+            )
+            section_min = round(
+                qs_base.filter(section=section)
+                .aggregate(Min("duration"))["duration__min"]
+                .total_seconds(),
+                1,
+            )
+        except (KeyError, AttributeError):
+            section_max = (None,)
+            section_avg = None
+            section_min = None
+
+        update_stats[f"ring_{ring}"]["sections"].update(
+            {
+                str(section): {
+                    "max": section_max,
+                    "avg": section_avg,
+                    "min": section_min,
+                }
+            }
+        )
+
+    def _fetch_settings(self):
+        settings = {
+            name: value
+            for name, value in vars(app_settings).items()
+            if name.startswith("MEMBERAUDIT_")
+        }
+        schedule = deepcopy(auth_settings.CELERYBEAT_SCHEDULE)
+        for name, details in schedule.items():
+            for key, value in details.items():
+                if key == "schedule":
+                    schedule[name][key] = str(value)
+
+        settings["CELERYBEAT_SCHEDULE"] = schedule
+        return settings
+
+    @staticmethod
+    def _root_task_id_or_none(obj):
+        try:
+            return obj.root_task_id
+        except AttributeError:
+            return None
 
     @staticmethod
     def _info_from_obj(obj) -> dict:

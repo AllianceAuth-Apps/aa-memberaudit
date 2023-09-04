@@ -1,3 +1,6 @@
+"""Managers for character section models (3/3)."""
+# pylint: disable=missing-class-docstring
+
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from esi.models import Token
@@ -379,7 +382,8 @@ class CharacterSkillManager(models.Manager):
 class CharacterSkillSetCheckManager(models.Manager):
     @transaction.atomic()
     def update_for_character(self, character):
-        from ..models import SkillSet
+        """Update or create skill sets for a character."""
+        from memberaudit.models import SkillSet
 
         character_skills = {
             obj["eve_type_id"]: obj["active_skill_level"]
@@ -612,7 +616,7 @@ class CharacterWalletTransactionManager(models.Manager):
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def _update_or_create_objs(self, character, token: Token, transactions):
-        from ..models import Location
+        from memberaudit.models import Location
 
         cutoff_datetime = data_retention_cutoff()
         transaction_list = {
@@ -630,43 +634,48 @@ class CharacterWalletTransactionManager(models.Manager):
         type_ids = {row.get("type_id") for row in transaction_list.values()}
         EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
 
-        with transaction.atomic():
-            incoming_ids = set(transaction_list.keys())
-            existing_ids = set(self.values_list("transaction_id", flat=True))
-            create_ids = incoming_ids.difference(existing_ids)
-            if not create_ids:
-                logger.info("%s: No new wallet transactions", character)
-                return
-
-            logger.info(
-                "%s: Adding %s new wallet transactions",
-                character,
-                len(create_ids),
-            )
-            entries = []
-            for transaction_id, row in transaction_list.items():
-                if transaction_id in create_ids:
-                    try:
-                        journal_entry = character.wallet_journal.get(
-                            entry_id=row.get("journal_ref_id")
-                        )
-                    except character.wallet_journal.model.DoesNotExist:
-                        journal_entry = None
-                    entries.append(
-                        self.model(
-                            character=character,
-                            transaction_id=transaction_id,
-                            client=get_or_create_or_none("client_id", row, EveEntity),
-                            date=row.get("date"),
-                            is_buy=row.get("is_buy"),
-                            is_personal=row.get("is_personal"),
-                            journal_ref=journal_entry,
-                            location=get_or_none("location_id", row, Location),
-                            eve_type=EveType.objects.get(id=row.get("type_id")),
-                            quantity=row.get("quantity"),
-                            unit_price=row.get("unit_price"),
-                        )
-                    )
-            self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        self._bulk_update_or_create(character, transaction_list)
 
         EveEntity.objects.bulk_update_new_esi()
+
+    @transaction.atomic()
+    def _bulk_update_or_create(self, character, transaction_list):
+        from memberaudit.models import Location
+
+        incoming_ids = set(transaction_list.keys())
+        existing_ids = set(self.values_list("transaction_id", flat=True))
+        create_ids = incoming_ids.difference(existing_ids)
+        if not create_ids:
+            logger.info("%s: No new wallet transactions", character)
+            return
+
+        logger.info(
+            "%s: Adding %s new wallet transactions",
+            character,
+            len(create_ids),
+        )
+        entries = []
+        for transaction_id, row in transaction_list.items():
+            if transaction_id in create_ids:
+                try:
+                    journal_entry = character.wallet_journal.get(
+                        entry_id=row.get("journal_ref_id")
+                    )
+                except character.wallet_journal.model.DoesNotExist:
+                    journal_entry = None
+                entries.append(
+                    self.model(
+                        character=character,
+                        transaction_id=transaction_id,
+                        client=get_or_create_or_none("client_id", row, EveEntity),
+                        date=row.get("date"),
+                        is_buy=row.get("is_buy"),
+                        is_personal=row.get("is_personal"),
+                        journal_ref=journal_entry,
+                        location=get_or_none("location_id", row, Location),
+                        eve_type=EveType.objects.get(id=row.get("type_id")),
+                        quantity=row.get("quantity"),
+                        unit_price=row.get("unit_price"),
+                    )
+                )
+        self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)

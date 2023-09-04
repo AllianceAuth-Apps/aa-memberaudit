@@ -150,6 +150,8 @@ class _EveTypes:
 
 
 class _EftSlotType(Enum):
+    """An EFT slot type."""
+
     NONE = auto()
     LOW_SLOT = auto()
     MEDIUM_SLOT = auto()
@@ -244,33 +246,44 @@ class _EftItem:
 
     @property
     def is_empty(self) -> bool:
+        """Return True if this item is empty, else False."""
         return self.item_type is None
 
     @property
     def is_slot(self) -> bool:
+        """Return True if this item is a slot, else False."""
         return self.quantity is None
 
     def is_booster(self) -> bool:
+        """Return True if this item is a booster, else False."""
         if self.is_empty:
             return False
         return self._item_group_id() == EveGroupId.BOOSTER
 
     def is_cyber_implant(self) -> bool:
+        """Return True if this item is a cyber slot, else False."""
+
         if self.is_empty:
             return False
         return self._item_group_id() == EveGroupId.CYBERIMPLANT
 
     def is_drone(self) -> bool:
+        """Return True if this item is a drone, else False."""
+
         if self.is_empty:
             return False
         return self._item_category_id() == EveCategoryId.DRONE
 
     def is_fighter(self) -> bool:
+        """Return True if this item is a fighter, else False."""
+
         if self.is_empty:
             return False
         return self._item_category_id() == EveCategoryId.FIGHTER
 
     def is_high_slot(self) -> bool:
+        """Return True if this item is a high slot, else False."""
+
         if self.slot_type is _EftSlotType.HIGH_SLOT:
             return True
 
@@ -283,6 +296,7 @@ class _EftItem:
         return EveDogmaEffectId.HI_POWER in effect_ids
 
     def is_med_slot(self) -> bool:
+        """Return True if this item is a med slot, else False."""
         if self.slot_type is _EftSlotType.MEDIUM_SLOT:
             return True
 
@@ -295,6 +309,7 @@ class _EftItem:
         return EveDogmaEffectId.MED_POWER in effect_ids
 
     def is_low_slot(self) -> bool:
+        """Return True if this item is a low slot, else False."""
         if self.slot_type is _EftSlotType.LOW_SLOT:
             return True
 
@@ -307,6 +322,7 @@ class _EftItem:
         return EveDogmaEffectId.LO_POWER in effect_ids
 
     def is_rig_slot(self) -> bool:
+        """Return True if this item is a rig slot."""
         if self.slot_type is _EftSlotType.RIG_SLOT:
             return True
 
@@ -319,6 +335,7 @@ class _EftItem:
         return EveDogmaEffectId.RIG_SLOT in effect_ids
 
     def is_subsystem(self) -> bool:
+        """Return True if this item is a subsystem, else False."""
         if self.slot_type is _EftSlotType.SUBSYSTEM_SLOT:
             return True
 
@@ -344,6 +361,7 @@ class _EftItem:
     def create_from_text_item(
         cls, text_item: _EftTextItem, eve_types: _EveTypes
     ) -> "_EftItem":
+        """Create new item from text."""
         return cls(
             item_type=eve_types.from_name(text_item.item_type),
             charge_type=eve_types.from_name(text_item.charge_type),
@@ -358,6 +376,8 @@ class _EftSection:
     """Section of an EFT fitting used for parsing."""
 
     class Category(Enum):
+        """A category in an EFT section."""
+
         UNKNOWN = auto()
         HIGH_SLOTS = auto()
         MEDIUM_SLOTS = auto()
@@ -372,6 +392,7 @@ class _EftSection:
 
         @property
         def is_slots(self) -> bool:
+            """Return True, if this category has slots."""
             return self in {
                 self.HIGH_SLOTS,
                 self.MEDIUM_SLOTS,
@@ -384,6 +405,7 @@ class _EftSection:
 
     @property
     def is_slots(self) -> bool:
+        """Return True if this any item has slots."""
         return any((item.is_slot for item in self.items))
 
     def guess_category(self) -> Optional["_EftSection.Category"]:
@@ -441,7 +463,8 @@ class _EftSection:
     @classmethod
     def create_from_eft_text_section(
         cls, text_section: _EftTextSection, eve_types: _EveTypes
-    ):
+    ) -> "_EftSection":
+        """Create new object from an EFT text section."""
         items = [
             _EftItem.create_from_text_item(item, eve_types)
             for item in text_section.items

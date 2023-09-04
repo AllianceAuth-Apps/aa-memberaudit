@@ -1,3 +1,7 @@
+"""Managers for general models."""
+# pylint: disable=redefined-builtin,missing-class-docstring
+
+
 import datetime as dt
 from typing import Iterable, List, Optional, Set, Tuple
 
@@ -93,6 +97,7 @@ class ComplianceGroupDesignationManager(models.Manager):
 
 class EveShipTypeManger(models.Manager):
     def get_queryset(self):
+        """Overridden default queryset to filter on ship types."""
         return (
             super()
             .get_queryset()
@@ -104,6 +109,7 @@ class EveShipTypeManger(models.Manager):
 
 class EveSkillTypeManger(models.Manager):
     def get_queryset(self):
+        """Overridden default queryset to filter on skill types."""
         return (
             super()
             .get_queryset()
@@ -340,11 +346,13 @@ class MailEntityManager(models.Manager):
     def get_or_create_esi(
         self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
+        """Get or create objects from ESI."""
         return self._get_or_create_esi(id=id, category=category, update_async=False)
 
     def get_or_create_esi_async(
         self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
+        """Get or create objects from ESI with celery tasks."""
         return self._get_or_create_esi(id=id, category=category, update_async=True)
 
     def _get_or_create_esi(
@@ -402,8 +410,9 @@ class MailEntityManager(models.Manager):
     def update_or_create_esi_async(
         self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
-        """Same as update_or_create_esi, but will create and return an empty object and delegate the ID resolution to a task (if needed),
-        which will automatically retry on many common error conditions
+        """Same as update_or_create_esi, but will create and return an empty object
+        and delegate the ID resolution to a task (if needed),
+        which will automatically retry on many common error conditions.
         """
         id = int(id)
         try:
@@ -438,6 +447,7 @@ class MailEntityManager(models.Manager):
     def update_or_create_from_eve_entity(
         self, eve_entity: EveEntity
     ) -> Tuple[models.Model, bool]:
+        """Update or create object from an entity object."""
         category_map = {
             EveEntity.CATEGORY_ALLIANCE: self.model.Category.ALLIANCE,
             EveEntity.CATEGORY_CHARACTER: self.model.Category.CHARACTER,
@@ -452,6 +462,7 @@ class MailEntityManager(models.Manager):
         )
 
     def update_or_create_from_eve_entity_id(self, id: int) -> Tuple[models.Model, bool]:
+        """Update or create from an eve entity by ID."""
         eve_entity, _ = EveEntity.objects.get_or_create_esi(id=int(id))
         return self.update_or_create_from_eve_entity(eve_entity)
 

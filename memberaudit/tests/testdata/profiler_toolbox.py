@@ -34,6 +34,6 @@ def main():
 
 
 fitting_text = create_fitting_text("fitting_tristan.txt")
-fitting = Fitting.create_from_eft(fitting_text)
+fitting = create_fitting_from_eft(fitting_text)
 
 cProfile.run("main()", sort="cumtime")

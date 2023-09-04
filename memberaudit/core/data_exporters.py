@@ -119,6 +119,7 @@ def _compile_topics(export_files):
 
 
 def default_destination() -> Path:
+    """Return default destination path."""
     return Path(settings.BASE_DIR) / _app_name() / "data_exports"
 
 
@@ -140,10 +141,12 @@ class DataExporter(ABC):
 
     @property
     def title(self) -> str:
+        """Return title."""
         return self.topic.replace("-", " ").title()
 
     @property
     def output_basename(self) -> Path:
+        """Return basename for output."""
         return Path(f"{_app_name()}_{self.topic}")
 
     @abstractmethod
@@ -157,15 +160,19 @@ class DataExporter(ABC):
         raise NotImplementedError()
 
     def has_data(self) -> bool:
+        """Return True if this queryset has data, else False."""
         return self.queryset.exists()
 
     def count(self) -> bool:
+        """Return number of objects in this queryset."""
         return self.queryset.count()
 
     def fieldnames(self) -> dict:
+        """Return field names."""
         return self.format_obj(self.queryset.first()).keys()
 
     def output_path(self, destination: str) -> Path:
+        """Return output path for this export."""
         return Path(destination) / self.output_basename.with_suffix(".csv")
 
     def write_to_file(self, destination: str) -> Path:
@@ -207,6 +214,8 @@ class DataExporter(ABC):
 
 
 class ContractExporter(DataExporter):
+    """An exporter for a contract."""
+
     topic = "contract"
     description = "List of contracts."
 
@@ -252,6 +261,8 @@ class ContractExporter(DataExporter):
 
 
 class ContractItemExporter(DataExporter):
+    """An exporter for contract items."""
+
     topic = "contract-item"
     description = (
         "List of items from contracts. Linked to Contract via 'contract pk' column."
@@ -278,6 +289,8 @@ class ContractItemExporter(DataExporter):
 
 
 class WalletJournalExporter(DataExporter):
+    """An exporter for wallet journals."""
+
     topic = "wallet-journal"
     description = "List of wallet journal entries."
 

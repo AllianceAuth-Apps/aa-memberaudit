@@ -112,6 +112,7 @@ class CharacterPlanet(models.Model):
         return f"{self.character}-{self.eve_planet.name}"
 
     def planet_type(self) -> str:
+        """Return name of the planet type."""
         return self.eve_planet.eve_type.name
 
 
@@ -250,6 +251,9 @@ class CharacterSkillSetCheck(models.Model):
 
     @property
     def can_fly(self) -> bool:
+        """Return True if character has all required skills for this skill set,
+        else False.
+        """
         return self.failed_required_skills.count() == 0
 
 
@@ -282,7 +286,7 @@ class CharacterStanding(models.Model):
     def effective_standing(
         self,
         connections_skill_level: int,
-        criminal_connections_skill_level: int,
+        criminal_connections_skill_level: int,  # pylint: disable=unused-argument
         diplomacy_skill_level: int,
     ) -> float:
         """Return effective standing for this NPC after applying social skill."""
@@ -439,6 +443,7 @@ class CharacterWalletJournalEntry(models.Model):
 
     @classmethod
     def match_context_type_id(cls, query: str) -> str:
+        """Return context type matching the query string, else UNDEFINED."""
         result = cls.CONTEXT_ID_MAPS.get(query)
         if result:
             return result

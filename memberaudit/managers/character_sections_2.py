@@ -1,3 +1,6 @@
+"""Managers for character section models (2/3)."""
+# pylint: disable=missing-class-docstring
+
 import ast
 from typing import Dict, List
 

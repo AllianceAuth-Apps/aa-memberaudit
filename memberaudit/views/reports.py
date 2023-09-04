@@ -28,17 +28,19 @@ from ._common import UNGROUPED_SKILL_SET, add_common_context
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-def create_main_organization_html(main_character) -> str:
+def create_organization_html(eve_character: EveCharacter) -> str:
+    """Return character's organization as HTML."""
     return format_html(
         "{}{}",
-        main_character.corporation_name,
-        f" [{main_character.alliance_ticker}]" if main_character.alliance_name else "",
+        eve_character.corporation_name,
+        f" [{eve_character.alliance_ticker}]" if eve_character.alliance_name else "",
     )
 
 
 @login_required
 @permission_required("memberaudit.reports_access")
 def reports(request) -> HttpResponse:
+    """Render view for reports."""
     context = {"page_title": _("Reports")}
     return render(
         request, "memberaudit/reports.html", add_common_context(request, context)
@@ -48,6 +50,7 @@ def reports(request) -> HttpResponse:
 @login_required
 @permission_required("memberaudit.reports_access")
 def user_compliance_report_data(request) -> JsonResponse:
+    """Render data view for user compliance report."""
     users_and_character_counts = (
         General.accessible_users(request.user)
         .exclude(profile__state__pk=get_guest_state_pk())
@@ -84,7 +87,7 @@ def user_compliance_report_data(request) -> JsonResponse:
                 url=url,
             )
             corporation_name = main_character.corporation_name
-            organization_html = create_main_organization_html(main_character)
+            organization_html = create_organization_html(main_character)
             alliance_name = (
                 main_character.alliance_name if main_character.alliance_name else ""
             )
@@ -129,6 +132,7 @@ def user_compliance_report_data(request) -> JsonResponse:
 @login_required
 @permission_required("memberaudit.reports_access")
 def corporation_compliance_report_data(request) -> JsonResponse:
+    """Render data view for corporation compliance report."""
     relevant_user_ids = list(
         General.accessible_users(request.user)
         .exclude(profile__state__pk=get_guest_state_pk())
@@ -167,12 +171,13 @@ def corporation_compliance_report_data(request) -> JsonResponse:
     )
     data = []
     for corporation in corporations:
-        organization_name = "{}{}".format(
-            corporation["corporation_name"],
+        corporation_name = corporation["corporation_name"]
+        alliance_ticker = (
             f" [{corporation['alliance_ticker']}]"
             if corporation["alliance_ticker"]
-            else "",
+            else ""
         )
+        organization_name = f"{corporation_name}{alliance_ticker}"
         alliance_name = (
             corporation["alliance_name"] if corporation["alliance_name"] else ""
         )
@@ -216,6 +221,8 @@ def corporation_compliance_report_data(request) -> JsonResponse:
 @login_required
 @permission_required("memberaudit.reports_access")
 def skill_sets_report_data(request) -> JsonResponse:
+    """Render data view for skill sets report."""
+
     def _create_data_row(group, character, skill_sets) -> dict:
         if character.main_character:
             main_name = character.main_character.character_name
@@ -238,9 +245,8 @@ def skill_sets_report_data(request) -> JsonResponse:
         else:
             main_html = main_name = ""
             main_corporation = main_alliance = organization_html = ""
-        character_viewer_url = "{}?tab=skill_sets".format(
-            reverse("memberaudit:character_viewer", args=[character.pk])
-        )
+        base_url = reverse("memberaudit:character_viewer", args=[character.pk])
+        character_viewer_url = f"{base_url}?tab=skill_sets"
         character_html = bootstrap_icon_plus_name_html(
             character.eve_character.portrait_url(),
             character.eve_character.character_name,

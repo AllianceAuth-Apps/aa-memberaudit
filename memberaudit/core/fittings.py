@@ -1,7 +1,7 @@
 """Eve Online fittings."""
 
 from dataclasses import dataclass, field
-from typing import List, Optional, Set, Tuple, Union
+from typing import List, Optional, Set, Union
 
 from eveuniverse.models import EveType
 
@@ -137,6 +137,8 @@ class Fitting:
         return compress_skills(skills)
 
     def to_eft(self) -> str:
+        """Return this fitting in EFT format."""
+
         def add_section(objs, keyword: Optional[str] = None) -> List[str]:
             lines = [""]
             for obj in objs:
@@ -169,14 +171,3 @@ class Fitting:
             lines.append("")
             lines += add_section(self.cargo_bay)
         return "\n".join(lines)
-
-    @classmethod
-    def create_from_eft(cls, eft_text: str) -> Tuple["Fitting", List[str]]:
-        """Create new object from fitting in EFT format.
-        Also returns list of non fatal issues (if any).
-
-        Raises ``EftParserError` when a fatal error occurred.
-        """
-        from .eft_parser import create_fitting_from_eft
-
-        return create_fitting_from_eft(eft_text)

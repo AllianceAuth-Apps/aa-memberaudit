@@ -1,3 +1,6 @@
+"""Managers for character section models (1/3)."""
+# pylint: disable=missing-class-docstring
+
 from typing import Optional
 
 from django.db import models, transaction

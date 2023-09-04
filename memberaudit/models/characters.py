@@ -35,7 +35,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
 from memberaudit.helpers import store_debug_data_to_disk
-from memberaudit.managers.character import (
+from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
@@ -43,7 +43,7 @@ from memberaudit.managers.character import (
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class Character(models.Model):
+class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character synced by this app
 
     This is the head model for all characters
@@ -128,6 +128,8 @@ class Character(models.Model):
     }
 
     class UpdateStatus(models.TextChoices):
+        """Update status of a character."""
+
         OK = "ok", _("ok")
         IN_PROGRESS = "in_progress", _("in progress")
         INCOMPLETE = "incomplete", _("incomplete")
@@ -174,10 +176,12 @@ class Character(models.Model):
 
     @cached_property
     def name(self) -> str:
+        """Return the name of this character."""
         return self.eve_character.character_name
 
     @cached_property
     def character_ownership(self) -> Optional[CharacterOwnership]:
+        """Return the character ownership object of this character."""
         try:
             return self.eve_character.character_ownership
         except ObjectDoesNotExist:
@@ -185,6 +189,7 @@ class Character(models.Model):
 
     @cached_property
     def user(self) -> Optional[User]:
+        """Return the user this character belongs to or None."""
         try:
             return self.character_ownership.user
         except AttributeError:
@@ -192,6 +197,7 @@ class Character(models.Model):
 
     @cached_property
     def main_character(self) -> Optional[EveCharacter]:
+        """Return the main character related to this character or None."""
         try:
             return self.character_ownership.user.profile.main_character
         except AttributeError:
@@ -199,7 +205,7 @@ class Character(models.Model):
 
     @cached_property
     def is_main(self) -> bool:
-        """returns True if this character is a main character, else False"""
+        """Return True if this character is a main character, else False"""
         try:
             return self.main_character.character_id == self.eve_character.character_id
         except AttributeError:
@@ -209,6 +215,13 @@ class Character(models.Model):
     def is_orphan(self) -> bool:
         """Whether this character is not owned by a user."""
         return self.character_ownership is None
+
+    def details_or_none(self):
+        """Return character details or None if it does not exist."""
+        try:
+            return self.details
+        except ObjectDoesNotExist:
+            return None
 
     def user_is_owner(self, user: User) -> bool:
         """Return True if the given user is owner of this character"""
@@ -307,6 +320,7 @@ class Character(models.Model):
     def update_section_content_hash(
         self, section: str, content: Any, hash_num: int = 1
     ) -> None:
+        """Update hash for a section."""
         try:
             section_obj: CharacterUpdateStatus = self.update_status_set.get(
                 section=section
@@ -323,7 +337,7 @@ class Character(models.Model):
         root_task_id: Optional[str] = None,
         parent_task_id: Optional[str] = None,
     ) -> "CharacterUpdateStatus":
-        """resets status of given update section and returns it"""
+        """Reset status of given update section and returns it."""
         try:
             section_onj: CharacterUpdateStatus = self.update_status_set.get(
                 section=section
@@ -459,9 +473,11 @@ class Character(models.Model):
         CharacterDetails.objects.update_or_create_esi(self, force_update)
 
     def update_contact_labels(self, force_update: bool = False):
+        """Update contact labels for this character."""
         self.contact_labels.update_or_create_esi(self, force_update)
 
     def update_contacts(self, force_update: bool = False):
+        """Update contacts for this character."""
         self.contacts.update_or_create_esi(self, force_update)
 
     def update_contract_headers(self, force_update: bool = False):
@@ -513,9 +529,11 @@ class Character(models.Model):
         self.mail_labels.update_or_create_esi(self, force_update)
 
     def update_mail_headers(self, force_update: bool = False):
+        """Update the mail headers for the given character"""
         self.mails.update_or_create_headers_esi(self, force_update)
 
     def update_mail_body(self, mail) -> None:
+        """Update the mail body for the given character"""
         self.mails.update_or_create_body_esi(self, mail)
 
     def update_mining_ledger(self, force_update: bool = False):
@@ -529,7 +547,7 @@ class Character(models.Model):
         CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
     def update_planets(self, force_update: bool = False):
-        """update the character's planets."""
+        """Update the character's planets."""
         self.planets.update_or_create_esi(self, force_update)
 
     def update_ship(self, force_update: bool = False):
@@ -572,6 +590,7 @@ class Character(models.Model):
 
     @classmethod
     def get_esi_scopes(cls) -> list:
+        """Return the ESI scopes required to update this character."""
         return [
             "esi-assets.read_assets.v1",
             "esi-bookmarks.read_character_bookmarks.v1",
@@ -678,13 +697,17 @@ class CharacterUpdateStatus(models.Model):
 
     @property
     def is_updating(self) -> bool:
+        """Return True if this section is currently being updated."""
         if not self.started_at and not self.finished_at:
             return False
 
         return self.started_at is not None and self.finished_at is None
 
     def has_changed(self, content: Any, hash_num: int = 1) -> bool:
-        """returns True if given content is not the same as previous one, else False"""
+        """Returns True if given content is not the same as previous one, else False.
+
+        Specify optionally which sub section to update via the hash_num (1, 2 or 3).
+        """
         new_hash = self._calculate_hash(content)
         if hash_num == 2:
             content_hash = self.content_hash_2
@@ -696,6 +719,10 @@ class CharacterUpdateStatus(models.Model):
         return new_hash != content_hash
 
     def update_content_hash(self, content: Any, hash_num: int = 1):
+        """Update content hash for this update status.
+
+        Specify optionally which sub section to update via the hash_num (1, 2 or 3).
+        """
         new_hash = self._calculate_hash(content)
         if hash_num == 2:
             self.content_hash_2 = new_hash

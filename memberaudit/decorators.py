@@ -95,7 +95,7 @@ def when_esi_is_available(func):
                 fetch_esi_status().raise_for_status()
             except EsiDailyDowntime:
                 logger.info("Daily Downtime detected. Aborting.")
-                return  # function will not run
+                return None  # function will not run
 
         return func(*args, **kwargs)
 

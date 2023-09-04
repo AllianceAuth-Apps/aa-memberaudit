@@ -5,6 +5,8 @@ import json
 import os
 from typing import Any, Optional
 
+from celery import Task
+
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
 from eveuniverse.models import EveType
@@ -37,8 +39,8 @@ def store_debug_data_to_disk(character, lst: Any, name: str):
 
     fullpath = os.path.join(path, f"character_{character.pk}_{name}_{now_str}.json")
     try:
-        with open(fullpath, "w", encoding="utf-8") as f:
-            json.dump(lst, f, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
+        with open(fullpath, "w", encoding="utf-8") as file:
+            json.dump(lst, file, cls=DjangoJSONEncoder, sort_keys=True, indent=4)
 
     except OSError:
         pass
@@ -55,3 +57,9 @@ def implant_slot_num(implant_type: EveType) -> int:  # TODO: Refactor into model
     except KeyError:
         slot_num = 0
     return slot_num
+
+
+def determine_task_priority(task_obj: Task) -> Optional[int]:
+    """Return priority of give task or None if not defined."""
+    properties = task_obj.request.get("properties") or {}
+    return properties.get("priority")

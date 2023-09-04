@@ -33,6 +33,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 @login_required
 @permission_required("memberaudit.finder_access")
 def character_finder(request) -> HttpResponse:
+    """Render view for character finder."""
     context = {
         "page_title": _("Character Finder"),
     }
@@ -43,6 +44,7 @@ def character_finder(request) -> HttpResponse:
     )
 
 
+# pylint: disable=too-many-ancestors
 class CharacterFinderListJson(
     PermissionRequiredMixin, LoginRequiredMixin, BaseDatatableView
 ):
@@ -91,6 +93,7 @@ class CharacterFinderListJson(
 
     @classmethod
     def initial_queryset(cls, request):
+        """Return initial queryset for this view."""
         accessible_users = list(General.accessible_users(user=request.user))
         my_filter = Q(character_ownership__user__in=accessible_users)
         if request.user.has_perm("memberaudit.view_everything"):
