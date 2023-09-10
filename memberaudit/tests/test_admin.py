@@ -357,7 +357,6 @@ class TestSkillSetSkillAdmin(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.factory = RequestFactory()
         load_eveuniverse()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 

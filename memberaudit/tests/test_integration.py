@@ -10,6 +10,7 @@ from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi import EsiStatus
+from app_utils.testdata_factories import UserFactory
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit import tasks
@@ -325,6 +326,36 @@ class TestUICharacterViewer(WebTest):
         )
         self.assertEqual(mail_details.status_code, 200)
         self.assertIn(body_text, mail_details.text)
+
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestAdminSite(TestCase):
+    fixtures = ["disable_analytics.json"]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
+
+    def test_should_delete_selected_characters(self):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        character_1002 = create_memberaudit_character(1002)
+        self.client.force_login(self.user)
+        # when
+        response = self.client.post(
+            "/admin/memberaudit/character/",
+            data={
+                "action": "delete_characters",
+                "apply": "Delete",
+                "_selected_action": [character_1001.pk, character_1002.pk],
+            },
+        )
+        # then
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/admin/memberaudit/character/")
+        self.assertFalse(Character.objects.exists())
 
 
 @patch(

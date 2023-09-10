@@ -360,7 +360,7 @@ class CharacterAdmin(admin.ModelAdmin):
         if "apply" in request.POST:
             pks = list(queryset.values_list("pk", flat=True))
             tasks.delete_characters.apply_async(
-                args=pks, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+                args=[pks], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
             )  # type: ignore
             self.message_user(
                 request,
