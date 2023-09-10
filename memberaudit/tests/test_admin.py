@@ -1,12 +1,12 @@
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
-from django.contrib.auth.models import User
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
 from allianceauth.eveonline.models import EveCorporationInfo
+from app_utils.testdata_factories import UserFactory
 from app_utils.testing import (
     create_authgroup,
     create_state,
@@ -61,7 +61,7 @@ class TestComplianceGroupDesignationAdmin(TestCase):
             model=ComplianceGroupDesignation, admin_site=AdminSite()
         )
         load_entities()
-        cls.superuser = User.objects.create_superuser("Superman")
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_should_remove_deleted_compliance_group_from_users(self):
         # given
@@ -241,32 +241,42 @@ class TestCharacterAdmin(TestCase):
         self.assertEqual(mock_task_update_character.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
-    @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
-    @patch(ADMIN_PATH + ".tasks.delete_character")
+
+@patch(ADMIN_PATH + ".CharacterAdmin.message_user")
+@patch(ADMIN_PATH + ".tasks.delete_objects")
+class TestCharacterDeleteCharactersAdmin(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.modeladmin = CharacterAdmin(model=Character, admin_site=AdminSite())
+        load_eveuniverse()
+        load_entities()
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
+
     def test_should_delete_characters_1(
-        self, mock_task_delete_character, mock_message_user
+        self, mock_task_delete_characters, mock_message_user
     ):
         # given
         factory = RequestFactory()
         request = factory.get(reverse("admin:memberaudit_character_changelist"))
+        create_memberaudit_character(1001)
         queryset = Character.objects.all()
         # when
-        response = self.modeladmin.delete_characters(request, queryset)
+        response = self.modeladmin.delete_objects(request, queryset)
         # then
         self.assertEqual(response.status_code, 200)
 
-    @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
-    @patch(ADMIN_PATH + ".tasks.delete_character")
     def test_should_delete_characters_2(
-        self, mock_task_delete_character, mock_message_user
+        self, mock_task_delete_characters, mock_message_user
     ):
         # given
         request = MockRequest(user=self.user, post="apply")
+        create_memberaudit_character(1001)
         queryset = Character.objects.all()
         # when
-        self.modeladmin.delete_characters(request, queryset)
+        self.modeladmin.delete_objects(request, queryset)
         # then
-        self.assertEqual(mock_task_delete_character.apply_async.call_count, 1)
+        self.assertEqual(mock_task_delete_characters.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
 
@@ -347,13 +357,12 @@ class TestSkillSetSkillAdmin(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.factory = RequestFactory()
         load_eveuniverse()
-        cls.superuser = User.objects.create_superuser("Superman")
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_should_create_new_skill_set_with_required_level_only(self):
         # given
-        self.client.force_login(self.superuser)
+        self.client.force_login(self.user)
         # when
         response = self.client.post(
             "/admin/memberaudit/skillset/add/",
@@ -373,7 +382,7 @@ class TestSkillSetSkillAdmin(TestCase):
 
     def test_should_create_new_skill_set_with_recommended_level_only(self):
         # given
-        self.client.force_login(self.superuser)
+        self.client.force_login(self.user)
         # when
         response = self.client.post(
             "/admin/memberaudit/skillset/add/",
@@ -393,7 +402,7 @@ class TestSkillSetSkillAdmin(TestCase):
 
     def test_should_raise_error_when_no_level_given(self):
         # given
-        self.client.force_login(self.superuser)
+        self.client.force_login(self.user)
         # when
         response = self.client.post(
             "/admin/memberaudit/skillset/add/",
@@ -419,12 +428,12 @@ class TestSkillSetGroupAdmin(TestCase):
         cls.modeladmin = SkillSetGroupAdmin(model=SkillSetGroup, admin_site=AdminSite())
         load_eveuniverse()
         load_entities()
-        cls.superuser = User.objects.create_superuser("Superman")
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_save_model(self):
         # given
         obj = SkillSetGroup(name="Dummy")
-        request = MockRequest(self.superuser)
+        request = MockRequest(self.user)
         form = self.modeladmin.get_form(request)
         my_now = now()
         # when
@@ -432,5 +441,5 @@ class TestSkillSetGroupAdmin(TestCase):
             self.modeladmin.save_model(request, obj, form, True)
         # then
         obj_2: SkillSetGroup = SkillSetGroup.objects.get(name="Dummy")
-        self.assertEqual(obj_2.last_modified_by, self.superuser)
+        self.assertEqual(obj_2.last_modified_by, self.user)
         self.assertEqual(obj_2.last_modified_at, my_now)

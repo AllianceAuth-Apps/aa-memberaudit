@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.11.1] - 2023-09-10
+
+### Fixed
+
+- DELETE on large data structures hangs and deletion is cancelled (#146)
+
 ## [2.11.0] - 2023-09-04
 
 ### Added

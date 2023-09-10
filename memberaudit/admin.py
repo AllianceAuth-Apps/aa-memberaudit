@@ -33,6 +33,46 @@ from memberaudit.models import (
 )
 
 
+class AddDeleteObjects:
+    """Mixin for adding the action to delete selected objects.
+
+    Note: One also need to add the new action "delete_objects" to the actions list.
+    """
+
+    def get_actions(self, request):
+        """Remove the default delete action from the drop-down."""
+        actions = super().get_actions(request)
+        if "delete_selected" in actions:
+            del actions["delete_selected"]
+        return actions
+
+    @admin.display(description=__("Delete selected objects"))
+    def delete_objects(self, request, queryset):
+        if "apply" in request.POST:
+            pks = list(queryset.values_list("pk", flat=True))
+            model_name = queryset.model.__name__
+            tasks.delete_objects.apply_async(
+                args=[model_name, pks],
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            )  # type: ignore
+            self.message_user(
+                request,
+                __("Started deleting %d %s objects. This can take a minute.")
+                % (len(pks), model_name),
+            )
+            return redirect(request.get_full_path())
+
+        return render(
+            request,
+            "admin/memberaudit/confirm_deleting_objects.html",
+            {
+                "title": __("Are you sure you want to delete these objects?"),
+                "queryset": queryset.all(),
+                "action": "delete_objects",
+            },
+        )
+
+
 class ComplianceGroupDesignationForm(forms.ModelForm):
     class Meta:
         model = ComplianceGroupDesignation
@@ -205,7 +245,7 @@ class CharacterStateListFilter(admin.SimpleListFilter):
 
 
 @admin.register(Character)
-class CharacterAdmin(admin.ModelAdmin):
+class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     class Media:
         css = {
             "all": ("authentication/css/admin.css", "memberaudit/css/admin.css"),
@@ -250,7 +290,7 @@ class CharacterAdmin(admin.ModelAdmin):
     exclude = ("mailing_lists",)
 
     actions = [
-        "delete_characters",
+        "delete_objects",
         "update_characters",
         "update_assets",
         "update_location",
@@ -267,13 +307,6 @@ class CharacterAdmin(admin.ModelAdmin):
             .annotate(last_update_at=Max("update_status_set__finished_at"))
             .annotate_update_status()
         )
-
-    def get_actions(self, request):
-        """Remove the default delete action from the drop-down."""
-        actions = super().get_actions(request)
-        if "delete_selected" in actions:
-            del actions["delete_selected"]
-        return actions
 
     @admin.display(description="")
     def _character_pic(self, obj: Character):
@@ -354,29 +387,6 @@ class CharacterAdmin(admin.ModelAdmin):
                 [Character.UpdateSection.display_name(obj) for obj in missing]
             )
         return None
-
-    @admin.display(description=__("Delete selected characters"))
-    def delete_characters(self, request, queryset):
-        if "apply" in request.POST:
-            for obj in queryset:
-                tasks.delete_character.apply_async(
-                    kwargs={"character_pk": obj.pk},
-                    priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-                )  # type: ignore
-            self.message_user(
-                request,
-                __("Started deleting %d character(s). This can take a minute.")
-                % queryset.count(),
-            )
-            return redirect(request.get_full_path())
-        return render(
-            request,
-            "admin/memberaudit/character/confirm_character_deletion.html",
-            {
-                "title": __("Are you sure you want to delete these characters?"),
-                "queryset": queryset.all(),
-            },
-        )
 
     @admin.display(description=__("Update selected characters from EVE server"))
     def update_characters(self, request, queryset):
@@ -613,7 +623,7 @@ class SkillSetSkillAdminInline(admin.TabularInline):
 
 
 @admin.register(SkillSet)
-class SkillSetAdmin(admin.ModelAdmin):
+class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
     autocomplete_fields = ("ship_type",)
     list_display = (
         "name",
@@ -629,7 +639,7 @@ class SkillSetAdmin(admin.ModelAdmin):
     )
     ordering = ["name"]
     search_fields = ["name"]
-    actions = ["clone_skill_sets"]
+    actions = ["delete_objects", "clone_skill_sets"]
 
     fields = [
         "name",
