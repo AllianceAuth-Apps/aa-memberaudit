@@ -801,20 +801,21 @@ class TestUpdateCharactersDoctrines(TestCaseTasks):
         self.assertTrue(mock_update_skill_sets.called)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestDeleteCharacter(TestCaseTasks):
+class TestDeleteCharacters(TestCaseTasks):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        Character.objects.all().delete()
 
     def test_should_delete_a_character(self):
         # given
         character_1001 = create_memberaudit_character(1001)
+        character_1002 = create_memberaudit_character(1002)
         # when
-        tasks.delete_character.delay(character_1001.pk)
+        tasks.delete_characters([character_1001.pk, character_1002.pk])
         # then
-        self.assertFalse(Character.objects.filter(pk=character_1001.pk).exists())
+        self.assertFalse(Character.objects.exists())
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)

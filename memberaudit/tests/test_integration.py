@@ -341,7 +341,7 @@ class TestUICharacterViewer(WebTest):
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestTasksE2E(TestCase):
+class TestTasksIntegration(TestCase):
     fixtures = ["disable_analytics.json"]
 
     @classmethod

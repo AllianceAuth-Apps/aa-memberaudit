@@ -358,17 +358,17 @@ class CharacterAdmin(admin.ModelAdmin):
     @admin.display(description=__("Delete selected characters"))
     def delete_characters(self, request, queryset):
         if "apply" in request.POST:
-            for obj in queryset:
-                tasks.delete_character.apply_async(
-                    kwargs={"character_pk": obj.pk},
-                    priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-                )  # type: ignore
+            pks = list(queryset.values_list("pk", flat=True))
+            tasks.delete_characters.apply_async(
+                args=pks, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+            )  # type: ignore
             self.message_user(
                 request,
                 __("Started deleting %d character(s). This can take a minute.")
-                % queryset.count(),
+                % len(pks),
             )
             return redirect(request.get_full_path())
+
         return render(
             request,
             "admin/memberaudit/character/confirm_character_deletion.html",

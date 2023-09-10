@@ -3,7 +3,7 @@
 
 import inspect
 import random
-from typing import Optional
+from typing import Iterable, Optional
 
 from celery import chain, shared_task
 
@@ -1067,11 +1067,12 @@ def check_character_consistency(character_pk) -> None:
 
 
 @shared_task(**TASK_DEFAULTS)
-def delete_character(character_pk) -> None:
+def delete_characters(character_pks: Iterable[int]) -> None:
     """Delete a member audit character"""
-    character = Character.objects.get(pk=character_pk)
-    logger.info("%s: Deleting character", character)
-    character.delete()
+    characters_to_delete = Character.objects.filter(pk__in=character_pks)
+    amount = characters_to_delete.count()
+    characters_to_delete.delete()
+    logger.info("Deleted %d characters", amount)
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
