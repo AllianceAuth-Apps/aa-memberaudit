@@ -23,9 +23,11 @@ from memberaudit.models import (
     CharacterMailLabel,
     Location,
     MailEntity,
+    SkillSet,
 )
 
 from .testdata.esi_client_stub import esi_client_stub, esi_stub
+from .testdata.factories import create_skill_set
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -335,6 +337,7 @@ class TestAdminSite(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
+        load_eveuniverse()
         load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
@@ -382,6 +385,29 @@ class TestAdminSite(TestCase):
             ).exists()
         )
         self.assertTrue(Character.objects.filter(pk=character_1003.pk).exists())
+
+    def test_should_delete_selected_skill_sets(self):
+        # given 3 objects
+        obj_1 = create_skill_set()
+        obj_2 = create_skill_set()
+        obj_3 = create_skill_set()
+        self.client.force_login(self.user)
+
+        # when user selects 2 for deletion
+        response = self.client.post(
+            "/admin/memberaudit/skillset/",
+            data={
+                "action": "delete_objects",
+                "apply": "Delete",
+                "_selected_action": [obj_1.pk, obj_2.pk],
+            },
+        )
+
+        # then the selected objects are deleted, but the other object remains
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, "/admin/memberaudit/skillset/")
+        self.assertFalse(SkillSet.objects.filter(pk__in=[obj_1.pk, obj_2.pk]).exists())
+        self.assertTrue(SkillSet.objects.filter(pk=obj_3.pk).exists())
 
 
 @patch(

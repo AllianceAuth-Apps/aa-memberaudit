@@ -262,7 +262,7 @@ class TestCharacterDeleteCharactersAdmin(TestCase):
         create_memberaudit_character(1001)
         queryset = Character.objects.all()
         # when
-        response = self.modeladmin.delete_characters(request, queryset)
+        response = self.modeladmin.delete_objects(request, queryset)
         # then
         self.assertEqual(response.status_code, 200)
 
@@ -274,7 +274,7 @@ class TestCharacterDeleteCharactersAdmin(TestCase):
         create_memberaudit_character(1001)
         queryset = Character.objects.all()
         # when
-        self.modeladmin.delete_characters(request, queryset)
+        self.modeladmin.delete_objects(request, queryset)
         # then
         self.assertEqual(mock_task_delete_characters.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
