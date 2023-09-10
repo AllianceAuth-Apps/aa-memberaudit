@@ -371,10 +371,11 @@ class CharacterAdmin(admin.ModelAdmin):
 
         return render(
             request,
-            "admin/memberaudit/character/confirm_character_deletion.html",
+            "admin/memberaudit/confirm_deleting_objects.html",
             {
-                "title": __("Are you sure you want to delete these characters?"),
+                "title": __("Are you sure you want to delete these objects?"),
                 "queryset": queryset.all(),
+                "action": "delete_characters",
             },
         )
 

@@ -6,13 +6,13 @@
     {% csrf_token %}
     <div>
         <ul>
-        {% for character in queryset %}
-            <input type="hidden" name="_selected_action" value="{{ character.pk }}" />
-            <li>{{ character.name }} </li>
+        {% for obj in queryset %}
+            <input type="hidden" name="_selected_action" value="{{ obj.pk }}" />
+            <li>{{ obj }} </li>
         {% endfor %}
         </ul>
         <br>
-        <input type="hidden" name="action" value="delete_characters" />
+        <input type="hidden" name="action" value="{{ action }}" />
         <input type="submit" name="apply" value="{% translate 'Delete' %}" style="background-color: rgb(201, 48, 44)"/>
         <a href="./"><input type="button" name="Cancel" value="{% translate 'Cancel' %}"></a>
     </div>

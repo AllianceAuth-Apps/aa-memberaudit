@@ -339,11 +339,31 @@ class TestAdminSite(TestCase):
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_should_delete_selected_characters(self):
-        # given
+        # given 2 characters
         character_1001 = create_memberaudit_character(1001)
         character_1002 = create_memberaudit_character(1002)
+        character_1003 = create_memberaudit_character(1003)
         self.client.force_login(self.user)
-        # when
+
+        # when selected 2 characters for deletion
+        response = self.client.post(
+            "/admin/memberaudit/character/",
+            data={
+                "action": "delete_characters",
+                "select_across": 0,
+                "index": 0,
+                "_selected_action": [character_1001.pk, character_1002.pk],
+            },
+        )
+
+        # then user is asked to confirm the 2 selected characters
+        self.assertEqual(response.status_code, 200)
+        text = response.content.decode("utf-8")
+        self.assertIn(str(character_1001), text)
+        self.assertIn(str(character_1002), text)
+        self.assertNotIn(str(character_1003), text)
+
+        # when user clicked on confirm
         response = self.client.post(
             "/admin/memberaudit/character/",
             data={
@@ -352,10 +372,16 @@ class TestAdminSite(TestCase):
                 "_selected_action": [character_1001.pk, character_1002.pk],
             },
         )
-        # then
+
+        # then the selected characters are deleted, but the other character remains
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, "/admin/memberaudit/character/")
-        self.assertFalse(Character.objects.exists())
+        self.assertFalse(
+            Character.objects.filter(
+                pk__in=[character_1001.pk, character_1002.pk]
+            ).exists()
+        )
+        self.assertTrue(Character.objects.filter(pk=character_1003.pk).exists())
 
 
 @patch(
