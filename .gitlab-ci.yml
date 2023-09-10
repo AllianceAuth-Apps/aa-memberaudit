@@ -42,7 +42,6 @@ pylint:
   image: python:3.10-bullseye
   script:
     - tox -e pylint
-  allow_failure: true
 
 test-py38-dj40:
   extends: .tox_setup
