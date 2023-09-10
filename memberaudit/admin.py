@@ -250,7 +250,7 @@ class CharacterAdmin(admin.ModelAdmin):
     exclude = ("mailing_lists",)
 
     actions = [
-        "delete_characters",
+        "delete_objects",
         "update_characters",
         "update_assets",
         "update_location",
@@ -356,7 +356,7 @@ class CharacterAdmin(admin.ModelAdmin):
         return None
 
     @admin.display(description=__("Delete selected characters"))
-    def delete_characters(self, request, queryset):
+    def delete_objects(self, request, queryset):
         if "apply" in request.POST:
             pks = list(queryset.values_list("pk", flat=True))
             model_name = queryset.model.__name__
@@ -377,7 +377,7 @@ class CharacterAdmin(admin.ModelAdmin):
             {
                 "title": __("Are you sure you want to delete these objects?"),
                 "queryset": queryset.all(),
-                "action": "delete_characters",
+                "action": "delete_objects",
             },
         )
 

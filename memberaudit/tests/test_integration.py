@@ -349,7 +349,7 @@ class TestAdminSite(TestCase):
         response = self.client.post(
             "/admin/memberaudit/character/",
             data={
-                "action": "delete_characters",
+                "action": "delete_objects",
                 "select_across": 0,
                 "index": 0,
                 "_selected_action": [character_1001.pk, character_1002.pk],
@@ -367,7 +367,7 @@ class TestAdminSite(TestCase):
         response = self.client.post(
             "/admin/memberaudit/character/",
             data={
-                "action": "delete_characters",
+                "action": "delete_objects",
                 "apply": "Delete",
                 "_selected_action": [character_1001.pk, character_1002.pk],
             },
