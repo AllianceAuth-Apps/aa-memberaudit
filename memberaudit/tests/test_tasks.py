@@ -813,9 +813,14 @@ class TestDeleteCharacters(TestCaseTasks):
         character_1001 = create_memberaudit_character(1001)
         character_1002 = create_memberaudit_character(1002)
         # when
-        tasks.delete_characters([character_1001.pk, character_1002.pk])
+        tasks.delete_objects("Character", [character_1001.pk, character_1002.pk])
         # then
         self.assertFalse(Character.objects.exists())
+
+    def test_should_raise_error_when_model_not_found(self):
+        # when/then
+        with self.assertRaises(LookupError):
+            tasks.delete_objects("MyUnknownMOdel", [1])
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)

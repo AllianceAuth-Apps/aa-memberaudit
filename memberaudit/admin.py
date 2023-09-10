@@ -359,13 +359,15 @@ class CharacterAdmin(admin.ModelAdmin):
     def delete_characters(self, request, queryset):
         if "apply" in request.POST:
             pks = list(queryset.values_list("pk", flat=True))
-            tasks.delete_characters.apply_async(
-                args=[pks], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+            model_name = queryset.model.__name__
+            tasks.delete_objects.apply_async(
+                args=[model_name, pks],
+                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
             self.message_user(
                 request,
-                __("Started deleting %d character(s). This can take a minute.")
-                % len(pks),
+                __("Started deleting %d %s objects. This can take a minute.")
+                % (len(pks), model_name),
             )
             return redirect(request.get_full_path())
 

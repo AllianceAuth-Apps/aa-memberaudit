@@ -7,6 +7,7 @@ from typing import Iterable, Optional
 
 from celery import chain, shared_task
 
+from django.apps import apps
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.utils.timezone import now
@@ -1067,12 +1068,13 @@ def check_character_consistency(character_pk) -> None:
 
 
 @shared_task(**TASK_DEFAULTS)
-def delete_characters(character_pks: Iterable[int]) -> None:
-    """Delete a member audit character"""
-    characters_to_delete = Character.objects.filter(pk__in=character_pks)
-    amount = characters_to_delete.count()
-    characters_to_delete.delete()
-    logger.info("Deleted %d characters", amount)
+def delete_objects(model_name: str, obj_pks: Iterable[int]) -> None:
+    """Delete multiple objects of a model."""
+    model_class = apps.get_model("memberaudit", str(model_name))
+    objs_to_delete = model_class.objects.filter(pk__in=obj_pks)
+    amount = objs_to_delete.count()
+    objs_to_delete.delete()
+    logger.info("Deleted %d %s objects", amount, model_class.__name__)
 
 
 @shared_task(**TASK_DEFAULTS_BIND)

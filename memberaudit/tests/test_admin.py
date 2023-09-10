@@ -243,7 +243,7 @@ class TestCharacterAdmin(TestCase):
 
 
 @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
-@patch(ADMIN_PATH + ".tasks.delete_characters")
+@patch(ADMIN_PATH + ".tasks.delete_objects")
 class TestCharacterDeleteCharactersAdmin(TestCase):
     @classmethod
     def setUpClass(cls):
