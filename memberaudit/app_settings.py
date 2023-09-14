@@ -113,6 +113,8 @@ MEMBERAUDIT_TASKS_LOW_PRIORITY = clean_setting(
 """Priority for low priority tasks, e.g. updating characters."""
 
 
+MEMBERAUDIT_FETCH_ROLES = clean_setting("MEMBERAUDIT_FETCH_ROLES", False)
+
 ####################
 # Internal settings
 

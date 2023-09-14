@@ -32,6 +32,7 @@ from memberaudit.views.character_viewer_2 import (
     character_mail_headers_by_list_data,
     character_mining_ledger_data,
     character_planets_data,
+    character_roles_data,
     character_skill_set_details,
     character_skill_sets_data,
     character_skillqueue_data,
@@ -46,6 +47,7 @@ from ..testdata.factories import (
     create_character_mail_label,
     create_character_mining_ledger_entry,
     create_character_planet,
+    create_character_role,
     create_character_standing,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
@@ -161,6 +163,39 @@ class TestCharacterPlanetData(NoSocketsTestCase):
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["num_pins"], entry.num_pins)
+
+
+class TestCharacterRolesData(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
+    def test_character_roles_data(self):
+        create_character_role(character=self.character, location="hq", role="Director")
+        request = self.factory.get(
+            reverse("memberaudit:character_roles_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        response = character_roles_data(request, self.character.pk)
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        self.assertEqual(
+            data,
+            [
+                {
+                    "role": "Director",
+                    "hq": True,
+                    "": False,
+                    "other": False,
+                    "base": False,
+                }
+            ],
+        )
 
 
 class TestMailData(TestCase):

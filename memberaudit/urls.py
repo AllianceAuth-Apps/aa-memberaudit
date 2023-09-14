@@ -131,6 +131,11 @@ urlpatterns = [
         name="character_planets_data",
     ),
     path(
+        "character_roles_data/<int:character_pk>/",
+        character_viewer_2.character_roles_data,
+        name="character_roles_data",
+    ),
+    path(
         "character_skillqueue_data/<int:character_pk>/",
         character_viewer_2.character_skillqueue_data,
         name="character_skillqueue_data",

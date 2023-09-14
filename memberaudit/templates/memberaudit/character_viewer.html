@@ -37,6 +37,7 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
                         {% if perms.memberaudit.view_skill_sets %}
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
@@ -611,6 +612,67 @@
             }
         });
 
+        /* Roles */
+        $('#tab_roles').DataTable({
+            ajax: {
+                url: "{% url 'memberaudit:character_roles_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                { data: 'name' },
+                {
+                    data: '',
+                },
+                {
+                    data: 'hq',
+                },
+                {
+                    data: 'base',
+                },
+                {
+                    data: 'other',
+                },
+            ],
+            order: [[0, "asc"]],
+            filterDropDown: {
+                columns: [
+                    {
+                        idx: 0
+                    },
+                    {
+                        idx: 1
+                    },
+                    {
+                        idx: 2
+                    },
+                    {
+                        idx: 3
+                    },
+                    {
+                        idx: 4
+                    }
+                ],
+                autoSize: false,
+                bootstrap: true
+            },
+            columnDefs: [
+                {
+                    render: function (data, type, row) {
+                        if (type === "display") {
+                            if (data) {
+                                return '<span class="fas fa-check-circle text-success" aria-label="Yes"></span>';
+                            } else {
+                                return '<span class="fas fa-times-circle text-danger" aria-label="No"></span>';
+                            }
+                        }
+
+                        return data;
+                    },
+                    targets: [1,2,3,4],
+                },
+            ]
+        });
 
         /* Skillqueue */
         $('#tab_skillqueue').DataTable({

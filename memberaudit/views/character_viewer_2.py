@@ -44,6 +44,7 @@ from memberaudit.models import (
     Character,
     CharacterMail,
     CharacterPlanet,
+    CharacterRole,
     CharacterStanding,
     SkillSet,
     SkillSetSkill,
@@ -310,6 +311,30 @@ def character_planets_data(
                 ),
             }
         )
+
+    return JsonResponse({"data": data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
+def character_roles_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    roles_map = dict()
+    try:
+        for role in character.roles.all():
+            role_name = role.get_role_display()
+            # Everything gets initialized to false if we don't already have it
+            vals = roles_map.get(role_name) or {
+                loc_id: False for loc_id, loc_name in CharacterRole.LOCATIONS
+            }
+            vals[role.location] = True
+            roles_map[role_name] = vals
+    except ObjectDoesNotExist:
+        pass
+    # Squish our map
+    data = [{"role": name, **vals} for name, vals in roles_map.items()]
 
     return JsonResponse({"data": data})
 

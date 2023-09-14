@@ -12,7 +12,10 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+from memberaudit.app_settings import (
+    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+    MEMBERAUDIT_FETCH_ROLES,
+)
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
 from memberaudit.providers import esi
@@ -117,6 +120,53 @@ class CharacterOnlineStatusManager(models.Manager):
                 "logins": online_info.get("logins"),
             },
         )
+
+
+class CharacterRoleManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create roles for a character from ESI."""
+
+        character.update_data_if_changed_or_forced(
+            section=character.UpdateSection.ROLES,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-planets.manage_planets.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+        """Update the character's roles"""
+
+        logger.info("%s: Fetching roles from ESI", self)
+        roles_data = esi.client.Character.get_characters_character_id_roles(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        return roles_data
+
+    @transaction.atomic()
+    def _update_or_create_objs(self, character, roles_data: dict):
+        if not MEMBERAUDIT_FETCH_ROLES:
+            self.filter(character=character).delete()
+            return
+        to_remove = list(
+            self.filter(character=character).values_list("location", "role")
+        )
+        to_add = []
+        for location, role_list in roles_data.items():
+            location = location[6:]  # strip off "roles_"
+            for role in role_list:
+                if (location, role) in to_remove:
+                    # if we already have the role, don't remove it
+                    to_remove.remove((location, role))
+                else:
+                    # if we don't have the role, prepare to add it
+                    to_add.append(
+                        self.model(character=character, role=role, location=location)
+                    )
+        self.bulk_create(to_add)
+        for location, role in to_remove:
+            self.filter(character=character, location=location, role=role).delete()
 
 
 class CharacterPlanetManager(models.Manager):

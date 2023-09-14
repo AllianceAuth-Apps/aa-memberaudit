@@ -29,6 +29,7 @@ from memberaudit.models import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterRole,
     CharacterStanding,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
@@ -330,6 +331,15 @@ def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     }
     params.update(kwargs)
     return CharacterPlanet.objects.create(**params)
+
+
+def create_character_role(character: Character, **kwargs) -> CharacterPlanet:
+    params = {
+        "character": character,
+        "role": "Director",
+    }
+    params.update(kwargs)
+    return CharacterRole.objects.create(**params)
 
 
 def create_skill_set(**kwargs) -> SkillSet:

@@ -68,6 +68,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         MINING_LEDGER = "mining_ledger", _("mining ledger")
         ONLINE_STATUS = "online_status", _("online status")
         PLANETS = "planets", _("planets")
+        ROLES = "roles", _("roles")
         SHIP = "ship", _("ship")
         SKILLS = "skills", _("skills")
         SKILL_QUEUE = "skill_queue", _("skill queue")
@@ -118,6 +119,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.MINING_LEDGER: 2,
         UpdateSection.ONLINE_STATUS: 1,
         UpdateSection.PLANETS: 2,
+        UpdateSection.ROLES: 2,
         UpdateSection.SHIP: 1,
         UpdateSection.SKILLS: 2,
         UpdateSection.SKILL_SETS: 2,
@@ -559,6 +561,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def update_planets(self, force_update: bool = False):
         """Update the character's planets."""
         self.planets.update_or_create_esi(self, force_update)
+
+    def update_roles(self, force_update: bool = False):
+        """Update the character's planets."""
+        self.roles.update_or_create_esi(self, force_update)
 
     def update_ship(self, force_update: bool = False):
         """Update the ship for the given character."""

@@ -26,6 +26,7 @@ from .character_sections_3 import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterRole,
     CharacterShip,
     CharacterSkill,
     CharacterSkillpoints,

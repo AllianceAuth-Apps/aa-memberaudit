@@ -18,6 +18,7 @@ from memberaudit.models import (
     Character,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterRole,
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
@@ -32,6 +33,7 @@ from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
+    create_character_role,
     create_character_standing,
 )
 from ..testdata.load_entities import load_entities
@@ -188,6 +190,53 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_planet, EvePlanet.objects.get(id=40161463))
         self.assertEqual(obj.num_pins, 1)
         self.assertEqual(obj.upgrade_level, 0)
+
+
+@patch(MODULE_PATH + ".esi")
+class TestCharacterRolesManager(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_roles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "roles": ["Director", "Station_Manager"],
+                    }
+                },
+            ),
+        ]
+        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
+
+    def test_should_add_new_role(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        # when
+        self.character_1001.update_roles()
+        # then
+        self.assertEqual(self.character_1001.roles.count(), 2)
+        obj: CharacterRole = self.character_1001.roles.first()
+        self.assertIsInstance(obj.last_update_at, dt.datetime)
+        self.assertEqual(obj.role, "Director")
+
+    def test_should_update_existing_entries(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_role(character=self.character_1001, role="Station_Manager")
+        # when
+        self.character_1001.update_roles()
+        # then
+        self.assertEqual(self.character_1001.roles.count(), 1)
+        obj: CharacterRole = self.character_1001.roles.first()
+        self.assertIsInstance(obj.last_update_at, dt.datetime)
+        self.assertEqual(obj.role, "Director")
 
 
 @patch(MODULE_PATH + ".esi")
