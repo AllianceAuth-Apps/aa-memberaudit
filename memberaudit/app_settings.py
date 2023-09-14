@@ -112,12 +112,6 @@ MEMBERAUDIT_TASKS_LOW_PRIORITY = clean_setting(
 )
 """Priority for low priority tasks, e.g. updating characters."""
 
-
-MEMBERAUDIT_FEATURE_ROLES_ENABLED = clean_setting(
-    "MEMBERAUDIT_FEATURE_ROLES_ENABLED", False
-)
-"""Feature flag for corporation roles."""
-
 ####################
 # Internal settings
 

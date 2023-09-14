@@ -293,6 +293,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "delete_objects",
         "update_characters",
         "update_assets",
+        "update_roles",
         "update_location",
         "update_online_status",
         "enable_characters",

@@ -473,7 +473,6 @@ class TestAdminSite(TestCase):
         self.assertTrue(character_1001.assets.exists())
 
 
-@patch(MANAGERS_PATH + ".character_sections_3.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
 @patch(
     TASKS_PATH + ".Character.objects.get_cached",
     lambda pk, timeout: Character.objects.get(pk=pk),

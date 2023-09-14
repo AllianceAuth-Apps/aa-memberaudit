@@ -12,10 +12,7 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.app_settings import (
-    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_FEATURE_ROLES_ENABLED,
-)
+from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
 from memberaudit.providers import esi
@@ -146,9 +143,6 @@ class CharacterRoleManager(models.Manager):
 
     @transaction.atomic()
     def _update_or_create_objs(self, character, roles_data: dict):
-        if not MEMBERAUDIT_FEATURE_ROLES_ENABLED:
-            self.filter(character=character).delete()
-            return
         to_remove = list(
             self.filter(character=character).values_list("location", "role")
         )
