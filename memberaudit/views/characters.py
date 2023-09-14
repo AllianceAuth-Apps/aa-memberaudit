@@ -112,7 +112,7 @@ def add_character(request, token) -> HttpResponse:
             eve_character=eve_character, defaults={"is_disabled": False}
         )
     tasks.update_character.apply_async(
-        kwargs={"character_pk": character.pk},
+        kwargs={"character_pk": character.pk, "force_update": True},
         priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
     )
     messages.success(
