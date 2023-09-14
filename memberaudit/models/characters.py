@@ -614,6 +614,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "esi-characters.read_agents_research.v1",
             "esi-characters.read_blueprints.v1",
             "esi-characters.read_contacts.v1",
+            "esi-characters.read_corporation_roles.v1",  # NEW
             "esi-characters.read_fatigue.v1",
             "esi-characters.read_fw_stats.v1",
             "esi-characters.read_loyalty.v1",

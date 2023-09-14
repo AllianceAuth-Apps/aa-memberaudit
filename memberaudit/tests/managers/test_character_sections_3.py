@@ -18,7 +18,6 @@ from memberaudit.models import (
     Character,
     CharacterOnlineStatus,
     CharacterPlanet,
-    CharacterRole,
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
@@ -192,6 +191,7 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
         self.assertEqual(obj.upgrade_level, 0)
 
 
+@patch(MODULE_PATH + ".MEMBERAUDIT_FETCH_ROLES", True)
 @patch(MODULE_PATH + ".esi")
 class TestCharacterRolesManager(NoSocketsTestCase):
     @classmethod
@@ -221,22 +221,18 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         # when
         self.character_1001.update_roles()
         # then
-        self.assertEqual(self.character_1001.roles.count(), 2)
-        obj: CharacterRole = self.character_1001.roles.first()
-        self.assertIsInstance(obj.last_update_at, dt.datetime)
-        self.assertEqual(obj.role, "Director")
+        roles_expected = set(self.character_1001.roles.values_list("role", flat=True))
+        self.assertSetEqual(roles_expected, {"Director", "Station_Manager"})
 
     def test_should_update_existing_entries(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        create_character_role(character=self.character_1001, role="Station_Manager")
+        create_character_role(character=self.character_1001, role="Security_Officer")
         # when
         self.character_1001.update_roles()
         # then
-        self.assertEqual(self.character_1001.roles.count(), 1)
-        obj: CharacterRole = self.character_1001.roles.first()
-        self.assertIsInstance(obj.last_update_at, dt.datetime)
-        self.assertEqual(obj.role, "Director")
+        roles_expected = set(self.character_1001.roles.values_list("role", flat=True))
+        self.assertSetEqual(roles_expected, {"Director", "Station_Manager"})
 
 
 @patch(MODULE_PATH + ".esi")

@@ -321,7 +321,8 @@ def character_planets_data(
 def character_roles_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
-    roles_map = dict()
+    """Render data view for character roles."""
+    roles_map = {}
     try:
         for role in character.roles.all():
             role_name = role.get_role_display()

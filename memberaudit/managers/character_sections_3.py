@@ -133,7 +133,7 @@ class CharacterRoleManager(models.Manager):
             force_update=force_update,
         )
 
-    @fetch_token_for_character("esi-planets.manage_planets.v1")
+    @fetch_token_for_character("esi-characters.read_corporation_roles.v1")
     def _fetch_data_from_esi(self, character, token: Token) -> dict:
         """Update the character's roles"""
 
