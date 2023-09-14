@@ -119,7 +119,7 @@ class CharacterPlanet(models.Model):
 
 
 class CharacterRole(models.Model):
-    """A corporation roles of a character."""
+    """A corporation role of a character."""
 
     LOCATIONS = (
         ("base", "Base"),
