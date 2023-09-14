@@ -2,18 +2,20 @@
 # pylint: disable=unused-argument
 
 import datetime as dt
+from collections import defaultdict
 from typing import Optional
 
 import humanize
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Prefetch
+from django.db.models import Prefetch, TextChoices
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.translation import gettext, gettext_lazy
+from django.utils.translation import gettext
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
 
@@ -207,7 +209,7 @@ def character_mail(
             .get(pk=mail_pk)
         )
     except CharacterMail.DoesNotExist:
-        error_msg = gettext_lazy("Mail with pk %s not found for character %s") % (
+        error_msg = _("Mail with pk %s not found for character %s") % (
             mail_pk,
             character,
         )
@@ -315,6 +317,12 @@ def character_planets_data(
     return JsonResponse({"data": data})
 
 
+class RoleGroup(TextChoices):
+    GENERAL = "general", _("general roles")
+    STATION_SERVICES = "station_services", _("station services")
+    ACCOUNTING = "accounting", _("accounting (divisional)")
+
+
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed()
@@ -322,27 +330,28 @@ def character_roles_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     """Render data view for character roles."""
-    location_map = {
-        CharacterRole.Location.BASE: "base",
-        CharacterRole.Location.HQ: "hq",
-        CharacterRole.Location.OTHER: "other",
-        CharacterRole.Location.UNIVERSAL: "universal",
-    }
-    result_map = {}
-    for obj in character.roles.all():
-        if obj.role not in result_map:
-            result_map[obj.role] = {
-                "role": obj.get_role_display().title(),
-                "universal": False,
-                "hq": False,
-                "base": False,
-                "other": False,
-            }
-        location_key = location_map.get(obj.location)
-        if location_key:
-            result_map[obj.role][location_key] = True
 
-    data = list(result_map.values())
+    character_roles_map = defaultdict(set)
+    for obj in character.roles.all():
+        location = CharacterRole.Location(obj.location)
+        role = CharacterRole.Role(obj.role)
+        character_roles_map[location].add(role)
+
+    data = []
+    for roles_group in CharacterRole.ROLES_GROUPED:
+        location = roles_group["location"]
+        group_name = roles_group["title"].title()
+
+        for role in roles_group["roles"]:
+            has_role = role in character_roles_map[location]
+            data.append(
+                {
+                    "group": group_name,
+                    "role": role.label.title(),
+                    "has_role": has_role,
+                }
+            )
+
     return JsonResponse({"data": data})
 
 
@@ -709,9 +718,9 @@ def character_standings_data(
             obj.eve_entity.icon_url(DEFAULT_ICON_SIZE), name, avatar=True
         )
         map_category = {
-            "character": gettext_lazy("Agent"),
-            "corporation": gettext_lazy("Corporation"),
-            "faction": gettext_lazy("Faction"),
+            "character": _("Agent"),
+            "corporation": _("Corporation"),
+            "faction": _("Faction"),
         }
         npc_type = map_category.get(obj.eve_entity.get_category_display(), "")
         effective_standing = obj.effective_standing(
@@ -779,7 +788,7 @@ def character_wallet_transactions_data(
         for row in character.wallet_transactions.select_related(
             "client", "eve_type", "location"
         ).all():
-            buy_or_sell = gettext_lazy("Buy") if row.is_buy else gettext_lazy("Sell")
+            buy_or_sell = _("Buy") if row.is_buy else _("Sell")
             wallet_data.append(
                 {
                     "date": row.date.isoformat(),

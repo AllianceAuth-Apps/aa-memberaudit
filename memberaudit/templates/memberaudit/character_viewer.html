@@ -620,41 +620,29 @@
                 cache: false
             },
             columns: [
-                { data: 'role' },
                 {
-                    data: 'universal',
+                    data: 'group'
                 },
                 {
-                    data: 'hq',
+                    data: 'role',
                 },
                 {
-                    data: 'base',
-                },
-                {
-                    data: 'other',
-                },
+                    data: 'has_role',
+                }
             ],
             order: [[0, "asc"]],
             filterDropDown: {
                 columns: [
                     {
                         idx: 0
-                    },
-                    {
-                        idx: 1
-                    },
-                    {
-                        idx: 2
-                    },
-                    {
-                        idx: 3
-                    },
-                    {
-                        idx: 4
                     }
                 ],
                 autoSize: false,
                 bootstrap: true
+            },
+            rowGroup: {
+                dataSrc: 'group',
+                className: 'table-group'
             },
             columnDefs: [
                 {
@@ -669,8 +657,10 @@
 
                         return data;
                     },
-                    targets: [1,2,3,4],
+                    targets: [ 2 ],
                 },
+                { "visible": false, "targets": [ 0 ] },
+                { "orderable": false, "targets": [ 0 ] }
             ]
         });
 

@@ -182,6 +182,109 @@ class CharacterRole(models.Model):
         STATION_MANAGER = "STM", _("station manager")
         TRADER = "TRD", _("trader")
 
+    _ROLES_HANGER_ACCESS = [
+        Role.HANGAR_QUERY_1,
+        Role.HANGAR_QUERY_2,
+        Role.HANGAR_QUERY_3,
+        Role.HANGAR_QUERY_4,
+        Role.HANGAR_QUERY_5,
+        Role.HANGAR_QUERY_6,
+        Role.HANGAR_QUERY_7,
+        Role.HANGAR_TAKE_1,
+        Role.HANGAR_TAKE_2,
+        Role.HANGAR_TAKE_3,
+        Role.HANGAR_TAKE_4,
+        Role.HANGAR_TAKE_5,
+        Role.HANGAR_TAKE_6,
+        Role.HANGAR_TAKE_7,
+    ]
+    _ROLES_CONTAINER_ACCESS = [
+        Role.CONTAINER_TAKE_1,
+        Role.CONTAINER_TAKE_2,
+        Role.CONTAINER_TAKE_3,
+        Role.CONTAINER_TAKE_4,
+        Role.CONTAINER_TAKE_5,
+        Role.CONTAINER_TAKE_6,
+        Role.CONTAINER_TAKE_7,
+    ]
+    ROLES_GROUPED = [
+        {
+            "title": _("general roles"),
+            "location": Location.UNIVERSAL,
+            "roles": [
+                Role.ACCOUNTANT,
+                Role.AUDITOR,
+                Role.COMMUNICATIONS_OFFICER,
+                Role.CONFIG_EQUIPMENT,
+                Role.CONFIG_STARBASE_EQUIPMENT,
+                Role.CONTRACT_MANAGER,
+                Role.DIPLOMAT,
+                Role.DIRECTOR,
+                Role.FITTING_MANAGER,
+                Role.JUNIOR_ACCOUNTANT,
+                Role.PERSONNEL_MANAGER,
+                Role.STARBASE_DEFENSE_OPERATOR,
+                Role.STARBASE_FUEL_TECHNICIAN,
+            ],
+        },
+        {
+            "title": _("station services"),
+            "location": Location.UNIVERSAL,
+            "roles": [
+                Role.FACTORY_MANAGER,
+                Role.RENT_FACTORY_FACILITY,
+                Role.RENT_OFFICE,
+                Role.RENT_RESEARCH_FACILITY,
+                Role.SECURITY_OFFICER,
+                Role.STATION_MANAGER,
+                Role.TRADER,
+            ],
+        },
+        {
+            "title": _("accounting (divisional)"),
+            "location": Location.UNIVERSAL,
+            "roles": [
+                Role.ACCOUNT_TAKE_1,
+                Role.ACCOUNT_TAKE_2,
+                Role.ACCOUNT_TAKE_3,
+                Role.ACCOUNT_TAKE_4,
+                Role.ACCOUNT_TAKE_5,
+                Role.ACCOUNT_TAKE_6,
+                Role.ACCOUNT_TAKE_7,
+            ],
+        },
+        {
+            "title": _("hangar access (headquarters)"),
+            "location": Location.HQ,
+            "roles": _ROLES_HANGER_ACCESS,
+        },
+        {
+            "title": _("container access (headquarters)"),
+            "location": Location.HQ,
+            "roles": _ROLES_CONTAINER_ACCESS,
+        },
+        {
+            "title": _("hangar access (based at)"),
+            "location": Location.HQ,
+            "roles": _ROLES_HANGER_ACCESS,
+        },
+        {
+            "title": _("container access (based at)"),
+            "location": Location.BASE,
+            "roles": _ROLES_CONTAINER_ACCESS,
+        },
+        {
+            "title": _("hangar access (other)"),
+            "location": Location.OTHER,
+            "roles": _ROLES_HANGER_ACCESS,
+        },
+        {
+            "title": _("container access (other)"),
+            "location": Location.OTHER,
+            "roles": _ROLES_CONTAINER_ACCESS,
+        },
+    ]
+
     character = models.ForeignKey(
         Character,
         on_delete=models.CASCADE,

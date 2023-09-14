@@ -1,4 +1,5 @@
 import datetime as dt
+from collections import defaultdict
 
 from bs4 import BeautifulSoup
 
@@ -180,18 +181,8 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # given
         create_character_role(
             character=self.character,
-            location=CharacterRole.Location.HQ,
-            role=CharacterRole.Role.CONTAINER_TAKE_1,
-        )
-        create_character_role(
-            character=self.character,
-            location=CharacterRole.Location.OTHER,
-            role=CharacterRole.Role.CONTAINER_TAKE_1,
-        )
-        create_character_role(
-            character=self.character,
             location=CharacterRole.Location.UNIVERSAL,
-            role=CharacterRole.Role.DIPLOMAT,
+            role=CharacterRole.Role.ACCOUNTANT,
         )
         request = self.factory.get(
             reverse("memberaudit:character_roles_data", args=[self.character.pk])
@@ -202,25 +193,12 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
-        self.assertEqual(
-            data,
-            [
-                {
-                    "role": "Container Take 1",
-                    "base": False,
-                    "hq": True,
-                    "other": True,
-                    "universal": False,
-                },
-                {
-                    "role": "Diplomat",
-                    "base": False,
-                    "hq": False,
-                    "other": False,
-                    "universal": True,
-                },
-            ],
-        )
+        result_map = defaultdict(dict)
+        for obj in data:
+            result_map[obj["group"]][obj["role"]] = obj["has_role"]
+
+        self.assertTrue(result_map["General Roles"]["Accountant"])
+        self.assertFalse(result_map["General Roles"]["Auditor"])
 
 
 class TestMailData(TestCase):
