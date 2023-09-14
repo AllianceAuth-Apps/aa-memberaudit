@@ -188,6 +188,11 @@ class TestCharacterRolesData(NoSocketsTestCase):
             location=CharacterRole.Location.OTHER,
             role=CharacterRole.Role.CONTAINER_TAKE_1,
         )
+        create_character_role(
+            character=self.character,
+            location=CharacterRole.Location.UNIVERSAL,
+            role=CharacterRole.Role.DIPLOMAT,
+        )
         request = self.factory.get(
             reverse("memberaudit:character_roles_data", args=[self.character.pk])
         )
@@ -206,7 +211,14 @@ class TestCharacterRolesData(NoSocketsTestCase):
                     "hq": True,
                     "other": True,
                     "universal": False,
-                }
+                },
+                {
+                    "role": "Diplomat",
+                    "base": False,
+                    "hq": False,
+                    "other": False,
+                    "universal": True,
+                },
             ],
         )
 

@@ -192,7 +192,6 @@ class CharacterRole(models.Model):
     location = models.CharField(
         max_length=2,
         choices=Location.choices,
-        default=Location.UNIVERSAL,
         help_text=_("Location where this role is applicable."),
     )
     role = models.CharField(
