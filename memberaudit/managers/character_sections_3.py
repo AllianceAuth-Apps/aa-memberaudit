@@ -14,7 +14,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_FETCH_ROLES,
+    MEMBERAUDIT_FEATURE_ROLES_ENABLED,
 )
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
@@ -146,7 +146,7 @@ class CharacterRoleManager(models.Manager):
 
     @transaction.atomic()
     def _update_or_create_objs(self, character, roles_data: dict):
-        if not MEMBERAUDIT_FETCH_ROLES:
+        if not MEMBERAUDIT_FEATURE_ROLES_ENABLED:
             self.filter(character=character).delete()
             return
         to_remove = list(
@@ -154,7 +154,7 @@ class CharacterRoleManager(models.Manager):
         )
         to_add = []
         for location, role_list in roles_data.items():
-            location = location[6:]  # strip off "roles_"
+            location = location[9:]  # strip off "roles_at_"
             for role in role_list:
                 if (location, role) in to_remove:
                     # if we already have the role, don't remove it
@@ -165,6 +165,7 @@ class CharacterRoleManager(models.Manager):
                         self.model(character=character, role=role, location=location)
                     )
         self.bulk_create(to_add)
+
         for location, role in to_remove:
             self.filter(character=character, location=location, role=role).delete()
 

@@ -191,7 +191,7 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
         self.assertEqual(obj.upgrade_level, 0)
 
 
-@patch(MODULE_PATH + ".MEMBERAUDIT_FETCH_ROLES", True)
+@patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
 @patch(MODULE_PATH + ".esi")
 class TestCharacterRolesManager(NoSocketsTestCase):
     @classmethod

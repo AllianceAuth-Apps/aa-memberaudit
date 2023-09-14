@@ -520,6 +520,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
 
 
+@patch(MANAGERS_PATH + ".character_sections_3.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
