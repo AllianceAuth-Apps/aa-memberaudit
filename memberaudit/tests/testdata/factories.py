@@ -333,10 +333,11 @@ def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     return CharacterPlanet.objects.create(**params)
 
 
-def create_character_role(character: Character, **kwargs) -> CharacterPlanet:
+def create_character_role(character: Character, **kwargs) -> CharacterRole:
     params = {
         "character": character,
-        "role": "Director",
+        "role": CharacterRole.Role.DIRECTOR,
+        "location": CharacterRole.Location.UNIVERSAL,
     }
     params.update(kwargs)
     return CharacterRole.objects.create(**params)

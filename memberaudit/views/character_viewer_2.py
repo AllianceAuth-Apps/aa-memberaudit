@@ -322,21 +322,27 @@ def character_roles_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     """Render data view for character roles."""
-    roles_map = {}
-    try:
-        for role in character.roles.all():
-            role_name = role.get_role_display()
-            # Everything gets initialized to false if we don't already have it
-            vals = roles_map.get(role_name) or {
-                loc_id: False for loc_id, loc_name in CharacterRole.LOCATIONS
+    location_map = {
+        CharacterRole.Location.BASE: "base",
+        CharacterRole.Location.HQ: "hq",
+        CharacterRole.Location.OTHER: "other",
+        CharacterRole.Location.UNIVERSAL: "universal",
+    }
+    result_map = {}
+    for obj in character.roles.all():
+        if obj.role not in result_map:
+            result_map[obj.role] = {
+                "role": obj.get_role_display().title(),
+                "universal": False,
+                "hq": False,
+                "base": False,
+                "other": False,
             }
-            vals[role.location] = True
-            roles_map[role_name] = vals
-    except ObjectDoesNotExist:
-        pass
-    # Squish our map
-    data = [{"role": name, **vals} for name, vals in roles_map.items()]
+        location_key = location_map.get(obj.location)
+        if location_key:
+            result_map[obj.role][location_key] = True
 
+    data = list(result_map.values())
     return JsonResponse({"data": data})
 
 

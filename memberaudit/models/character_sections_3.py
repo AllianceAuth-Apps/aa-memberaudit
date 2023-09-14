@@ -119,65 +119,69 @@ class CharacterPlanet(models.Model):
 
 
 class CharacterRole(models.Model):
-    """A corporation role of a character."""
+    """A character's corporation role."""
 
-    LOCATIONS = (
-        ("base", "Base"),
-        ("hq", "Headquarters"),
-        ("other", "Other"),
-        ("", "Universal"),
-    )
+    class Location(models.TextChoices):
+        """A location for a role."""
 
-    ROLES = (
-        ("Director", "Director"),
-        ("Personnel_Manager", "Personnel Manager"),
-        ("Accountant", "Accountant"),
-        ("Security_Officer", "Security Officer"),
-        ("Factory_Manager", "Factory Manager"),
-        ("Station_Manager", "Station Manager"),
-        ("Auditor", "Auditor"),
-        ("Hangar_Take_1", "Hangar Take 1"),
-        ("Hangar_Take_2", "Hangar Take 2"),
-        ("Hangar_Take_3", "Hangar Take 3"),
-        ("Hangar_Take_4", "Hangar Take 4"),
-        ("Hangar_Take_5", "Hangar Take 5"),
-        ("Hangar_Take_6", "Hangar Take 6"),
-        ("Hangar_Take_7", "Hangar Take 7"),
-        ("Hangar_Query_1", "Hangar Query 1"),
-        ("Hangar_Query_2", "Hangar Query 2"),
-        ("Hangar_Query_3", "Hangar Query 3"),
-        ("Hangar_Query_4", "Hangar Query 4"),
-        ("Hangar_Query_5", "Hangar Query 5"),
-        ("Hangar_Query_6", "Hangar Query 6"),
-        ("Hangar_Query_7", "Hangar Query 7"),
-        ("Account_Take_1", "Account Take 1"),
-        ("Account_Take_2", "Account Take 2"),
-        ("Account_Take_3", "Account Take 3"),
-        ("Account_Take_4", "Account Take 4"),
-        ("Account_Take_5", "Account Take 5"),
-        ("Account_Take_6", "Account Take 6"),
-        ("Account_Take_7", "Account Take 7"),
-        ("Diplomat", "Diplomat"),
-        ("Config_Equipment", "Config Equipment"),
-        ("Container_Take_1", "Container Take 1"),
-        ("Container_Take_2", "Container Take 2"),
-        ("Container_Take_3", "Container Take 3"),
-        ("Container_Take_4", "Container Take 4"),
-        ("Container_Take_5", "Container Take 5"),
-        ("Container_Take_6", "Container Take 6"),
-        ("Container_Take_7", "Container Take 7"),
-        ("Rent_Office", "Rent Office"),
-        ("Rent_Factory_Facility", "Rent Factory Facility"),
-        ("Rent_Research_Facility", "Rent Research Facility"),
-        ("Junior_Accountant", "Junior Accountant"),
-        ("Config_Starbase_Equipment", "Config Starbase Equipment"),
-        ("Trader", "Trader"),
-        ("Communications_Officer", "Communications Officer"),
-        ("Contract_Manager", "Contract Manager"),
-        ("Starbase_Defense_Operator", "Starbase Defense Operator"),
-        ("Starbase_Fuel_Technician", "Starbase Fuel Technician"),
-        ("Fitting_Manager", "Fitting Manager"),
-    )
+        BASE = "BS", _("base")
+        HQ = "HQ", _("headquarters")
+        OTHER = "OT", _("other")
+        UNIVERSAL = "UV", _("universal")
+
+    class Role(models.TextChoices):
+        """A corporation role."""
+
+        ACCOUNT_TAKE_1 = "AT1", _("account take 1")
+        ACCOUNT_TAKE_2 = "AT2", _("account take 2")
+        ACCOUNT_TAKE_3 = "AT3", _("account take 3")
+        ACCOUNT_TAKE_4 = "AT4", _("account take 4")
+        ACCOUNT_TAKE_5 = "AT5", _("account take 5")
+        ACCOUNT_TAKE_6 = "AT6", _("account take 6")
+        ACCOUNT_TAKE_7 = "AT7", _("account take 7")
+        ACCOUNTANT = "ACT", _("accountant")
+        AUDITOR = "AUD", _("auditor")
+        COMMUNICATIONS_OFFICER = "COM", _("communications officer")
+        CONFIG_EQUIPMENT = "CEQ", _("config equipment")
+        CONFIG_STARBASE_EQUIPMENT = "CSE", _("config starbase equipment")
+        CONTAINER_TAKE_1 = "CT1", _("container take 1")
+        CONTAINER_TAKE_2 = "CT2", _("container take 2")
+        CONTAINER_TAKE_3 = "CT3", _("container take 3")
+        CONTAINER_TAKE_4 = "CT4", _("container take 4")
+        CONTAINER_TAKE_5 = "CT5", _("container take 5")
+        CONTAINER_TAKE_6 = "CT6", _("container take 6")
+        CONTAINER_TAKE_7 = "CT7", _("container take 7")
+        CONTRACT_MANAGER = "CMG", _("contract manager")
+        DIPLOMAT = "DPL", _("diplomat")
+        DIRECTOR = "DRT", _("director")
+        FACTORY_MANAGER = "FCM", _("factory manager")
+        FITTING_MANAGER = "FTM", _("fitting manager")
+        HANGAR_QUERY_1 = "HQ1", _("hangar query 1")
+        HANGAR_QUERY_2 = "HQ2", _("hangar query 2")
+        HANGAR_QUERY_3 = "HQ3", _("hangar query 3")
+        HANGAR_QUERY_4 = "HQ4", _("hangar query 4")
+        HANGAR_QUERY_5 = "HQ5", _("hangar query 5")
+        HANGAR_QUERY_6 = "HQ6", _("hangar query 6")
+        HANGAR_QUERY_7 = "HQ7", _("hangar query 7")
+        HANGAR_TAKE_1 = "HT1", _("hangar take 1")
+        HANGAR_TAKE_2 = "HT2", _("hangar take 2")
+        HANGAR_TAKE_3 = "HT3", _("hangar take 3")
+        HANGAR_TAKE_4 = "HT4", _("hangar take 4")
+        HANGAR_TAKE_5 = "HT5", _("hangar take 5")
+        HANGAR_TAKE_6 = "HT6", _("hangar take 6")
+        HANGAR_TAKE_7 = "HT7", _("hangar take 7")
+        JUNIOR_ACCOUNTANT = "JAC", _("junior accountant")
+        PERSONNEL_MANAGER = "PSM", _("personnel manager")
+        RENT_FACTORY_FACILITY = "RFF", _("rent factory facility")
+        RENT_OFFICE = "RFC", _("rent office")
+        RENT_RESEARCH_FACILITY = "RRF", _("rent research facility")
+        SECURITY_OFFICER = "SCO", _("security officer")
+        SKILL_PLAN_MANAGER = "SPM", _("skill plan manager")
+        STARBASE_DEFENSE_OPERATOR = "SDO", _("starbase defense operator")
+        STARBASE_FUEL_TECHNICIAN = "SFT", _("starbase fuel technician")
+        STATION_MANAGER = "STM", _("station manager")
+        TRADER = "TRD", _("trader")
+
     character = models.ForeignKey(
         Character,
         on_delete=models.CASCADE,
@@ -186,12 +190,14 @@ class CharacterRole(models.Model):
     )
 
     location = models.CharField(
-        max_length=5,
-        choices=LOCATIONS,
-        default="",
-        help_text="Location, if the role is specific to one. If blank, the role is generally applicable.",
+        max_length=2,
+        choices=Location.choices,
+        default=Location.UNIVERSAL,
+        help_text=_("Location where this role is applicable."),
     )
-    role = models.CharField(max_length=25, choices=ROLES)
+    role = models.CharField(
+        max_length=3, choices=Role.choices, help_text=_("Role of a character")
+    )
 
     objects = CharacterRoleManager()
 

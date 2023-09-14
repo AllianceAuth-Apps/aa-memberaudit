@@ -18,6 +18,7 @@ from memberaudit.models import (
     Character,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterRole,
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
@@ -199,7 +200,10 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
-        cls.endpoints = [
+
+    def test_should_add_new_role(self, mock_esi):
+        # given
+        endpoints = [
             EsiEndpoint(
                 "Character",
                 "get_characters_character_id_roles",
@@ -207,31 +211,71 @@ class TestCharacterRolesManager(NoSocketsTestCase):
                 needs_token=True,
                 data={
                     "1001": {
-                        "roles": ["Director", "Station_Manager"],
+                        "roles": ["Station_Manager"],
                     }
                 },
             ),
         ]
-        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
-
-    def test_should_add_new_role(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # when
         self.character_1001.update_roles()
         # then
-        roles_expected = set(self.character_1001.roles.values_list("role", flat=True))
-        self.assertSetEqual(roles_expected, {"Director", "Station_Manager"})
+        self.assertEqual(self.character_1001.roles.count(), 1)
+        obj = self.character_1001.roles.first()
+        self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
+        self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
 
     def test_should_update_existing_entries(self, mock_esi):
         # given
-        mock_esi.client = self.esi_client_stub
-        create_character_role(character=self.character_1001, role="Security_Officer")
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_roles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "roles": ["Station_Manager"],
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        create_character_role(
+            character=self.character_1001, role=CharacterRole.Role.SECURITY_OFFICER
+        )
         # when
         self.character_1001.update_roles()
         # then
-        roles_expected = set(self.character_1001.roles.values_list("role", flat=True))
-        self.assertSetEqual(roles_expected, {"Director", "Station_Manager"})
+        obj = self.character_1001.roles.first()
+        self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
+        self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
+
+    def test_should_keep_existing_entries(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_roles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "roles": ["Station_Manager"],
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        create_character_role(
+            character=self.character_1001, role=CharacterRole.Role.STATION_MANAGER
+        )
+        # when
+        self.character_1001.update_roles()
+        # then
+        obj = self.character_1001.roles.first()
+        self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
+        self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
 
 
 @patch(MODULE_PATH + ".esi")

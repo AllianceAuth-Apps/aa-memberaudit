@@ -143,13 +143,75 @@ class CharacterRoleManager(models.Manager):
 
     @transaction.atomic()
     def _update_or_create_objs(self, character, roles_data: dict):
+        from memberaudit.models import CharacterRole
+
+        Role = CharacterRole.Role
+        roles_map = {
+            "Account_Take_1": Role.ACCOUNT_TAKE_1,
+            "Account_Take_2": Role.ACCOUNT_TAKE_2,
+            "Account_Take_3": Role.ACCOUNT_TAKE_3,
+            "Account_Take_4": Role.ACCOUNT_TAKE_4,
+            "Account_Take_5": Role.ACCOUNT_TAKE_5,
+            "Account_Take_6": Role.ACCOUNT_TAKE_6,
+            "Account_Take_7": Role.ACCOUNT_TAKE_7,
+            "Accountant": Role.ACCOUNTANT,
+            "Auditor": Role.AUDITOR,
+            "Communications_Officer": Role.COMMUNICATIONS_OFFICER,
+            "Config_Equipment": Role.CONFIG_EQUIPMENT,
+            "Config_Starbase_Equipment": Role.CONFIG_STARBASE_EQUIPMENT,
+            "Container_Take_1": Role.CONTAINER_TAKE_1,
+            "Container_Take_2": Role.CONTAINER_TAKE_2,
+            "Container_Take_3": Role.CONTAINER_TAKE_3,
+            "Container_Take_4": Role.CONTAINER_TAKE_4,
+            "Container_Take_5": Role.CONTAINER_TAKE_5,
+            "Container_Take_6": Role.CONTAINER_TAKE_6,
+            "Container_Take_7": Role.CONTAINER_TAKE_7,
+            "Contract_Manager": Role.CONTRACT_MANAGER,
+            "Diplomat": Role.DIPLOMAT,
+            "Director": Role.DIRECTOR,
+            "Factory_Manager": Role.FACTORY_MANAGER,
+            "Fitting_Manager": Role.FITTING_MANAGER,
+            "Hangar_Query_1": Role.HANGAR_QUERY_1,
+            "Hangar_Query_2": Role.HANGAR_QUERY_2,
+            "Hangar_Query_3": Role.HANGAR_QUERY_3,
+            "Hangar_Query_4": Role.HANGAR_QUERY_4,
+            "Hangar_Query_5": Role.HANGAR_QUERY_5,
+            "Hangar_Query_6": Role.HANGAR_QUERY_6,
+            "Hangar_Query_7": Role.HANGAR_QUERY_7,
+            "Hangar_Take_1": Role.HANGAR_TAKE_1,
+            "Hangar_Take_2": Role.HANGAR_TAKE_2,
+            "Hangar_Take_3": Role.HANGAR_TAKE_3,
+            "Hangar_Take_4": Role.HANGAR_TAKE_4,
+            "Hangar_Take_5": Role.HANGAR_TAKE_5,
+            "Hangar_Take_6": Role.HANGAR_TAKE_6,
+            "Hangar_Take_7": Role.HANGAR_TAKE_7,
+            "Junior_Accountant": Role.JUNIOR_ACCOUNTANT,
+            "Personnel_Manager": Role.PERSONNEL_MANAGER,
+            "Rent_Factory_Facility": Role.RENT_FACTORY_FACILITY,
+            "Rent_Office": Role.RENT_OFFICE,
+            "Rent_Research_Facility": Role.RENT_RESEARCH_FACILITY,
+            "Security_Officer": Role.SECURITY_OFFICER,
+            "Skill_Plan_Manager": Role.SKILL_PLAN_MANAGER,
+            "Starbase_Defense_Operator": Role.STARBASE_DEFENSE_OPERATOR,
+            "Starbase_Fuel_Technician": Role.STARBASE_FUEL_TECHNICIAN,
+            "Station_Manager": Role.STATION_MANAGER,
+            "Trader": Role.TRADER,
+        }
+        Location = CharacterRole.Location
+        location_map = {
+            "roles": Location.UNIVERSAL,
+            "roles_at_base": Location.BASE,
+            "roles_at_hq": Location.HQ,
+            "roles_at_other": Location.OTHER,
+        }
         to_remove = list(
             self.filter(character=character).values_list("location", "role")
         )
         to_add = []
-        for location, role_list in roles_data.items():
-            location = location[9:]  # strip off "roles_at_"
-            for role in role_list:
+        for location_name, roles in roles_data.items():
+            location = location_map[location_name]
+            for role_name in roles:
+                role = roles_map[role_name]
                 if (location, role) in to_remove:
                     # if we already have the role, don't remove it
                     to_remove.remove((location, role))
@@ -158,7 +220,8 @@ class CharacterRoleManager(models.Manager):
                     to_add.append(
                         self.model(character=character, role=role, location=location)
                     )
-        self.bulk_create(to_add)
+        if to_add:
+            self.bulk_create(to_add)
 
         for location, role in to_remove:
             self.filter(character=character, location=location, role=role).delete()

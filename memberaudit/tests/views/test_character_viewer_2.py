@@ -19,6 +19,7 @@ from memberaudit.models import (
     CharacterJumpClone,
     CharacterJumpCloneImplant,
     CharacterMail,
+    CharacterRole,
     CharacterSkill,
     CharacterSkillqueueEntry,
     CharacterWalletJournalEntry,
@@ -176,23 +177,35 @@ class TestCharacterRolesData(NoSocketsTestCase):
         cls.user = cls.character.eve_character.character_ownership.user
 
     def test_character_roles_data(self):
-        create_character_role(character=self.character, location="hq", role="Director")
+        # given
+        create_character_role(
+            character=self.character,
+            location=CharacterRole.Location.HQ,
+            role=CharacterRole.Role.CONTAINER_TAKE_1,
+        )
+        create_character_role(
+            character=self.character,
+            location=CharacterRole.Location.OTHER,
+            role=CharacterRole.Role.CONTAINER_TAKE_1,
+        )
         request = self.factory.get(
             reverse("memberaudit:character_roles_data", args=[self.character.pk])
         )
         request.user = self.user
+        # when
         response = character_roles_data(request, self.character.pk)
+        # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
         self.assertEqual(
             data,
             [
                 {
-                    "role": "Director",
-                    "hq": True,
-                    "": False,
-                    "other": False,
+                    "role": "Container Take 1",
                     "base": False,
+                    "hq": True,
+                    "other": True,
+                    "universal": False,
                 }
             ],
         )
