@@ -9,7 +9,7 @@ import humanize
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Prefetch, TextChoices
+from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
@@ -315,12 +315,6 @@ def character_planets_data(
         )
 
     return JsonResponse({"data": data})
-
-
-class RoleGroup(TextChoices):
-    GENERAL = "general", _("general roles")
-    STATION_SERVICES = "station_services", _("station services")
-    ACCOUNTING = "accounting", _("accounting (divisional)")
 
 
 @login_required
