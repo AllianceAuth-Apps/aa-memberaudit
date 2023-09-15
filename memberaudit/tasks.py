@@ -268,7 +268,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 def update_character_section(
     character_pk: int,
     section: str,
-    force_update: bool = False,
+    force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
     **kwargs,
@@ -361,7 +361,7 @@ def update_unresolved_eve_entities() -> None:
 def update_character_assets(
     self,
     character_pk: int,
-    force_update: bool = False,
+    force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
@@ -599,7 +599,7 @@ def assets_create_children(
 def update_character_mails(
     self,
     character_pk: int,
-    force_update: bool = False,
+    force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
@@ -731,7 +731,7 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
 def update_character_contacts(
     self,
     character_pk: int,
-    force_update: bool = False,
+    force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
@@ -805,7 +805,7 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
 def update_character_contracts(
     self,
     character_pk: int,
-    force_update: bool = False,
+    force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:

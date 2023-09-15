@@ -414,10 +414,30 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         description=(__("Update location for selected characters from EVE server"))
     )
     def update_location(self, request, queryset):
-        section = Character.UpdateSection.LOCATION
+        self._update_section(request, queryset, Character.UpdateSection.LOCATION)
+
+    @admin.display(
+        description=(__("Update roles for selected characters from EVE server"))
+    )
+    def update_roles(self, request, queryset):
+        self._update_section(request, queryset, Character.UpdateSection.ROLES)
+
+    @admin.display(
+        description=__("Update %s for selected characters from EVE server")
+        % Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)
+    )
+    def update_online_status(self, request, queryset):
+        self._update_section(request, queryset, Character.UpdateSection.ONLINE_STATUS)
+
+    def _update_section(self, request, queryset, section: Character.UpdateSection):
+        """Trigger updating a section for the selected characters."""
         for obj in queryset:
             tasks.update_character_section.apply_async(
-                kwargs={"character_pk": obj.pk, "section": section},
+                kwargs={
+                    "character_pk": obj.pk,
+                    "section": section,
+                    "force_update": True,
+                },
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
             self.message_user(
@@ -427,28 +447,6 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
                     "section": Character.UpdateSection.display_name(section),
                     "character": obj,
                 },
-            )
-
-    @admin.display(
-        description=__("Update %s for selected characters from EVE server")
-        % Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)
-    )
-    def update_online_status(self, request, queryset):
-        section = Character.UpdateSection.ONLINE_STATUS
-        for obj in queryset:
-            tasks.update_character_section.apply_async(
-                kwargs={"character_pk": obj.pk, "section": section},
-                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )  # type: ignore
-            self.message_user(
-                request,
-                __(
-                    "Started updating %(section)s for character %(character)s."
-                    % {
-                        "section": Character.UpdateSection.display_name(section),
-                        "character": obj,
-                    }
-                ),
             )
 
     @admin.display(description=__("Enable selected characters"))

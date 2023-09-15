@@ -108,7 +108,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         """can create assets from scratch"""
         mock_esi.client = esi_client_stub
 
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         self.assertSetEqual(
             set(self.character_1001.assets.values_list("item_id", flat=True)),
             {
@@ -178,7 +178,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             quantity=1,
         )
 
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         self.assertSetEqual(
             set(self.character_1001.assets.values_list("item_id", flat=True)),
             {
@@ -206,7 +206,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             quantity=10,
         )
 
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         self.assertSetEqual(
             set(self.character_1001.assets.values_list("item_id", flat=True)),
             {
@@ -250,7 +250,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             quantity=1,
         )
 
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         self.assertSetEqual(
             set(self.character_1001.assets.values_list("item_id", flat=True)),
             {
@@ -269,7 +269,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         """when update succeeded then report update success"""
         mock_esi.client = esi_client_stub
 
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -286,7 +286,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         )
         # when
         with self.assertRaises(OSError):
-            tasks.update_character_assets(self.character_1001.pk)
+            tasks.update_character_assets(self.character_1001.pk, True)
         # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -307,7 +307,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             exception = build_http_error(502, "Test exception")
             m.side_effect = exception
             with self.assertRaises(OSError):
-                tasks.update_character_assets(self.character_1001.pk)
+                tasks.update_character_assets(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -325,7 +325,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             exception = build_http_error(502, "Test exception")
             m.info.side_effect = exception
             with self.assertRaises(OSError):
-                tasks.update_character_assets(self.character_1001.pk)
+                tasks.update_character_assets(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -340,11 +340,11 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         mock_esi.client = esi_client_stub
 
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         asset = self.character_1001.assets.get(item_id=1100000000001)
         asset.name = "New Name"
         asset.save()
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, False)
 
         asset = self.character_1001.assets.get(item_id=1100000000001)
         self.assertEqual(asset.name, "New Name")
@@ -359,7 +359,7 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         mock_esi.client = esi_client_stub
 
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(self.character_1001.pk)
+        tasks.update_character_assets(self.character_1001.pk, True)
         asset = self.character_1001.assets.get(item_id=1100000000001)
         asset.name = "New Name"
         asset.save()
@@ -392,7 +392,7 @@ class TestUpdateCharacterContacts(TestCaseTasks):
         """when update succeeded then report update success"""
         mock_esi.client = esi_client_stub
 
-        tasks.update_character_contacts(self.character_1001.pk)
+        tasks.update_character_contacts(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTACTS
@@ -408,7 +408,7 @@ class TestUpdateCharacterContacts(TestCaseTasks):
         )
 
         try:
-            tasks.update_character_contacts(self.character_1001.pk)
+            tasks.update_character_contacts(self.character_1001.pk, True)
         except Exception:
             status = self.character_1001.update_status_set.get(
                 section=Character.UpdateSection.CONTACTS
@@ -440,7 +440,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
         """when update succeeded then report update success"""
         mock_esi.client = esi_client_stub
 
-        tasks.update_character_contracts(self.character_1001.pk)
+        tasks.update_character_contracts(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
@@ -456,7 +456,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
         )
 
         try:
-            tasks.update_character_contracts(self.character_1001.pk)
+            tasks.update_character_contracts(self.character_1001.pk, True)
         except Exception:
             status = self.character_1001.update_status_set.get(
                 section=Character.UpdateSection.CONTRACTS
@@ -489,7 +489,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
         mock_esi_character.client = esi_client_stub
         mock_esi_sections.client = esi_client_stub
 
-        tasks.update_character_mails(self.character_1001.pk)
+        tasks.update_character_mails(self.character_1001.pk, True)
 
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.MAILS
@@ -507,7 +507,7 @@ class TestUpdateCharacterMails(TestCaseTasks):
             exception
         )
         try:
-            tasks.update_character_mails(self.character_1001.pk)
+            tasks.update_character_mails(self.character_1001.pk, True)
         except Exception:
             status = self.character_1001.update_status_set.get(
                 section=Character.UpdateSection.MAILS
