@@ -330,6 +330,15 @@ class TestUICharacterViewer(WebTest):
         self.assertIn(body_text, mail_details.text)
 
 
+@patch(
+    TASKS_PATH + ".Character.objects.get_cached",
+    lambda pk, timeout: Character.objects.get(pk=pk),
+)
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
+@patch(MANAGERS_PATH + ".general.esi", esi_stub)
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestAdminSite(TestCase):
     fixtures = ["disable_analytics.json"]
@@ -408,6 +417,44 @@ class TestAdminSite(TestCase):
         self.assertEqual(response.url, "/admin/memberaudit/skillset/")
         self.assertFalse(SkillSet.objects.filter(pk__in=[obj_1.pk, obj_2.pk]).exists())
         self.assertTrue(SkillSet.objects.filter(pk=obj_3.pk).exists())
+
+    def test_should_update_location_for_characters(self):
+        # given 2 characters
+        character_1001 = create_memberaudit_character(1001)
+        self.client.force_login(self.user)
+
+        # when user starts action
+        self.client.post(
+            "/admin/memberaudit/character/",
+            data={
+                "action": "update_location",
+                "apply": "Delete",
+                "_selected_action": [character_1001.pk],
+            },
+        )
+
+        # then character is updated
+        character_1001.refresh_from_db()
+        self.assertEqual(character_1001.location.eve_solar_system.name, "Jita")
+
+    def test_should_update_online_status_for_characters(self):
+        # given 2 characters
+        character_1001 = create_memberaudit_character(1001)
+        self.client.force_login(self.user)
+
+        # when user starts action
+        self.client.post(
+            "/admin/memberaudit/character/",
+            data={
+                "action": "update_online_status",
+                "apply": "Delete",
+                "_selected_action": [character_1001.pk],
+            },
+        )
+
+        # then character is updated
+        character_1001.refresh_from_db()
+        self.assertTrue(character_1001.online_status.last_login)
 
 
 @patch(
