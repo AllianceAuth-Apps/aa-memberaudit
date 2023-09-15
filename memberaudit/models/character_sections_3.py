@@ -182,7 +182,7 @@ class CharacterRole(models.Model):
         STATION_MANAGER = "STM", _("station manager")
         TRADER = "TRD", _("trader")
 
-    _ROLES_HANGER_ACCESS = [
+    _ROLES_HANGER_ACCESS = {
         Role.HANGAR_QUERY_1,
         Role.HANGAR_QUERY_2,
         Role.HANGAR_QUERY_3,
@@ -197,8 +197,8 @@ class CharacterRole(models.Model):
         Role.HANGAR_TAKE_5,
         Role.HANGAR_TAKE_6,
         Role.HANGAR_TAKE_7,
-    ]
-    _ROLES_CONTAINER_ACCESS = [
+    }
+    _ROLES_CONTAINER_ACCESS = {
         Role.CONTAINER_TAKE_1,
         Role.CONTAINER_TAKE_2,
         Role.CONTAINER_TAKE_3,
@@ -206,12 +206,12 @@ class CharacterRole(models.Model):
         Role.CONTAINER_TAKE_5,
         Role.CONTAINER_TAKE_6,
         Role.CONTAINER_TAKE_7,
-    ]
+    }
     ROLES_GROUPED = [
         {
             "title": _("general roles"),
             "location": Location.UNIVERSAL,
-            "roles": [
+            "roles": {
                 Role.ACCOUNTANT,
                 Role.AUDITOR,
                 Role.COMMUNICATIONS_OFFICER,
@@ -225,12 +225,12 @@ class CharacterRole(models.Model):
                 Role.PERSONNEL_MANAGER,
                 Role.STARBASE_DEFENSE_OPERATOR,
                 Role.STARBASE_FUEL_TECHNICIAN,
-            ],
+            },
         },
         {
             "title": _("station services"),
             "location": Location.UNIVERSAL,
-            "roles": [
+            "roles": {
                 Role.FACTORY_MANAGER,
                 Role.RENT_FACTORY_FACILITY,
                 Role.RENT_OFFICE,
@@ -238,12 +238,12 @@ class CharacterRole(models.Model):
                 Role.SECURITY_OFFICER,
                 Role.STATION_MANAGER,
                 Role.TRADER,
-            ],
+            },
         },
         {
             "title": _("accounting (divisional)"),
             "location": Location.UNIVERSAL,
-            "roles": [
+            "roles": {
                 Role.ACCOUNT_TAKE_1,
                 Role.ACCOUNT_TAKE_2,
                 Role.ACCOUNT_TAKE_3,
@@ -251,7 +251,7 @@ class CharacterRole(models.Model):
                 Role.ACCOUNT_TAKE_5,
                 Role.ACCOUNT_TAKE_6,
                 Role.ACCOUNT_TAKE_7,
-            ],
+            },
         },
         {
             "title": _("hangar access (headquarters)"),

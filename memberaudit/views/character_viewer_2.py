@@ -343,7 +343,7 @@ def character_roles_data(
         group_name = roles_group["title"].title()
 
         for role in roles_group["roles"]:
-            has_role = role in character_roles_map[location]
+            has_role = role in character_roles_map.get(location, [])
             data.append(
                 {
                     "group": group_name,
