@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Admin action for updating location and online status are not working (#148)
+- Made task arguments non-optional when used with celery_once keys feature
 
 ## [Unreleased] - yyyy-mm-dd
 
