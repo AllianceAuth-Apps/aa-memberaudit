@@ -112,7 +112,7 @@ def update_all_characters(self, force_update: bool = False) -> None:
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character(self, character_pk: int, force_update: bool = False) -> bool:
-    """Start respective update tasks for all stale sections of a character
+    """Start respective update tasks for all stale sections of a character.
 
     Args:
     - character_pk: PL of character to update
@@ -122,18 +122,14 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     - True when update was conducted
     - False when no updated was needed
     """
-    character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
+    character: Character = Character.objects.get(pk=character_pk)
     if character.is_orphan:
         logger.info("%s: Skipping update for orphaned character", character)
         return False
 
-    all_sections = set(Character.UpdateSection.values)
-    needs_update = force_update
-    for section in all_sections:
-        needs_update |= character.is_update_section_stale(section)
+    character.reset_token_error_notified_if_status_ok()
 
+    needs_update = force_update | character.is_update_needed()
     if not needs_update:
         logger.info("%s: No update required", character)
         return False
@@ -141,6 +137,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     logger.info(
         "%s: Starting %s character update", character, "forced" if force_update else ""
     )
+    all_sections = set(Character.UpdateSection.values)
     sections = all_sections.difference(
         {
             Character.UpdateSection.ASSETS,

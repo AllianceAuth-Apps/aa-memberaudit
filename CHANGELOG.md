@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## Changed
 
 - Badge with unregistered character count now also includes characters with token errors
+- Users are notified about a token error once only per occurrence
 
 ## [2.11.2] - 2023-09-15
 

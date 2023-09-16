@@ -285,6 +285,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return True
         return None
 
+    def is_update_needed(self) -> bool:
+        """Return True when update is needed, otherwise False."""
+        needs_update = False
+        for section in Character.UpdateSection.values:
+            needs_update |= self.is_update_section_stale(section)
+        return needs_update
+
     def has_token_issue(self) -> bool:
         """Return True if character has run into a token error during update, else False."""
         return self.update_status_set.filter(
@@ -313,6 +320,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return self.UpdateStatus.IN_PROGRESS
 
         return self.UpdateStatus.INCOMPLETE
+
+    def reset_token_error_notified_if_status_ok(self):
+        """Reset last notification on token error when update is OK again."""
+        if self.token_error_notified_at:
+            if self.calc_update_status() == Character.UpdateStatus.OK:
+                self.token_error_notified_at = None
+                self.save(update_fields=["token_error_notified_at"])
 
     @classmethod
     def update_section_time_until_stale(cls, section: str) -> dt.timedelta:

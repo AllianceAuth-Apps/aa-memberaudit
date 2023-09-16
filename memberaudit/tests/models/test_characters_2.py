@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
+from django.utils.timezone import now
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
@@ -769,3 +770,57 @@ class TestCharacterHasTokenError(TestCase):
         )
         # when/then
         self.assertFalse(self.character.has_token_issue())
+
+
+class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    def test_should_reset_when_ok_again(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.token_error_notified_at = now()
+        character.save()
+        for section in Character.UpdateSection:
+            create_character_update_status(character, section=section)
+
+        # when
+        character.reset_token_error_notified_if_status_ok()
+
+        # then
+        character.refresh_from_db()
+        self.assertIsNone(character.token_error_notified_at)
+
+    def test_should_not_reset_when_not_yet_ok(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.token_error_notified_at = now()
+        character.save()
+        create_character_update_status(
+            character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+
+        # when
+        character.reset_token_error_notified_if_status_ok()
+
+        # then
+        character.refresh_from_db()
+        self.assertTrue(character.token_error_notified_at)
+
+    def test_should_ignore_when_not_set(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.token_error_notified_at = None
+        character.save()
+        create_character_update_status(
+            character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+
+        # when
+        character.reset_token_error_notified_if_status_ok()
+
+        # then
+        character.refresh_from_db()
+        self.assertIsNone(character.token_error_notified_at)
