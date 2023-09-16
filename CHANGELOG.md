@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Improved the way entity IDs are resolved to names for all sections, e.g. resolving IDs will not spawn additional tasks and will resolve the new IDs from the related objects only
 
+## [2.12.0] - TBD
+
+### Update notes
+
+This release add the new feature corporation roles, which also adds a new scope to Member Audit. Please make sure to add the additional scope to your Eve Online token app. In addition all users will need to re-register their characters to be able to use the new feature. For this all users will be automatically notified once to re-register for each of their characters. If you have the app Discord Notify enabled (recommended), those notification will be forwarded automatically as DMs to users on Discord. Users will also be informed on their character launch page about the need to re-register their characters.
+
+Note that character updates will not be disrupted by the token scope change: Existing characters will continue to be updated by Member Audit just without corporation roles until those characters has been re-registered with the new token scope.
+
 ### Added
 
 - Corporation roles shown for every character
