@@ -105,7 +105,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     all_characters = _identify_user_characters(request, character)
     character_assets_total = _asset_total_for_character(character)
     has_implants = character.implants.exists()
-    last_updates = _last_update_for_character(character)
+    sections_update_status = _update_status_for_character(character)
     connection_skills_differ = _connection_skills_differ_for_character(character)
     page_title = _page_title_for_character(request, character)
 
@@ -121,7 +121,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "main_character_id": main_character_id,
         "all_characters": all_characters,
         "show_tab": request.GET.get("tab", ""),
-        "last_updates": last_updates,
+        "sections_update_status": sections_update_status,
         "character_assets_total": character_assets_total,
         "has_implants": has_implants,
         "connection_skills_differ": connection_skills_differ,
@@ -193,17 +193,8 @@ def _connection_skills_differ_for_character(character):
     return connection_skills_differ
 
 
-def _last_update_for_character(character):
-    try:
-        last_updates = {
-            obj["section"]: obj["finished_at"]
-            for obj in character.update_status_set.filter(is_success=True).values(
-                "section", "finished_at"
-            )
-        }
-    except ObjectDoesNotExist:
-        last_updates = None
-    return last_updates
+def _update_status_for_character(character) -> dict:
+    return {obj.section: obj for obj in character.update_status_set.all()}
 
 
 def _mail_labels_for_character(character, mailing_lists):
