@@ -45,10 +45,7 @@
                                             &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
                                         {% endif %}
                                         &nbsp;
-                                        <span class="{{ auth_character.update_status.bootstrap_style_class }}"
-                                            title="Update status: {{ auth_character.update_status.label }}">
-                                            ⬤
-                                        </span>
+                                        {% include 'memberaudit/partials/character_update_status.html' with update_status=auth_character.update_status %}
                                     </div>
 
                                     <div class="card-body card__content">
