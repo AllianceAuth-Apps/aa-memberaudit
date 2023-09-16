@@ -133,11 +133,22 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     class UpdateStatus(models.TextChoices):
         """Update status of a character."""
 
-        OK = "ok", _("ok")
+        DISABLED = "disabled", _("disabled")
+        ERROR = "error", _("error")
         IN_PROGRESS = "in_progress", _("in progress")
         INCOMPLETE = "incomplete", _("incomplete")
-        ERROR = "error", _("error")
-        DISABLED = "disabled", _("disabled")
+        OK = "ok", _("ok")
+
+        def bootstrap_style_class(self) -> str:
+            """Return bootstrap corresponding bootstrap style class."""
+            my_map = {
+                self.DISABLED: "text-muted",
+                self.ERROR: "text-danger",
+                self.IN_PROGRESS: "text-info",
+                self.INCOMPLETE: "text-warning",
+                self.OK: "text-success",
+            }
+            return my_map[self]
 
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
@@ -268,6 +279,35 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if ok_count == len(Character.UpdateSection.choices):
             return True
         return None
+
+    def has_token_issue(self) -> bool:
+        """Return True if character has run into a token error during update, else False."""
+        return self.update_status_set.filter(
+            last_error_message__icontains="TokenError"
+        ).exists()
+
+    def calc_update_status(self) -> UpdateStatus:
+        """Return update status of this character."""
+        if self.is_disabled:
+            return self.UpdateStatus.DISABLED
+
+        sections_total = len(self.UpdateSection)
+
+        sections_ok = self.update_status_set.filter(is_success=True).count()
+        if sections_ok == sections_total:
+            return self.UpdateStatus.OK
+
+        sections_failed = self.update_status_set.filter(is_success=False).count()
+        if sections_failed > 0:
+            return self.UpdateStatus.ERROR
+
+        sections_neutral = self.update_status_set.filter(
+            is_success__isnull=True
+        ).count()
+        if sections_neutral > 0:
+            return self.UpdateStatus.IN_PROGRESS
+
+        return self.UpdateStatus.INCOMPLETE
 
     @classmethod
     def update_section_time_until_stale(cls, section: str) -> dt.timedelta:

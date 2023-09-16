@@ -94,6 +94,7 @@ def update_all_characters(self, force_update: bool = False) -> None:
         logger.info(
             "Disabled %d characters which do not belong to a user.", orphaned_count
         )
+
     # start sync for all enabled characters
     enabled_characters = Character.objects.filter(is_disabled=False).values_list(
         "pk", flat=True

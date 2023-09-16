@@ -655,3 +655,72 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(mock_bulk_resolve_ids.called)
+
+
+class TestCharacterCalcUpdateStatus(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+
+    def test_should_return_ok(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            create_character_update_status(character, section=section)
+
+        # when/then
+        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
+
+    def test_should_return_error(self):
+        # given
+        character = create_memberaudit_character(1001)
+        create_character_update_status(
+            character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+
+        # when/then
+        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.ERROR)
+
+    def test_should_return_incomplete(self):
+        # given
+        character = create_memberaudit_character(1001)
+        sections_to_update = [
+            obj
+            for obj in Character.UpdateSection
+            if obj != Character.UpdateSection.ASSETS
+        ]
+        for section in sections_to_update:
+            create_character_update_status(character, section=section)
+
+        # when/then
+        self.assertEqual(
+            character.calc_update_status(), Character.UpdateStatus.INCOMPLETE
+        )
+
+    def test_should_return_in_progress(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection:
+            if section == Character.UpdateSection.ASSETS:
+                create_character_update_status(
+                    character, section=section, is_success=None
+                )
+            else:
+                create_character_update_status(character, section=section)
+
+        # when/then
+        self.assertEqual(
+            character.calc_update_status(), Character.UpdateStatus.IN_PROGRESS
+        )
+
+    def test_should_return_disabled(self):
+        # given
+        character = create_memberaudit_character(1001)
+        character.is_disabled = True
+        character.save()
+
+        # when/then
+        self.assertEqual(
+            character.calc_update_status(), Character.UpdateStatus.DISABLED
+        )

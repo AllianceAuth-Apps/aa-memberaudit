@@ -44,6 +44,11 @@
                                         {% if auth_character.character.is_shared %}
                                             &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
                                         {% endif %}
+                                        &nbsp;
+                                        <span class="{{ auth_character.update_status.bootstrap_style_class }}"
+                                            title="Update status: {{ auth_character.update_status.label }}">
+                                            ⬤
+                                        </span>
                                     </div>
 
                                     <div class="card-body card__content">
@@ -113,11 +118,20 @@
                 </ul>
             </div>
 
-            {% if unregistered_chars|length > 0 %}
+            {% if failed_token_characters|length > 0 %}
                 <p class="text-warning">
                     <strong>
                     <i class="fas fa-exclamation-triangle"></i>
-                    {% translate 'Unregistered character(s):' %}&nbsp;&nbsp;</strong>
+                    {% translate 'Characters with failed tokens. Please re-register:' %}&nbsp;&nbsp;</strong>
+                    {{ failed_token_characters|join:", " }}
+                </p>
+            {% endif %}
+
+            {% if unregistered_chars|length > 0 %}
+                <p class="text-info">
+                    <strong>
+                    <i class="fas fa-info-circle"></i>
+                    {% translate 'Unregistered characters:' %}&nbsp;&nbsp;</strong>
                     {{ unregistered_chars|join:", " }}
                 </p>
             {% endif %}
