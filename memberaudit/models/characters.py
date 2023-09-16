@@ -283,7 +283,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def has_token_issue(self) -> bool:
         """Return True if character has run into a token error during update, else False."""
         return self.update_status_set.filter(
-            last_error_message__startswith="TokenError"
+            is_success=False, last_error_message__startswith="TokenError"
         ).exists()
 
     def calc_update_status(self) -> UpdateStatus:

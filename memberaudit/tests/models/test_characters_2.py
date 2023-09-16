@@ -724,3 +724,48 @@ class TestCharacterCalcUpdateStatus(TestCase):
         self.assertEqual(
             character.calc_update_status(), Character.UpdateStatus.DISABLED
         )
+
+
+class TestCharacterHasTokenError(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_false_when_no_error(self):
+        # when/then
+        self.assertFalse(self.character.has_token_issue())
+
+    def test_should_return_true_when_token_error(self):
+        # given
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            last_error_message="TokenError",
+        )
+        # when/then
+        self.assertTrue(self.character.has_token_issue())
+
+    def test_should_return_false_when_token_error_and_success(self):
+        # given
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=True,
+            last_error_message="TokenError",
+        )
+        # when/then
+        self.assertFalse(self.character.has_token_issue())
+
+    def test_should_return_false_when_other_error(self):
+        # given
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            last_error_message="other error",
+        )
+        # when/then
+        self.assertFalse(self.character.has_token_issue())

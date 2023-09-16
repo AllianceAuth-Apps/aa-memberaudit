@@ -87,6 +87,7 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
         ).count()
         token_errors = self.filter(
             eve_character__character_ownership__user=user,
+            update_status_set__is_success=False,
             update_status_set__last_error_message__startswith="TokenError",
         ).count()
         return unregistered + token_errors
