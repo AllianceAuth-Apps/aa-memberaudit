@@ -380,9 +380,9 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
-    @patch(MODELS_PATH + ".characters.notify_throttled")
+    @patch(MODELS_PATH + ".characters.notify")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
-        self, mock_notify_throttled
+        self, mock_notify
     ):
         # given
         character = create_memberaudit_character(1001)
@@ -390,11 +390,27 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token("invalid_scope")
         # then
-        self.assertTrue(mock_notify_throttled.called)
-        _, kwargs = mock_notify_throttled.call_args
+        self.assertTrue(mock_notify.called)
+        _, kwargs = mock_notify.call_args
         self.assertEqual(
             kwargs["user"], character.eve_character.character_ownership.user
         )
+        character.refresh_from_db()
+        self.assertTrue(character.token_error_notified_at)
+
+    @patch(MODELS_PATH + ".characters.notify")
+    def test_should_not_notify_user_on_token_error_when_already_notified(
+        self, mock_notify
+    ):
+        # given
+        character = create_memberaudit_character(1001)
+        character.token_error_notified_at = now()
+        character.save()
+        # when
+        with self.assertRaises(TokenError):
+            character.fetch_token("invalid_scope")
+        # then
+        self.assertFalse(mock_notify.called)
 
 
 class TestCharacterSkillQueue(NoSocketsTestCase):

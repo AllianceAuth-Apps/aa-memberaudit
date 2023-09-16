@@ -22,8 +22,8 @@ from eveuniverse.models import EveEntity
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
+from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.allianceauth import notify_throttled
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
@@ -173,6 +173,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     )
     mailing_lists = models.ManyToManyField(
         "MailEntity", related_name="characters", verbose_name=_("mailing lists")
+    )
+    token_error_notified_at = models.DateTimeField(
+        default=None,
+        null=True,
+        help_text=_("Time when user was last notified about a token error."),
     )
 
     objects = CharacterManager()
@@ -475,9 +480,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         - TokenError: If no valid token can be found
         """
         if self.is_orphan:
-            raise TokenError(
-                f"Can not find token for orphaned character: {self}"
-            ) from None
+            raise TokenError(f"Orphaned characters have no tokens: {self}") from None
         token = (
             Token.objects.prefetch_related("scopes")
             .filter(user=self.user, character_id=self.eve_character.character_id)
@@ -486,18 +489,19 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .first()
         )
         if not token:
-            message_id = f"{__title__}-fetch_token-{self.pk}-TokenError"
-            title = f"{__title__}: Invalid or missing token for {self.eve_character}"
-            message = (
-                f"{MEMBERAUDIT_APP_NAME} could not find a valid token for your "
-                f"character {self.eve_character}.\n"
-                f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
-                "at your earliest convenience to update your token."
-            )
-            if self.user:
-                notify_throttled(
-                    message_id=message_id, user=self.user, title=title, message=message
+            if self.user and not self.token_error_notified_at:
+                title = (
+                    f"{__title__}: Invalid or missing token for {self.eve_character}"
                 )
+                message = (
+                    f"{MEMBERAUDIT_APP_NAME} could not find a valid token for your "
+                    f"character {self.eve_character}.\n"
+                    f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
+                    "at your earliest convenience to update your token."
+                )
+                notify(user=self.user, title=title, message=message)
+                self.token_error_notified_at = now()
+                self.save(update_fields=["token_error_notified_at"])
             raise TokenError(f"Could not find a matching token for {self}")
         return token
 
