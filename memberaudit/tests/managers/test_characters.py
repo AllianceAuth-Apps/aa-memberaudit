@@ -10,7 +10,11 @@ from memberaudit.models import Character, CharacterUpdateStatus
 
 from ..testdata.factories import create_character_update_status
 from ..testdata.load_entities import load_entities
-from ..utils import add_memberaudit_character_to_user, create_memberaudit_character
+from ..utils import (
+    add_auth_character_to_user,
+    add_memberaudit_character_to_user,
+    create_memberaudit_character,
+)
 
 
 class TestCharacterQuerySet(TestCase):
@@ -462,3 +466,41 @@ class TestCharacterUpdateStatusManager(TestCase):
         self.assertEqual(stats["ring_2"]["last"]["section"], "skills")
         self.assertEqual(stats["ring_3"]["max"]["section"], "assets")
         self.assertEqual(stats["ring_3"]["max"]["duration"], 90)
+
+
+class TestCharacterManagerUnregisteredCharacterCount(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        # main character with alts
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.user = cls.character_1001.character_ownership.user
+
+    def test_should_return_zero_when_no_unregistered(self):
+        # when
+        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        # then
+        self.assertEqual(result, 0)
+
+    def test_should_return_count_including_unregistered(self):
+        # given
+        add_auth_character_to_user(self.user, 1002)
+        # when
+        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        # then
+        self.assertEqual(result, 1)
+
+    def test_should_return_count_including_registered_with_token_error(self):
+        # given
+        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            last_error_message="TokenError",
+        )
+        # when
+        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        # then
+        self.assertEqual(result, 1)

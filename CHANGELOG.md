@@ -19,6 +19,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Current update status shown on character launcher and character viewer
 - Detailed update status shown on each tab
 
+## Changed
+
+- Badge with unregistered character count now also includes characters with token errors
+
 ## [2.11.2] - 2023-09-15
 
 ### Fixed

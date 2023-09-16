@@ -79,11 +79,17 @@ class CharacterQuerySet(models.QuerySet):
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
     def unregistered_characters_of_user_count(self, user: User) -> int:
-        """Return count of unregistered character for a user."""
-
-        return CharacterOwnership.objects.filter(
+        """Return count of unregistered character
+        and count of characters with token errors for a given user.
+        """
+        unregistered = CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True
         ).count()
+        token_errors = self.filter(
+            eve_character__character_ownership__user=user,
+            update_status_set__last_error_message__startswith="TokenError",
+        ).count()
+        return unregistered + token_errors
 
     def user_has_scope(self, user: User) -> models.QuerySet:
         """Return characters the given user has permission to access
