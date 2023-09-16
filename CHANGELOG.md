@@ -13,6 +13,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Improved the way entity IDs are resolved to names for all sections, e.g. resolving IDs will not spawn additional tasks and will resolve the new IDs from the related objects only
 
+### Added
+
+- Corporation roles shown for every character
+- Current update status shown on character launcher and character viewer
+- Detailed update status shown on each tab
+
 ## [2.11.2] - 2023-09-15
 
 ### Fixed

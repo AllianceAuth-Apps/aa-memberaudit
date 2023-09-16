@@ -1,4 +1,17 @@
 {% load i18n %}
 {% load humanize %}
 
-<p class="text-muted">{% translate 'Last updated:' %} {{ update_section.finished_at|naturaltime|default:"(No data)" }}</p>
+<p class="text-muted">
+    {% translate 'Last update' %}: {{ update_section.finished_at|naturaltime|default:"(No data)" }} |
+    {% translate 'Status' %}:
+    {% if update_section.is_success %}
+    <span class="text-success">{% translate 'OK' %}</span>
+    {% else %}
+    <span class="text-danger">{% translate 'failed' %}</span>
+    {% endif %}
+    {% if not update_section.is_success %}
+    | {% translate 'Error' %}: <span class="text-danger">
+        {{ update_section.last_error_message }}
+    </span>
+    {% endif %}
+</p>
