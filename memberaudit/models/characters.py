@@ -193,6 +193,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.pk:  # clear this object from cache if it is there
+            Character.objects.clear_cache(pk=self.pk)
+
     @cached_property
     def name(self) -> str:
         """Return the name of this character."""
