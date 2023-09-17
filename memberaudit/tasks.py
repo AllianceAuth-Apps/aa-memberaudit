@@ -148,6 +148,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             Character.UpdateSection.SKILLS,
         }
     )
+    Character.objects.clear_cache(pk=character_pk)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for section in sorted(sections):
         if force_update or character.is_update_section_stale(section):
