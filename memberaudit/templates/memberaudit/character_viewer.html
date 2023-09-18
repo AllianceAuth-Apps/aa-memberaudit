@@ -37,11 +37,17 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
+
+                        {% if UpdateSection.ROLES in enabled_sections %}
+                            {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
+                        {% endif%}
+
                         {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
+
                         {% if perms.memberaudit.view_skill_sets %}
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
                         {% endif %}
+
                         {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
@@ -613,56 +619,58 @@
         });
 
         /* Roles */
-        $('#tab_roles').DataTable({
-            ajax: {
-                url: "{% url 'memberaudit:character_roles_data' character.pk %}",
-                dataSrc: 'data',
-                cache: false
-            },
-            columns: [
-                {
-                    data: 'group'
+        {% if UpdateSection.ROLES in enabled_sections %}
+            $('#tab_roles').DataTable({
+                ajax: {
+                    url: "{% url 'memberaudit:character_roles_data' character.pk %}",
+                    dataSrc: 'data',
+                    cache: false
                 },
-                {
-                    data: 'role'
-                },
-                {
-                    data: 'has_role'
-                }
-            ],
-            order: [ [ 0, "asc" ], [ 1, "asc" ] ],
-            filterDropDown: {
                 columns: [
                     {
-                        idx: 0
+                        data: 'group'
+                    },
+                    {
+                        data: 'role'
+                    },
+                    {
+                        data: 'has_role'
                     }
                 ],
-                autoSize: false,
-                bootstrap: true
-            },
-            rowGroup: {
-                dataSrc: 'group',
-                className: 'table-group'
-            },
-            columnDefs: [
-                {
-                    render: function (data, type, row) {
-                        if (type === "display") {
-                            if (data) {
-                                return '<span class="fas fa-check-circle text-success" aria-label="Yes"></span>';
-                            } else {
-                                return '<span class="fas fa-times-circle text-danger" aria-label="No"></span>';
-                            }
+                order: [ [ 0, "asc" ], [ 1, "asc" ] ],
+                filterDropDown: {
+                    columns: [
+                        {
+                            idx: 0
                         }
-
-                        return data;
-                    },
-                    targets: [ 2 ],
+                    ],
+                    autoSize: false,
+                    bootstrap: true
                 },
-                { "visible": false, "targets": [ 0 ] },
-                { "orderable": false, "targets": [ 0 ] }
-            ]
-        });
+                rowGroup: {
+                    dataSrc: 'group',
+                    className: 'table-group'
+                },
+                columnDefs: [
+                    {
+                        render: function (data, type, row) {
+                            if (type === "display") {
+                                if (data) {
+                                    return '<span class="fas fa-check-circle text-success" aria-label="Yes"></span>';
+                                } else {
+                                    return '<span class="fas fa-times-circle text-danger" aria-label="No"></span>';
+                                }
+                            }
+
+                            return data;
+                        },
+                        targets: [ 2 ],
+                    },
+                    { "visible": false, "targets": [ 0 ] },
+                    { "orderable": false, "targets": [ 0 ] }
+                ]
+            });
+        {% endif %}
 
         /* Skillqueue */
         $('#tab_skillqueue').DataTable({

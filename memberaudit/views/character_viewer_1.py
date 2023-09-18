@@ -128,6 +128,8 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "is_assets_updating": character.is_section_updating(
             Character.UpdateSection.ASSETS
         ),
+        "UpdateSection": Character.UpdateSection,
+        "enabled_sections": Character.UpdateSection.enabled_sections(),
     }
     return render(
         request,

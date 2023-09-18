@@ -57,7 +57,9 @@
         </ul>
     </li>
 
-    <li role="presentation"><a href="#roles" aria-controls="skillqueue" role="tab" data-toggle="tab">{% translate 'Roles' %}</a></li>
+    {% if UpdateSection.ROLES in enabled_sections %}
+        <li role="presentation"><a href="#roles" aria-controls="skillqueue" role="tab" data-toggle="tab">{% translate 'Roles' %}</a></li>
+    {% endif %}
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="wallet">
         <a href="#" id="myTabDrop1" class="dropdown-toggle" data-toggle="dropdown">{% translate 'Wallet' %}&nbsp;<b class="caret"></b></a>
