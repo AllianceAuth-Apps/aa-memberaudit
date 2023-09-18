@@ -285,12 +285,14 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def has_token_issue(self) -> bool:
         """Return True if character has run into a token error during update, else False."""
-        enabled_sections = list(Character.UpdateSection.enabled_sections())
-        return self.update_status_set.filter(
-            section__in=enabled_sections,
-            is_success=False,
-            last_error_message__startswith="TokenError",
-        ).exists()
+        return (
+            self.update_status_set.filter_enabled_sections()
+            .filter(
+                is_success=False,
+                last_error_message__startswith="TokenError",
+            )
+            .exists()
+        )
 
     def calc_update_status(self) -> UpdateStatus:
         """Return update status of this character."""
@@ -299,21 +301,27 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
         enabled_sections = list(Character.UpdateSection.enabled_sections())
 
-        sections_ok = self.update_status_set.filter(
-            section__in=enabled_sections, is_success=True
-        ).count()
+        sections_ok = (
+            self.update_status_set.filter_enabled_sections()
+            .filter(is_success=True)
+            .count()
+        )
         if sections_ok == len(enabled_sections):
             return self.UpdateStatus.OK
 
-        sections_failed = self.update_status_set.filter(
-            section__in=enabled_sections, is_success=False
-        ).count()
+        sections_failed = (
+            self.update_status_set.filter_enabled_sections()
+            .filter(is_success=False)
+            .count()
+        )
         if sections_failed > 0:
             return self.UpdateStatus.ERROR
 
-        sections_neutral = self.update_status_set.filter(
-            section__in=enabled_sections, is_success__isnull=True
-        ).count()
+        sections_neutral = (
+            self.update_status_set.filter_enabled_sections()
+            .filter(is_success__isnull=True)
+            .count()
+        )
         if sections_neutral > 0:
             return self.UpdateStatus.IN_PROGRESS
 

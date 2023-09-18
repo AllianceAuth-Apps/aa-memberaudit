@@ -201,7 +201,16 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
 CharacterManager = CharacterManagerBase.from_queryset(CharacterQuerySet)
 
 
-class CharacterUpdateStatusManager(models.Manager):
+class CharacterUpdateStatusQuerySet(models.QuerySet):
+    def filter_enabled_sections(self) -> models.QuerySet:
+        """Filter enabled sections."""
+        from memberaudit.models import Character
+
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
+        return self.filter(section__in=enabled_sections)
+
+
+class CharacterUpdateStatusManagerBase(models.Manager):
     def statistics(self) -> dict:
         """returns detailed statistics about the last update run and the app"""
 
@@ -433,3 +442,8 @@ class CharacterUpdateStatusManager(models.Manager):
             "character": character_name,
             "duration": duration,
         }
+
+
+CharacterUpdateStatusManager = CharacterUpdateStatusManagerBase.from_queryset(
+    CharacterUpdateStatusQuerySet
+)

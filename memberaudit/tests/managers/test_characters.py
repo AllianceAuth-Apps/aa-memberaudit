@@ -452,7 +452,7 @@ class TestCharacterUpdateStatusManager(TestCase):
         """normal calculation"""
         my_now = now()
         root_task_id = "1"
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.CONTACTS,
             is_success=True,
@@ -460,7 +460,7 @@ class TestCharacterUpdateStatusManager(TestCase):
             finished_at=my_now,
             root_task_id=root_task_id,
         )
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS,
             is_success=True,
@@ -468,7 +468,7 @@ class TestCharacterUpdateStatusManager(TestCase):
             finished_at=my_now + dt.timedelta(seconds=30),
             root_task_id=root_task_id,
         )
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.ASSETS,
             is_success=True,
@@ -589,3 +589,43 @@ class TestCharacterDisableCharacterWithoutOwner(TestCase):
         orphan_disabled.refresh_from_db()
         self.assertTrue(orphan_disabled.is_disabled)
         self.assertFalse(self.character.is_disabled)
+
+
+class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_enabled_sections_only_1(self):
+        # given
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ASSETS
+        )
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ROLES
+        )
+        # when
+        result = self.character_1001.update_status_set.filter_enabled_sections()
+        # then
+        expected = {Character.UpdateSection.ASSETS, Character.UpdateSection.ROLES}
+        sections = set(result.values_list("section", flat=True))
+        self.assertSetEqual(sections, expected)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_enabled_sections_only_2(self):
+        # given
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ASSETS
+        )
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ROLES
+        )
+        # when
+        result = self.character_1001.update_status_set.filter_enabled_sections()
+        # then
+        expected = {Character.UpdateSection.ASSETS}
+        sections = set(result.values_list("section", flat=True))
+        self.assertSetEqual(sections, expected)
