@@ -513,6 +513,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         # then
         self.assertEqual(result, 1)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_count_including_registered_with_token_error(self):
         # given
         character_1002 = add_memberaudit_character_to_user(self.user, 1002)
@@ -532,6 +533,21 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         result = Character.objects.unregistered_characters_of_user_count(self.user)
         # then
         self.assertEqual(result, 1)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_count_not_including_token_errors_for_disabled_sections(self):
+        # given
+        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.ROLES,
+            is_success=False,
+            last_error_message="TokenError 1",
+        )
+        # when
+        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        # then
+        self.assertEqual(result, 0)
 
 
 class TestCharacterDisableCharacterWithoutOwner(TestCase):

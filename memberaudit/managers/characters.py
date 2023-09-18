@@ -121,9 +121,11 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
         unregistered = CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True
         ).count()
+        enabled_sections = list(self.model.UpdateSection.enabled_sections())
         token_errors = (
             self.filter(
                 eve_character__character_ownership__user=user,
+                update_status_set__section__in=enabled_sections,
                 update_status_set__is_success=False,
                 update_status_set__last_error_message__startswith="TokenError",
             )
