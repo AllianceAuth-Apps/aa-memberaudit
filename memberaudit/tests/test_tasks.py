@@ -595,21 +595,34 @@ class TestCharacterUpdateFull(TestCaseTasks):
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    # @skipIf(TOX_IS_RUNNING, "does not work with tox")
-    # @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    # def test_should_update_enabled_sections_from_scratch_only(self):
-    #     # given
-    #     started_at = now() - dt.timedelta(hours=24)
-    #     self.character_1001.
-    #     # when
-    #     result = tasks.update_character(self.character_1001.pk)
-    #     # then
-    #     self.assertTrue(result)
-    #     for section in Character.UpdateSection.enabled_sections():
-    #         with self.subTest(section=section):
-    #             self.assertFalse(
-    #                 self.character_1001.is_update_section_stale(section=section)
-    #             )
+    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_update_enabled_sections_only(self):
+        # given
+        started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                started_at=started_at,
+                finished_at=started_at,
+            )
+
+        # when
+        result = tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertTrue(result)
+        for section in Character.UpdateSection.enabled_sections():
+            with self.subTest(section=section):
+                self.assertFalse(
+                    self.character_1001.is_update_section_stale(section=section)
+                )
+        self.assertTrue(
+            self.character_1001.is_update_section_stale(
+                section=Character.UpdateSection.ROLES
+            )
+        )
 
     @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
     def test_should_update_normal_section_only_when_stale(self, update_loyalty):
