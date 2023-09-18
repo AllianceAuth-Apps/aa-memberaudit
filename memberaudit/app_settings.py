@@ -1,4 +1,4 @@
-"""Definition and parsing of Member Audit's settings."""
+"""Settings for Member Audit."""
 
 from django.utils.translation import gettext_lazy as _
 
@@ -21,9 +21,15 @@ MEMBERAUDIT_BULK_METHODS_BATCH_SIZE = clean_setting(
 of Django batch methods, e.g. bulk_create and bulk_update.
 """
 
+MEMBERAUDIT_DATA_RETENTION_LIMIT = clean_setting(
+    "MEMBERAUDIT_DATA_RETENTION_LIMIT", default_value=360, min_value=7
+)
+"""Maximum number of days to keep historical data for mails, contracts and wallets.
+Minimum is 7 day.
+"""
+
 # Activate developer mode for additional debug output. Undocumented feature
 MEMBERAUDIT_DEVELOPER_MODE = clean_setting("MEMBERAUDIT_DEVELOPER_MODE", False)
-
 
 MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD = clean_setting(
     "MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD", 25
@@ -55,18 +61,6 @@ MEMBERAUDIT_MAX_MAILS = clean_setting("MEMBERAUDIT_MAX_MAILS", 250)
 """Maximum amount of mails fetched from ESI for each character."""
 
 
-MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS = clean_setting(
-    "MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 2500
-)
-"""Technical parameter defining the maximum number of asset items processed in each pass
-when updating character assets.
-A higher value reduces duration, but also increases task queue congestion.
-"""
-
-MEMBERAUDIT_TASKS_TIME_LIMIT = clean_setting("MEMBERAUDIT_TASKS_TIME_LIMIT", 7200)
-"""Global timeout for tasks in seconds to reduce task accumulation during outages."""
-
-
 MEMBERAUDIT_UPDATE_STALE_RING_1 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_1", 60)
 """Character sections are updated on different schedules, called rings.
 Ring 1 is the quickest, Ring 3 is the slowest
@@ -90,27 +84,32 @@ MEMBERAUDIT_UPDATE_STALE_OFFSET = clean_setting("MEMBERAUDIT_UPDATE_STALE_OFFSET
 minus this offset. Required to avoid time synchronization issues.
 """
 
-MEMBERAUDIT_DATA_RETENTION_LIMIT = clean_setting(
-    "MEMBERAUDIT_DATA_RETENTION_LIMIT", default_value=360, min_value=7
-)
-"""Maximum number of days to keep historical data for mails, contracts and wallets.
-Minimum is 7 day.
-"""
-
 MEMBERAUDIT_TASKS_HIGH_PRIORITY = clean_setting(
     "MEMBERAUDIT_TASKS_HIGH_PRIORITY", default_value=3, min_value=1, max_value=9
 )
 """Priority for high priority tasks, e.g. user requests an action."""
+
+MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS = clean_setting(
+    "MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 2500
+)
+"""Technical parameter defining the maximum number of asset items processed in each pass
+when updating character assets.
+A higher value reduces duration, but also increases task queue congestion.
+"""
+
+MEMBERAUDIT_TASKS_LOW_PRIORITY = clean_setting(
+    "MEMBERAUDIT_TASKS_LOW_PRIORITY", default_value=7, min_value=1, max_value=9
+)
+"""Priority for low priority tasks, e.g. updating characters."""
 
 MEMBERAUDIT_TASKS_NORMAL_PRIORITY = clean_setting(
     "MEMBERAUDIT_TASKS_NORMAL_PRIORITY", default_value=5, min_value=1, max_value=9
 )
 """Priority for normal tasks, e.g. updating characters."""
 
-MEMBERAUDIT_TASKS_LOW_PRIORITY = clean_setting(
-    "MEMBERAUDIT_TASKS_LOW_PRIORITY", default_value=7, min_value=1, max_value=9
-)
-"""Priority for low priority tasks, e.g. updating characters."""
+MEMBERAUDIT_TASKS_TIME_LIMIT = clean_setting("MEMBERAUDIT_TASKS_TIME_LIMIT", 7200)
+"""Global timeout for tasks in seconds to reduce task accumulation during outages."""
+
 
 ####################
 # Internal settings
