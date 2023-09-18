@@ -21,15 +21,14 @@ from app_utils.testing import (
 )
 
 from memberaudit import tasks
-from memberaudit.models import (
-    Character,
-    CharacterAsset,
-    CharacterUpdateStatus,
-    Location,
-)
+from memberaudit.models import Character, CharacterAsset, Location
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
-from .testdata.factories import create_character, create_compliance_group_designation
+from .testdata.factories import (
+    create_character,
+    create_character_update_status,
+    create_compliance_group_designation,
+)
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -587,19 +586,35 @@ class TestCharacterUpdateFull(TestCaseTasks):
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
+    # TODO: Find solution
     @skipIf(TOX_IS_RUNNING, "does not work with tox")
-    def test_should_update_normally(self):
-        """can update from scratch"""
+    def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
         # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
+    # @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    # @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    # def test_should_update_enabled_sections_from_scratch_only(self):
+    #     # given
+    #     started_at = now() - dt.timedelta(hours=24)
+    #     self.character_1001.
+    #     # when
+    #     result = tasks.update_character(self.character_1001.pk)
+    #     # then
+    #     self.assertTrue(result)
+    #     for section in Character.UpdateSection.enabled_sections():
+    #         with self.subTest(section=section):
+    #             self.assertFalse(
+    #                 self.character_1001.is_update_section_stale(section=section)
+    #             )
+
     @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
     def test_should_update_normal_section_only_when_stale(self, update_loyalty):
         # given
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.LOYALTY,
             is_success=True,
@@ -616,7 +631,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
         self, mock_update_character_mails
     ):
         # given
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.MAILS,
             is_success=True,
@@ -633,7 +648,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
         then update again
         """
         # given
-        section: CharacterUpdateStatus = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS.value,
             is_success=True,
@@ -650,7 +665,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
     def test_should_do_nothing_when_not_required(self):
         # given
         for section in Character.UpdateSection.values:
-            CharacterUpdateStatus.objects.create(
+            create_character_update_status(
                 character=self.character_1001,
                 section=section,
                 is_success=True,
