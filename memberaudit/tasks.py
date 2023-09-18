@@ -141,8 +141,8 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     )
     Character.objects.clear_cache(pk=character_pk)
 
-    all_sections = set(Character.UpdateSection)
-    sections_to_update_in_loop = all_sections.difference(
+    enabled_sections = Character.UpdateSection.enabled_sections()
+    sections_to_update_in_loop = enabled_sections.difference(
         {
             Character.UpdateSection.ASSETS,
             Character.UpdateSection.MAILS,
@@ -177,6 +177,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
+
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.CONTACTS
     ):
@@ -189,6 +190,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
+
     if force_update or character.is_update_section_stale(
         Character.UpdateSection.CONTRACTS
     ):
@@ -213,6 +215,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
+
     if (
         force_update
         or character.is_update_section_stale(Character.UpdateSection.SKILLS)
@@ -234,10 +237,12 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 self.request.id,
             ).set(priority=priority),
         ).delay()
+
     if character.is_shared:
         check_character_consistency.apply_async(
             kwargs={"character_pk": character.pk}, priority=priority
         )
+
     return True
 
 

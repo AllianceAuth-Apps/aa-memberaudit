@@ -37,7 +37,7 @@ from ..utils import (
     scope_names_set,
 )
 
-MODELS_PATH = "memberaudit.models"
+MODELS_PATH = "memberaudit.models.characters"
 MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
@@ -380,7 +380,7 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
-    @patch(MODELS_PATH + ".characters.notify.danger")
+    @patch(MODELS_PATH + ".notify.danger")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
         self, mock_notify
     ):
@@ -398,7 +398,7 @@ class TestCharacterFetchToken(TestCase):
         character.refresh_from_db()
         self.assertTrue(character.token_error_notified_at)
 
-    @patch(MODELS_PATH + ".characters.notify")
+    @patch(MODELS_PATH + ".notify")
     def test_should_not_notify_user_on_token_error_when_already_notified(
         self, mock_notify
     ):
@@ -697,22 +697,52 @@ class TestCharacterUpdateStatusOk(NoSocketsTestCase):
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_none_when_not_all_sections_exist(self):
         # when/then
         self.assertIsNone(self.character.is_update_status_ok())
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_false_when_a_section_has_errors(self):
         # given
         create_character_update_status(character=self.character, is_success=False)
         # when/then
         self.assertFalse(self.character.is_update_status_ok())
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_ignore_error_in_disabled_sections(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+        # when/then
+        self.assertIsNone(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_true_when_all_sections_exist_and_have_no_error(self):
         # given
         for section in Character.UpdateSection:
             create_character_update_status(
                 character=self.character, is_success=True, section=section.value
             )
+        # when/then
+        self.assertTrue(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_true_when_all_enabled_sections_exist_and_have_no_error(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(
+                character=self.character, is_success=True, section=section.value
+            )
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+
         # when/then
         self.assertTrue(self.character.is_update_status_ok())
 
@@ -735,6 +765,24 @@ class TestCharacterUpdateSection(NoSocketsTestCase):
 
         with self.assertRaises(ValueError):
             result = Character.UpdateSection.display_name("invalid")
+
+
+class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_all_sections(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection)
+        self.assertSetEqual(result, expected)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_all_sections_except_roles(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection) - {Character.UpdateSection.ROLES}
+        self.assertSetEqual(result, expected)
 
 
 class TestCharacterUpdateStatus(NoSocketsTestCase):
@@ -952,7 +1000,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
         self.assertTrue(self.character_1001.is_section_updating(section=self.section))
 
 
-@patch(MODELS_PATH + ".characters.MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
+@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
 class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:

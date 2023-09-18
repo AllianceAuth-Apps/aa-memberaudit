@@ -1,4 +1,5 @@
 import datetime as dt
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -15,6 +16,8 @@ from ..utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
 )
+
+MODELS_PATH = "memberaudit.models.characters"
 
 
 class TestCharacterQuerySet(TestCase):
@@ -62,6 +65,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         super().setUpClass()
         load_entities()
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_ok(self):
         # given
         character = create_memberaudit_character(1001)
@@ -73,6 +77,22 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_annotate_ok_when_all_enabled_sections_are_ok(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(character, section=section)
+        create_character_update_status(
+            character=character, is_success=False, section=Character.UpdateSection.ROLES
+        )
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error(self):
         # given
         character = create_memberaudit_character(1001)
@@ -85,6 +105,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_incomplete(self):
         # given
         character = create_memberaudit_character(1001)
@@ -101,6 +122,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_in_progress(self):
         # given
         character = create_memberaudit_character(1001)

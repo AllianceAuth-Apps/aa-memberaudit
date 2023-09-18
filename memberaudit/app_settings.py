@@ -31,6 +31,11 @@ Minimum is 7 day.
 # Activate developer mode for additional debug output. Undocumented feature
 MEMBERAUDIT_DEVELOPER_MODE = clean_setting("MEMBERAUDIT_DEVELOPER_MODE", False)
 
+MEMBERAUDIT_FEATURE_ROLES_ENABLED = clean_setting(
+    "MEMBERAUDIT_FEATURE_ROLES_ENABLED", False
+)
+"""Feature flag to enable or disable the corporation roles feature."""
+
 MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD = clean_setting(
     "MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD", 25
 )

@@ -381,8 +381,8 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
-        all_sections = set(Character.UpdateSection.values)
-        missing = all_sections.difference(existing)
+        enabled_sections = Character.UpdateSection.enabled_sections()
+        missing = enabled_sections.difference(existing)
         if missing:
             return sorted(
                 [Character.UpdateSection.display_name(obj) for obj in missing]

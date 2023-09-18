@@ -1,3 +1,4 @@
+import datetime as dt
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -664,6 +665,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
         super().setUpClass()
         load_entities()
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_ok(self):
         # given
         character = create_memberaudit_character(1001)
@@ -673,6 +675,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
         # when/then
         self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_error(self):
         # given
         character = create_memberaudit_character(1001)
@@ -683,6 +686,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
         # when/then
         self.assertEqual(character.calc_update_status(), Character.UpdateStatus.ERROR)
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_incomplete(self):
         # given
         character = create_memberaudit_character(1001)
@@ -699,6 +703,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
             character.calc_update_status(), Character.UpdateStatus.INCOMPLETE
         )
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_in_progress(self):
         # given
         character = create_memberaudit_character(1001)
@@ -715,6 +720,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
             character.calc_update_status(), Character.UpdateStatus.IN_PROGRESS
         )
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_disabled(self):
         # given
         character = create_memberaudit_character(1001)
@@ -725,6 +731,30 @@ class TestCharacterCalcUpdateStatus(TestCase):
         self.assertEqual(
             character.calc_update_status(), Character.UpdateStatus.DISABLED
         )
+
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_ok_when_disabled_section_has_error(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(character, section=section)
+
+        create_character_update_status(
+            character=character, is_success=False, section=Character.UpdateSection.ROLES
+        )
+
+        # when/then
+        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
+
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_ok_when_disabled_section_is_missing(self):
+        # given
+        character = create_memberaudit_character(1001)
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(character, section=section)
+
+        # when/then
+        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
 
 
 class TestCharacterHasTokenError(TestCase):
@@ -824,3 +854,52 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
         # then
         character.refresh_from_db()
         self.assertIsNone(character.token_error_notified_at)
+
+
+class TestCharacterIsUpdateNeeded(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_false_when_all_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection:
+            create_character_update_status(self.character, section=section)
+
+        # when/then
+        self.assertFalse(self.character.is_update_needed())
+
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_true_when_one_section_is_outdated(self):
+        # given
+        current_sections = set(Character.UpdateSection) - {
+            Character.UpdateSection.ASSETS
+        }
+        for section in current_sections:
+            create_character_update_status(self.character, section=section)
+
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            started_at=now() - dt.timedelta(hours=24),
+        )
+
+        # when/then
+        self.assertTrue(self.character.is_update_needed())
+
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_false_when_all_enabled_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(self.character, section=section)
+
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ROLES,
+            started_at=now() - dt.timedelta(hours=24),
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed())

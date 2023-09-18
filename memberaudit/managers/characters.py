@@ -43,18 +43,32 @@ class CharacterQuerySet(models.QuerySet):
 
     def annotate_update_status(self):
         """Add update_status annotations."""
-        num_sections_total = len(self.model.UpdateSection.choices)
+        enabled_sections = list(self.model.UpdateSection.enabled_sections())
+        num_sections_total = len(enabled_sections)
         UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
-        return (
-            self.annotate(num_sections_total=Count("update_status_set"))
+        qs = (
+            self.annotate(
+                num_sections_total=Count(
+                    "update_status_set",
+                    filter=Q(update_status_set__section__in=enabled_sections),
+                )
+            )
             .annotate(
                 num_sections_ok=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=True)
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__is_success=True,
+                    ),
                 )
             )
             .annotate(
                 num_sections_failed=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=False)
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__is_success=False,
+                    ),
                 )
             )
             .annotate(
@@ -75,6 +89,7 @@ class CharacterQuerySet(models.QuerySet):
                 )
             )
         )
+        return qs
 
     def disable_characters_with_no_owner(self) -> int:
         """Disable characters which have no owner. Return count of disabled characters."""

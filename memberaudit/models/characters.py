@@ -5,7 +5,7 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Optional, Set, Tuple
 
 from bravado.exception import HTTPInternalServerError
 
@@ -30,6 +30,7 @@ from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
     MEMBERAUDIT_DEVELOPER_MODE,
+    MEMBERAUDIT_FEATURE_ROLES_ENABLED,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
@@ -102,6 +103,14 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     return long_name
 
             raise ValueError(f"Unknown section: {section}")
+
+        @classmethod
+        def enabled_sections(cls) -> Set["Character.UpdateSection"]:
+            """Return enabled sections."""
+            sections = set(Character.UpdateSection)
+            if not MEMBERAUDIT_FEATURE_ROLES_ENABLED:
+                sections.discard(Character.UpdateSection.ROLES)
+            return sections
 
     UPDATE_SECTION_RINGS_MAP = {
         UpdateSection.ASSETS: 3,
@@ -274,29 +283,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             pass
         return Character.objects.user_has_access(user).filter(pk=self.pk).exists()
 
-    def is_update_status_ok(self) -> Optional[bool]:
-        """returns status of last update
-
-        Returns:
-        - True: If update was complete and without errors
-        - False if there where any errors
-        - None: if last update is incomplete
-        """
-        errors_count = self.update_status_set.filter(is_success=False).count()
-        ok_count = self.update_status_set.filter(is_success=True).count()
-        if errors_count > 0:
-            return False
-        if ok_count == len(Character.UpdateSection.choices):
-            return True
-        return None
-
-    def is_update_needed(self) -> bool:
-        """Return True when update is needed, otherwise False."""
-        needs_update = False
-        for section in Character.UpdateSection.values:
-            needs_update |= self.is_update_section_stale(section)
-        return needs_update
-
     def has_token_issue(self) -> bool:
         """Return True if character has run into a token error during update, else False."""
         return self.update_status_set.filter(
@@ -308,23 +294,42 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if self.is_disabled:
             return self.UpdateStatus.DISABLED
 
-        sections_total = len(self.UpdateSection)
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
 
-        sections_ok = self.update_status_set.filter(is_success=True).count()
-        if sections_ok == sections_total:
+        sections_ok = self.update_status_set.filter(
+            section__in=enabled_sections, is_success=True
+        ).count()
+        if sections_ok == len(enabled_sections):
             return self.UpdateStatus.OK
 
-        sections_failed = self.update_status_set.filter(is_success=False).count()
+        sections_failed = self.update_status_set.filter(
+            section__in=enabled_sections, is_success=False
+        ).count()
         if sections_failed > 0:
             return self.UpdateStatus.ERROR
 
         sections_neutral = self.update_status_set.filter(
-            is_success__isnull=True
+            section__in=enabled_sections, is_success__isnull=True
         ).count()
         if sections_neutral > 0:
             return self.UpdateStatus.IN_PROGRESS
 
         return self.UpdateStatus.INCOMPLETE
+
+    def is_update_status_ok(self) -> Optional[bool]:
+        """Returns status of last update.
+
+        Returns:
+        - True: If update was complete and without errors
+        - False if there where any errors
+        - None: if last update is incomplete
+        """
+        status = self.calc_update_status()
+        if status == Character.UpdateStatus.OK:
+            return True
+        if status == Character.UpdateStatus.ERROR:
+            return False
+        return None
 
     def reset_token_error_notified_if_status_ok(self):
         """Reset last notification on token error when update is OK again."""
@@ -357,9 +362,16 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             if ring_num == ring
         }
 
+    def is_update_needed(self) -> bool:
+        """Return True when update is needed, otherwise False."""
+        needs_update = False
+        for section in Character.UpdateSection.enabled_sections():
+            needs_update |= self.is_update_section_stale(section)
+        return needs_update
+
     def is_update_section_stale(self, section: str) -> bool:
-        """returns True if the give update section is stale, else False"""
-        section = self.UpdateSection(section)
+        """Return True if the give update section is stale, else False."""
+        section = Character.UpdateSection(section)
         try:
             update_status = self.update_status_set.get(
                 section=section,
