@@ -54,6 +54,7 @@ esi-calendar.read_calendar_events.v1
 esi-characters.read_agents_research.v1
 esi-characters.read_blueprints.v1
 esi-characters.read_contacts.v1
+esi-characters.read_corporation_roles.v1
 esi-characters.read_fatigue.v1
 esi-characters.read_fw_stats.v1
 esi-characters.read_loyalty.v1
@@ -111,7 +112,13 @@ You may want to wait until the loading is complete before continuing.
 These command will spawn a thousands of tasks. One easy way to monitor the progress is to watch the number of tasks shown on the Dashboard.
 ```
 
-### Step 7 - Setup permissions
+### Step 7 - Enable optional features
+
+Some features are disabled by default. Please review and decide which features you want to enable for your installation:
+
+- Corporation roles: Add `MEMBERAUDIT_FEATURE_ROLES_ENABLED = True` to your local settings.
+
+### Step 8 - Setup permissions
 
 Finally you want to setup permission to define which users / groups will have access to which parts of the app. Check out [permissions](#permissions) for details.
 

@@ -46,6 +46,7 @@ Member Audit adds the following features to Auth:
   - Contacts
   - Contracts
   - Corporation history
+  - Corporation roles (NEW)
   - Faction Warfare statistics
   - Implants
   - Jump clones

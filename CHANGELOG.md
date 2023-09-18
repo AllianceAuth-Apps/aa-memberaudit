@@ -17,15 +17,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Update notes
 
-This release add the new feature corporation roles, which also adds a new scope to Member Audit. Please make sure to add the additional scope to your Eve Online token app. In addition all users will need to re-register their characters to be able to use the new feature. For this all users will be automatically notified once to re-register for each of their characters. If you have the app Discord Notify enabled (recommended), those notification will be forwarded automatically as DMs to users on Discord. Users will also be informed on their character launch page about the need to re-register their characters.
+This release adds corporation roles as optional feature. Corporation roles are disabled by default and need to be explicitly enabled to active them.
 
-Note that character updates will not be disrupted by the token scope change: Existing characters will continue to be updated by Member Audit just without corporation roles until those characters has been re-registered with the new token scope.
+Corporation roles require an additional scope. Once enabled all users will need to re-register their characters to be able to use the new feature. Users will be automatically notified once to re-register for each of their characters. If you have the app Discord Notify enabled (recommended), those notification will be forwarded automatically as DMs to users on Discord. Users will also be informed on their character launch page about the need to re-register their characters.
+
+However, this scope change will not disrupt the update of existing characters in any way. This will show errors for the missing scope, but otherwise continue to update the characters normally.
 
 ### Added
 
-- Corporation roles shown for every character
-- Current update status shown on character launcher and character viewer
-- Detailed update status shown on each tab
+- Corporation roles shown for every character (when enabled)
+- Current update status are now shown on the character launcher and character viewer
+- Detailed update status with potential errors are shown on each tab
+- Admins can see which sections are enabled when checking the update status for a character
 
 ## Changed
 
