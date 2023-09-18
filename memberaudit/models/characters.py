@@ -334,9 +334,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.save(update_fields=["token_error_notified_at"])
 
     @classmethod
-    def update_section_time_until_stale(cls, section: str) -> dt.timedelta:
+    def _update_section_time_until_stale(cls, section: UpdateSection) -> dt.timedelta:
         """time until given update section is considered stale"""
-        ring = cls.UPDATE_SECTION_RINGS_MAP[cls.UpdateSection(section)]
+        ring = cls.UPDATE_SECTION_RINGS_MAP[section]
         if ring == 1:
             minutes = MEMBERAUDIT_UPDATE_STALE_RING_1
         elif ring == 2:
@@ -359,6 +359,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def is_update_section_stale(self, section: str) -> bool:
         """returns True if the give update section is stale, else False"""
+        section = self.UpdateSection(section)
         try:
             update_status = self.update_status_set.get(
                 section=section,
@@ -369,7 +370,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except (CharacterUpdateStatus.DoesNotExist, ObjectDoesNotExist, AttributeError):
             return True
 
-        deadline = now() - self.update_section_time_until_stale(section)
+        deadline = now() - self._update_section_time_until_stale(section)
         return update_status.started_at < deadline
 
     def has_section_changed(

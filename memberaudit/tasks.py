@@ -139,8 +139,10 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     logger.info(
         "%s: Starting %s character update", character, "forced" if force_update else ""
     )
-    all_sections = set(Character.UpdateSection.values)
-    sections = all_sections.difference(
+    Character.objects.clear_cache(pk=character_pk)
+
+    all_sections = set(Character.UpdateSection)
+    sections_to_update_in_loop = all_sections.difference(
         {
             Character.UpdateSection.ASSETS,
             Character.UpdateSection.MAILS,
@@ -150,9 +152,9 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             Character.UpdateSection.SKILLS,
         }
     )
-    Character.objects.clear_cache(pk=character_pk)
+
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    for section in sorted(sections):
+    for section in sorted(sections_to_update_in_loop):
         if force_update or character.is_update_section_stale(section):
             update_character_section.apply_async(
                 kwargs={
