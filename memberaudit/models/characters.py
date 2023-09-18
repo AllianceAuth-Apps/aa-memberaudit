@@ -793,6 +793,11 @@ class CharacterUpdateStatus(models.Model):
         return f"{self.character}-{self.section}"
 
     @property
+    def is_enabled(self) -> bool:
+        """Return True if this section is currently enabled."""
+        return self.section in Character.UpdateSection.enabled_sections()
+
+    @property
     def is_updating(self) -> bool:
         """Return True if this section is currently being updated."""
         if not self.started_at and not self.finished_at:

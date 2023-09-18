@@ -156,13 +156,25 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
     model = CharacterUpdateStatus
     fields = (
         "section",
-        "is_success",
+        "_is_enabled",
+        "_is_success",
         "last_error_message",
         "started_at",
         "finished_at",
         "root_task_id",
     )
+    readonly_fields = ("_is_enabled", "_is_success")
     ordering = ["section"]
+
+    @admin.display(boolean=True)
+    def _is_enabled(self, obj: CharacterUpdateStatus) -> bool:
+        return obj.is_enabled
+
+    @admin.display(boolean=True)
+    def _is_success(self, obj: CharacterUpdateStatus) -> bool:
+        if not obj.is_enabled:
+            return None
+        return obj.is_success
 
     def has_add_permission(self, request, obj=None):
         return False
