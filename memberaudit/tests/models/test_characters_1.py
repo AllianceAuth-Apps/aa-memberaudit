@@ -380,7 +380,7 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
-    @patch(MODELS_PATH + ".characters.notify")
+    @patch(MODELS_PATH + ".characters.notify.danger")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
         self, mock_notify
     ):

@@ -450,10 +450,14 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
                 },
             )
 
-    @admin.display(description=__("Enable selected characters"))
+    @admin.display(
+        description=__("Enable selected characters and reset token notifications")
+    )
     def enable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
-        queryset.filter(pk__in=pks).update(is_disabled=False)
+        queryset.filter(pk__in=pks).update(
+            is_disabled=False, token_error_notified_at=None
+        )
         self.message_user(request, __("Enabled %d characters.") % len(pks))
 
     @admin.display(description=__("Disable selected characters"))

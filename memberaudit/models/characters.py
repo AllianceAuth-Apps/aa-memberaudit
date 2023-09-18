@@ -499,7 +499,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         - TokenError: If no valid token can be found
         """
         if self.is_orphan:
-            raise TokenError(f"Orphaned characters have no tokens: {self}") from None
+            raise TokenError(f"Orphaned characters have no token: {self}") from None
+
         token = (
             Token.objects.prefetch_related("scopes")
             .filter(user=self.user, character_id=self.eve_character.character_id)
@@ -518,10 +519,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
                     "at your earliest convenience to update your token."
                 )
-                notify(user=self.user, title=title, message=message)
+                notify.danger(user=self.user, title=title, message=message)
                 self.token_error_notified_at = now()
                 self.save(update_fields=["token_error_notified_at"])
-            raise TokenError(f"Could not find a matching token for {self}")
+            raise TokenError(
+                f"Could not find a matching token for {self.eve_character} "
+                f"with scopes: {scopes}."
+            )
         return token
 
     def assets_build_list_from_esi(self, force_update=False) -> Optional[list]:

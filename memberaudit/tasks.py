@@ -3,7 +3,7 @@
 
 import inspect
 import random
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from celery import chain, shared_task
 
@@ -11,6 +11,7 @@ from django.apps import apps
 from django.contrib.auth.models import Group, User
 from django.db import transaction
 from django.utils.timezone import now
+from esi.errors import TokenError
 from esi.models import Token
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
 from eveuniverse.models import EveEntity, EveMarketPrice
@@ -269,8 +270,10 @@ def update_character_section(
     logger.info(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
-    update_method = getattr(character, Character.UpdateSection.method_name(section))
-    args = [character, section, update_method]
+    update_method: Callable = getattr(
+        character, Character.UpdateSection.method_name(section)
+    )
+    args = [section, update_method]
     if not kwargs:
         kwargs = {}
 
@@ -278,26 +281,27 @@ def update_character_section(
     if "force_update" in method_signature.parameters:
         kwargs["force_update"] = force_update
 
-    _character_update_with_error_logging(*args, **kwargs)
+    _character_update_with_error_logging(character, *args, **kwargs)
     _log_character_update_success(character, section)
 
 
 def _character_update_with_error_logging(
-    character: Character, section: str, method: object, *args, **kwargs
+    character: Character, section: str, method: Callable, *args, **kwargs
 ):
     """Facilitate catching and logging of exceptions potentially occurring
     during a character update.
     """
     try:
-        return method(*args, **kwargs)  # type: ignore
+        return method(*args, **kwargs)
     except Exception as ex:
         error_message = f"{type(ex).__name__}: {str(ex)}"
+        exc_info = not isinstance(ex, (TokenError))  # hide details for some exceptions
         logger.error(
             "%s: %s: Error ocurred: %s",
             character,
             Character.UpdateSection.display_name(section),
             error_message,
-            exc_info=True,
+            exc_info=exc_info,
         )
         CharacterUpdateStatus.objects.update_or_create(
             character=character,
