@@ -248,7 +248,10 @@ class CharacterStateListFilter(admin.SimpleListFilter):
 class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     class Media:
         css = {
-            "all": ("authentication/css/admin.css", "memberaudit/css/admin.css"),
+            "all": (
+                "allianceauth/authentication/css/admin.css",
+                "memberaudit/css/admin.css",
+            ),
         }
 
     list_display = (
