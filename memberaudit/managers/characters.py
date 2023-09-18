@@ -76,6 +76,27 @@ class CharacterQuerySet(models.QuerySet):
             )
         )
 
+    def disable_characters_with_no_owner(self) -> int:
+        """Disable characters which have no owner. Return count of disabled characters."""
+        orphaned_characters = self.filter(
+            eve_character__character_ownership__isnull=True, is_disabled=False
+        )
+        if orphaned_characters.exists():
+            orphans = list(
+                orphaned_characters.values_list(
+                    "eve_character__character_name", flat=True
+                ).order_by("eve_character__character_name")
+            )
+            orphaned_characters.update(is_disabled=True)
+            logger.info(
+                "Disabled %d characters which do not belong to a user: %s",
+                len(orphans),
+                ", ".join(orphans),
+            )
+            return len(orphans)
+
+        return 0
+
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
     def unregistered_characters_of_user_count(self, user: User) -> int:

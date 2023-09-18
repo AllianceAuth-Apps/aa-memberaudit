@@ -85,26 +85,27 @@ def update_all_characters(self, force_update: bool = False) -> None:
         stats = CharacterUpdateStatus.objects.statistics()
         logger.info(f"Update statistics: {stats}")
 
-    # disable characters without owner
-    orphaned_characters = Character.objects.filter(
-        eve_character__character_ownership__isnull=True
-    )
-    if orphaned_count := orphaned_characters.count() > 0:
-        orphaned_characters.update(is_disabled=True)
-        logger.info(
-            "Disabled %d characters which do not belong to a user.", orphaned_count
-        )
+    Character.objects.disable_characters_with_no_owner()
 
     # start sync for all enabled characters
-    enabled_characters = Character.objects.filter(is_disabled=False).values_list(
-        "pk", flat=True
+    enabled_characters = list(
+        Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
     )
-    priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    for character_pk in enabled_characters:
-        update_character.apply_async(
-            kwargs={"character_pk": character_pk, "force_update": force_update},
-            priority=priority,
+    if enabled_characters:
+        update_type = "forced" if force_update else "normal"
+        logger.info(
+            "Starting %s updates for %d characters",
+            update_type,
+            len(enabled_characters),
         )
+        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+        for character_pk in enabled_characters:
+            update_character.apply_async(
+                kwargs={"character_pk": character_pk, "force_update": force_update},
+                priority=priority,
+            )
+    else:
+        logger.info("No enabled characters found for update.")
 
 
 # Main character update tasks

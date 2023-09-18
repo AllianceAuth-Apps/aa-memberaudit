@@ -3,12 +3,12 @@ import datetime as dt
 from django.test import TestCase
 from django.utils.timezone import now
 
-from allianceauth.eveonline.models import EveAllianceInfo
+from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
 from memberaudit.models import Character, CharacterUpdateStatus
 
-from ..testdata.factories import create_character_update_status
+from ..testdata.factories import create_character, create_character_update_status
 from ..testdata.load_entities import load_entities
 from ..utils import (
     add_auth_character_to_user,
@@ -504,3 +504,60 @@ class TestCharacterManagerUnregisteredCharacterCount(TestCase):
         result = Character.objects.unregistered_characters_of_user_count(self.user)
         # then
         self.assertEqual(result, 1)
+
+
+class TestCharacterDisableCharacterWithoutOwner(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_disable_orphans(self):
+        # given
+        orphan_1 = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=False
+        )
+        orphan_2 = create_character(
+            EveCharacter.objects.get(character_id=1111), is_disabled=False
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 2)
+        orphan_1.refresh_from_db()
+        self.assertTrue(orphan_1.is_disabled)
+        orphan_2.refresh_from_db()
+        self.assertTrue(orphan_2.is_disabled)
+        self.assertFalse(self.character.is_disabled)
+
+    def test_should_ignore_already_disables_orphans(self):
+        # given
+        orphan_disabled = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=True
+        )
+        orphan_enabled = create_character(
+            EveCharacter.objects.get(character_id=1111), is_disabled=False
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 1)
+        orphan_disabled.refresh_from_db()
+        self.assertTrue(orphan_disabled.is_disabled)
+        orphan_enabled.refresh_from_db()
+        self.assertTrue(orphan_enabled.is_disabled)
+        self.assertFalse(self.character.is_disabled)
+
+    def test_should_return_zero_when_nothing_to_disable(self):
+        # given
+        orphan_disabled = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=True
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 0)
+        orphan_disabled.refresh_from_db()
+        self.assertTrue(orphan_disabled.is_disabled)
+        self.assertFalse(self.character.is_disabled)
