@@ -129,7 +129,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         self.assertEqual(obj.update_status, Character.UpdateStatus.DISABLED)
 
 
-class TestCharacterManagerUserHasScope(TestCase):
+class TestCharacterUserHasScope(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -229,7 +229,7 @@ class TestCharacterManagerUserHasScope(TestCase):
         )
 
 
-class TestCharacterManagerUserHasAccess(TestCase):
+class TestCharacterUserHasAccess(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -468,7 +468,7 @@ class TestCharacterUpdateStatusManager(TestCase):
         self.assertEqual(stats["ring_3"]["max"]["duration"], 90)
 
 
-class TestCharacterManagerUnregisteredCharacterCount(TestCase):
+class TestCharacterUnregisteredCharacterCount(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -498,7 +498,13 @@ class TestCharacterManagerUnregisteredCharacterCount(TestCase):
             character_1002,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
-            last_error_message="TokenError",
+            last_error_message="TokenError 1",
+        )
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.CONTRACTS,
+            is_success=False,
+            last_error_message="TokenError 2",
         )
         # when
         result = Character.objects.unregistered_characters_of_user_count(self.user)
