@@ -152,7 +152,7 @@ class EveSkillTypeAdmin(EveUniverseEntityModelAdmin):
     pass
 
 
-class SyncStatusAdminInline(admin.TabularInline):
+class CharacterUpdateStatusAdminInline(admin.TabularInline):
     model = CharacterUpdateStatus
     fields = (
         "section",
@@ -302,7 +302,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "enable_characters",
         "disable_characters",
     ]
-    inlines = (SyncStatusAdminInline,)
+    inlines = (CharacterUpdateStatusAdminInline,)
 
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset(*args, **kwargs)

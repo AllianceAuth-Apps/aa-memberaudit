@@ -743,7 +743,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
 
 class CharacterUpdateStatus(models.Model):
-    """Update status for a character"""
+    """Update status for a character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="update_status_set"
