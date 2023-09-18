@@ -40,10 +40,11 @@ from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
 
-MODULE_PATH = "memberaudit.managers.character_sections_3"
+MODELS_PATH = "memberaudit.models.characters"
+MANAGERS_PATH = "memberaudit.managers.character_sections_3"
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterMiningLedgerManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
@@ -114,7 +115,7 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
         self.assertEqual(obj.quantity, 7004)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_update_online_status(self, mock_esi):
         # given
@@ -133,7 +134,7 @@ class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTe
         self.assertEqual(self.character_1001.online_status.logins, 9001)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterPlanetManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
@@ -192,14 +193,15 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
         self.assertEqual(obj.upgrade_level, 0)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterRolesManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
+        with patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True):
+            cls.character_1001 = create_memberaudit_character(1001)
 
     def test_should_add_new_role(self, mock_esi):
         # given
@@ -278,7 +280,7 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_should_update_all_fields(self, mock_esi):
         # given
@@ -323,7 +325,7 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         )
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_create_new_skills(self, mock_esi):
         # given
@@ -415,7 +417,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         self.assertEqual(skill.active_skill_level, 3)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
@@ -494,7 +496,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(entry.finished_level, 3)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
@@ -541,7 +543,7 @@ class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(self.character_1002.standings.count(), 0)
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletBalanceManager(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
 ):
@@ -555,11 +557,11 @@ class TestCharacterWalletBalanceManager(
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletJournalManager(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
 ):
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    @patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_1(self, mock_esi):
         """can create wallet journal entry from scratch"""
         mock_esi.client = esi_client_stub
@@ -587,7 +589,7 @@ class TestCharacterWalletJournalManager(
             obj.ref_type, "agent_mission_time_bonus_reward_corporation_tax"
         )
 
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    @patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_2(self, mock_esi):
         """can add entry to existing wallet journal"""
         mock_esi.client = esi_client_stub
@@ -621,7 +623,7 @@ class TestCharacterWalletJournalManager(
         self.assertEqual(obj.ref_type, "contract_deposit")
         self.assertEqual(obj.second_party.id, 2002)
 
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
+    @patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_3(self, mock_esi):
         """does not update existing entries"""
         mock_esi.client = esi_client_stub
@@ -658,7 +660,7 @@ class TestCharacterWalletJournalManager(
         mock_esi.client = esi_client_stub
 
         with patch(
-            MODULE_PATH + ".data_retention_cutoff",
+            MANAGERS_PATH + ".data_retention_cutoff",
             lambda: dt.datetime(2018, 3, 11, 20, 5, tzinfo=dt.timezone.utc)
             - dt.timedelta(days=10),
         ):
@@ -685,7 +687,7 @@ class TestCharacterWalletJournalManager(
         )
 
         with patch(
-            MODULE_PATH + ".data_retention_cutoff",
+            MANAGERS_PATH + ".data_retention_cutoff",
             lambda: dt.datetime(2018, 3, 11, 20, 5, tzinfo=dt.timezone.utc)
             - dt.timedelta(days=20),
         ):
@@ -697,7 +699,7 @@ class TestCharacterWalletJournalManager(
         )
 
 
-@patch(MODULE_PATH + ".esi")
+@patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletTransactionManager(
     CharacterUpdateTestDataMixin, NoSocketsTestCase
 ):
@@ -705,7 +707,7 @@ class TestCharacterWalletTransactionManager(
         # given
         mock_esi.client = esi_client_stub
         # when
-        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
+        with patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None):
             CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
         # then
         self.assertSetEqual(
@@ -744,7 +746,7 @@ class TestCharacterWalletTransactionManager(
             second_party=EveEntity.objects.get(id=1003),
         )
         # when
-        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
+        with patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None):
             CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
         # then
         self.assertSetEqual(

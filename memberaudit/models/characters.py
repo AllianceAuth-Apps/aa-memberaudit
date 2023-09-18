@@ -5,7 +5,7 @@ Character and CharacterUpdateStatus models
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Callable, Optional, Set, Tuple
+from typing import Any, Callable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPInternalServerError
 
@@ -684,17 +684,16 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """syncs the character's wallet transactions"""
         self.wallet_transactions.update_or_create_esi(self, force_update)
 
-    @classmethod
-    def get_esi_scopes(cls) -> list:
-        """Return the ESI scopes required to update this character."""
-        return [
+    @staticmethod
+    def get_esi_scopes() -> List[str]:
+        """Return all enabled ESI scopes required to update this character."""
+        scopes = [
             "esi-assets.read_assets.v1",
             "esi-bookmarks.read_character_bookmarks.v1",
             "esi-calendar.read_calendar_events.v1",
             "esi-characters.read_agents_research.v1",
             "esi-characters.read_blueprints.v1",
             "esi-characters.read_contacts.v1",
-            "esi-characters.read_corporation_roles.v1",  # NEW
             "esi-characters.read_fatigue.v1",
             "esi-characters.read_fw_stats.v1",
             "esi-characters.read_loyalty.v1",
@@ -725,6 +724,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "esi-universe.read_structures.v1",
             "esi-wallet.read_character_wallet.v1",
         ]
+        if MEMBERAUDIT_FEATURE_ROLES_ENABLED:
+            scopes.append("esi-characters.read_corporation_roles.v1")
+
+        return sorted(scopes)
 
     def update_sharing_consistency(self):
         """Update sharing to ensure consistency with permissions."""
