@@ -5,7 +5,7 @@
     {% translate 'Last update' %}: {{ update_section.finished_at|naturaltime|default:"(No data)" }} |
     {% translate 'Status' %}:
     {% if update_section.is_success %}
-    <span class="text-success">{% translate 'OK' %}</span>
+    <span class="text-muted">{% translate 'OK' %}</span>
     {% else %}
     <span class="text-danger">{% translate 'failed' %}</span>
     {% endif %}

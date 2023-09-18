@@ -801,6 +801,18 @@ class TestCharacterHasTokenError(TestCase):
         # when/then
         self.assertFalse(self.character.has_token_issue())
 
+    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_false_when_token_error_for_disabled_section(self):
+        # given
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ROLES,
+            is_success=False,
+            last_error_message="TokenError",
+        )
+        # when/then
+        self.assertFalse(self.character.has_token_issue())
+
 
 class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
     @classmethod
