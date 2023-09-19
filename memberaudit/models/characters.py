@@ -526,6 +526,37 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             },
         )
 
+    def perform_update_with_error_logging(
+        self, section: str, method: Callable, *args, **kwargs
+    ) -> None:
+        """Facilitate catching and logging of exceptions potentially occurring
+        during a character update.
+        """
+        try:
+            return method(*args, **kwargs)
+        except Exception as ex:
+            error_message = f"{type(ex).__name__}: {str(ex)}"
+            exc_info = not isinstance(
+                ex, (TokenError)
+            )  # hide details for some exceptions
+            logger.error(
+                "%s: %s: Error ocurred: %s",
+                self,
+                Character.UpdateSection.display_name(section),
+                error_message,
+                exc_info=exc_info,
+            )
+            CharacterUpdateStatus.objects.update_or_create(
+                character=self,
+                section=section,
+                defaults={
+                    "is_success": False,
+                    "last_error_message": error_message,
+                    "finished_at": now(),
+                },
+            )
+            raise ex
+
     def fetch_token(self, scopes=None) -> Token:
         """Return a valid token for this character and scope.
 
