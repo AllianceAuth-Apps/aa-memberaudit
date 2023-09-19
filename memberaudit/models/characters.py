@@ -87,19 +87,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return f"update_{section}"
 
         @classmethod
-        def display_name(cls, section: str) -> str:
-            """Return display name of given section.
-
-            Raises:
-                - ValueError if section is invalid
-            """
-            for short_name, long_name in cls.choices:
-                if short_name == section:
-                    return long_name
-
-            raise ValueError(f"Unknown section: {section}")
-
-        @classmethod
         def enabled_sections(cls) -> Set["Character.UpdateSection"]:
             """Return enabled sections."""
             sections = set(Character.UpdateSection)
@@ -501,13 +488,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
         return data, True
 
-    def update_section_log_success(self, section: str) -> None:
+    def update_section_log_success(self, section: UpdateSection) -> None:
         """Log success after successfully updating a character's section."""
-        logger.info(
-            "%s: %s update completed",
-            self,
-            Character.UpdateSection.display_name(section),
-        )
+        logger.info("%s: %s update completed", self, section.label)
         self.update_status_set.update_or_create(
             section=section,
             defaults={
@@ -518,7 +501,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
 
     def perform_update_with_error_logging(
-        self, section: str, method: Callable, *args, **kwargs
+        self, section: UpdateSection, method: Callable, *args, **kwargs
     ) -> None:
         """Facilitate catching and logging of exceptions potentially occurring
         during a character update.
@@ -533,7 +516,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             logger.error(
                 "%s: %s: Error ocurred: %s",
                 self,
-                Character.UpdateSection.display_name(section),
+                section.label,
                 error_message,
                 exc_info=exc_info,
             )

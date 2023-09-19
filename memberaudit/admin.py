@@ -397,11 +397,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
         enabled_sections = Character.UpdateSection.enabled_sections()
-        missing = enabled_sections.difference(existing)
-        if missing:
-            return sorted(
-                [Character.UpdateSection.display_name(obj) for obj in missing]
-            )
+        missing_sections = enabled_sections.difference(existing)
+        if missing_sections:
+            return sorted(obj.label for obj in missing_sections)
         return None
 
     @admin.display(description=__("Update selected characters from EVE server"))
@@ -440,7 +438,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(
         description=__("Update %s for selected characters from EVE server")
-        % Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)
+        % Character.UpdateSection.ONLINE_STATUS.label
     )
     def update_online_status(self, request, queryset):
         self._update_section(request, queryset, Character.UpdateSection.ONLINE_STATUS)
@@ -459,10 +457,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             self.message_user(
                 request,
                 __("Started updating section %(section)s for character %(character)s.")
-                % {
-                    "section": Character.UpdateSection.display_name(section),
-                    "character": obj,
-                },
+                % {"section": section.label, "character": obj},
             )
 
     @admin.display(

@@ -757,15 +757,6 @@ class TestCharacterUpdateSection(NoSocketsTestCase):
         with self.assertRaises(ValueError):
             result = Character.UpdateSection.method_name("invalid")
 
-    def test_display_name(self):
-        result = Character.UpdateSection.display_name(
-            Character.UpdateSection.CORPORATION_HISTORY
-        )
-        self.assertEqual(result, "corporation history")
-
-        with self.assertRaises(ValueError):
-            result = Character.UpdateSection.display_name("invalid")
-
 
 class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)

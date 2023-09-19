@@ -267,13 +267,12 @@ def update_character_section(
     parent_task_id: Optional[str] = None,
 ) -> None:
     """Update a section for a character from ESI."""
+    section = Character.UpdateSection(section)
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     character.reset_update_section(section, root_task_id, parent_task_id)
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
 
     method: Callable = getattr(character, Character.UpdateSection.method_name(section))
     method_signature = inspect.signature(method)
@@ -323,13 +322,10 @@ def update_character_assets(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    logger.info(
-        "%s: Updating %s",
-        character,
-        Character.UpdateSection.display_name(Character.UpdateSection.ASSETS),
-    )
+    section = Character.UpdateSection.ASSETS
+    logger.info("%s: Updating %s", character, section.label)
     character.reset_update_section(
-        section=Character.UpdateSection.ASSETS,
+        section=section,
         root_task_id=root_task_id,
         parent_task_id=parent_task_id,
     )
@@ -560,9 +556,7 @@ def update_character_mails(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.MAILS
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
@@ -686,9 +680,7 @@ def update_character_contacts(
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contact_labels.si(character.pk, force_update=force_update).set(
@@ -755,9 +747,7 @@ def update_character_contracts(
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contract_headers.si(
