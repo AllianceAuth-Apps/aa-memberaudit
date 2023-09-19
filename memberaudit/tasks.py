@@ -267,7 +267,6 @@ def update_character_section(
     force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
-    **kwargs,
 ) -> None:
     """Update a section for a character from ESI."""
     character: Character = Character.objects.get_cached(
@@ -277,18 +276,15 @@ def update_character_section(
     logger.info(
         "%s: Updating %s", character, Character.UpdateSection.display_name(section)
     )
-    update_method: Callable = getattr(
-        character, Character.UpdateSection.method_name(section)
-    )
-    args = [section, update_method]
-    if not kwargs:
+
+    method: Callable = getattr(character, Character.UpdateSection.method_name(section))
+    method_signature = inspect.signature(method)
+    if "force_update" in method_signature.parameters:
+        kwargs = {"force_update": force_update}
+    else:
         kwargs = {}
 
-    method_signature = inspect.signature(update_method)
-    if "force_update" in method_signature.parameters:
-        kwargs["force_update"] = force_update
-
-    _character_update_with_error_logging(character, *args, **kwargs)
+    _character_update_with_error_logging(character, section, method, **kwargs)
     character.update_section_log_success(section)
 
 
@@ -383,10 +379,10 @@ def assets_build_list_from_esi(character_pk: int, force_update: bool = False) ->
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     asset_list = _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.ASSETS,
-        character.assets_build_list_from_esi,
-        force_update,
+        character=character,
+        section=Character.UpdateSection.ASSETS,
+        method=character.assets_build_list_from_esi,
+        force_update=force_update,
     )
     return asset_list
 
@@ -627,9 +623,9 @@ def update_character_mailing_lists(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mailing_lists,
+        character=character,
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mailing_lists,
         force_update=force_update,
     )
 
@@ -642,9 +638,9 @@ def update_character_mail_labels(character_pk: int, force_update: bool = False) 
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mail_labels,
+        character=character,
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_labels,
         force_update=force_update,
     )
 
@@ -659,9 +655,9 @@ def update_character_mail_headers(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mail_headers,
+        character=character,
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_headers,
         force_update=force_update,
     )
 
@@ -752,9 +748,9 @@ def update_character_contact_labels(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTACTS,
-        character.update_contact_labels,
+        character=character,
+        section=Character.UpdateSection.CONTACTS,
+        method=character.update_contact_labels,
         force_update=force_update,
     )
 
@@ -767,9 +763,9 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTACTS,
-        character.update_contacts,
+        character=character,
+        section=Character.UpdateSection.CONTACTS,
+        method=character.update_contacts,
         force_update=force_update,
     )
     character.update_section_log_success(Character.UpdateSection.CONTACTS)
@@ -820,9 +816,9 @@ def update_character_contract_headers(character_pk: int, force_update: bool = Fa
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTRACTS,
-        character.update_contract_headers,
+        character=character,
+        section=Character.UpdateSection.CONTRACTS,
+        method=character.update_contract_headers,
         force_update=force_update,
     )
 
