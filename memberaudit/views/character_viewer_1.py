@@ -51,7 +51,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
-    """returns generated HTML with name and icon for asset and contract items"""
+    """Return generated HTML with name and icon for asset and contract items."""
     if item.is_blueprint_copy:
         variant = item.eve_type.IconVariant.BPC
     else:
@@ -91,10 +91,11 @@ def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
     "ship__eve_type",
 )
 def character_viewer(request, character_pk: int, character: Character) -> HttpResponse:
-    """main view for showing a character with all details
+    """Main view for showing a character with all details.
 
     Args:
     - character_pk: PK for character to be shown
+    - character: character object to be shown
 
     GET Params:
     - tab: ID of tab to be shown  (optional)

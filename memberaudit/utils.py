@@ -19,9 +19,9 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 def get_or_create_esi_or_none(
     prop_name: str, dct: dict, model_class: type
 ) -> Optional[models.Model]:
-    """Gets or creates a new eveuniverse object from a dictionary entry.
+    """Get or create a new eveuniverse object from a dictionary entry.
 
-    return the object on success or None
+    Return the object on success or None.
     """
     if dct.get(prop_name):
         obj, _ = model_class.objects.get_or_create_esi(id=dct.get(prop_name))  # type: ignore
@@ -42,8 +42,9 @@ def get_or_create_or_none(
 
 
 def get_or_none(prop_name: str, dct: dict, model_class: type) -> Optional[models.Model]:
-    """Gets a new Django object from a dictionary entry
-    or returns None if it does not exist."""
+    """Get a new Django object from a dictionary entry
+    or return None if it does not exist.
+    """
     obj_id = dct.get(prop_name)
     if obj_id:
         try:
@@ -74,7 +75,7 @@ def clear_users_from_group(group):
 
 
 def get_unidecoded_slug(app_name: str = "Member Audit") -> str:
-    """Get an unidecoded slug from a string
+    """Get an unidecoded slug from a string.
 
     :param app_name:
     :type app_name:

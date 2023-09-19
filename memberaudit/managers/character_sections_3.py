@@ -44,7 +44,7 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mining ledger for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.MINING_LEDGER,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -91,7 +91,7 @@ class CharacterOnlineStatusManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create online status for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.ONLINE_STATUS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -123,7 +123,7 @@ class CharacterRoleManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create roles for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.ROLES,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -231,7 +231,7 @@ class CharacterPlanetManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create planets for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.PLANETS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -276,7 +276,7 @@ class CharacterShipManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create ship for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.SHIP,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -312,7 +312,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create skills queue for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.SKILL_QUEUE,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -365,7 +365,7 @@ class CharacterSkillManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create skills for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.SKILLS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -564,7 +564,7 @@ class CharacterStandingManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create standing for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.STANDINGS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -611,7 +611,7 @@ class CharacterWalletBalanceManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create wallet balance for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.WALLET_BALLANCE,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -638,7 +638,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
         Note: Does not update unknown EveEntities.
         """
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.WALLET_JOURNAL,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -708,7 +708,7 @@ class CharacterWalletTransactionManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create wallet transactions for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.WALLET_TRANSACTIONS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,

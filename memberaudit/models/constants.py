@@ -1,6 +1,4 @@
-"""
-Constants for all models
-"""
+"""Constants for all models."""
 
 CURRENCY_MAX_DIGITS = 17
 CURRENCY_MAX_DECIMALS = 2

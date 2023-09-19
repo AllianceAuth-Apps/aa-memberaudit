@@ -324,7 +324,6 @@ def character_roles_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:
     """Render data view for character roles."""
-
     character_roles_map = defaultdict(set)
     for obj in character.roles.all():
         location = CharacterRole.Location(obj.location)

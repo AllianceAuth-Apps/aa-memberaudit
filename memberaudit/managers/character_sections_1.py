@@ -66,7 +66,7 @@ class CharacterAssetManagerBase(models.Manager):
     def fetch_from_esi(self, character, force_update: bool = False) -> Optional[list]:
         """Fetch assets from ESI and preload related objects from ESI."""
 
-        asset_list, changed = character.update_data_if_changed_or_forced(
+        asset_list, changed = character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
             fetch_func=self._fetch_data_from_esi,
             store_func=None,
@@ -144,7 +144,7 @@ class CharacterAttributesManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create attributes for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.ATTRIBUTES,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -182,7 +182,7 @@ class CharacterContactLabelManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -231,7 +231,7 @@ class CharacterContactManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -380,7 +380,7 @@ class CharacterContractManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create contracts for a character from ESI."""
 
-        character.update_data_if_changed_or_forced(
+        character.update_section_if_changed(
             section=character.UpdateSection.CONTRACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,

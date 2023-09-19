@@ -480,8 +480,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
         # when
-        result, changed = character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        result, changed = character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -506,8 +506,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
         # when
-        result, changed = character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        result, changed = character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -528,8 +528,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
         # when
-        result, changed = character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        result, changed = character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=True,
@@ -550,8 +550,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when
-        result, changed = character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        result, changed = character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -572,8 +572,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
         # when
-        character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -597,8 +597,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
-        result, changed = character.update_data_if_changed_or_forced(
-            section=Character.UpdateSection.LOCATION,
+        result, changed = character.update_section_if_changed(
+            section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=None,
         )
