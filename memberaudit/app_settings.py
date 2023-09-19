@@ -36,16 +36,6 @@ MEMBERAUDIT_FEATURE_ROLES_ENABLED = clean_setting(
 )
 """Feature flag to enable or disable the corporation roles feature."""
 
-MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD = clean_setting(
-    "MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD", 25
-)
-"""ESI error limit remain threshold. The number of remaining errors is counted down
-from 100 as errors occur. Because multiple tasks may request the value simultaneously
-and get the same response, the threshold must be above 0
-to prevent the API from shutting down with a 420 error.
-"""
-
-
 MEMBERAUDIT_LOCATION_STALE_HOURS = clean_setting("MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
 """Hours after a existing location (e.g. structure) becomes stale and gets updated
 e.g. for name changes of structures.
@@ -56,7 +46,6 @@ MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE = clean_setting(
 )
 """Minimum age of existing export file before next update can be started in minutes."""
 
-
 MEMBERAUDIT_LOG_UPDATE_STATS = clean_setting("MEMBERAUDIT_LOG_UPDATE_STATS", False)
 """When set True will log the update stats at the start of every run
 The update stats include the measures durations from the last run per round and section.
@@ -64,7 +53,6 @@ The update stats include the measures durations from the last run per round and 
 
 MEMBERAUDIT_MAX_MAILS = clean_setting("MEMBERAUDIT_MAX_MAILS", 250)
 """Maximum amount of mails fetched from ESI for each character."""
-
 
 MEMBERAUDIT_UPDATE_STALE_RING_1 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_1", 60)
 """Character sections are updated on different schedules, called rings.
