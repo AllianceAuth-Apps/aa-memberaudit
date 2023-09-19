@@ -510,6 +510,22 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
         return data, True
 
+    def update_section_log_success(self, section: str) -> None:
+        """Log success after successfully updating a character's section."""
+        logger.info(
+            "%s: %s update completed",
+            self,
+            Character.UpdateSection.display_name(section),
+        )
+        self.update_status_set.update_or_create(
+            section=section,
+            defaults={
+                "is_success": True,
+                "last_error_message": "",
+                "finished_at": now(),
+            },
+        )
+
     def fetch_token(self, scopes=None) -> Token:
         """Return a valid token for this character and scope.
 
@@ -757,18 +773,22 @@ class CharacterUpdateStatus(models.Model):
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="update_status_set"
     )
-
     section = models.CharField(
         max_length=64, choices=Character.UpdateSection.choices, db_index=True
     )
+
+    content_hash_1 = models.CharField(max_length=32, default="")
+    content_hash_2 = models.CharField(max_length=32, default="")
+    content_hash_3 = models.CharField(max_length=32, default="")
+    # has_token_error = models.BooleanField(
+    #     default=False, help_text="Whether this section has a token error."
+    # )
+    finished_at = models.DateTimeField(null=True, default=None, db_index=True)
     is_success = models.BooleanField(
         null=True,
         default=None,
         db_index=True,
     )
-    content_hash_1 = models.CharField(max_length=32, default="")
-    content_hash_2 = models.CharField(max_length=32, default="")
-    content_hash_3 = models.CharField(max_length=32, default="")
     last_error_message = models.TextField()
     root_task_id = models.CharField(
         max_length=36,
@@ -783,7 +803,6 @@ class CharacterUpdateStatus(models.Model):
         help_text="ID of character_update task that started this update",
     )
     started_at = models.DateTimeField(null=True, default=None, db_index=True)
-    finished_at = models.DateTimeField(null=True, default=None, db_index=True)
 
     objects = CharacterUpdateStatusManager()
 

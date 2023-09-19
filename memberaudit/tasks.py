@@ -270,7 +270,7 @@ def update_character_section(
     **kwargs,
 ) -> None:
     """Update a section for a character from ESI."""
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     character.reset_update_section(section, root_task_id, parent_task_id)
@@ -289,7 +289,7 @@ def update_character_section(
         kwargs["force_update"] = force_update
 
     _character_update_with_error_logging(character, *args, **kwargs)
-    _log_character_update_success(character, section)
+    character.update_section_log_success(section)
 
 
 def _character_update_with_error_logging(
@@ -320,20 +320,6 @@ def _character_update_with_error_logging(
             },
         )
         raise ex
-
-
-def _log_character_update_success(character: Character, section: str):
-    """Log success for updating a character's section."""
-    logger.info(
-        "%s: %s update completed",
-        character,
-        Character.UpdateSection.display_name(section),
-    )
-    CharacterUpdateStatus.objects.update_or_create(
-        character=character,
-        section=section,
-        defaults={"is_success": True, "last_error_message": "", "finished_at": now()},
-    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -439,7 +425,7 @@ def assets_create_parents(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     if asset_list is None:
-        _log_character_update_success(character, Character.UpdateSection.ASSETS)
+        character.update_section_log_success(Character.UpdateSection.ASSETS)
         return
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
@@ -507,7 +493,7 @@ def assets_create_parents(
                 priority=priority,
             )
         else:
-            _log_character_update_success(character, Character.UpdateSection.ASSETS)
+            character.update_section_log_success(Character.UpdateSection.ASSETS)
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
@@ -579,7 +565,7 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        _log_character_update_success(character, Character.UpdateSection.ASSETS)
+        character.update_section_log_success(Character.UpdateSection.ASSETS)
         if len(assets_flat) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
@@ -715,7 +701,7 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
             )
 
     # the last task in the chain logs success (if any)
-    _log_character_update_success(character, Character.UpdateSection.MAILS)
+    character.update_section_log_success(Character.UpdateSection.MAILS)
 
 
 # special tasks for updating contacts
@@ -786,7 +772,7 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
         character.update_contacts,
         force_update=force_update,
     )
-    _log_character_update_success(character, Character.UpdateSection.CONTACTS)
+    character.update_section_log_success(Character.UpdateSection.CONTACTS)
 
 
 # special tasks for updating contracts
@@ -907,7 +893,7 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
-    _log_character_update_success(character, Character.UpdateSection.CONTRACTS)
+    character.update_section_log_success(Character.UpdateSection.CONTRACTS)
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
