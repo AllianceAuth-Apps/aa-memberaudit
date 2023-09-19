@@ -547,8 +547,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.token_error_notified_at = now()
                 self.save(update_fields=["token_error_notified_at"])
             raise TokenError(
-                f"Could not find a matching token for {self.eve_character} "
-                f"with scopes: {scopes}."
+                f"Could not find a matching token for {self} with scopes: {scopes}."
             )
         return token
 

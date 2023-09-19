@@ -9,7 +9,7 @@ from .models import Character
 
 
 class MemberauditMenuItem(MenuItemHook):
-    """This class ensures only authorized users will see the menu entry"""
+    """A class to ensure only authorized users will see the menu entry."""
 
     def __init__(self):
         MenuItemHook.__init__(
