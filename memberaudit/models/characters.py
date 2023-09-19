@@ -387,7 +387,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 started_at__isnull=False,
                 finished_at__isnull=False,
             )
-        except (CharacterUpdateStatus.DoesNotExist, ObjectDoesNotExist, AttributeError):
+        except CharacterUpdateStatus.DoesNotExist:
             return True
 
         deadline = now() - self._update_section_time_until_stale(section)
@@ -411,14 +411,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         self, section: str, content: Any, hash_num: int = 1
     ) -> None:
         """Update hash for a section."""
-        try:
-            section_obj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
-            section_obj, _ = CharacterUpdateStatus.objects.get_or_create(
-                character=self, section=section
-            )
+        section_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
+            character=self, section=section
+        )[0]
         section_obj.update_content_hash(content=content, hash_num=hash_num)
 
     def reset_update_section(
@@ -428,14 +423,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         parent_task_id: Optional[str] = None,
     ) -> "CharacterUpdateStatus":
         """Reset status of given update section and returns it."""
-        try:
-            section_onj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
-            section_onj, _ = CharacterUpdateStatus.objects.get_or_create(
-                character=self, section=section
-            )
+        section_onj: CharacterUpdateStatus = self.update_status_set.get_or_create(
+            section=section
+        )[0]
         section_onj.reset(root_task_id, parent_task_id)
         return section_onj
 
@@ -445,6 +435,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             section_obj = self.update_status_set.get(section=section)
         except CharacterUpdateStatus.DoesNotExist:
             return True
+
         return section_obj.is_updating
 
     def update_section_if_changed(
@@ -546,7 +537,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 error_message,
                 exc_info=exc_info,
             )
-            CharacterUpdateStatus.objects.update_or_create(
+            self.update_status_set.update_or_create(
                 character=self,
                 section=section,
                 defaults={
