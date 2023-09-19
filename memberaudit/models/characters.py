@@ -76,10 +76,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
         @classmethod
         def method_name(cls, section: str) -> str:
-            """returns name of update method corresponding with the given section
+            """Return name of update method corresponding with the given section.
 
             Raises:
-            - ValueError if section is invalid
+                - ValueError if section is invalid
             """
             if section not in cls.values:
                 raise ValueError(f"Unknown section: {section}")
@@ -88,10 +88,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
         @classmethod
         def display_name(cls, section: str) -> str:
-            """returns display name of given section
+            """Return display name of given section.
 
             Raises:
-            - ValueError if section is invalid
+                - ValueError if section is invalid
             """
             for short_name, long_name in cls.choices:
                 if short_name == section:
@@ -261,7 +261,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return False
 
     def user_has_scope(self, user: User) -> bool:
-        """Returns True if given user has scope to access this character"""
+        """Returns True if the given user has the permission to access this character."""
         try:
             if self.user == user:  # shortcut for better performance
                 return True
@@ -271,7 +271,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def user_has_access(self, user: User) -> bool:
         """Returns True if given user has permission to access this character
-        in the character viewer
+        in the character viewer.
         """
         try:
             if self.user == user:  # shortcut for better performance
@@ -362,8 +362,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return dt.timedelta(minutes=minutes - MEMBERAUDIT_UPDATE_STALE_OFFSET)
 
     @classmethod
-    def sections_in_ring(cls, ring: int) -> set:
-        """Return set of sections for given ring"""
+    def sections_in_ring(cls, ring: int) -> Set["Character.UpdateSection"]:
+        """Return the sections for a given ring."""
         return {
             section
             for section, ring_num in cls.UPDATE_SECTION_RINGS_MAP.items()
@@ -396,9 +396,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def has_section_changed(
         self, section: str, content: Any, hash_num: int = 1
     ) -> bool:
-        """Return False if the content hash for this character's section has not changed
-
-        Else return True."""
+        """Return False if the content hash for this character's section
+        has not changed, else return True.
+        """
         try:
             section_obj: CharacterUpdateStatus = self.update_status_set.get(
                 section=section
@@ -471,7 +471,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 and a flag that is True if data was changed,
                 False when it was not change, else None
         """
-
         try:
             data = fetch_func(character=self)
         except HTTPInternalServerError as ex:
@@ -512,7 +511,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return data, True
 
     def fetch_token(self, scopes=None) -> Token:
-        """Returns a valid token for this character and scope.
+        """Return a valid token for this character and scope.
 
         Args:
             - scopes: Optionally provide the required scopes.
@@ -604,7 +603,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
     def update_implants(self, force_update: bool = False):
-        """Update the character's current implants from ESI"""
+        """Update the character's current implants from ESI."""
         self.implants.update_or_create_esi(self, force_update)
 
     def update_location(self, force_update: bool = False):
@@ -618,7 +617,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         self.loyalty_entries.update_or_create_esi(self, force_update)
 
     def update_jump_clones(self, force_update: bool = False):
-        """updates the character's jump clones from ESI."""
+        """Update the character's jump clones from ESI."""
         self.jump_clones.update_or_create_esi(self, force_update)
 
     def update_mailing_lists(self, force_update: bool = False):

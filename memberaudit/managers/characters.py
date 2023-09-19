@@ -135,9 +135,7 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
         return unregistered + token_errors
 
     def user_has_scope(self, user: User) -> models.QuerySet:
-        """Return characters the given user has permission to access
-        by scope only.
-        """
+        """Return characters the given user has the scope permission to access."""
         if user.has_perm("memberaudit.view_everything"):
             return self.all()
         qs = self.filter(eve_character__character_ownership__user=user)

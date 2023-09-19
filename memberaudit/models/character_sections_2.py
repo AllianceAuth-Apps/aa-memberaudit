@@ -1,6 +1,4 @@
-"""
-Character sections models
-"""
+"""Character sections models."""
 
 from django.db import models
 from django.utils.html import strip_tags
@@ -143,7 +141,7 @@ class CharacterDetails(EveEntityIdsMixin, models.Model):
 
 
 class CharacterFwStats(models.Model):
-    """Faction Warfare statistics of a character"""
+    """The faction Warfare statistics of a character."""
 
     RANKS = {
         EveFactionId.AMARR_EMPIRE.value: (
@@ -248,7 +246,7 @@ class CharacterFwStats(models.Model):
 
 
 class CharacterImplant(models.Model):
-    """Implant of a character"""
+    """An implant of a character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="implants"
@@ -271,7 +269,7 @@ class CharacterImplant(models.Model):
 
 
 class CharacterLocation(models.Model):
-    """Location of a character"""
+    """The location of a character."""
 
     character = models.OneToOneField(
         Character, on_delete=models.CASCADE, primary_key=True, related_name="location"
@@ -323,7 +321,7 @@ class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
 
 
 class CharacterJumpClone(models.Model):
-    """Jump clone of a character"""
+    """A character's jump clone."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="jump_clones"
@@ -349,7 +347,7 @@ class CharacterJumpClone(models.Model):
 
 
 class CharacterJumpCloneImplant(models.Model):
-    """Implant of a character jump clone"""
+    """An jump clone implant."""
 
     jump_clone = models.ForeignKey(
         CharacterJumpClone, on_delete=models.CASCADE, related_name="implants"
@@ -404,12 +402,12 @@ class CharacterMail(models.Model):
 
     @property
     def body_html(self) -> str:
-        """returns the body as html"""
+        """Return the mail body as html."""
         return mark_safe(eve_xml_to_html(self.body, add_default_style=True))
 
 
 class CharacterMailLabel(models.Model):
-    """Mail labels of a character"""
+    """A mail labels of a character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="mail_labels"
@@ -436,7 +434,7 @@ class CharacterMailLabel(models.Model):
 
 
 class CharacterMailUnreadCount(models.Model):
-    """Wallet balance of a character"""
+    """The mail unread count of a character."""
 
     character = models.OneToOneField(
         Character,

@@ -1,6 +1,4 @@
-"""
-Character sections models
-"""
+"""Character sections models."""
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
@@ -315,7 +313,7 @@ class CharacterRole(models.Model):
 
 
 class CharacterShip(models.Model):
-    """Current ship of a character"""
+    """The current ship of a character."""
 
     character = models.OneToOneField(
         Character, on_delete=models.CASCADE, related_name="ship"
@@ -363,7 +361,7 @@ class CharacterSkill(models.Model):
 
 
 class CharacterSkillpoints(models.Model):
-    """Skill points of a character"""
+    """The skill points of a character."""
 
     character = models.OneToOneField(
         Character,
@@ -379,7 +377,7 @@ class CharacterSkillpoints(models.Model):
 
 
 class CharacterSkillqueueEntry(models.Model):
-    """Entry in the skillqueue of a character"""
+    """An entry in the skillqueue of a character."""
 
     character = models.ForeignKey(
         Character,
@@ -505,7 +503,7 @@ class CharacterStanding(models.Model):
 
 
 class CharacterWalletBalance(models.Model):
-    """Wallet balance of a character"""
+    """A wallet balance of a character."""
 
     character = models.OneToOneField(
         Character,
