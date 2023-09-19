@@ -45,7 +45,7 @@ def eve_entity_ids_from_objs(objs: Iterable[Any]) -> Set[int]:
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:
-    """returns cutoff datetime for data retention of None if unlimited"""
+    """Return cutoff datetime for data retention of None if unlimited."""
     if MEMBERAUDIT_DATA_RETENTION_LIMIT is None:
         return None
     return datetime_round_hour(
@@ -54,7 +54,7 @@ def data_retention_cutoff() -> Optional[dt.datetime]:
 
 
 def store_debug_data_to_disk(character, lst: Any, name: str):
-    """Store character related data as JSON file to disk. For debugging
+    """Store character related data as JSON file to disk (for debugging).
 
     Will store under memberaudit_logs/{DATE}/{CHARACTER_PK}_{NAME}.json
     """

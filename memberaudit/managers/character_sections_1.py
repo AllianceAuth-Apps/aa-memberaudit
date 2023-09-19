@@ -35,7 +35,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 class CharacterAssetQuerySet(models.QuerySet):
     def annotate_pricing(self) -> models.QuerySet:
-        """Returns qs with annotated price and total columns"""
+        """Return qs with annotated price and total columns."""
         return (
             self.select_related("eve_type__market_price")
             .annotate(
@@ -65,7 +65,6 @@ class CharacterAssetQuerySet(models.QuerySet):
 class CharacterAssetManagerBase(models.Manager):
     def fetch_from_esi(self, character, force_update: bool = False) -> Optional[list]:
         """Fetch assets from ESI and preload related objects from ESI."""
-
         asset_list, changed = character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
             fetch_func=self._fetch_data_from_esi,
@@ -143,7 +142,6 @@ CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQu
 class CharacterAttributesManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create attributes for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.ATTRIBUTES,
             fetch_func=self._fetch_data_from_esi,
@@ -230,7 +228,6 @@ class CharacterContactLabelManager(models.Manager):
 class CharacterContactManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
@@ -379,7 +376,6 @@ class CharacterContactManager(models.Manager):
 class CharacterContractManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create contracts for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.CONTRACTS,
             fetch_func=self._fetch_data_from_esi,
@@ -552,7 +548,6 @@ class CharacterContractBidManager(models.Manager):
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract bids for a contract from ESI."""
-
         if contract.contract_type != contract.TYPE_AUCTION:
             logger.warning(
                 "%s, %s: Can not update bids. Wrong contract type.",
@@ -617,7 +612,7 @@ class CharacterContractBidManager(models.Manager):
 
 class CharacterContractItemQuerySet(models.QuerySet):
     def annotate_pricing(self) -> models.QuerySet:
-        """Return qs with annotated price and total columns"""
+        """Return qs with annotated price and total columns."""
         return (
             self.select_related("eve_type__market_price")
             .annotate(
@@ -648,7 +643,6 @@ class CharacterContractItemManagerBase(models.Manager):
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract items for a contract from ESI."""
-
         if contract.contract_type not in [
             contract.TYPE_ITEM_EXCHANGE,
             contract.TYPE_AUCTION,

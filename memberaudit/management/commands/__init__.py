@@ -1,3 +1,3 @@
 def get_input(text):
-    """wrapped input to enable unit testing / patching"""
+    """Wrapped input to enable unit testing / patching."""
     return input(text)

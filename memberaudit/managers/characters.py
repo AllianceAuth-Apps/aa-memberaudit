@@ -212,7 +212,7 @@ class CharacterUpdateStatusQuerySet(models.QuerySet):
 
 class CharacterUpdateStatusManagerBase(models.Manager):
     def statistics(self) -> dict:
-        """returns detailed statistics about the last update run and the app"""
+        """Return detailed statistics about the last update run and the app."""
 
         from memberaudit.models import (
             Character,

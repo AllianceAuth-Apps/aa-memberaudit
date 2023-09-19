@@ -92,7 +92,6 @@ class CharacterCorporationHistoryManager(models.Manager):
 class CharacterDetailsManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create character details from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.CHARACTER_DETAILS,
             fetch_func=self._fetch_data_from_esi,
@@ -207,7 +206,6 @@ class CharacterFwStatsManager(models.Manager):
 class CharacterImplantManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create implants for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.IMPLANTS,
             fetch_func=self._fetch_data_from_esi,
@@ -379,7 +377,6 @@ class CharacterLocationManager(models.Manager):
 class CharacterLoyaltyEntryManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.LOYALTY,
             fetch_func=self._fetch_data_from_esi,
@@ -419,7 +416,6 @@ class CharacterLoyaltyEntryManager(models.Manager):
 class CharacterMailManager(models.Manager):
     def update_or_create_headers_esi(self, character, force_update: bool = False):
         """Update or create mail headers for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.MAILS,
             fetch_func=self._fetch_data_from_esi,
@@ -564,7 +560,7 @@ class CharacterMailManager(models.Manager):
         self, character, new_mail_headers_list
     ):
         """Add mailing lists from recipients that are not part of the known
-        mailing lists"""
+        mailing lists."""
         from ..models import MailEntity
 
         incoming_ids = set()
@@ -593,7 +589,7 @@ class CharacterMailManager(models.Manager):
     def _update_labels_of_mail(
         self, character, mail, label_ids: List[int], labels: list
     ) -> None:
-        """Updates the labels of a mail object from a dict"""
+        """Update the labels of a mail object from a dict."""
         mail.labels.clear()
         if label_ids:
             labels_to_add = []
@@ -633,7 +629,6 @@ class CharacterMailManager(models.Manager):
     @fetch_token_for_character("esi-mail.read_mail.v1")
     def update_or_create_body_esi(self, character, token: Token, mail):
         """Update or create mail body for a character from ESI."""
-
         logger.debug(
             "%s: Fetching body from ESI for mail ID %s", character, mail.mail_id
         )
@@ -662,13 +657,12 @@ class CharacterMailManager(models.Manager):
 
 class CharacterMailLabelManager(models.Manager):
     def get_all_labels(self) -> Dict[int, models.Model]:
-        """Returns all label objects as dict by label_id"""
+        """Return all label objects as dict by label_id."""
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}
 
     def update_or_create_esi(self, character, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
-
         character.update_section_if_changed(
             section=character.UpdateSection.MAILS,
             fetch_func=self._fetch_data_from_esi,

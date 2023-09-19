@@ -119,7 +119,7 @@ class EveSkillTypeManger(models.Manager):
 
 
 class LocationManager(models.Manager):
-    """Manager for Location model
+    """A manager for Location models.
 
     We recommend preferring the "async" variants, because it includes protection
     against exceeding the ESI error limit due to characters no longer having access
@@ -137,7 +137,7 @@ class LocationManager(models.Manager):
     _UPDATE_EMPTY_GRACE_MINUTES = 5
 
     def get_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
-        """gets or creates location object with data fetched from ESI
+        """Gets or create location object with data fetched from ESI.
 
         Stale locations will always be updated.
         Empty locations will always be updated after grace period as passed
@@ -147,7 +147,7 @@ class LocationManager(models.Manager):
     def get_or_create_esi_async(
         self, id: int, token: Token
     ) -> Tuple[models.Model, bool]:
-        """gets or creates location object with data fetched from ESI asynchronous"""
+        """Gets or create location object with data fetched from ESI asynchronous."""
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
@@ -171,11 +171,11 @@ class LocationManager(models.Manager):
     def update_or_create_esi_async(
         self, id: int, token: Token
     ) -> Tuple[models.Model, bool]:
-        """updates or creates location object with data fetched from ESI asynchronous"""
+        """Updates or create a location object with data fetched from ESI asynchronous."""
         return self._update_or_create_esi(id=id, token=token, update_async=True)
 
     def update_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
-        """updates or creates location object with data fetched from ESI synchronous
+        """Updates or create a location object with data fetched from ESI synchronous.
 
         The preferred method to use is: `update_or_create_esi_async()`,
         since it protects against exceeding the ESI error limit and which can happen
@@ -268,7 +268,7 @@ class LocationManager(models.Manager):
         return location, created
 
     def structure_update_or_create_esi(self, id: int, token: Token):
-        """Update or creates structure from ESI"""
+        """Update or creates structure from ESI."""
         fetch_esi_status().raise_for_status()
         try:
             structure = esi.client.Universe.get_universe_structures_structure_id(
@@ -288,7 +288,7 @@ class LocationManager(models.Manager):
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
     ) -> Tuple[models.Model, bool]:
-        """creates a new Location object from a structure dict"""
+        """Creates a new object from a structure dict."""
         if solar_system_id := structure.get("solar_system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
                 id=solar_system_id
@@ -369,7 +369,7 @@ class MailEntityManager(models.Manager):
     def update_or_create_esi(
         self, id: int, category: Optional[str] = None
     ) -> Tuple[models.Model, bool]:
-        """will try to update or create a new object from ESI
+        """Update or create new object from ESI.
 
         Mailing lists can not be resolved from ESI
         and will therefore be created without name
@@ -470,7 +470,7 @@ class MailEntityManager(models.Manager):
         self, objs: Iterable[models.Model], keep_names: bool = False
     ) -> None:
         """Update names for given objects with categories
-        that can be resolved by EveEntity (e.g. Character)
+        that can be resolved by EveEntity (e.g. Character).
 
         Args:
         - obj: Existing objects to be updated
@@ -501,7 +501,6 @@ class MailEntityManager(models.Manager):
         Note: Obsolete mailing lists must not be removed,
         since they might still be referenced by older mails.
         """
-
         logger.info("%s: Fetching mailing lists from ESI", character)
         mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
             character_id=character.eve_character.character_id,
@@ -585,7 +584,6 @@ class SkillSetManager(models.Manager):
         self, skill_plan: SkillPlan, user: Optional[User] = None, skill_set_group=None
     ) -> Tuple[models.Model, bool]:
         """Update or create a skill set from a fitting."""
-
         return self.update_or_create_from_skills(
             name=skill_plan.name,
             skills=skill_plan.skills,

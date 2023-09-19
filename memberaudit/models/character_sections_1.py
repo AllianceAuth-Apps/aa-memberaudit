@@ -31,7 +31,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterAsset(models.Model):
-    """An Eve Online asset belonging to a Character"""
+    """An Eve Online asset belonging to a character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="assets"
@@ -91,7 +91,7 @@ class CharacterAsset(models.Model):
 
 
 class CharacterAttributes(models.Model):
-    """The training attributes of the character"""
+    """The training attributes of a character."""
 
     character = models.OneToOneField(
         Character,
@@ -119,7 +119,7 @@ class CharacterAttributes(models.Model):
 
 
 class CharacterContactLabel(models.Model):
-    """An Eve Online contact label belonging to a Character"""
+    """An Eve Online contact label belonging to a Character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="contact_labels"
@@ -143,7 +143,7 @@ class CharacterContactLabel(models.Model):
 
 
 class CharacterContact(models.Model):
-    """An Eve Online contact belonging to a Character"""
+    """An Eve Online contact belonging to a Character."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="contacts"
@@ -352,7 +352,7 @@ class CharacterContract(EveEntityIdsMixin, models.Model):
 
     @property
     def is_completed(self) -> bool:
-        """whether this contract is completed or active"""
+        """Return True when this contract is completed, else False."""
         return self.status in [
             self.STATUS_FINISHED_ISSUER,
             self.STATUS_FINISHED_CONTRACTOR,
@@ -376,7 +376,7 @@ class CharacterContract(EveEntityIdsMixin, models.Model):
 
     @property
     def has_expired(self) -> bool:
-        """Return True when this contract is expired, else False"""
+        """Return True when this contract is expired, else False."""
         return self.date_expired < now()
 
     @property
@@ -452,17 +452,17 @@ class CharacterContractItem(models.Model):
 
     @property
     def is_blueprint_original(self) -> bool:
-        """Return True if item is an original blueprint, else False"""
+        """Return True if item is an original blueprint, else False."""
         return self.raw_quantity == -1
 
     @property
     def is_blueprint_copy(self) -> bool:
-        """Return True if item is a blueprint copy, else False"""
+        """Return True if item is a blueprint copy, else False."""
         return self.raw_quantity == -2
 
     @property
     def is_blueprint(self) -> bool:
-        """Return True if item is any kind of blueprint, else False"""
+        """Return True if item is any kind of blueprint, else False."""
         return self.raw_quantity in [-1, -2]
 
     @property
