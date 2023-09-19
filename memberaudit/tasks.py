@@ -274,7 +274,7 @@ def update_character_section(
     character.reset_update_section(section, root_task_id, parent_task_id)
     logger.info("%s: Updating %s", character, section.label)
 
-    method: Callable = getattr(character, Character.UpdateSection.method_name(section))
+    method: Callable = getattr(character, section.method_name)
     method_signature = inspect.signature(method)
     if "force_update" in method_signature.parameters:
         kwargs = {"force_update": force_update}

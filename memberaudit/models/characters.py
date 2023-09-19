@@ -74,17 +74,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
 
-        @classmethod
-        def method_name(cls, section: str) -> str:
-            """Return name of update method corresponding with the given section.
-
-            Raises:
-                - ValueError if section is invalid
-            """
-            if section not in cls.values:
-                raise ValueError(f"Unknown section: {section}")
-
-            return f"update_{section}"
+        @property
+        def method_name(self) -> str:
+            """Return name of update method corresponding with this section."""
+            return f"update_{self.value}"
 
         @classmethod
         def enabled_sections(cls) -> Set["Character.UpdateSection"]:
@@ -192,7 +185,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     @cached_property
     def name(self) -> str:
         """Return the name of this character."""
-        return self.eve_character.character_name
+        return str(self.eve_character.character_name)
 
     @cached_property
     def character_ownership(self) -> Optional[CharacterOwnership]:
@@ -364,9 +357,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             needs_update |= self.is_update_section_stale(section)
         return needs_update
 
-    def is_update_section_stale(self, section: str) -> bool:
+    def is_update_section_stale(self, section: UpdateSection) -> bool:
         """Return True if the give section is stale for this character, else False."""
-        section = Character.UpdateSection(section)
         try:
             update_status = self.update_status_set.get(
                 section=section,
@@ -381,7 +373,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return update_status.started_at < deadline
 
     def has_section_changed(
-        self, section: str, content: Any, hash_num: int = 1
+        self, section: UpdateSection, content: Any, hash_num: int = 1
     ) -> bool:
         """Return False if the content hash for this character's section
         has not changed, else return True.
@@ -395,7 +387,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return section_obj.has_changed(content=content, hash_num=hash_num)
 
     def update_section_content_hash(
-        self, section: str, content: Any, hash_num: int = 1
+        self, section: UpdateSection, content: Any, hash_num: int = 1
     ) -> None:
         """Update hash for a section."""
         section_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
@@ -405,29 +397,29 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def reset_update_section(
         self,
-        section: str,
+        section: UpdateSection,
         root_task_id: Optional[str] = None,
         parent_task_id: Optional[str] = None,
     ) -> "CharacterUpdateStatus":
         """Reset status of given update section and returns it."""
-        section_onj: CharacterUpdateStatus = self.update_status_set.get_or_create(
+        update_status_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
             section=section
         )[0]
-        section_onj.reset(root_task_id, parent_task_id)
-        return section_onj
+        update_status_obj.reset(root_task_id, parent_task_id)
+        return update_status_obj
 
-    def is_section_updating(self, section: str) -> bool:
+    def is_section_updating(self, section: UpdateSection) -> bool:
         """Return True if section is currently updating, or does not exist, else False."""
         try:
-            section_obj = self.update_status_set.get(section=section)
+            update_status_obj = self.update_status_set.get(section=section)
         except CharacterUpdateStatus.DoesNotExist:
             return True
 
-        return section_obj.is_updating
+        return update_status_obj.is_updating
 
     def update_section_if_changed(
         self,
-        section: str,
+        section: UpdateSection,
         fetch_func: Callable,
         store_func: Optional[Callable],
         force_update: bool = False,
@@ -436,7 +428,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Update a character's section from ESI if it has changed or is forced.
 
         Args:
-            - section: Name of the section this update related to
+            - section: Section this update is related to
             - fetch_func: A function that fetched the data from ESI
             - store_func: A function that stored the data in the DB.
                 This can be skipped by providing None.

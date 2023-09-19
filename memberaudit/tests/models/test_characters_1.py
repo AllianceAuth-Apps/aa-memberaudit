@@ -749,13 +749,10 @@ class TestCharacterUpdateStatusOk(NoSocketsTestCase):
 
 class TestCharacterUpdateSection(NoSocketsTestCase):
     def test_method_name(self):
-        result = Character.UpdateSection.method_name(
-            Character.UpdateSection.CORPORATION_HISTORY
-        )
-        self.assertEqual(result, "update_corporation_history")
-
-        with self.assertRaises(ValueError):
-            result = Character.UpdateSection.method_name("invalid")
+        # given
+        section = Character.UpdateSection.CORPORATION_HISTORY
+        # when/then
+        self.assertEqual(section.method_name, "update_corporation_history")
 
 
 class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
