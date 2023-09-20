@@ -645,7 +645,8 @@ class CharacterContractItemQuerySet(models.QuerySet):
 
 
 class CharacterContractItemManagerBase(models.Manager):
-    def update_or_create_esi(self, character, contract):
+    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
+    def update_or_create_esi(self, character, token: Token, contract):
         """Update or create contract items for a contract from ESI."""
 
         if contract.contract_type not in [
@@ -659,10 +660,9 @@ class CharacterContractItemManagerBase(models.Manager):
             )
             return
 
-        items_data = self._fetch_data_from_esi(character, contract)
+        items_data = self._fetch_data_from_esi(character, token, contract)
         self._update_or_create_objs(contract, items_data)
 
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def _fetch_data_from_esi(self, character, token: Token, contract):
         logger.info(
             "%s, %s: Fetching contract items from ESI", character, contract.contract_id

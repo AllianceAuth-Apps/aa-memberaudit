@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [2.11.3] - TBD
+
+### Changed
+
+- Improved the way entity IDs are resolved to names for all sections, e.g. resolving IDs will not spawn additional tasks and will resolve the new IDs from the related objects only
+
 ## [2.11.2] - 2023-09-15
 
 ### Fixed

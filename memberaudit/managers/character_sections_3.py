@@ -562,7 +562,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
             create_ids = incoming_ids.difference(existing_ids)
             if not create_ids:
                 logger.info("%s: No new wallet journal entries", character)
-                return
+                return set()
 
             logger.info(
                 "%s: Adding %s new wallet journal entries", character, len(create_ids)
@@ -650,7 +650,7 @@ class CharacterWalletTransactionManager(models.Manager):
         create_ids = incoming_ids.difference(existing_ids)
         if not create_ids:
             logger.info("%s: No new wallet transactions", character)
-            return
+            return set()
 
         logger.info(
             "%s: Adding %s new wallet transactions",
