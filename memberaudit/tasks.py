@@ -328,7 +328,10 @@ def _log_character_update_success(character: Character, section: str):
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_unresolved_eve_entities() -> None:
-    """Bulk resolved all unresolved EveEntity objects in database."""
+    """Bulk resolved all unresolved EveEntity objects in database.
+
+    This task is used by other apps. Do not remove!
+    """
     unresolved_ids = EveEntity.objects.filter(name="")[
         :POST_UNIVERSE_NAMES_MAX_ITEMS
     ].values_list("id", flat=True)
@@ -614,7 +617,6 @@ def update_character_mails(
             priority=priority
         ),
         update_character_mail_bodies.si(character.pk).set(priority=priority),
-        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
