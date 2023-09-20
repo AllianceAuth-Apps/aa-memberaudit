@@ -108,7 +108,7 @@ class CharacterDetailsManager(models.Manager):
 
         return details
 
-    def _update_or_create_objs(self, character, details):
+    def _update_or_create_objs(self, character, details) -> Set[int]:
         description = (
             details.get("description", "") if details.get("description") else ""
         )
@@ -136,7 +136,7 @@ class CharacterDetailsManager(models.Manager):
         # Workaround because of ESI issue #1264
         eve_ancestry = get_or_none("ancestry_id", details, EveAncestry)
 
-        self.update_or_create(
+        obj, _ = self.update_or_create(
             character=character,
             defaults={
                 "alliance": get_or_create_or_none("alliance_id", details, EveEntity),
@@ -159,7 +159,7 @@ class CharacterDetailsManager(models.Manager):
                 "title": details.get("title", "") if details.get("title") else "",
             },
         )
-        EveEntity.objects.bulk_update_new_esi()
+        return obj.eve_entity_ids()
 
 
 class CharacterFwStatsManager(models.Manager):

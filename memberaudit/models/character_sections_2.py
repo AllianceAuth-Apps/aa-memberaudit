@@ -71,7 +71,7 @@ class CharacterCorporationHistory(EveEntityMixin, models.Model):
         return str(f"{self.character}-{self.record_id}")
 
 
-class CharacterDetails(models.Model):
+class CharacterDetails(EveEntityMixin, models.Model):
     """Details for a character"""
 
     GENDER_MALE = "m"
