@@ -1,6 +1,7 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
+from typing import Set
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -472,7 +473,7 @@ class CharacterStandingManager(models.Manager):
 
         return standings
 
-    def _update_or_create_objs(self, character, standings):
+    def _update_or_create_objs(self, character, standings) -> Set[int]:
         # TODO: Replace delete + create with create + update
         if standings:
             entries = [
@@ -495,7 +496,7 @@ class CharacterStandingManager(models.Manager):
             else:
                 logger.info("%s: No standings for this character", character)
 
-        EveEntity.objects.bulk_update_new_esi()
+        return {obj.eve_entity_id for obj in entries}
 
 
 class CharacterWalletBalanceManager(models.Manager):
