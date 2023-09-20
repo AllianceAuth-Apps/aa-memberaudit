@@ -2,7 +2,7 @@
 # pylint: disable=missing-class-docstring
 
 import ast
-from typing import Dict, List
+from typing import Dict, List, Set
 
 from bravado.exception import HTTPNotFound
 
@@ -29,7 +29,11 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
+from memberaudit.helpers import (
+    data_retention_cutoff,
+    eve_entity_ids_from_objs,
+    store_debug_data_to_disk,
+)
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -59,7 +63,7 @@ class CharacterCorporationHistoryManager(models.Manager):
 
         return history
 
-    def _update_or_create_objs(self, character, history):
+    def _update_or_create_objs(self, character, history) -> Set[int]:
         entries = [
             self.model(
                 character=character,
@@ -82,8 +86,7 @@ class CharacterCorporationHistoryManager(models.Manager):
             else:
                 logger.info("%s: Corporation history is empty", character)
 
-        if entries:
-            EveEntity.objects.bulk_update_new_esi()
+        return eve_entity_ids_from_objs(entries)
 
 
 class CharacterDetailsManager(models.Manager):

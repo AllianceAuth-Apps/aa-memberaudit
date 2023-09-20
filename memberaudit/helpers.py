@@ -33,10 +33,13 @@ class EveEntityMixin:
 
 
 def eve_entity_ids_from_objs(objs: Iterable[Any]) -> Set[int]:
-    """Return extracted EveEntity IDs from objs.
+    """Return all EveEntity IDs from objs. Will return an empty set when objs is empty.
 
     Expects objs to have the `EveEntityMixin`.
     """
+    if not objs:
+        return set()
+
     entity_ids_list = [obj.eve_entity_ids() for obj in objs]
     return set(itertools.chain.from_iterable(entity_ids_list))
 
