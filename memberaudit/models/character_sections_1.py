@@ -12,7 +12,7 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.helpers import EveEntityMixin
+from memberaudit.helpers import EveEntityIdsMixin
 from memberaudit.managers.character_sections_1 import (
     CharacterAssetManager,
     CharacterAttributesManager,
@@ -172,7 +172,7 @@ class CharacterContact(models.Model):
         return f"{self.character}-{self.eve_entity.name}"
 
 
-class CharacterContract(EveEntityMixin, models.Model):
+class CharacterContract(EveEntityIdsMixin, models.Model):
     """An Eve Online contract belonging to a Character"""
 
     AVAILABILITY_ALLIANCE = "AL"

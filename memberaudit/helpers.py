@@ -18,7 +18,7 @@ from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
 from memberaudit.constants import EveDogmaAttributeId
 
 
-class EveEntityMixin:
+class EveEntityIdsMixin:
     """Add EveEntity related features."""
 
     def eve_entity_ids(self) -> Set[int]:
@@ -35,7 +35,7 @@ class EveEntityMixin:
 def eve_entity_ids_from_objs(objs: Iterable[Any]) -> Set[int]:
     """Return all EveEntity IDs from objs. Will return an empty set when objs is empty.
 
-    Expects objs to have the `EveEntityMixin`.
+    Expects objs to have the `EveEntityIdsMixin`.
     """
     if not objs:
         return set()

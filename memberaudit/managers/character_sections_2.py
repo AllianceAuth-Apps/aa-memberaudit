@@ -412,7 +412,8 @@ class CharacterLoyaltyEntryManager(models.Manager):
                 if "corporation_id" in entry and "loyalty_points" in entry
             ]
             self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        EveEntity.objects.bulk_update_new_esi()
+
+        return eve_entity_ids_from_objs(new_entries)
 
 
 class CharacterMailManager(models.Manager):
