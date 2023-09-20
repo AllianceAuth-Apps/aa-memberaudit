@@ -1,7 +1,6 @@
 """Managers for character section models (1/3)."""
 # pylint: disable=missing-class-docstring
 
-import itertools
 from typing import Optional, Set
 
 from django.db import models, transaction
@@ -19,7 +18,11 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_DEVELOPER_MODE,
 )
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
+from memberaudit.helpers import (
+    data_retention_cutoff,
+    eve_entity_ids_from_objs,
+    store_debug_data_to_disk,
+)
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -507,8 +510,7 @@ class CharacterContractManager(models.Manager):
                 )
 
         self.bulk_create(new_contracts, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        new_entity_ids_list = [obj.eve_entity_ids() for obj in new_contracts]
-        return set(itertools.chain.from_iterable(new_entity_ids_list))
+        return eve_entity_ids_from_objs(new_contracts)
 
     def _update_existing_contracts(
         self, character, contracts_list: dict, contract_ids: set
@@ -571,7 +573,6 @@ class CharacterContractBidManager(models.Manager):
         )
         bids_list = {int(obj["bid_id"]): obj for obj in bids_data if "bid_id" in obj}
         self._update_or_create_objs(contract, bids_list)
-        EveEntity.objects.bulk_update_new_esi()
 
     @transaction.atomic()
     def _update_or_create_objs(self, contract, bids_list: dict) -> Set[int]:

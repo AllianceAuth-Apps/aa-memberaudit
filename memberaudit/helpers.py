@@ -1,9 +1,10 @@
 """Helpers for Member Audit."""
 
 import datetime as dt
+import itertools
 import json
 import os
-from typing import Any, Optional, Set
+from typing import Any, Iterable, Optional, Set
 
 from celery import Task
 
@@ -29,6 +30,15 @@ class EveEntityMixin:
                 if value:
                     ids.add(value)
         return ids
+
+
+def eve_entity_ids_from_objs(objs: Iterable[Any]) -> Set[int]:
+    """Return extracted EveEntity IDs from objs.
+
+    Expects objs to have the `EveEntityMixin`.
+    """
+    entity_ids_list = [obj.eve_entity_ids() for obj in objs]
+    return set(itertools.chain.from_iterable(entity_ids_list))
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:

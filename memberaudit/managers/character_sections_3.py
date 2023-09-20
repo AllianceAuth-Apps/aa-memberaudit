@@ -1,7 +1,6 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
-import itertools
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -14,7 +13,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -593,8 +592,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
             ]
             self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
-        new_entity_ids_list = [obj.eve_entity_ids() for obj in entries]
-        return set(itertools.chain.from_iterable(new_entity_ids_list))
+        return eve_entity_ids_from_objs(entries)
 
 
 class CharacterWalletTransactionManager(models.Manager):
