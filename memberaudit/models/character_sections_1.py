@@ -1,7 +1,7 @@
 """
 Character sections models
 """
-from typing import Optional
+from typing import Optional, Set
 
 from django.db import models
 from django.utils.timezone import now
@@ -348,6 +348,21 @@ class CharacterContract(models.Model):
 
     def __str__(self) -> str:
         return f"{self.character}-{self.contract_id}"
+
+    def eve_entity_ids(self) -> Set[int]:
+        """Return eve entity IDs for this object."""
+        ids = set()
+        if self.acceptor:
+            ids.add(self.acceptor_id)
+        if self.acceptor_corporation:
+            ids.add(self.acceptor_corporation_id)
+        if self.assignee:
+            ids.add(self.assignee_id)
+        if self.issuer:
+            ids.add(self.issuer_id)
+        if self.issuer_corporation:
+            ids.add(self.issuer_corporation_id)
+        return ids
 
     @property
     def is_completed(self) -> bool:

@@ -1,7 +1,8 @@
 """Managers for character section models (1/3)."""
 # pylint: disable=missing-class-docstring
 
-from typing import Optional
+import itertools
+from typing import Optional, Set
 
 from django.db import models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
@@ -244,7 +245,11 @@ class CharacterContactManager(models.Manager):
         return contacts_data
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character, contacts_data):
+    def _update_or_create_objs(self, character, contacts_data) -> Set[int]:
+        """Update or create new contact objects from provided data.
+
+        Return EveEntity IDs in newly created contacts.
+        """
         contacts_list = (
             {int(obj["contact_id"]): obj for obj in contacts_data}
             if contacts_data
@@ -279,6 +284,8 @@ class CharacterContactManager(models.Manager):
 
         if not obsolete_ids and not create_ids and not update_ids:
             logger.info("%s: Contacts have not changed", character)
+
+        return create_ids
 
     def _create_new_contacts(self, character, contacts_list: dict, contact_ids: list):
         logger.info("%s: Storing %s new contacts", character, len(contact_ids))
@@ -397,7 +404,13 @@ class CharacterContractManager(models.Manager):
         return contracts_list
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
-    def _update_or_create_objs(self, character, token: Token, contracts_list):
+    def _update_or_create_objs(
+        self, character, token: Token, contracts_list
+    ) -> Set[int]:
+        """Update or create new contract objects from provided data.
+
+        Return EveEntity IDs in newly created contracts.
+        """
         from memberaudit.models import Location
 
         if cutoff_datetime := data_retention_cutoff():
@@ -421,11 +434,14 @@ class CharacterContractManager(models.Manager):
             )
             create_ids = incoming_ids.difference(existing_ids)
             if create_ids:
-                self._create_new_contracts(
+                new_entity_ids = self._create_new_contracts(
                     character=character,
                     contracts_list=contracts_list,
                     contract_ids=create_ids,
                 )
+            else:
+                new_entity_ids = set()
+
             update_ids = incoming_ids.difference(create_ids)
             if update_ids:
                 self._update_existing_contracts(
@@ -433,10 +449,11 @@ class CharacterContractManager(models.Manager):
                     contracts_list=contracts_list,
                     contract_ids=update_ids,
                 )
+            return new_entity_ids
 
     def _create_new_contracts(
-        self, character, contracts_list: dict, contract_ids: set
-    ) -> None:
+        self, character, contracts_list: dict, contract_ids: Set[int]
+    ) -> Set[int]:
         from ..models import Location
 
         logger.info("%s: Storing %s new contracts", character, len(contract_ids))
@@ -490,6 +507,8 @@ class CharacterContractManager(models.Manager):
                 )
 
         self.bulk_create(new_contracts, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        ids_list = [obj.eve_entity_ids() for obj in new_contracts]
+        return set(itertools.chain.from_iterable(ids_list))
 
     def _update_existing_contracts(
         self, character, contracts_list: dict, contract_ids: set
@@ -555,7 +574,11 @@ class CharacterContractBidManager(models.Manager):
         EveEntity.objects.bulk_update_new_esi()
 
     @transaction.atomic()
-    def _update_or_create_objs(self, contract, bids_list):
+    def _update_or_create_objs(self, contract, bids_list: dict) -> Set[int]:
+        """Update or create new contract objects from provided data.
+
+        Return EveEntity IDs in newly created contracts.
+        """
         incoming_ids = set(bids_list.keys())
         existing_ids = set(
             self.filter(contract=contract).values_list("bid_id", flat=True)
@@ -567,7 +590,7 @@ class CharacterContractBidManager(models.Manager):
                 contract.character,
                 contract.contract_id,
             )
-            return
+            return set()
 
         logger.info(
             "%s, %s: Storing %s new contract bids",
@@ -587,6 +610,8 @@ class CharacterContractBidManager(models.Manager):
             if bid_id in create_ids
         ]
         self.bulk_create(bids, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        new_entity_ids = {obj.bidder_id for obj in bids}
+        return new_entity_ids
 
 
 class CharacterContractItemQuerySet(models.QuerySet):
@@ -619,8 +644,7 @@ class CharacterContractItemQuerySet(models.QuerySet):
 
 
 class CharacterContractItemManagerBase(models.Manager):
-    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_or_create_esi(self, character, token: Token, contract):
+    def update_or_create_esi(self, character, contract):
         """Update or create contract items for a contract from ESI."""
 
         if contract.contract_type not in [
@@ -634,6 +658,11 @@ class CharacterContractItemManagerBase(models.Manager):
             )
             return
 
+        items_data = self._fetch_data_from_esi(character, contract)
+        self._update_or_create_objs(contract, items_data)
+
+    @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
+    def _fetch_data_from_esi(self, character, token: Token, contract):
         logger.info(
             "%s, %s: Fetching contract items from ESI", character, contract.contract_id
         )
@@ -644,7 +673,7 @@ class CharacterContractItemManagerBase(models.Manager):
             token=token.valid_access_token(),
         ).results()
 
-        self._update_or_create_objs(contract, items_data)
+        return items_data
 
     def _update_or_create_objs(self, contract, items_data):
         logger.info(

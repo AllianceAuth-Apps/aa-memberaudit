@@ -754,7 +754,6 @@ def update_character_contacts(
         update_character_contacts_2.si(character.pk, force_update=force_update).set(
             priority=priority
         ),
-        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
@@ -827,7 +826,6 @@ def update_character_contracts(
         ).set(priority=priority),
         update_character_contracts_items.si(character.pk).set(priority=priority),
         update_character_contracts_bids.si(character.pk).set(priority=priority),
-        update_unresolved_eve_entities.si().set(priority=priority),
     ).delay()
 
 
