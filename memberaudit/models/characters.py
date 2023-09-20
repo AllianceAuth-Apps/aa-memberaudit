@@ -408,8 +408,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if store_func:
             ids_to_resolve = store_func(self, data)
             if ids_to_resolve:
-                logger.info(
-                    "%s: Trying to resolve %d EveEntity IDs for %s",
+                logger.debug(
+                    "%s: Received %d EveEntity IDs from %s "
+                    "which might need to be resolved",
                     self,
                     len(ids_to_resolve),
                     section,

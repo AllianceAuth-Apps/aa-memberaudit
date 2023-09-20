@@ -452,7 +452,7 @@ class CharacterWalletJournalEntry(EveEntityIdsMixin, models.Model):
         return cls.CONTEXT_ID_TYPE_UNDEFINED
 
 
-class CharacterWalletTransaction(models.Model):
+class CharacterWalletTransaction(EveEntityIdsMixin, models.Model):
     """A wallet transaction of a character in Eve Online."""
 
     character = models.ForeignKey(

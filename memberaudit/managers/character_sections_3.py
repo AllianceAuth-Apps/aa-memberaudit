@@ -619,7 +619,7 @@ class CharacterWalletTransactionManager(models.Manager):
         return transactions
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
-    def _update_or_create_objs(self, character, token: Token, transactions):
+    def _update_or_create_objs(self, character, token: Token, transactions) -> Set[int]:
         from memberaudit.models import Location
 
         cutoff_datetime = data_retention_cutoff()
@@ -638,12 +638,11 @@ class CharacterWalletTransactionManager(models.Manager):
         type_ids = {row.get("type_id") for row in transaction_list.values()}
         EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
 
-        self._bulk_update_or_create(character, transaction_list)
-
-        EveEntity.objects.bulk_update_new_esi()
+        eve_entity_ids = self._bulk_update_or_create(character, transaction_list)
+        return eve_entity_ids
 
     @transaction.atomic()
-    def _bulk_update_or_create(self, character, transaction_list):
+    def _bulk_update_or_create(self, character, transaction_list) -> Set[int]:
         from memberaudit.models import Location
 
         incoming_ids = set(transaction_list.keys())
@@ -683,3 +682,4 @@ class CharacterWalletTransactionManager(models.Manager):
                     )
                 )
         self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        return eve_entity_ids_from_objs(entries)
