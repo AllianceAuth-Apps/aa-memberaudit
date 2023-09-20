@@ -507,8 +507,8 @@ class CharacterContractManager(models.Manager):
                 )
 
         self.bulk_create(new_contracts, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        ids_list = [obj.eve_entity_ids() for obj in new_contracts]
-        return set(itertools.chain.from_iterable(ids_list))
+        new_entity_ids_list = [obj.eve_entity_ids() for obj in new_contracts]
+        return set(itertools.chain.from_iterable(new_entity_ids_list))
 
     def _update_existing_contracts(
         self, character, contracts_list: dict, contract_ids: set

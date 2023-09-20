@@ -3,18 +3,32 @@
 import datetime as dt
 import json
 import os
-from typing import Any, Optional
+from typing import Any, Optional, Set
 
 from celery import Task
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
-from eveuniverse.models import EveType
+from eveuniverse.models import EveEntity, EveType
 
 from app_utils.datetime import datetime_round_hour
 
 from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
 from memberaudit.constants import EveDogmaAttributeId
+
+
+class EveEntityMixin:
+    """Add EveEntity related features."""
+
+    def eve_entity_ids(self) -> Set[int]:
+        """Return IDs of all existing EveEntity objects for this object."""
+        ids = set()
+        for field in self._meta.get_fields():
+            if field.is_relation and issubclass(field.related_model, EveEntity):
+                value = getattr(self, field.attname)
+                if value:
+                    ids.add(value)
+        return ids
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:

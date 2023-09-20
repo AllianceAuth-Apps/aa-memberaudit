@@ -358,7 +358,7 @@ def create_skill_set_skill(
     return SkillSetSkill.objects.create(**params)
 
 
-def create_wallet_journal_entry(
+def create_character_wallet_journal_entry(
     character: Character, **kwargs
 ) -> CharacterWalletJournalEntry:
     params = {

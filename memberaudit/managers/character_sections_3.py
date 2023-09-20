@@ -1,6 +1,8 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
+import itertools
+
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from esi.models import Token
@@ -590,6 +592,9 @@ class CharacterWalletJournalEntryManager(models.Manager):
                 if entry_id in create_ids
             ]
             self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+
+        new_entity_ids_list = [obj.eve_entity_ids() for obj in entries]
+        return set(itertools.chain.from_iterable(new_entity_ids_list))
 
 
 class CharacterWalletTransactionManager(models.Manager):

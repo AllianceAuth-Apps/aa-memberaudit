@@ -148,7 +148,6 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             Character.UpdateSection.CONTRACTS,
             Character.UpdateSection.SKILL_SETS,
             Character.UpdateSection.SKILLS,
-            Character.UpdateSection.WALLET_JOURNAL,
         }
     )
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
@@ -194,17 +193,6 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             kwargs={
                 "character_pk": character.pk,
                 "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
-            priority=priority,
-        )
-    if force_update or character.is_update_section_stale(
-        Character.UpdateSection.WALLET_JOURNAL
-    ):
-        update_character_wallet_journal.apply_async(
-            kwargs={
-                "character_pk": character.pk,
                 "root_task_id": self.request.parent_id,
                 "parent_task_id": self.request.id,
             },
@@ -923,54 +911,6 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
     )
     contract = CharacterContract.objects.get(pk=contract_pk)
     character.update_contract_bids(contract)
-
-
-# special tasks for updating wallet
-
-
-@shared_task(
-    **{
-        **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk"], "graceful": True}},
-    }
-)
-def update_character_wallet_journal(
-    self,
-    character_pk: int,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
-    """Main task for updating wallet journal of a character"""
-    character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
-    section = Character.UpdateSection.WALLET_JOURNAL
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
-    priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    chain(
-        update_character_wallet_journal_entries.si(character.pk).set(priority=priority),
-        update_unresolved_eve_entities.si().set(priority=priority),
-    ).delay()
-
-
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_character_wallet_journal_entries(character_pk: int) -> None:
-    """Update wallet journal for a character."""
-    character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.WALLET_JOURNAL,
-        character.update_wallet_journal,
-    )
-    _log_character_update_success(character, Character.UpdateSection.WALLET_JOURNAL)
 
 
 # Tasks for other objects

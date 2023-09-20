@@ -43,7 +43,7 @@ from memberaudit.models import (
 )
 from memberaudit.tests.testdata.factories import (
     create_character_planet,
-    create_wallet_journal_entry,
+    create_character_wallet_journal_entry,
 )
 from memberaudit.tests.utils import create_memberaudit_character
 

@@ -12,6 +12,7 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.core import standings
+from memberaudit.helpers import EveEntityMixin
 from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
     CharacterOnlineStatusManager,
@@ -325,7 +326,7 @@ class CharacterWalletBalance(models.Model):
         default_permissions = ()
 
 
-class CharacterWalletJournalEntry(models.Model):
+class CharacterWalletJournalEntry(EveEntityMixin, models.Model):
     """A wallet journal entry of a character in Eve Online."""
 
     CONTEXT_ID_TYPE_UNDEFINED = "NON"

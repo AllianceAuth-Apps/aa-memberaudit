@@ -28,7 +28,7 @@ from ..testdata.factories import (
     create_character,
     create_character_contract,
     create_character_contract_item,
-    create_wallet_journal_entry,
+    create_character_wallet_journal_entry,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -76,7 +76,7 @@ class TestExportTopicToArchive(TestCase):
     def test_should_export_wallet_journal(self):
         with TemporaryDirectory() as tmpdirname:
             # given
-            create_wallet_journal_entry(character=self.character)
+            create_character_wallet_journal_entry(character=self.character)
             # when
             result = export_topic_to_archive(
                 topic="wallet-journal", destination_folder=tmpdirname
@@ -173,14 +173,14 @@ class TestDataExporter(TestCase):
 
     def test_should_show_count(self):
         # given
-        create_wallet_journal_entry(character=self.character_1001)
+        create_character_wallet_journal_entry(character=self.character_1001)
         exporter = DataExporter.create_exporter("wallet-journal")
         # when/then
         self.assertEqual(exporter.count(), 1)
 
     def test_should_have_data(self):
         # given
-        create_wallet_journal_entry(character=self.character_1001)
+        create_character_wallet_journal_entry(character=self.character_1001)
         exporter = DataExporter.create_exporter("wallet-journal")
         # when/then
         self.assertTrue(exporter.has_data())
@@ -218,7 +218,7 @@ class TestDataExporter(TestCase):
 
     def test_should_create_csv_file_for_wallet_journal(self):
         # given
-        create_wallet_journal_entry(
+        create_character_wallet_journal_entry(
             amount=1000000.0,
             balance=20000000.0,
             character=self.character_1001,
@@ -234,7 +234,7 @@ class TestDataExporter(TestCase):
             tax=0.05,
             tax_receiver_id=1101,
         )
-        create_wallet_journal_entry(
+        create_character_wallet_journal_entry(
             amount=1000000.0,
             balance=20000000.0,
             character=self.character_1121,

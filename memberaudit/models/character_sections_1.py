@@ -1,7 +1,7 @@
 """
 Character sections models
 """
-from typing import Optional, Set
+from typing import Optional
 
 from django.db import models
 from django.utils.timezone import now
@@ -12,6 +12,7 @@ from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
+from memberaudit.helpers import EveEntityMixin
 from memberaudit.managers.character_sections_1 import (
     CharacterAssetManager,
     CharacterAttributesManager,
@@ -171,7 +172,7 @@ class CharacterContact(models.Model):
         return f"{self.character}-{self.eve_entity.name}"
 
 
-class CharacterContract(models.Model):
+class CharacterContract(EveEntityMixin, models.Model):
     """An Eve Online contract belonging to a Character"""
 
     AVAILABILITY_ALLIANCE = "AL"
@@ -348,21 +349,6 @@ class CharacterContract(models.Model):
 
     def __str__(self) -> str:
         return f"{self.character}-{self.contract_id}"
-
-    def eve_entity_ids(self) -> Set[int]:
-        """Return eve entity IDs for this object."""
-        ids = set()
-        if self.acceptor:
-            ids.add(self.acceptor_id)
-        if self.acceptor_corporation:
-            ids.add(self.acceptor_corporation_id)
-        if self.assignee:
-            ids.add(self.assignee_id)
-        if self.issuer:
-            ids.add(self.issuer_id)
-        if self.issuer_corporation:
-            ids.add(self.issuer_corporation_id)
-        return ids
 
     @property
     def is_completed(self) -> bool:
