@@ -11,6 +11,7 @@ from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import State
+from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_authgroup
 
 from memberaudit.constants import EveCategoryId
@@ -41,7 +42,7 @@ from memberaudit.models import (
 )
 
 
-def create_character(eve_character, **kwargs) -> Character:
+def create_character(eve_character: EveCharacter, **kwargs) -> Character:
     params = {"eve_character": eve_character}
     params.update(kwargs)
     return Character.objects.create(**params)

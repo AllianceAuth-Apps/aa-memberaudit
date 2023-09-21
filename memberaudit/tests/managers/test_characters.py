@@ -9,12 +9,17 @@ from allianceauth.tests.auth_utils import AuthUtils
 
 from memberaudit.models import Character, CharacterUpdateStatus
 
-from ..testdata.factories import create_character, create_character_update_status
+from ..testdata.factories import (
+    create_character,
+    create_character_from_user,
+    create_character_update_status,
+)
 from ..testdata.load_entities import load_entities
 from ..utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
 )
 
 MODELS_PATH = "memberaudit.models.characters"
@@ -64,11 +69,12 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_ok(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
         # when
@@ -80,7 +86,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_annotate_ok_when_all_enabled_sections_are_ok(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection.enabled_sections():
             create_character_update_status(character, section=section)
         create_character_update_status(
@@ -95,7 +101,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )
@@ -108,7 +114,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_incomplete(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         sections_to_update = [
             obj
             for obj in Character.UpdateSection
@@ -125,7 +131,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_in_progress(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             if section == Character.UpdateSection.ASSETS:
                 create_character_update_status(
@@ -141,7 +147,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
 
     def test_should_annotate_disabled(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         character.is_disabled = True
         character.save()
         # when
