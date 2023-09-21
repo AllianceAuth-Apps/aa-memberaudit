@@ -16,8 +16,9 @@ from memberaudit.decorators import (
 )
 from memberaudit.models import Character
 
+from .testdata.factories import create_character_from_user
 from .testdata.load_entities import load_entities
-from .utils import create_memberaudit_character, scope_names_set
+from .utils import create_user_from_evecharacter_with_access, scope_names_set
 
 MODULE_PATH = "memberaudit.decorators"
 
@@ -30,6 +31,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
         super().setUpClass()
         cls.factory = RequestFactory()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_passthrough_when_fetch_owner_if_allowed(self):
         @fetch_character_if_allowed()
@@ -39,7 +41,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             return HttpResponse("ok")
 
         # given
-        my_character = create_memberaudit_character(1001)
+        my_character = create_character_from_user(self.user)
         user = my_character.eve_character.character_ownership.user
         request = self.factory.get(DUMMY_URL)
         request.user = user
@@ -54,7 +56,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             self.assertTrue(False)
 
         # given
-        my_character = create_memberaudit_character(1001)
+        my_character = create_character_from_user(self.user)
         user = my_character.eve_character.character_ownership.user
         request = self.factory.get(DUMMY_URL)
         request.user = user
@@ -69,7 +71,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             self.assertTrue(False)
 
         # given
-        my_character = create_memberaudit_character(1001)
+        my_character = create_character_from_user(self.user)
         user_2 = AuthUtils.create_user("Lex Luthor")
         request = self.factory.get(DUMMY_URL)
         request.user = user_2
@@ -99,9 +101,10 @@ class TestFetchToken(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def setUp(self) -> None:
-        self.character = create_memberaudit_character(1001)
+        self.character = create_character_from_user(self.user)
 
     def test_defaults(self):
         @fetch_token_for_character()

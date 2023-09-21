@@ -17,7 +17,7 @@ from memberaudit.views.characters import (
     unshare_character,
 )
 
-from ..testdata.factories import create_compliance_group
+from ..testdata.factories import create_character_from_user, create_compliance_group
 from ..testdata.load_entities import load_entities
 from ..utils import (
     create_memberaudit_character,
@@ -133,6 +133,7 @@ class TestRemoveCharacter(TestCase):
         cls.factory = RequestFactory()
         load_entities()
         create_compliance_group()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def _remove_character(self, user, character_pk):
         request = self.factory.get(
@@ -145,7 +146,7 @@ class TestRemoveCharacter(TestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         user = character.eve_character.character_ownership.user
         auditor_character = create_memberaudit_character(1003)
         auditor = auditor_character.eve_character.character_ownership.user
@@ -168,7 +169,7 @@ class TestRemoveCharacter(TestCase):
 
     def test_should_remove_character_with_notification(self, mock_tasks, mock_messages):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         user = character.eve_character.character_ownership.user
         AuthUtils.add_permission_to_user_by_name("memberaudit.share_characters", user)
 
@@ -209,7 +210,7 @@ class TestRemoveCharacter(TestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        character_1001 = create_memberaudit_character(1001)
+        character_1001 = create_character_from_user(self.user)
         user_1002, _ = create_user_from_evecharacter_with_access(1002)
         # when
         response = self._remove_character(user_1002, character_1001.pk)
@@ -225,7 +226,7 @@ class TestRemoveCharacter(TestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         user = character.eve_character.character_ownership.user
         invalid_character_pk = generate_invalid_pk(Character)
         # when
