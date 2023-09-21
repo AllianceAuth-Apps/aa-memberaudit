@@ -18,6 +18,7 @@ from memberaudit.models import (
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
+    CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     Location,
     SkillSet,
@@ -581,7 +582,7 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
         )
 
-    def test_passed_required_and_misses_recommendend_skill(self):
+    def test_passed_required_and_misses_recommended_skill(self):
         CharacterSkill.objects.create(
             character=self.character,
             eve_type=self.skill_type_1,
@@ -606,7 +607,7 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
         )
 
-    def test_misses_recommendend_skill_only(self):
+    def test_misses_recommended_skill_only(self):
         CharacterSkill.objects.create(
             character=self.character,
             eve_type=self.skill_type_1,
@@ -671,23 +672,7 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
 
-class TestCharacterWalletJournalEntry(NoSocketsTestCase):
-    def test_match_context_type_id(self):
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id("character_id"),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
-        )
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id("contract_id"),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CONTRACT_ID,
-        )
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id(None),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-        )
-
-
-class TestCharacterUpdateStatusOk(NoSocketsTestCase):
+class TestCharacterStatus(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -742,6 +727,20 @@ class TestCharacterUpdateStatusOk(NoSocketsTestCase):
 
         # when/then
         self.assertTrue(self.character.is_update_status_ok())
+
+    def test_should_log_success_for_section(self):
+        # given
+        section = Character.UpdateSection.LOCATION
+        # when
+        self.character.update_section_log_success(section=section)
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.has_token_error)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
 
 
 class TestCharacterUpdateSection(NoSocketsTestCase):
@@ -1029,3 +1028,19 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
     def test_does_not_exist(self):
         """When section does not exist, then return True"""
         self.assertTrue(self.character.is_update_section_stale(self.section))
+
+
+class TestCharacterWalletJournalEntry(NoSocketsTestCase):
+    def test_match_context_type_id(self):
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id("character_id"),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
+        )
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id("contract_id"),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CONTRACT_ID,
+        )
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id(None),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+        )

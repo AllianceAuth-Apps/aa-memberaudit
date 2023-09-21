@@ -3,13 +3,14 @@ from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
 from django.utils.timezone import now
+from esi.errors import TokenError
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import build_http_error
 from app_utils.testing import create_user_from_evecharacter
 
-from memberaudit.models import Character
+from memberaudit.models import Character, CharacterUpdateStatus
 
 from ..testdata.factories import (
     create_character,
@@ -1005,3 +1006,69 @@ class TestCharacterGetEsiScopes(TestCase):
             "esi-wallet.read_character_wallet.v1",
         }
         self.assertSetEqual(set(result), expected)
+
+
+class TestCharacterPerformUpdateWithErrorLogging(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def setUp(self) -> None:
+        self.character.update_status_set.all().delete()
+
+    def test_should_execute_method_and_return_value(self):
+        # given
+        def my_method(dummy):
+            return f"return-value-{dummy}"
+
+        section = Character.UpdateSection.LOCATION
+        # when
+        result = self.character.perform_update_with_error_logging(
+            section=section,
+            method=my_method,
+            dummy="alpha",
+        )
+        # then
+        self.assertEqual(result, "return-value-alpha")
+
+    def test_should_mark_section_as_failed_when_general_exception_is_raised(self):
+        # given
+        def my_method():
+            raise RuntimeError("Test exception")
+
+        section = Character.UpdateSection.LOCATION
+        # when/then
+        with self.assertRaises(RuntimeError):
+            self.character.perform_update_with_error_logging(
+                section=section, method=my_method
+            )
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertFalse(status.is_success)
+        self.assertFalse(status.has_token_error)
+        self.assertIn("RuntimeError", status.last_error_message)
+        self.assertTrue(status.finished_at)
+
+    def test_should_mark_section_as_failed_when_token_error_is_raised(self):
+        # given
+        def my_method():
+            raise TokenError("Test exception")
+
+        section = Character.UpdateSection.LOCATION
+        # when/then
+        with self.assertRaises(TokenError):
+            self.character.perform_update_with_error_logging(
+                section=section, method=my_method
+            )
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertFalse(status.is_success)
+        self.assertTrue(status.has_token_error)
+        self.assertIn("TokenError", status.last_error_message)
+        self.assertTrue(status.finished_at)

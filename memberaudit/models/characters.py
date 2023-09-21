@@ -487,6 +487,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             section=section,
             defaults={
                 "is_success": True,
+                "has_token_error": False,
                 "last_error_message": "",
                 "finished_at": now(),
             },
@@ -502,21 +503,20 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return method(*args, **kwargs)
         except Exception as ex:
             error_message = f"{type(ex).__name__}: {str(ex)}"
-            exc_info = not isinstance(
-                ex, (TokenError)
-            )  # hide details for some exceptions
+            is_token_error = isinstance(ex, (TokenError))
             logger.error(
                 "%s: %s: Error ocurred: %s",
                 self,
                 section.label,
                 error_message,
-                exc_info=exc_info,
+                exc_info=not is_token_error,  # hide details when token error
             )
             self.update_status_set.update_or_create(
                 character=self,
                 section=section,
                 defaults={
                     "is_success": False,
+                    "has_token_error": is_token_error,
                     "last_error_message": error_message,
                     "finished_at": now(),
                 },
@@ -777,9 +777,9 @@ class CharacterUpdateStatus(models.Model):
     content_hash_1 = models.CharField(max_length=32, default="")
     content_hash_2 = models.CharField(max_length=32, default="")
     content_hash_3 = models.CharField(max_length=32, default="")
-    # has_token_error = models.BooleanField(
-    #     default=False, help_text="Whether this section has a token error."
-    # )
+    has_token_error = models.BooleanField(
+        default=False, help_text="Whether this section has a token error."
+    )
     finished_at = models.DateTimeField(null=True, default=None, db_index=True)
     is_success = models.BooleanField(
         null=True,
@@ -872,6 +872,7 @@ class CharacterUpdateStatus(models.Model):
         """Reset this update status."""
         self.is_success = None
         self.last_error_message = ""
+        self.has_token_error = False
         self.started_at = now()
         self.finished_at = None
         self.root_task_id = root_task_id if root_task_id else ""

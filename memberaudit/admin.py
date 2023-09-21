@@ -158,6 +158,7 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "section",
         "_is_enabled",
         "_is_success",
+        "has_token_error",
         "last_error_message",
         "started_at",
         "finished_at",
