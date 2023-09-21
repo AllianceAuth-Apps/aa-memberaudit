@@ -52,25 +52,21 @@ class TestCharacter(NoSocketsTestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
 
     def test_user_should_produce_str(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(str(character_1001))
+        self.assertTrue(str(self.character_1001))
 
     def test_user_should_produce_repr(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(repr(character_1001))
+        self.assertTrue(repr(self.character_1001))
 
     def test_user_should_return_user_when_not_orphan(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         # when/then
-        self.assertEqual(character_1001.user, user)
+        self.assertEqual(self.character_1001.user, user)
 
     def test_user_should_be_None_when_orphan(self):
         # given
@@ -80,16 +76,14 @@ class TestCharacter(NoSocketsTestCase):
 
     def test_should_return_main_when_it_exists_1(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         main_character = user.profile.main_character
         # when/then
-        self.assertEqual(character_1001.main_character, main_character)
+        self.assertEqual(self.character_1001.main_character, main_character)
 
     def test_should_return_main_when_it_exists_2(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         main_character = user.profile.main_character
         character_1101 = add_memberaudit_character_to_user(user, 1101)
         # when/then
@@ -97,12 +91,12 @@ class TestCharacter(NoSocketsTestCase):
 
     def test_should_return_None_when_user_has_no_main(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        character_1002 = create_memberaudit_character(1002)
+        user = character_1002.eve_character.character_ownership.user
         user.profile.main_character = None
         user.profile.save()
         # when/then
-        self.assertIsNone(character_1001.main_character)
+        self.assertIsNone(character_1002.main_character)
 
     def test_should_be_None_when_orphan(self):
         # given
@@ -111,28 +105,25 @@ class TestCharacter(NoSocketsTestCase):
         self.assertIsNone(character.main_character)
 
     def test_should_identify_main(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(character_1001.is_main)
+        self.assertTrue(self.character_1001.is_main)
 
     def test_should_be_true_for_main_only(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         character_1101 = add_memberaudit_character_to_user(user, 1101)
         # when/then
-        self.assertTrue(character_1001.is_main)
+        self.assertTrue(self.character_1001.is_main)
         self.assertFalse(character_1101.is_main)
 
     def test_should_be_false_when_no_main(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        character_1002 = create_memberaudit_character(1002)
+        user = character_1002.eve_character.character_ownership.user
         user.profile.main_character = None
         user.profile.save()
         # when/then
-        self.assertFalse(character_1001.is_main)
+        self.assertFalse(character_1002.is_main)
 
     def test_should_be_false_when_orphan(self):
         # given
@@ -147,39 +138,35 @@ class TestCharacter(NoSocketsTestCase):
         self.assertTrue(character.is_orphan)
 
     def test_should_be_false_when_not_a_orphan(self):
-        # given
-        character = create_memberaudit_character(1001)
         # when/then
-        self.assertFalse(character.is_orphan)
+        self.assertFalse(self.character_1001.is_orphan)
 
     def test_should_keep_sharing(self):
         # given
         _, character_ownership = create_user_from_evecharacter(
-            1001,
+            1002,
             permissions=["memberaudit.basic_access", "memberaudit.share_characters"],
         )
-        character = create_character(
+        character_1002 = create_character(
             eve_character=character_ownership.character, is_shared=True
         )
         # when
-        character.update_sharing_consistency()
+        character_1002.update_sharing_consistency()
         # then
-        character.refresh_from_db()
-        self.assertTrue(character.is_shared)
+        character_1002.refresh_from_db()
+        self.assertTrue(character_1002.is_shared)
 
     def test_should_identify_user_of_a_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         # when/then
-        self.assertTrue(character_1001.user_is_owner(user))
+        self.assertTrue(self.character_1001.user_is_owner(user))
 
     def test_should_identify_not_user_of_a_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
         user = create_user_from_evecharacter(1002)
         # when/then
-        self.assertFalse(character_1001.user_is_owner(user))
+        self.assertFalse(self.character_1001.user_is_owner(user))
 
     def test_should_identify_not_user_of_an_orphan(self):
         # given
@@ -191,17 +178,17 @@ class TestCharacter(NoSocketsTestCase):
     def test_should_remove_sharing(self):
         # given
         _, character_ownership = create_user_from_evecharacter(
-            1001,
+            1002,
             permissions=["memberaudit.basic_access"],
         )
-        character = create_character(
+        character_1002 = create_character(
             eve_character=character_ownership.character, is_shared=True
         )
         # when
-        character.update_sharing_consistency()
+        character_1002.update_sharing_consistency()
         # then
-        character.refresh_from_db()
-        self.assertFalse(character.is_shared)
+        character_1002.refresh_from_db()
+        self.assertFalse(character_1002.is_shared)
 
 
 class TestCharacterContract(NoSocketsTestCase):
