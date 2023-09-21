@@ -133,7 +133,7 @@ class CharacterRoleManager(models.Manager):
     def _fetch_data_from_esi(self, character, token: Token) -> dict:
         """Update the character's roles"""
 
-        logger.info("%s: Fetching roles from ESI", self)
+        logger.info("%s: Fetching roles from ESI", character)
         roles_data = esi.client.Character.get_characters_character_id_roles(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),

@@ -11,7 +11,7 @@ from app_utils.testing import create_user_from_evecharacter
 
 from memberaudit.models import Character
 
-from ..testdata.factories import create_character
+from ..testdata.factories import create_character, create_character_update_status
 from ..testdata.load_entities import load_entities
 from ..utils import (
     add_memberaudit_character_to_user,
@@ -622,7 +622,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
-        self.character_1002.update_data_if_changed_or_forced(
+        self.character_1002.update_section_if_changed(
             section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=my_store_func,
@@ -648,7 +648,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
-        self.character_1002.update_data_if_changed_or_forced(
+        self.character_1002.update_section_if_changed(
             section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=my_store_func,

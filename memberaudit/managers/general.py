@@ -543,9 +543,7 @@ class MailEntityManager(models.Manager):
 
     # @transaction.atomic()
     def _update_or_create_mailing_list_objs(self, character, mailing_lists):
-        logger.info(
-            "%s: Updating %s mailing lists", character, set(mailing_lists.keys())
-        )
+        logger.info("%s: Updating %d mailing lists", character, len(mailing_lists))
         new_mailing_lists = []
         for list_id, mailing_list in mailing_lists.items():
             mailing_list_obj, _ = self.model.objects.update_or_create(
