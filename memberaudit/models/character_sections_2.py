@@ -22,6 +22,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.constants import EveFactionId
 from memberaudit.core.xml_converter import eve_xml_to_html
+from memberaudit.helpers import EveEntityIdsMixin
 from memberaudit.managers.character_sections_2 import (
     CharacterCorporationHistoryManager,
     CharacterDetailsManager,
@@ -41,7 +42,7 @@ from .general import Location
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterCorporationHistory(models.Model):
+class CharacterCorporationHistory(EveEntityIdsMixin, models.Model):
     """A corporation history entry for a character."""
 
     character = models.ForeignKey(
@@ -70,7 +71,7 @@ class CharacterCorporationHistory(models.Model):
         return str(f"{self.character}-{self.record_id}")
 
 
-class CharacterDetails(models.Model):
+class CharacterDetails(EveEntityIdsMixin, models.Model):
     """Details for a character"""
 
     GENDER_MALE = "m"
@@ -292,7 +293,7 @@ class CharacterLocation(models.Model):
         return str(f"{self.character}-{self.eve_solar_system}")
 
 
-class CharacterLoyaltyEntry(models.Model):
+class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
     """Loyalty entry for a character"""
 
     character = models.ForeignKey(

@@ -1,20 +1,47 @@
 """Helpers for Member Audit."""
 
 import datetime as dt
+import itertools
 import json
 import os
-from typing import Any, Optional
+from typing import Any, Iterable, Optional, Set
 
 from celery import Task
 
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
-from eveuniverse.models import EveType
+from eveuniverse.models import EveEntity, EveType
 
 from app_utils.datetime import datetime_round_hour
 
 from memberaudit.app_settings import MEMBERAUDIT_DATA_RETENTION_LIMIT
 from memberaudit.constants import EveDogmaAttributeId
+
+
+class EveEntityIdsMixin:
+    """Add EveEntity related features."""
+
+    def eve_entity_ids(self) -> Set[int]:
+        """Return IDs of all existing EveEntity objects for this object."""
+        ids = set()
+        for field in self._meta.get_fields():
+            if field.is_relation and issubclass(field.related_model, EveEntity):
+                value = getattr(self, field.attname)
+                if value:
+                    ids.add(value)
+        return ids
+
+
+def eve_entity_ids_from_objs(objs: Iterable[Any]) -> Set[int]:
+    """Return all EveEntity IDs from objs. Will return an empty set when objs is empty.
+
+    Expects objs to have the `EveEntityIdsMixin`.
+    """
+    if not objs:
+        return set()
+
+    entity_ids_list = [obj.eve_entity_ids() for obj in objs]
+    return set(itertools.chain.from_iterable(entity_ids_list))
 
 
 def data_retention_cutoff() -> Optional[dt.datetime]:

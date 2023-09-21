@@ -4,7 +4,11 @@ from eveuniverse.models import EveEntity
 from memberaudit.constants import EveFactionId
 from memberaudit.models import CharacterFwStats
 
-from ..testdata.factories import create_character_standing, create_fw_stats
+from ..testdata.factories import (
+    create_character_standing,
+    create_character_wallet_journal_entry,
+    create_fw_stats,
+)
 from ..utils import create_memberaudit_character, load_entities, load_eveuniverse
 
 
@@ -72,3 +76,23 @@ class TestCharacterStanding(TestCase):
         result = obj.effective_standing(0, 0, 5)
         # then
         self.assertAlmostEqual(result, -1.81, 2)
+
+
+class TestCharacterWalletJournals(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_eve_entity_ids(self):
+        # given
+        obj = create_character_wallet_journal_entry(
+            character=self.character, first_party_id=1001, second_party_id=1002
+        )
+        # when
+        result = obj.eve_entity_ids()
+        # then
+        expected = {1001, 1002}
+        self.assertSetEqual(result, expected)

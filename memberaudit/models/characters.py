@@ -18,6 +18,7 @@ from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
 from esi.models import Token
+from eveuniverse.models import EveEntity
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
@@ -371,10 +372,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             - section: Name of the section this update related to
             - fetch_func: A function that fetched the data from ESI
             - store_func: A function that stored the data in the DB.
-                This can be skipped by providing None
+                This can be skipped by providing None.
+                store_func can optionally return a list of entity IDs to resolve
             - forced_update: Data will always be stored when set to True
             - hash_num: To access sub-sections by ID
-
 
         Returns:
             - A tuple of the result data or None if data is unchanged
@@ -405,7 +406,16 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return None, False
 
         if store_func:
-            store_func(self, data)
+            ids_to_resolve = store_func(self, data)
+            if ids_to_resolve:
+                logger.debug(
+                    "%s: Received %d EveEntity IDs from %s "
+                    "which might need to be resolved",
+                    self,
+                    len(ids_to_resolve),
+                    section,
+                )
+                EveEntity.objects.bulk_resolve_ids(ids_to_resolve)
 
         self.update_section_content_hash(
             section=section, content=data, hash_num=hash_num

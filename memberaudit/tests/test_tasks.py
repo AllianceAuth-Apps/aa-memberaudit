@@ -520,53 +520,6 @@ class TestUpdateCharacterMails(TestCaseTasks):
             self.assertTrue(False)  # Hack to ensure the test fails when it gets here
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".character_sections_3.esi")
-class TestUpdateCharacterWalletJournal(TestCaseTasks):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
-        )
-
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
-        mock_esi.client = esi_client_stub
-
-        tasks.update_character_wallet_journal(self.character_1001.pk)
-
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.WALLET_JOURNAL
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
-        exception = build_http_error(502, "Test exception")
-        mock_esi.client.Wallet.get_characters_character_id_wallet_journal.side_effect = (
-            exception
-        )
-
-        try:
-            tasks.update_character_wallet_journal(self.character_1001.pk)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.WALLET_JOURNAL
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPBadGateway: 502 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
-
-
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)

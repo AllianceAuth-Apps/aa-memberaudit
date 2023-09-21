@@ -7,10 +7,13 @@ from eveuniverse.models import EveType
 from memberaudit.helpers import (
     data_retention_cutoff,
     determine_task_priority,
+    eve_entity_ids_from_objs,
     implant_slot_num,
 )
 
+from .testdata.factories import create_character_wallet_journal_entry
 from .testdata.load_eveuniverse import load_eveuniverse
+from .utils import create_memberaudit_character, load_entities
 
 MODULE_PATH = "memberaudit.helpers"
 
@@ -67,3 +70,33 @@ class TestDetermineTaskPriority(TestCase):
         task = TaskStub()
         # when/then
         self.assertIsNone(determine_task_priority(task))
+
+
+class TestEveEntityIdsFromObjs(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_ids_from_all_objs(self):
+        # given
+        obj_1 = create_character_wallet_journal_entry(
+            character=self.character, first_party_id=1001, second_party_id=1002
+        )
+        obj_2 = create_character_wallet_journal_entry(
+            character=self.character, first_party_id=1101, second_party_id=1002
+        )
+        # when
+        result = eve_entity_ids_from_objs([obj_1, obj_2])
+        # then
+        expected = {1001, 1002, 1101}
+        self.assertSetEqual(result, expected)
+
+    def test_should_return_empty_set_when_no_objs_provided(self):
+        # when
+        result = eve_entity_ids_from_objs([])
+        # then
+        expected = set()
+        self.assertSetEqual(result, expected)

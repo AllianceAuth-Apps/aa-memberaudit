@@ -1,6 +1,8 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
+from typing import Set
+
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from esi.models import Token
@@ -12,7 +14,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff
+from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -471,7 +473,7 @@ class CharacterStandingManager(models.Manager):
 
         return standings
 
-    def _update_or_create_objs(self, character, standings):
+    def _update_or_create_objs(self, character, standings) -> Set[int]:
         # TODO: Replace delete + create with create + update
         if standings:
             entries = [
@@ -494,7 +496,7 @@ class CharacterStandingManager(models.Manager):
             else:
                 logger.info("%s: No standings for this character", character)
 
-        EveEntity.objects.bulk_update_new_esi()
+        return {obj.eve_entity_id for obj in entries}
 
 
 class CharacterWalletBalanceManager(models.Manager):
@@ -560,7 +562,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
             create_ids = incoming_ids.difference(existing_ids)
             if not create_ids:
                 logger.info("%s: No new wallet journal entries", character)
-                return
+                return set()
 
             logger.info(
                 "%s: Adding %s new wallet journal entries", character, len(create_ids)
@@ -591,6 +593,8 @@ class CharacterWalletJournalEntryManager(models.Manager):
             ]
             self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
+        return eve_entity_ids_from_objs(entries)
+
 
 class CharacterWalletTransactionManager(models.Manager):
     def update_or_create_esi(self, character, force_update: bool = False):
@@ -615,7 +619,7 @@ class CharacterWalletTransactionManager(models.Manager):
         return transactions
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
-    def _update_or_create_objs(self, character, token: Token, transactions):
+    def _update_or_create_objs(self, character, token: Token, transactions) -> Set[int]:
         from memberaudit.models import Location
 
         cutoff_datetime = data_retention_cutoff()
@@ -634,12 +638,11 @@ class CharacterWalletTransactionManager(models.Manager):
         type_ids = {row.get("type_id") for row in transaction_list.values()}
         EveType.objects.bulk_get_or_create_esi(ids=list(type_ids))
 
-        self._bulk_update_or_create(character, transaction_list)
-
-        EveEntity.objects.bulk_update_new_esi()
+        eve_entity_ids = self._bulk_update_or_create(character, transaction_list)
+        return eve_entity_ids
 
     @transaction.atomic()
-    def _bulk_update_or_create(self, character, transaction_list):
+    def _bulk_update_or_create(self, character, transaction_list) -> Set[int]:
         from memberaudit.models import Location
 
         incoming_ids = set(transaction_list.keys())
@@ -647,7 +650,7 @@ class CharacterWalletTransactionManager(models.Manager):
         create_ids = incoming_ids.difference(existing_ids)
         if not create_ids:
             logger.info("%s: No new wallet transactions", character)
-            return
+            return set()
 
         logger.info(
             "%s: Adding %s new wallet transactions",
@@ -679,3 +682,4 @@ class CharacterWalletTransactionManager(models.Manager):
                     )
                 )
         self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        return eve_entity_ids_from_objs(entries)

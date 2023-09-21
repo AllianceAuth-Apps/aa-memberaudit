@@ -21,3 +21,4 @@ starbases_raw*.json
 .mypy_cache
 memberaudit_log/
 _build/
+.ruff_cache/

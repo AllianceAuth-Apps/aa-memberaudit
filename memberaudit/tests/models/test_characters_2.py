@@ -7,6 +7,8 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import build_http_error
 from app_utils.testing import create_user_from_evecharacter
 
+from memberaudit.models import Character
+
 from ..testdata.factories import create_character
 from ..testdata.load_entities import load_entities
 from ..utils import (
@@ -457,6 +459,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.character_1002 = create_memberaudit_character(1002)
 
     @staticmethod
     def _fetch_func_template(character):
@@ -476,7 +479,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.return_value = True
         # when
         result, changed = character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -502,7 +505,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.return_value = False
         # when
         result, changed = character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -524,7 +527,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.return_value = False
         # when
         result, changed = character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=True,
@@ -546,7 +549,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when
         result, changed = character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -568,7 +571,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.return_value = True
         # when
         character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
             force_update=False,
@@ -593,7 +596,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         mock_has_section_changed.return_value = True
         # when
         result, changed = character.update_data_if_changed_or_forced(
-            section=character.UpdateSection.LOCATION,
+            section=Character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=None,
         )
@@ -602,3 +605,53 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(mock_update_section_content_hash.called)
         self.assertListEqual(result, ["alpha"])
         self.assertTrue(changed)
+
+    @patch(MODULE_PATH + ".EveEntity.objects.bulk_resolve_ids")
+    def test_should_resolve_eve_entity_ids_when_provided(
+        self,
+        mock_bulk_resolve_ids,
+        mock_has_section_changed,
+        mock_update_section_content_hash,
+    ):
+        # given
+        def my_store_func(character, data):
+            return [1, 2]
+
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        self.character_1002.update_data_if_changed_or_forced(
+            section=Character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=my_store_func,
+            force_update=False,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertTrue(mock_bulk_resolve_ids.called)
+        args, __ = mock_bulk_resolve_ids.call_args
+        self.assertListEqual(args[0], [1, 2])
+
+    @patch(MODULE_PATH + ".EveEntity.objects.bulk_resolve_ids")
+    def test_should_not_resolve_eve_entity_ids_when_not_provided(
+        self,
+        mock_bulk_resolve_ids,
+        mock_has_section_changed,
+        mock_update_section_content_hash,
+    ):
+        # given
+        def my_store_func(character, data):
+            return []
+
+        fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
+        mock_has_section_changed.return_value = True
+        # when
+        self.character_1002.update_data_if_changed_or_forced(
+            section=Character.UpdateSection.LOCATION,
+            fetch_func=fetch_func_mock,
+            store_func=my_store_func,
+            force_update=False,
+        )
+        # then
+        self.assertTrue(fetch_func_mock.called)
+        self.assertFalse(mock_bulk_resolve_ids.called)
