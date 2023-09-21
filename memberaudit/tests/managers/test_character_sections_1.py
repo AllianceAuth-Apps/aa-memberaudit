@@ -23,6 +23,7 @@ from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_contract,
     create_character_contract_bid,
+    create_character_from_user,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -31,6 +32,7 @@ from ..utils import (
     CharacterUpdateTestDataMixin,
     TestCharacterUpdateBase,
     create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
 )
 
 MODULE_PATH = "memberaudit.managers.character_sections_1"
@@ -137,12 +139,13 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_do_nothing_when_asset_list_is_empty(
         self, mock_eve_entity_create, mock_preload_locations
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         asset_list = []
         # when
         character.assets_preload_objects(asset_list)
@@ -154,7 +157,7 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         self, mock_eve_entity_create, mock_preload_locations
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         asset_list = [
             {"item_id": 1, "type_id": 3, "location_id": 420},
             {"item_id": 2, "type_id": 4, "location_id": 421},

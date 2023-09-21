@@ -11,7 +11,11 @@ from app_utils.testing import create_user_from_evecharacter
 
 from memberaudit.models import Character
 
-from ..testdata.factories import create_character, create_character_update_status
+from ..testdata.factories import (
+    create_character,
+    create_character_from_user,
+    create_character_update_status,
+)
 from ..testdata.load_entities import load_entities
 from ..utils import (
     add_memberaudit_character_to_user,
@@ -462,6 +466,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         super().setUpClass()
         load_entities()
         cls.character_1002 = create_memberaudit_character(1002)
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     @staticmethod
     def _fetch_func_template(character):
@@ -475,7 +480,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
@@ -501,7 +506,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
@@ -523,7 +528,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
@@ -545,7 +550,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=build_http_error(500, "Test exception"))
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
@@ -567,7 +572,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
@@ -593,7 +598,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
@@ -664,11 +669,12 @@ class TestCharacterCalcUpdateStatus(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_ok(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
 
@@ -678,7 +684,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_error(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )
@@ -689,7 +695,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_incomplete(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         sections_to_update = [
             obj
             for obj in Character.UpdateSection
@@ -706,7 +712,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_in_progress(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             if section == Character.UpdateSection.ASSETS:
                 create_character_update_status(
@@ -723,9 +729,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_disabled(self):
         # given
-        character = create_memberaudit_character(1001)
-        character.is_disabled = True
-        character.save()
+        character = create_character_from_user(self.user, is_disabled=True)
 
         # when/then
         self.assertEqual(
@@ -735,7 +739,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_ok_when_disabled_section_has_error(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection.enabled_sections():
             create_character_update_status(character, section=section)
 
@@ -749,7 +753,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_ok_when_disabled_section_is_missing(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection.enabled_sections():
             create_character_update_status(character, section=section)
 
@@ -819,12 +823,14 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_should_reset_when_ok_again(self):
         # given
-        character = create_memberaudit_character(1001)
-        character.token_error_notified_at = now()
-        character.save()
+        token_error_notified_at = now()
+        character = create_character_from_user(
+            self.user, token_error_notified_at=token_error_notified_at
+        )
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
 
@@ -837,9 +843,10 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
 
     def test_should_not_reset_when_not_yet_ok(self):
         # given
-        character = create_memberaudit_character(1001)
-        character.token_error_notified_at = now()
-        character.save()
+        token_error_notified_at = now()
+        character = create_character_from_user(
+            self.user, token_error_notified_at=token_error_notified_at
+        )
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )
@@ -853,9 +860,7 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
 
     def test_should_ignore_when_not_set(self):
         # given
-        character = create_memberaudit_character(1001)
-        character.token_error_notified_at = None
-        character.save()
+        character = create_character_from_user(self.user, token_error_notified_at=None)
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )

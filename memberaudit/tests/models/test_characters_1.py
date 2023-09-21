@@ -27,13 +27,18 @@ from memberaudit.models import (
     SkillSetSkill,
 )
 
-from ..testdata.factories import create_character, create_character_update_status
+from ..testdata.factories import (
+    create_character,
+    create_character_from_user,
+    create_character_update_status,
+)
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..testdata.load_locations import load_locations
 from ..utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
     scope_names_set,
 )
 
@@ -355,10 +360,11 @@ class TestCharacterFetchToken(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_should_return_token_with_default_scopes(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
         token = character.fetch_token()
         # then
@@ -367,7 +373,7 @@ class TestCharacterFetchToken(TestCase):
 
     def test_should_return_token_with_specified_scope(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
         token = character.fetch_token("esi-mail.read_mail.v1")
         self.assertIsInstance(token, Token)
@@ -385,7 +391,7 @@ class TestCharacterFetchToken(TestCase):
         self, mock_notify
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
         with self.assertRaises(TokenError):
             character.fetch_token("invalid_scope")
@@ -403,7 +409,7 @@ class TestCharacterFetchToken(TestCase):
         self, mock_notify
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         character.token_error_notified_at = now()
         character.save()
         # when
@@ -995,9 +1001,10 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
         super().setUpClass()
         load_entities()
         cls.section = Character.UpdateSection.ASSETS
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def setUp(self) -> None:
-        self.character = create_memberaudit_character(1001)
+        self.character = create_character_from_user(self.user)
 
     def test_recently_updated_successfully(self):
         """When section has been recently updated successfully then return False"""
