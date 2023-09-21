@@ -182,8 +182,9 @@ def create_character_contract_item(
         "is_included": True,
         "is_singleton": False,
         "quantity": 1,
-        "eve_type_id": 603,
     }
+    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
+        params["eve_type_id"] = 603
     params.update(kwargs)
     return CharacterContractItem.objects.create(**params)
 

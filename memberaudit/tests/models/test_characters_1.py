@@ -1,7 +1,7 @@
 import datetime as dt
 import hashlib
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -15,11 +15,9 @@ from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 from memberaudit.models import (
     Character,
     CharacterContract,
-    CharacterContractItem,
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
-    CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     Location,
     SkillSet,
@@ -29,6 +27,8 @@ from memberaudit.models import (
 
 from ..testdata.factories import (
     create_character,
+    create_character_contract,
+    create_character_contract_item,
     create_character_from_user,
     create_character_update_status,
 )
@@ -207,11 +207,11 @@ class TestCharacterContract(NoSocketsTestCase):
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.item_type_1 = EveType.objects.get(id=19540)
-        cls.item_type_2 = EveType.objects.get(id=19551)
+        cls.snake_alpha_type = EveType.objects.get(name="High-grade Snake Alpha")
+        cls.snake_beta_type = EveType.objects.get(name="High-grade Snake Beta")
 
     def setUp(self) -> None:
-        self.contract = CharacterContract.objects.create(
+        self.contract = create_character_contract(
             character=self.character_1001,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -225,7 +225,7 @@ class TestCharacterContract(NoSocketsTestCase):
             start_location=self.jita_44,
             end_location=self.jita_44,
         )
-        self.contract_completed = CharacterContract.objects.create(
+        self.contract_completed = create_character_contract(
             character=self.character_1001,
             contract_id=43,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -257,51 +257,51 @@ class TestCharacterContract(NoSocketsTestCase):
         self.assertEqual(self.contract_completed.hours_issued_2_completed, 24)
 
     def test_summary_one_item_1(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         )
         self.assertEqual(self.contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_one_item_2(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=2,
             is_included=False,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.snake_beta_type,
         )
         self.assertEqual(self.contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_multiple_item(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=2,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.snake_beta_type,
         )
         self.assertEqual(self.contract.summary(), "[Multiple Items]")
 
@@ -310,15 +310,17 @@ class TestCharacterContract(NoSocketsTestCase):
 
     def test_can_calculate_pricing_1(self):
         """calculate price and total for normal item"""
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=2,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.snake_alpha_type, average_price=5000000
+        )
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertEqual(item_1.price, 5000000)
@@ -326,16 +328,18 @@ class TestCharacterContract(NoSocketsTestCase):
 
     def test_can_calculate_pricing_2(self):
         """calculate price and total for BPO"""
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
             raw_quantity=-2,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.snake_alpha_type, average_price=5000000
+        )
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertIsNone(item_1.price)
@@ -888,7 +892,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_reset_1(self):
         """when section exists, reset it"""
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=False,
@@ -909,7 +913,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1a(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -926,7 +930,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1b(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -943,7 +947,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1c(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -968,7 +972,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_is_updating_1(self):
         """When section exists, then return result from is_updating"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001, section=self.section, started_at=now()
         )
         self.assertEqual(
@@ -995,7 +999,7 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
 
     def test_recently_updated_successfully(self):
         """When section has been recently updated successfully then return False"""
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character,
             section=self.section,
             is_success=True,
@@ -1006,18 +1010,20 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
 
     def test_recently_updated_unsuccessfully(self):
         """When section has been recently updated, but with errors then return True"""
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character, section=self.section, is_success=False
         )
         self.assertTrue(self.character.is_update_section_stale(self.section))
 
     def test_update_long_ago(self):
         """When section has not been recently updated, then return True"""
-        mocked_update_at = now() - dt.timedelta(hours=12)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
-            CharacterUpdateStatus.objects.create(
-                character=self.character, section=self.section, is_success=True
-            )
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=started_at,
+        )
         self.assertTrue(self.character.is_update_section_stale(self.section))
 
     def test_does_not_exist(self):
