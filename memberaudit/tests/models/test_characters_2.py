@@ -779,21 +779,11 @@ class TestCharacterHasTokenError(TestCase):
             self.character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
+            has_token_error=True,
             last_error_message="TokenError",
         )
         # when/then
         self.assertTrue(self.character.has_token_issue())
-
-    def test_should_return_false_when_token_error_and_success(self):
-        # given
-        create_character_update_status(
-            self.character,
-            section=Character.UpdateSection.ASSETS,
-            is_success=True,
-            last_error_message="TokenError",
-        )
-        # when/then
-        self.assertFalse(self.character.has_token_issue())
 
     def test_should_return_false_when_other_error(self):
         # given
@@ -801,6 +791,7 @@ class TestCharacterHasTokenError(TestCase):
             self.character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
+            has_token_error=False,
             last_error_message="other error",
         )
         # when/then
@@ -813,6 +804,7 @@ class TestCharacterHasTokenError(TestCase):
             self.character,
             section=Character.UpdateSection.ROLES,
             is_success=False,
+            has_token_error=True,
             last_error_message="TokenError",
         )
         # when/then

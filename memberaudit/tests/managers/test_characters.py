@@ -527,6 +527,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             character_1002,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
+            has_token_error=True,
             last_error_message="TokenError 1",
         )
         create_character_update_status(
@@ -548,6 +549,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             character_1002,
             section=Character.UpdateSection.ROLES,
             is_success=False,
+            has_token_error=True,
             last_error_message="TokenError 1",
         )
         # when

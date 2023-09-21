@@ -126,8 +126,7 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
             self.filter(
                 eve_character__character_ownership__user=user,
                 update_status_set__section__in=enabled_sections,
-                update_status_set__is_success=False,
-                update_status_set__last_error_message__startswith="TokenError",
+                update_status_set__has_token_error=True,
             )
             .distinct()
             .count()

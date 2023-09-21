@@ -264,10 +264,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Return True if character has run into a token error during update, else False."""
         return (
             self.update_status_set.filter_enabled_sections()
-            .filter(
-                is_success=False,
-                last_error_message__startswith="TokenError",
-            )
+            .filter(has_token_error=True)
             .exists()
         )
 
