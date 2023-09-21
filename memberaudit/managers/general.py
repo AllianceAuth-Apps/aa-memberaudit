@@ -46,7 +46,7 @@ class ComplianceGroupDesignationManager(models.Manager):
 
     def update_user(self, user: User):
         """Update compliance groups for user."""
-        from ..models import General
+        from memberaudit.models import General
 
         was_compliant = user.groups.filter(
             compliancegroupdesignation__isnull=False
@@ -254,7 +254,7 @@ class LocationManager(models.Manager):
         )
 
     def _structure_update_or_create_esi_async(self, id: int, token: Token):
-        from ..tasks import update_structure_esi as task_update_structure_esi
+        from memberaudit.tasks import update_structure_esi as task_update_structure_esi
 
         id = int(id)
         location, created = self.get_or_create(id=id)
@@ -430,7 +430,9 @@ class MailEntityManager(models.Manager):
         return self._update_or_create_esi_async(id=id)
 
     def _update_or_create_esi_async(self, id: int) -> Tuple[models.Model, bool]:
-        from ..tasks import update_mail_entity_esi as task_update_mail_entity_esi
+        from memberaudit.tasks import (
+            update_mail_entity_esi as task_update_mail_entity_esi,
+        )
 
         id = int(id)
         obj, created = self.get_or_create(
@@ -600,7 +602,7 @@ class SkillSetManager(models.Manager):
         ship_type: Optional[EveType] = None,
     ) -> Tuple[models.Model, bool]:
         """Update or create a skill set from skills."""
-        from ..models import SkillSetSkill
+        from memberaudit.models import SkillSetSkill
 
         my_now = now()
         description = (

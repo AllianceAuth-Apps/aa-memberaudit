@@ -319,7 +319,7 @@ class CharacterContactManager(models.Manager):
         contact_ids: list,
         is_new=False,
     ):
-        from ..models import CharacterContactLabel
+        from memberaudit.models import CharacterContactLabel
 
         for contact_id, contact_data in contacts_list.items():
             if contact_id in contact_ids and contact_data.get("label_ids"):
@@ -453,7 +453,7 @@ class CharacterContractManager(models.Manager):
     def _create_new_contracts(
         self, character, contracts_list: dict, contract_ids: Set[int]
     ) -> Set[int]:
-        from ..models import Location
+        from memberaudit.models import Location
 
         logger.info("%s: Storing %s new contracts", character, len(contract_ids))
         new_contracts = []
