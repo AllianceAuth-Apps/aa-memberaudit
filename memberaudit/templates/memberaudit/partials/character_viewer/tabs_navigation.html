@@ -25,7 +25,9 @@
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
         <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">
-            {% translate 'Clones' %} <b class="caret"></b>
+            {% translate 'Clones' %}
+            {% tab_status_indicator UpdateSection.IMPLANTS UpdateSection.JUMP_CLONES %}
+            <b class="caret"></b>
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
@@ -49,7 +51,9 @@
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
         <a href="#" id="myTabDrop3" class="dropdown-toggle" data-toggle="dropdown">
-            {% translate 'Industry' %} <b class="caret"></b>
+            {% translate 'Industry' %}
+            {% tab_status_indicator UpdateSection.MINING_LEDGER UpdateSection.PLANETS %}
+            <b class="caret"></b>
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop3">
             <li class="">
@@ -73,7 +77,9 @@
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
         <a href="#" class="dropdown-toggle" data-toggle="dropdown">
-            {% translate 'Standings' %} <b class="caret"></b>
+            {% translate 'Standings' %}
+            {% tab_status_indicator UpdateSection.CONTACTS UpdateSection.STANDINGS %}
+            <b class="caret"></b>
         </a>
         <ul class="dropdown-menu" role="menu">
             <li class="">
@@ -97,7 +103,9 @@
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
         <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">
-            {% translate 'Skills' %}&nbsp;<b class="caret"></b>
+            {% translate 'Skills' %}
+            {% tab_status_indicator UpdateSection.ATTRIBUTES UpdateSection.SKILL_QUEUE UpdateSection.SKILL_SETS UpdateSection.SKILLS %}
+            <b class="caret"></b>
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
@@ -135,7 +143,9 @@
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="wallet">
         <a href="#" id="myTabDrop1" class="dropdown-toggle" data-toggle="dropdown">
-            {% translate 'Wallet' %} <b class="caret"></b>
+            {% translate 'Wallet' %}
+            {% tab_status_indicator UpdateSection.WALLET_JOURNAL UpdateSection.WALLET_TRANSACTIONS %}
+            <b class="caret"></b>
         </a>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop1">
             <li class="">

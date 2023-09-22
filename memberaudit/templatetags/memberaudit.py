@@ -19,7 +19,16 @@ def navactive_2(request, url_name: str, *args):
     "memberaudit/partials/character_viewer/tab_status_indicator.html",
     takes_context=True,
 )
-def tab_status_indicator(context, section: str) -> dict:
+def tab_status_indicator(context, *sections) -> dict:
+    """Render status indicator for a character tab.
+
+    Show as error when at least one section has an error.
+    """
     sections_update_status = context["sections_update_status"]
-    update_section = sections_update_status[str(section)]
-    return {"has_error": not update_section.is_success}
+
+    is_success = True
+    for section in sections:
+        update_section = sections_update_status[str(section)]
+        is_success &= update_section.is_success
+
+    return {"has_error": not is_success}
