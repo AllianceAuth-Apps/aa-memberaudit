@@ -12,6 +12,7 @@ from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveTyp
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
+from memberaudit.errors import TokenDoesNotExist
 from memberaudit.models import (
     Character,
     CharacterContract,
@@ -385,7 +386,7 @@ class TestCharacterFetchToken(TestCase):
         # given
         character = create_character_from_user(self.user)
         # when
-        with self.assertRaises(TokenError):
+        with self.assertRaises(TokenDoesNotExist):
             character.fetch_token("invalid_scope")
         # then
         self.assertTrue(mock_notify.called)
@@ -405,7 +406,7 @@ class TestCharacterFetchToken(TestCase):
         character.token_error_notified_at = now()
         character.save()
         # when
-        with self.assertRaises(TokenError):
+        with self.assertRaises(TokenDoesNotExist):
             character.fetch_token("invalid_scope")
         # then
         self.assertFalse(mock_notify.called)

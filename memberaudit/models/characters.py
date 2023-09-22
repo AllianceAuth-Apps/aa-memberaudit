@@ -34,6 +34,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.errors import TokenDoesNotExist
 from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.characters import (
     CharacterManager,
@@ -528,7 +529,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             Otherwise will use all scopes defined for this character.
 
         Exceptions:
-            - TokenError: If no valid token can be found
+            - TokenDoesNotExist: If no matching token is found
+            - TokenError: Various token errors
         """
         if self.is_orphan:
             raise TokenError(f"Orphaned characters have no token: {self}") from None
@@ -554,7 +556,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 notify.danger(user=self.user, title=title, message=message)
                 self.token_error_notified_at = now()
                 self.save(update_fields=["token_error_notified_at"])
-            raise TokenError(
+            raise TokenDoesNotExist(
                 f"Could not find a matching token for {self} with scopes: {scopes}."
             )
         return token
