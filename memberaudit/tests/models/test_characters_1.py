@@ -970,20 +970,6 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             )
         )
 
-    def test_is_updating_1(self):
-        """When section exists, then return result from is_updating"""
-        section = create_character_update_status(
-            character=self.character_1001, section=self.section, started_at=now()
-        )
-        self.assertEqual(
-            self.character_1001.is_section_updating(section=self.section),
-            section.is_updating,
-        )
-
-    def test_is_updating_2(self):
-        """When section does not exist, then return False"""
-        self.assertTrue(self.character_1001.is_section_updating(section=self.section))
-
 
 @patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
 class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):

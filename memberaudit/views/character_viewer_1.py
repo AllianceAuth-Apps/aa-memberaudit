@@ -125,9 +125,6 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "character_assets_total": character_assets_total,
         "has_implants": has_implants,
         "connection_skills_differ": connection_skills_differ,
-        "is_assets_updating": character.is_section_updating(
-            Character.UpdateSection.ASSETS  # TODO: Remove
-        ),
         "UpdateSection": Character.UpdateSection,
         "enabled_sections": Character.UpdateSection.enabled_sections(),
     }

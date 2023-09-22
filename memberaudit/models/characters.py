@@ -406,15 +406,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         update_status_obj.reset(root_task_id, parent_task_id)
         return update_status_obj
 
-    def is_section_updating(self, section: UpdateSection) -> bool:
-        """Return True if section is currently updating, or does not exist, else False."""
-        try:
-            update_status_obj = self.update_status_set.get(section=section)
-        except CharacterUpdateStatus.DoesNotExist:
-            return True
-
-        return update_status_obj.is_updating
-
     def update_status_as_dict(self) -> Dict[str, Any]:
         """Return current update status for this character as dict."""
         return {obj.section: obj for obj in self.update_status_set.all()}
