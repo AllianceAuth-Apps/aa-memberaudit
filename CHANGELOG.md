@@ -7,19 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [2.11.3] - 2023-09-21
-
-### Changed
-
-- Improved the way entity IDs are resolved to names for all sections, e.g. resolving IDs will not spawn additional tasks and will resolve the new IDs from the related objects only
-
-## [2.12.0] - TBD
+## [3.0.0] - TBD
 
 ### Update notes
 
-This release adds corporation roles as optional feature. Corporation roles are disabled by default and need to be explicitly enabled to active them.
+This release adds corporation roles as new optional feature. Corporation roles are disabled by default and need to be explicitly enabled to active them.
 
-Corporation roles require an additional scope. Once enabled all users will need to re-register their characters to be able to use the new feature. Users will be automatically notified once to re-register for each of their characters. If you have the app Discord Notify enabled (recommended), those notification will be forwarded automatically as DMs to users on Discord. Users will also be informed on their character launch page about the need to re-register their characters.
+Once enabled users will need to re-register their characters to be able to use it, because it requires an additional scope. Users will automatically asked to re-register (once for each of their characters). If you have the app Discord Notify enabled (recommended), those notification will be forwarded automatically as DMs to users on Discord. Users will also be informed on their character launch page about the need to re-register their characters.
 
 However, this scope change will not disrupt the update of existing characters in any way. This will show errors for the missing scope, but otherwise continue to update the characters normally.
 
@@ -28,12 +22,19 @@ However, this scope change will not disrupt the update of existing characters in
 - Corporation roles shown for every character (when enabled)
 - Current update status are now shown on the character launcher and character viewer
 - Detailed update status with potential errors are shown on each tab
+- Red status indicator is shown on each character tab that has an update error
 - Admins can see which sections are enabled when checking the update status for a character
 
 ## Changed
 
 - Badge with unregistered character count now also includes characters with token errors
 - Users are notified about a token error once only per occurrence
+
+## [2.11.3] - 2023-09-21
+
+### Changed
+
+- Improved the way entity IDs are resolved to names for all sections, e.g. resolving IDs will not spawn additional tasks and will resolve the new IDs from the related objects only
 
 ## [2.11.2] - 2023-09-15
 

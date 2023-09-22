@@ -32,7 +32,10 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.LOCATION, is_success=True
         )
         sections_update_status = {"location": status}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.OK,
+        }
         # when
         result = tab_status_indicator(context, Character.UpdateSection.LOCATION)
         # then
@@ -44,7 +47,10 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.MAILS, is_success=True
         )
         sections_update_status = {"mails": status}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.OK,
+        }
         # when
         result = tab_status_indicator(context, Character.UpdateSection.LOCATION)
         # then
@@ -56,7 +62,10 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.LOCATION, is_success=False
         )
         sections_update_status = {"location": status}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.ERROR,
+        }
         # when
         result = tab_status_indicator(context, Character.UpdateSection.LOCATION)
         # then
@@ -71,7 +80,10 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.LOCATION, is_success=False
         )
         sections_update_status = {"location": status_location, "mails": status_mails}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.ERROR,
+        }
         # when
         result = tab_status_indicator(
             context, Character.UpdateSection.LOCATION, Character.UpdateSection.MAILS
@@ -88,7 +100,10 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.LOCATION, is_success=True
         )
         sections_update_status = {"location": status_location, "mails": status_mails}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.OK,
+        }
         # when
         result = tab_status_indicator(
             context, Character.UpdateSection.LOCATION, Character.UpdateSection.MAILS
@@ -102,7 +117,25 @@ class TestTabStatusIndicator(TestCase):
             section=Character.UpdateSection.LOCATION, is_success=True
         )
         sections_update_status = {"location": status_location}
-        context = {"sections_update_status": sections_update_status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.OK,
+        }
         # when/then
         with self.assertRaises(ValueError):
             tab_status_indicator(context, "invalid-section-name")
+
+    def test_should_not_report_error_when_status_is_disabled(self):
+        # given
+        status = CharacterUpdateStatus(
+            section=Character.UpdateSection.LOCATION, is_success=False
+        )
+        sections_update_status = {"location": status}
+        context = {
+            "sections_update_status": sections_update_status,
+            "update_status": Character.UpdateStatus.DISABLED,
+        }
+        # when
+        result = tab_status_indicator(context, Character.UpdateSection.LOCATION)
+        # then
+        self.assertFalse(result["has_error"])

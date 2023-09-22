@@ -25,8 +25,15 @@ def tab_status_indicator(context, *sections) -> dict:
     """Render status indicator for a character tab.
 
     Show as error when at least one section has an error.
+
+    Expects these keys in the context: "sections_update_status", "update_status"
     """
     sections_update_status = context["sections_update_status"]
+    update_status = context["update_status"]
+    result = {"has_error": False}
+
+    if update_status is Character.UpdateStatus.DISABLED:
+        return result
 
     is_success = True
     for section in sections:
@@ -37,4 +44,5 @@ def tab_status_indicator(context, *sections) -> dict:
             continue
         is_success &= update_section.is_success
 
-    return {"has_error": not is_success}
+    result["has_error"] = not is_success
+    return result
