@@ -1064,3 +1064,27 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         self.assertTrue(status.has_token_error)
         self.assertIn("TokenError", status.last_error_message)
         self.assertTrue(status.finished_at)
+
+
+class TestCharacterUpdateStatusAsDict(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_dict_with_status(self):
+        # given
+        status = create_character_update_status(
+            self.character, section=Character.UpdateSection.LOCATION, is_success=True
+        )
+        # when
+        result = self.character.update_status_as_dict()
+        # then
+        self.assertDictEqual(result, {"location": status})
+
+    def test_should_return_empty_dict(self):
+        # when
+        result = self.character.update_status_as_dict()
+        # then
+        self.assertDictEqual(result, {})

@@ -3,6 +3,8 @@
 from django import template
 from django.urls import reverse
 
+from memberaudit.models import Character
+
 register = template.Library()
 
 
@@ -28,7 +30,11 @@ def tab_status_indicator(context, *sections) -> dict:
 
     is_success = True
     for section in sections:
-        update_section = sections_update_status[str(section)]
+        section_obj = Character.UpdateSection(section)  # make sure section is valid
+        try:
+            update_section = sections_update_status[str(section_obj)]
+        except KeyError:
+            continue
         is_success &= update_section.is_success
 
     return {"has_error": not is_success}

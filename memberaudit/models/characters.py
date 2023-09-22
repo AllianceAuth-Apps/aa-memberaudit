@@ -3,7 +3,7 @@
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Callable, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPInternalServerError
 
@@ -414,6 +414,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return True
 
         return update_status_obj.is_updating
+
+    def update_status_as_dict(self) -> Dict[str, Any]:
+        """Return current update status for this character as dict."""
+        return {obj.section: obj for obj in self.update_status_set.all()}
 
     def update_section_if_changed(
         self,
