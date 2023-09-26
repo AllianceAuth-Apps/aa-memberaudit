@@ -63,7 +63,7 @@ def launcher(request) -> HttpResponse:
                     "character_id": eve_character.character_id,
                     "character_name": eve_character.character_name,
                     "character": character,
-                    "update_status": character.calc_update_status(),
+                    "update_status": character.total_update_status(),
                     "has_token_issue": character.has_token_issue(),
                     "alliance_id": eve_character.alliance_id,
                     "alliance_name": eve_character.alliance_name,
