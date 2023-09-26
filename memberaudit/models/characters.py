@@ -128,7 +128,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
         def has_issue(self) -> bool:
             """Return True when status is representing an issue."""
-            return self is self.DISABLED or self is self.ERROR
+            return self in {self.DISABLED, self.ERROR, self.INCOMPLETE}
 
         def bootstrap_style_class(self) -> str:
             """Return bootstrap corresponding bootstrap style class."""

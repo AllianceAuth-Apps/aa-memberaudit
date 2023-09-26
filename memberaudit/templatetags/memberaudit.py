@@ -29,20 +29,28 @@ def tab_status_indicator(context, *sections) -> dict:
     Expects these keys in the context: "sections_update_status", "update_status"
     """
     sections_update_status = context["sections_update_status"]
-    update_status = context["update_status"]
-    result = {"has_error": False}
+    result = {"tab_update_status": Character.TotalUpdateStatus.OK}
 
-    if update_status is Character.TotalUpdateStatus.DISABLED:
+    if context["update_status"] is Character.TotalUpdateStatus.DISABLED:
         return result
 
     is_success = True
+    is_complete = True
     for section in sections:
         section_obj = Character.UpdateSection(section)  # make sure section is valid
         try:
             update_section = sections_update_status[str(section_obj)]
         except KeyError:
-            continue
-        is_success &= update_section.is_success
+            is_complete = False
+        else:
+            if update_section.is_success is not None:
+                is_success &= update_section.is_success
 
-    result["has_error"] = not is_success
+    if not is_success:
+        tab_update_status = Character.TotalUpdateStatus.ERROR
+    elif not is_complete:
+        tab_update_status = Character.TotalUpdateStatus.INCOMPLETE
+    else:
+        tab_update_status = Character.TotalUpdateStatus.OK
+    result["tab_update_status"] = tab_update_status
     return result

@@ -1,3 +1,5 @@
-{% if has_error %}
-    <span class="text-danger" title="Update error - see below for detail">⬤</span>
+{% if tab_update_status.has_issue %}
+    <span class="{{ tab_update_status.bootstrap_style_class }}" title="Update error - see below for detail">
+        ⬤
+    </span>
 {% endif %}

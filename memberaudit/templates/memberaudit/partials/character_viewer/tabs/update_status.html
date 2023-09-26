@@ -4,14 +4,17 @@
 <p class="text-muted">
     {% translate 'Last update' %}: {{ update_section.finished_at|naturaltime|default:"(No data)" }} |
     {% translate 'Status' %}:
-    {% if update_section.is_success %}
-    <span class="text-muted">{% translate 'OK' %}</span>
+    {% if not update_section %}
+        <span class="text-warning">{% translate 'missing' %}</span>
+    {% elif update_section.is_success %}
+        <span class="text-muted">{% translate 'OK' %}</span>
     {% else %}
-    <span class="text-danger">{% translate 'failed' %}</span>
+        <span class="text-danger">{% translate 'failed' %}</span>
     {% endif %}
-    {% if not update_section.is_success %}
-    | {% translate 'Error' %}: <span class="text-danger">
-        {{ update_section.last_error_message }}
-    </span>
+    {% if update_section and not update_section.is_success %}
+    | {% translate 'Error' %}:
+        <span class="text-danger">
+            {{ update_section.last_error_message }}
+        </span>
     {% endif %}
 </p>
