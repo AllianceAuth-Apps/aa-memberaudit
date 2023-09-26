@@ -16,7 +16,7 @@
     {% if update_section and not update_section.is_updating and not update_section.is_success %}
     | {% translate 'Error' %}:
         <span class="text-danger">
-            {{ update_section.last_error_message }}
+            {{ update_section.last_error_message|default:"?" }}
         </span>
     {% endif %}
 </p>
