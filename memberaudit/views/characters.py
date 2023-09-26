@@ -64,7 +64,8 @@ def launcher(request) -> HttpResponse:
                     "character_name": eve_character.character_name,
                     "character": character,
                     "total_update_status": character.calc_total_update_status(),
-                    "has_token_issue": character.has_token_issue(),
+                    "needs_refresh": character.is_disabled
+                    or character.has_token_issue(),
                     "alliance_id": eve_character.alliance_id,
                     "alliance_name": eve_character.alliance_name,
                     "corporation_id": eve_character.corporation_id,
@@ -73,8 +74,8 @@ def launcher(request) -> HttpResponse:
             )
 
     unregistered_chars = sorted(unregistered_chars)
-    failed_token_characters = sorted(
-        obj["character_name"] for obj in auth_characters if obj["has_token_issue"]
+    characters_need_token_refresh = sorted(
+        obj["character_name"] for obj in auth_characters if obj["needs_refresh"]
     )
 
     try:
@@ -89,7 +90,7 @@ def launcher(request) -> HttpResponse:
         "unregistered_chars": unregistered_chars,
         "has_registered_characters": len(auth_characters) > 0,
         "main_character_id": main_character_id,
-        "failed_token_characters": failed_token_characters,
+        "characters_need_token_refresh": characters_need_token_refresh,
     }
 
     return render(

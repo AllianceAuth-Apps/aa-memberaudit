@@ -107,12 +107,12 @@
                 </ul>
             </div>
 
-            {% if failed_token_characters|length > 0 %}
+            {% if characters_need_token_refresh|length > 0 %}
                 <p class="text-warning">
                     <strong>
                     <i class="fas fa-exclamation-triangle"></i>
-                    {% translate 'Please re-register characters with tokens errors:' %}&nbsp;&nbsp;</strong>
-                    {{ failed_token_characters|join:", " }}
+                    {% translate 'Please re-register characters with issues:' %}&nbsp;&nbsp;</strong>
+                    {{ characters_need_token_refresh|join:", " }}
                 </p>
             {% endif %}
 
