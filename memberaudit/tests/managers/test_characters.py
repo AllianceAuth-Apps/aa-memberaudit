@@ -584,7 +584,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
 
     def test_should_return_zero_when_no_unregistered(self):
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 0)
 
@@ -592,7 +592,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         # given
         add_auth_character_to_user(self.user, 1002)
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 1)
 
@@ -614,7 +614,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             last_error_message="TokenError 2",
         )
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 1)
 
@@ -630,7 +630,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             last_error_message="TokenError 1",
         )
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 0)
 
@@ -649,7 +649,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         )
 
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 1)
 
@@ -658,7 +658,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         # given
         add_memberaudit_character_to_user(self.user, 1002, is_disabled=True)
         # when
-        result = Character.objects.unregistered_characters_of_user_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(self.user)
         # then
         self.assertEqual(result, 1)
 

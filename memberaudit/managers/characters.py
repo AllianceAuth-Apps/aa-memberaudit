@@ -132,9 +132,9 @@ class CharacterQuerySet(models.QuerySet):
 
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
-    def unregistered_characters_of_user_count(self, user: User) -> int:
-        """Return count of unregistered character
-        and count of characters with token errors for a given user.
+    def characters_of_user_to_register_count(self, user: User) -> int:
+        """Return count of a users's characters known to Auth,
+        which needs to be (re-)registered.
         """
         unregistered = CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True

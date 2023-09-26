@@ -16,7 +16,7 @@ UNGROUPED_SKILL_SET = gettext_lazy("[Ungrouped]")
 
 def add_common_context(request, context: dict) -> dict:
     """Add the common context used by all view."""
-    unregistered_count = Character.objects.unregistered_characters_of_user_count(
+    unregistered_count = Character.objects.characters_of_user_to_register_count(
         request.user
     )
     new_context = {
