@@ -81,7 +81,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.OK)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_annotate_ok_when_all_enabled_sections_are_ok(self):
@@ -96,7 +96,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.OK)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error(self):
@@ -109,7 +109,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.ERROR)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_incomplete(self):
@@ -126,7 +126,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.INCOMPLETE)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_in_progress(self):
@@ -143,7 +143,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.IN_PROGRESS)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.IN_PROGRESS)
 
     def test_should_annotate_disabled(self):
         # given
@@ -154,7 +154,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         qs = Character.objects.annotate_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.DISABLED)
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.DISABLED)
 
 
 class TestCharacterUserHasScope(TestCase):

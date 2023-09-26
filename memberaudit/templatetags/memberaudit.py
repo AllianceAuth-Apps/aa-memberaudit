@@ -32,7 +32,7 @@ def tab_status_indicator(context, *sections) -> dict:
     update_status = context["update_status"]
     result = {"has_error": False}
 
-    if update_status is Character.UpdateStatus.DISABLED:
+    if update_status is Character.TotalUpdateStatus.DISABLED:
         return result
 
     is_success = True

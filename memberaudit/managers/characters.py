@@ -45,7 +45,7 @@ class CharacterQuerySet(models.QuerySet):
         """Add update_status annotations."""
         enabled_sections = list(self.model.UpdateSection.enabled_sections())
         num_sections_total = len(enabled_sections)
-        UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
+        update_status = self.model.TotalUpdateStatus
         qs = (
             self.annotate(
                 num_sections_total=Count(
@@ -73,19 +73,20 @@ class CharacterQuerySet(models.QuerySet):
             )
             .annotate(
                 update_status=Case(
-                    When(is_disabled=True, then=Value(UpdateStatus.DISABLED.value)),
+                    When(is_disabled=True, then=Value(update_status.DISABLED.value)),
                     When(
-                        num_sections_failed__gt=0, then=Value(UpdateStatus.ERROR.value)
+                        num_sections_failed__gt=0,
+                        then=Value(update_status.ERROR.value),
                     ),
                     When(
                         num_sections_ok=num_sections_total,
-                        then=Value(UpdateStatus.OK.value),
+                        then=Value(update_status.OK.value),
                     ),
                     When(
                         num_sections_total__lt=num_sections_total,
-                        then=Value(UpdateStatus.INCOMPLETE.value),
+                        then=Value(update_status.INCOMPLETE.value),
                     ),
-                    default=Value(UpdateStatus.IN_PROGRESS.value),
+                    default=Value(update_status.IN_PROGRESS.value),
                 )
             )
         )

@@ -680,7 +680,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
             create_character_update_status(character, section=section)
 
         # when/then
-        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
+        self.assertEqual(character.calc_update_status(), Character.TotalUpdateStatus.OK)
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_error(self):
@@ -691,7 +691,9 @@ class TestCharacterCalcUpdateStatus(TestCase):
         )
 
         # when/then
-        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.ERROR)
+        self.assertEqual(
+            character.calc_update_status(), Character.TotalUpdateStatus.ERROR
+        )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_incomplete(self):
@@ -707,7 +709,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.calc_update_status(), Character.UpdateStatus.INCOMPLETE
+            character.calc_update_status(), Character.TotalUpdateStatus.INCOMPLETE
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
@@ -724,7 +726,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.calc_update_status(), Character.UpdateStatus.IN_PROGRESS
+            character.calc_update_status(), Character.TotalUpdateStatus.IN_PROGRESS
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
@@ -734,7 +736,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.calc_update_status(), Character.UpdateStatus.DISABLED
+            character.calc_update_status(), Character.TotalUpdateStatus.DISABLED
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
@@ -749,7 +751,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
         )
 
         # when/then
-        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
+        self.assertEqual(character.calc_update_status(), Character.TotalUpdateStatus.OK)
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_ok_when_disabled_section_is_missing(self):
@@ -759,7 +761,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
             create_character_update_status(character, section=section)
 
         # when/then
-        self.assertEqual(character.calc_update_status(), Character.UpdateStatus.OK)
+        self.assertEqual(character.calc_update_status(), Character.TotalUpdateStatus.OK)
 
 
 class TestCharacterHasTokenError(TestCase):

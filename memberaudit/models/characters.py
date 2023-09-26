@@ -115,8 +115,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.WALLET_TRANSACTIONS: 2,
     }
 
-    class UpdateStatus(models.TextChoices):
-        """Update status of a character."""
+    class TotalUpdateStatus(models.TextChoices):
+        """A summary update status of a character."""
 
         DISABLED = "disabled", _("disabled")
         ERROR = "error", _("error")
@@ -273,10 +273,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .exists()
         )
 
-    def calc_update_status(self) -> UpdateStatus:
+    def calc_update_status(self) -> TotalUpdateStatus:
         """Return current update status of this character."""
         if self.is_disabled:
-            return self.UpdateStatus.DISABLED
+            return self.TotalUpdateStatus.DISABLED
 
         enabled_sections = list(Character.UpdateSection.enabled_sections())
 
@@ -286,7 +286,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .count()
         )
         if sections_ok == len(enabled_sections):
-            return self.UpdateStatus.OK
+            return self.TotalUpdateStatus.OK
 
         sections_failed = (
             self.update_status_set.filter_enabled_sections()
@@ -294,7 +294,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .count()
         )
         if sections_failed > 0:
-            return self.UpdateStatus.ERROR
+            return self.TotalUpdateStatus.ERROR
 
         sections_neutral = (
             self.update_status_set.filter_enabled_sections()
@@ -302,9 +302,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .count()
         )
         if sections_neutral > 0:
-            return self.UpdateStatus.IN_PROGRESS
+            return self.TotalUpdateStatus.IN_PROGRESS
 
-        return self.UpdateStatus.INCOMPLETE
+        return self.TotalUpdateStatus.INCOMPLETE
 
     def is_update_status_ok(self) -> Optional[bool]:
         """Return summary status of last update for this character.
@@ -315,16 +315,16 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         - None: if last update is incomplete
         """
         status = self.calc_update_status()
-        if status == Character.UpdateStatus.OK:
+        if status == Character.TotalUpdateStatus.OK:
             return True
-        if status == Character.UpdateStatus.ERROR:
+        if status == Character.TotalUpdateStatus.ERROR:
             return False
         return None
 
     def reset_token_error_notified_if_status_ok(self):
         """Reset last notification on token error when update is OK again."""
         if self.token_error_notified_at:
-            if self.calc_update_status() == Character.UpdateStatus.OK:
+            if self.calc_update_status() == Character.TotalUpdateStatus.OK:
                 self.token_error_notified_at = None
                 self.save(update_fields=["token_error_notified_at"])
 

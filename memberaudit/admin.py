@@ -196,7 +196,7 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
         counts = []
-        for status in Character.UpdateStatus:
+        for status in Character.TotalUpdateStatus:
             counts.append((status, qs.filter(update_status=status.value).count()))
         result = tuple(
             (
@@ -207,7 +207,7 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
         return result
 
     def queryset(self, request, queryset):
-        for value in Character.UpdateStatus.values:
+        for value in Character.TotalUpdateStatus.values:
             if self.value() == value:
                 return queryset.filter(update_status=value)
         return queryset
@@ -378,11 +378,11 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     @admin.display(ordering="update_status", description=__("update status"))
     def _update_status(self, obj: Character):
         css_class_map = {
-            Character.UpdateStatus.INCOMPLETE: "text-warning",
-            Character.UpdateStatus.ERROR: "text-danger",
-            Character.UpdateStatus.DISABLED: "text-muted",
+            Character.TotalUpdateStatus.INCOMPLETE: "text-warning",
+            Character.TotalUpdateStatus.ERROR: "text-danger",
+            Character.TotalUpdateStatus.DISABLED: "text-muted",
         }
-        label = Character.UpdateStatus(obj.update_status).label.title()
+        label = Character.TotalUpdateStatus(obj.update_status).label.title()
         if css_class := css_class_map.get(obj.update_status):
             return format_html('<span class="{}">{}</span>', css_class, label)
         return label
