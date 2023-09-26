@@ -47,7 +47,6 @@ class CharacterQuerySet(models.QuerySet):
 
         enabled_sections = list(Character.UpdateSection.enabled_sections())
         num_sections_total = len(enabled_sections)
-        update_status = Character.TotalUpdateStatus
         qs = (
             self.annotate(
                 num_sections_total=Count(
@@ -84,24 +83,27 @@ class CharacterQuerySet(models.QuerySet):
             )
             .annotate(
                 update_status=Case(
-                    When(is_disabled=True, then=Value(update_status.DISABLED.value)),
+                    When(
+                        is_disabled=True,
+                        then=Value(Character.TotalUpdateStatus.DISABLED.value),
+                    ),
                     When(
                         num_sections_token_error=1,
-                        then=Value(update_status.LIMITED_TOKEN.value),
+                        then=Value(Character.TotalUpdateStatus.LIMITED_TOKEN.value),
                     ),
                     When(
                         num_sections_failed__gt=0,
-                        then=Value(update_status.ERROR.value),
+                        then=Value(Character.TotalUpdateStatus.ERROR.value),
                     ),
                     When(
                         num_sections_ok=num_sections_total,
-                        then=Value(update_status.OK.value),
+                        then=Value(Character.TotalUpdateStatus.OK.value),
                     ),
                     When(
                         num_sections_total__lt=num_sections_total,
-                        then=Value(update_status.INCOMPLETE.value),
+                        then=Value(Character.TotalUpdateStatus.INCOMPLETE.value),
                     ),
-                    default=Value(update_status.IN_PROGRESS.value),
+                    default=Value(Character.TotalUpdateStatus.IN_PROGRESS.value),
                 )
             )
         )

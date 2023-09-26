@@ -15,5 +15,5 @@ Args: auth_character, main_character_id, update_status
 {% endif %}
 {% if update_status.has_issue %}
     &nbsp;
-    <span class="{{ update_status.bootstrap_style_class }}" title="Update status: {{ update_status.label }}">⬤</span>
+    <span class="{{ update_status.bootstrap_style_class }}" title="{{ update_status.description }}">⬤</span>
 {% endif %}

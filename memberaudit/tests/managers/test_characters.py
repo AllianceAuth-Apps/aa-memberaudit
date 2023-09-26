@@ -64,7 +64,8 @@ class TestCharacterQuerySet(TestCase):
         self.assertSetEqual(character_ids, set())
 
 
-class TestCharacterAnnotateUpdateStatus(TestCase):
+# Includes testing of Character.calc_total_update_status() to ensure they are in sync
+class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -77,6 +78,10 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
+        )
         # when
         qs = Character.objects.annotate_total_update_status()
         # then
@@ -92,6 +97,10 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         create_character_update_status(
             character=character, is_success=False, section=Character.UpdateSection.ROLES
         )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
+        )
         # when
         qs = Character.objects.annotate_total_update_status()
         # then
@@ -104,6 +113,10 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         character = create_character_from_user(self.user)
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.ERROR
         )
         # when
         qs = Character.objects.annotate_total_update_status()
@@ -122,6 +135,10 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         ]
         for section in sections_to_update:
             create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.INCOMPLETE
+        )
         # when
         qs = Character.objects.annotate_total_update_status()
         # then
@@ -139,6 +156,11 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
                 )
             else:
                 create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(),
+            Character.TotalUpdateStatus.IN_PROGRESS,
+        )
         # when
         qs = Character.objects.annotate_total_update_status()
         # then
@@ -147,9 +169,11 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
 
     def test_should_annotate_disabled(self):
         # given
-        character = create_character_from_user(self.user)
-        character.is_disabled = True
-        character.save()
+        character = create_character_from_user(self.user, is_disabled=True)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.DISABLED
+        )
         # when
         qs = Character.objects.annotate_total_update_status()
         # then
@@ -165,6 +189,11 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(),
+            Character.TotalUpdateStatus.LIMITED_TOKEN,
         )
         # when
         qs = Character.objects.annotate_total_update_status()
@@ -187,6 +216,10 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             section=Character.UpdateSection.LOCATION,
             is_success=False,
             has_token_error=True,
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.ERROR
         )
         # when
         qs = Character.objects.annotate_total_update_status()

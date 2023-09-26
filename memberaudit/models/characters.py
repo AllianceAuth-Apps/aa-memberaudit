@@ -129,7 +129,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
         def has_issue(self) -> bool:
             """Return True when status is representing an issue."""
-            return self in {self.DISABLED, self.ERROR, self.INCOMPLETE}
+            return self in {
+                self.DISABLED,
+                self.ERROR,
+                self.INCOMPLETE,
+                self.LIMITED_TOKEN,
+            }
 
         def bootstrap_style_class(self) -> str:
             """Return bootstrap corresponding bootstrap style class."""
@@ -296,33 +301,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if self.is_disabled:
             return self.TotalUpdateStatus.DISABLED
 
-        enabled_sections = list(Character.UpdateSection.enabled_sections())
-
-        sections_ok = (
-            self.update_status_set.filter_enabled_sections()
-            .filter(is_success=True)
-            .count()
-        )
-        if sections_ok == len(enabled_sections):
-            return self.TotalUpdateStatus.OK
-
-        sections_failed = (
-            self.update_status_set.filter_enabled_sections()
-            .filter(is_success=False)
-            .count()
-        )
-        if sections_failed > 0:
-            return self.TotalUpdateStatus.ERROR
-
-        sections_neutral = (
-            self.update_status_set.filter_enabled_sections()
-            .filter(is_success__isnull=True)
-            .count()
-        )
-        if sections_neutral > 0:
-            return self.TotalUpdateStatus.IN_PROGRESS
-
-        return self.TotalUpdateStatus.INCOMPLETE
+        qs = Character.objects.filter(pk=self.pk).annotate_total_update_status()
+        total_update_status = list(qs.values_list("update_status", flat=True))[0]
+        return self.TotalUpdateStatus(total_update_status)
 
     def is_update_status_ok(self) -> Optional[bool]:
         """Return summary status of last update for this character.
