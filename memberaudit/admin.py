@@ -326,7 +326,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         return (
             qs.prefetch_related("update_status_set")
             .annotate(last_update_at=Max("update_status_set__finished_at"))
-            .annotate_update_status()
+            .annotate_total_update_status()
         )
 
     @admin.display(description="")

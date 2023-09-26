@@ -681,7 +681,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.OK
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
@@ -694,7 +694,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.ERROR
+            character.calc_total_update_status(), Character.TotalUpdateStatus.ERROR
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
@@ -711,7 +711,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.INCOMPLETE
+            character.calc_total_update_status(), Character.TotalUpdateStatus.INCOMPLETE
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
@@ -728,7 +728,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(),
+            character.calc_total_update_status(),
             Character.TotalUpdateStatus.IN_PROGRESS,
         )
 
@@ -739,7 +739,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.DISABLED
+            character.calc_total_update_status(), Character.TotalUpdateStatus.DISABLED
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
@@ -755,7 +755,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.OK
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
         )
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
@@ -767,7 +767,7 @@ class TestCharacterCalcUpdateStatus(TestCase):
 
         # when/then
         self.assertEqual(
-            character.total_update_status(), Character.TotalUpdateStatus.OK
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
         )
 
 

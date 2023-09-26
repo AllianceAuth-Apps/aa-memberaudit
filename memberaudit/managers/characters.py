@@ -41,7 +41,7 @@ class CharacterQuerySet(models.QuerySet):
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
 
-    def annotate_update_status(self):
+    def annotate_total_update_status(self):
         """Add update_status annotations."""
         from memberaudit.models import Character
 

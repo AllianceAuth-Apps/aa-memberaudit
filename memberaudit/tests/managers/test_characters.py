@@ -78,7 +78,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.OK)
@@ -93,7 +93,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             character=character, is_success=False, section=Character.UpdateSection.ROLES
         )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.OK)
@@ -106,7 +106,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.ERROR)
@@ -123,7 +123,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         for section in sections_to_update:
             create_character_update_status(character, section=section)
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.INCOMPLETE)
@@ -140,7 +140,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             else:
                 create_character_update_status(character, section=section)
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.IN_PROGRESS)
@@ -151,7 +151,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         character.is_disabled = True
         character.save()
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.DISABLED)
@@ -167,7 +167,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             has_token_error=True,
         )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.LIMITED_TOKEN)
@@ -189,7 +189,7 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
             has_token_error=True,
         )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.ERROR)

@@ -113,7 +113,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "page_title": page_title,
         "character": character,
         "auth_character": character.eve_character,
-        "update_status": character.total_update_status(),
+        "update_status": character.calc_total_update_status(),
         "character_details": character.details_or_none(),
         "mail_labels": mail_labels,
         "mailing_lists": mailing_lists,
