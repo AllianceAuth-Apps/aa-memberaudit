@@ -195,13 +195,13 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     """Custom filter for update status with counts."""
 
     title = __("update status")
-    parameter_name = "update_status"
+    parameter_name = "total_update_status"
 
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
         counts = []
         for status in Character.TotalUpdateStatus:
-            counts.append((status, qs.filter(update_status=status.value).count()))
+            counts.append((status, qs.filter(total_update_status=status.value).count()))
         result = tuple(
             (
                 (status.value, status.label.title() + f" ({count:,})")
@@ -213,7 +213,7 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         for value in Character.TotalUpdateStatus.values:
             if self.value() == value:
-                return queryset.filter(update_status=value)
+                return queryset.filter(total_update_status=value)
         return queryset
 
 
@@ -379,9 +379,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             result += f" [{obj.main_character.alliance_ticker}]"
         return result
 
-    @admin.display(ordering="update_status", description=__("update status"))
+    @admin.display(ordering="total_update_status", description=__("update status"))
     def _update_status(self, obj: Character):
-        update_status_obj = Character.TotalUpdateStatus(obj.update_status)
+        update_status_obj = Character.TotalUpdateStatus(obj.total_update_status)
         label = update_status_obj.label.title()
         css_class = update_status_obj.bootstrap_style_class()
         description = update_status_obj.description()

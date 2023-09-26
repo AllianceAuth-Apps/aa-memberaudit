@@ -302,7 +302,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return self.TotalUpdateStatus.DISABLED
 
         qs = Character.objects.filter(pk=self.pk).annotate_total_update_status()
-        total_update_status = list(qs.values_list("update_status", flat=True))[0]
+        total_update_status = list(qs.values_list("total_update_status", flat=True))[0]
         return self.TotalUpdateStatus(total_update_status)
 
     def is_update_status_ok(self) -> Optional[bool]:

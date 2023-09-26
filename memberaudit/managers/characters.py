@@ -41,8 +41,8 @@ class CharacterQuerySet(models.QuerySet):
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
 
-    def annotate_total_update_status(self):
-        """Add update_status annotations."""
+    def annotate_total_update_status(self) -> models.QuerySet:
+        """Add total_update_status annotations."""
         from memberaudit.models import Character
 
         enabled_sections = list(Character.UpdateSection.enabled_sections())
@@ -82,7 +82,7 @@ class CharacterQuerySet(models.QuerySet):
                 )
             )
             .annotate(
-                update_status=Case(
+                total_update_status=Case(
                     When(
                         is_disabled=True,
                         then=Value(Character.TotalUpdateStatus.DISABLED.value),
