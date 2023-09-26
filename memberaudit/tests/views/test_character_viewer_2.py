@@ -177,7 +177,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
         cls.character = create_memberaudit_character(1001)
         cls.user = cls.character.eve_character.character_ownership.user
 
-    def test_character_roles_data(self):
+    def test_should_return_correct_character_roles(self):
         # given
         create_character_role(
             character=self.character,
@@ -199,6 +199,19 @@ class TestCharacterRolesData(NoSocketsTestCase):
 
         self.assertTrue(result_map["General Roles"]["Accountant"])
         self.assertFalse(result_map["General Roles"]["Auditor"])
+
+    def test_should_return_nothing_when_no_data(self):
+        # given
+        request = self.factory.get(
+            reverse("memberaudit:character_roles_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_roles_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        self.assertEqual(data, [])
 
 
 class TestMailData(TestCase):

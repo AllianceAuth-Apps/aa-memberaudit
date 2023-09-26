@@ -331,19 +331,20 @@ def character_roles_data(
         character_roles_map[location].add(role)
 
     data = []
-    for roles_group in CharacterRole.ROLES_GROUPED:
-        location = roles_group["location"]
-        group_name = roles_group["title"].title()
+    if character_roles_map:
+        for roles_group in CharacterRole.ROLES_GROUPED:
+            location = roles_group["location"]
+            group_name = roles_group["title"].title()
 
-        for role in roles_group["roles"]:
-            has_role = role in character_roles_map.get(location, [])
-            data.append(
-                {
-                    "group": group_name,
-                    "role": role.label.title(),
-                    "has_role": has_role,
-                }
-            )
+            for role in roles_group["roles"]:
+                has_role = role in character_roles_map.get(location, [])
+                data.append(
+                    {
+                        "group": group_name,
+                        "role": role.label.title(),
+                        "has_role": has_role,
+                    }
+                )
 
     return JsonResponse({"data": data})
 
