@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 This major release adds corporation roles as new optional feature. Corporation roles are disabled by default and need to be explicitly enabled to active them.
 
+### Enabling corporation roles
+
 You can enable corporation roles by adding the following line to your local setting and then restarting Auth:
 
 ```python
@@ -24,6 +26,15 @@ MEMBERAUDIT_FEATURE_ROLES_ENABLED = True
 This is necessary, because this new feature requires an additional ESI scope. Users will automatically be asked to re-register via Auth notification (If you have the app Discord Notify enabled, those notification will be forwarded automatically as DMs to users on Discord). Users will also be informed through a note on the characters launch page and through a new status icon next to the character name.
 
 Please note that this scope change will not disrupt the update of existing characters. The update status of a character will show as "ERROR" for the missing scope, but otherwise all characters will continue to be updated normally.
+
+### Suggested migration approach
+
+As explained in the previous article all users need to re-register their characters in order to use the new feature. To ensure a smooth migration we would suggest the following approach:
+
+1. Inform all users that they need to re-register their characters until a deadline
+1. Enable the new feature at the deadline
+1. Allow users a grace period to re-register their characters
+1. After that grace period is passed, start pushing stragglers to re-register
 
 ### Added
 
