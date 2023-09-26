@@ -158,13 +158,13 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "section",
         "_is_enabled",
         "_is_success",
-        "has_token_error",
+        "_is_token_ok",
         "last_error_message",
         "started_at",
         "finished_at",
         "root_task_id",
     )
-    readonly_fields = ("_is_enabled", "_is_success")
+    readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
     ordering = ["section"]
 
     @admin.display(boolean=True)
@@ -176,6 +176,10 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         if not obj.is_enabled:
             return None
         return obj.is_success
+
+    @admin.display(boolean=True)
+    def _is_token_ok(self, obj: CharacterUpdateStatus) -> bool:
+        return not obj.has_token_error
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -377,15 +381,13 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(ordering="update_status", description=__("update status"))
     def _update_status(self, obj: Character):
-        css_class_map = {
-            Character.TotalUpdateStatus.INCOMPLETE: "text-warning",
-            Character.TotalUpdateStatus.ERROR: "text-danger",
-            Character.TotalUpdateStatus.DISABLED: "text-muted",
-        }
-        label = Character.TotalUpdateStatus(obj.update_status).label.title()
-        if css_class := css_class_map.get(obj.update_status):
-            return format_html('<span class="{}">{}</span>', css_class, label)
-        return label
+        update_status_obj = Character.TotalUpdateStatus(obj.update_status)
+        label = update_status_obj.label.title()
+        css_class = update_status_obj.bootstrap_style_class()
+        description = update_status_obj.description()
+        return format_html(
+            '<span class="{}" title="{}">{}</span>', css_class, description, label
+        )
 
     @admin.display(ordering="created_at", description=__("created"))
     def _created_at(self, obj: Character):

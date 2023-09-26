@@ -156,6 +156,44 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         obj = qs.first()
         self.assertEqual(obj.update_status, Character.TotalUpdateStatus.DISABLED)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_annotate_limited_token_when_one_token_issue_only(self):
+        # given
+        character = create_character_from_user(self.user)
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.LIMITED_TOKEN)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_annotate_error_when_several_token_issues(self):
+        # given
+        character = create_character_from_user(self.user)
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+        )
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.LOCATION,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when
+        qs = Character.objects.annotate_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.update_status, Character.TotalUpdateStatus.ERROR)
+
 
 class TestCharacterUserHasScope(TestCase):
     @classmethod

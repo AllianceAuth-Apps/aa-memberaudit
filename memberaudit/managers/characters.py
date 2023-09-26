@@ -43,9 +43,11 @@ class CharacterQuerySet(models.QuerySet):
 
     def annotate_update_status(self):
         """Add update_status annotations."""
-        enabled_sections = list(self.model.UpdateSection.enabled_sections())
+        from memberaudit.models import Character
+
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
         num_sections_total = len(enabled_sections)
-        update_status = self.model.TotalUpdateStatus
+        update_status = Character.TotalUpdateStatus
         qs = (
             self.annotate(
                 num_sections_total=Count(
@@ -72,8 +74,21 @@ class CharacterQuerySet(models.QuerySet):
                 )
             )
             .annotate(
+                num_sections_token_error=Count(
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__has_token_error=True,
+                    ),
+                )
+            )
+            .annotate(
                 update_status=Case(
                     When(is_disabled=True, then=Value(update_status.DISABLED.value)),
+                    When(
+                        num_sections_token_error=1,
+                        then=Value(update_status.LIMITED_TOKEN.value),
+                    ),
                     When(
                         num_sections_failed__gt=0,
                         then=Value(update_status.ERROR.value),

@@ -116,14 +116,15 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     }
 
     class TotalUpdateStatus(models.TextChoices):
-        """An update status of a character
+        """An summary update status of a character
         representing the update status of all sections.
         """
 
         DISABLED = "disabled", _("disabled")
         ERROR = "error", _("error")
-        IN_PROGRESS = "in_progress", _("in progress")
+        LIMITED_TOKEN = "limited_token", _("limited token")
         INCOMPLETE = "incomplete", _("incomplete")
+        IN_PROGRESS = "in_progress", _("in progress")
         OK = "ok", _("ok")
 
         def has_issue(self) -> bool:
@@ -137,9 +138,24 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.ERROR: "text-danger",
                 self.IN_PROGRESS: "text-info",
                 self.INCOMPLETE: "text-warning",
+                self.LIMITED_TOKEN: "text-warning",
                 self.OK: "text-success",
             }
-            return my_map[self]
+            return my_map.get(self, "")
+
+        def description(self) -> str:
+            """Return description for an enum object."""
+            my_map = {
+                self.DISABLED: _("Update is disabled"),
+                self.ERROR: _("Errors occurred during update"),
+                self.IN_PROGRESS: _("Update is in progress"),
+                self.INCOMPLETE: _("One or more sections have not yet been updated"),
+                self.LIMITED_TOKEN: _(
+                    "One section can not be updated due to a token error"
+                ),
+                self.OK: _("Update completed successfully"),
+            }
+            return my_map.get(self, "")
 
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
