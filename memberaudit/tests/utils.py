@@ -17,6 +17,7 @@ from app_utils.testing import NoSocketsTestCase, add_character_to_user, response
 
 from memberaudit.models import Character, Location
 
+from .testdata.factories import create_character
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -77,12 +78,12 @@ def create_user_from_evecharacter_with_access(
     return user, character_ownership
 
 
-def create_memberaudit_character(character_id: int) -> Character:
+def create_memberaudit_character(character_id: int, **kwargs) -> Character:
     """Create a memberaudit character from an existing auth character
     incl. user and making it the main.
     """
     _, character_ownership = create_user_from_evecharacter_with_access(character_id)
-    return Character.objects.create(eve_character=character_ownership.character)
+    return create_character(eve_character=character_ownership.character, **kwargs)
 
 
 def add_auth_character_to_user(
@@ -95,9 +96,11 @@ def add_auth_character_to_user(
     return add_character_to_user(user, auth_character, is_main=False, scopes=scopes)
 
 
-def add_memberaudit_character_to_user(user: User, character_id: int) -> Character:
+def add_memberaudit_character_to_user(
+    user: User, character_id: int, **kwargs
+) -> Character:
     character_ownership = add_auth_character_to_user(user, character_id)
-    return Character.objects.create(eve_character=character_ownership.character)
+    return create_character(eve_character=character_ownership.character, **kwargs)
 
 
 def scope_names_set(token: Token) -> set:
