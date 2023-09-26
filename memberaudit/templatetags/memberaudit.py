@@ -26,12 +26,12 @@ def tab_status_indicator(context, *sections) -> dict:
 
     Show as error when at least one section has an error.
 
-    Expects these keys in the context: "sections_update_status", "update_status"
+    Expects these keys in the context: "sections_update_status", "total_update_status"
     """
     sections_update_status = context["sections_update_status"]
     result = {"tab_update_status": Character.TotalUpdateStatus.OK}
 
-    if context["update_status"] is Character.TotalUpdateStatus.DISABLED:
+    if context["total_update_status"] is Character.TotalUpdateStatus.DISABLED:
         return result
 
     is_success = True

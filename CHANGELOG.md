@@ -25,7 +25,7 @@ MEMBERAUDIT_FEATURE_ROLES_ENABLED = True
 
 This is necessary, because this new feature requires an additional ESI scope. Users will automatically be asked to re-register via Auth notification (If you have the app Discord Notify enabled, those notification will be forwarded automatically as DMs to users on Discord). Users will also be informed through a note on the characters launch page and through a new status icon next to the character name.
 
-Please note that this scope change will not disrupt the update of existing characters. The update status of a character will show as "ERROR" for the missing scope, but otherwise all characters will continue to be updated normally.
+Please note that this scope change will not disrupt the update of existing characters. The update status of a character which only issue is the missing esi scope will show with update status "Limited Token" on the admin site, but otherwise all characters will continue to be updated normally.
 
 ### Suggested migration approach
 

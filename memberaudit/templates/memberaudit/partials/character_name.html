@@ -1,7 +1,7 @@
 {% comment %}
 Renders the name of a character including widgets
 
-Args: auth_character, main_character_id, update_status
+Args: auth_character, main_character_id, total_update_status
 {% endcomment %}
 
 {% load i18n %}
@@ -13,7 +13,7 @@ Args: auth_character, main_character_id, update_status
 {% if auth_character.character.is_shared %}
     &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
 {% endif %}
-{% if update_status.has_issue %}
+{% if total_update_status.has_issue %}
     &nbsp;
-    <span class="{{ update_status.bootstrap_style_class }}" title="{{ update_status.description }}">⬤</span>
+    <span class="{{ total_update_status.bootstrap_style_class }}" title="{{ total_update_status.description }}">⬤</span>
 {% endif %}
