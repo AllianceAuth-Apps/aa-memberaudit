@@ -443,3 +443,33 @@ class TestSkillSetGroupAdmin(TestCase):
         obj_2: SkillSetGroup = SkillSetGroup.objects.get(name="Dummy")
         self.assertEqual(obj_2.last_modified_by, self.user)
         self.assertEqual(obj_2.last_modified_at, my_now)
+
+
+class TestCharacterAdminUi(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        cls.user = UserFactory(is_staff=True, is_superuser=True)
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_render_list_view(self):
+        # given
+        self.client.force_login(self.user)
+        # when
+        response = self.client.get("/admin/memberaudit/character/")
+        # then
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Bruce Wayne", response.content.decode("utf-8"))
+
+    def test_should_render_change_view(self):
+        # given
+        self.client.force_login(self.user)
+        # when
+        response = self.client.get(
+            f"/admin/memberaudit/character/{self.character.pk}/change/"
+        )
+        # then
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Bruce Wayne", response.content.decode("utf-8"))
