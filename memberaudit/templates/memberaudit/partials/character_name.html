@@ -13,5 +13,7 @@ Args: auth_character, main_character_id, update_status
 {% if auth_character.character.is_shared %}
     &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
 {% endif %}
-&nbsp;
-<span class="{{ update_status.bootstrap_style_class }}" title="Update status: {{ update_status.label }}">⬤</span>
+{% if update_status.has_issue %}
+    &nbsp;
+    <span class="{{ update_status.bootstrap_style_class }}" title="Update status: {{ update_status.label }}">⬤</span>
+{% endif %}

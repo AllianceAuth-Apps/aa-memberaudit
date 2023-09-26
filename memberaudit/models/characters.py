@@ -124,6 +124,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         INCOMPLETE = "incomplete", _("incomplete")
         OK = "ok", _("ok")
 
+        def has_issue(self) -> bool:
+            """Return True when status is representing an issue."""
+            return self is self.DISABLED or self is self.ERROR
+
         def bootstrap_style_class(self) -> str:
             """Return bootstrap corresponding bootstrap style class."""
             my_map = {
