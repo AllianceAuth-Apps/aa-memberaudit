@@ -141,10 +141,13 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
         ).count()
         enabled_sections = list(self.model.UpdateSection.enabled_sections())
         token_errors = (
-            self.filter(
-                eve_character__character_ownership__user=user,
-                update_status_set__section__in=enabled_sections,
-                update_status_set__has_token_error=True,
+            self.filter(eve_character__character_ownership__user=user)
+            .filter(
+                Q(
+                    update_status_set__section__in=enabled_sections,
+                    update_status_set__has_token_error=True,
+                )
+                | Q(is_disabled=True),
             )
             .distinct()
             .count()
