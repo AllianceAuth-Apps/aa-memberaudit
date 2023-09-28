@@ -39,15 +39,17 @@ As explained in the previous article all users need to re-register their charact
 ### Added
 
 - Corporation roles shown for every character (when enabled)
-- Current update status are now shown on the character launcher and character viewer
-- Detailed update status with potential errors are shown on each tab
-- Red status indicator is shown on each character tab that has an update error
+- User is now asked to re-register characters that need a token refresh on the launcher page
+- New status tag shown next to the character name on launcher and viewer when there is an update issue
+- New status tag shown on each character tab which has an update issue
+- Detailed error description added to each character tab that has an issue
 - Admins can see which sections are enabled when checking the update status for a character
 
 ## Changed
 
-- Badge with unregistered character count now also includes characters with token errors
+- Badge with unregistered character count now also includes characters with token errors and disabled characters
 - Users are notified about a token error once only per occurrence
+- New update status "Limited token" shown on the admin page for characters which have a token issue on one section only (e.g. because a new role scope missing)
 
 ## [2.11.3] - 2023-09-21
 

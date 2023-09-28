@@ -303,13 +303,12 @@ class CharacterRole(models.Model):
 
     class Meta:
         default_permissions = ()
-        # TODO: Enable for stable release
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=["character", "location", "role"],
-        #         name="functional_pk_characterrole",
-        #     )
-        # ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character", "location", "role"],
+                name="functional_pk_characterrole",
+            )
+        ]
 
 
 class CharacterShip(models.Model):
