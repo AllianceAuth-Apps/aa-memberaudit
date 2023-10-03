@@ -979,6 +979,27 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             )
         )
 
+    def test_should_return_existing_status_for_section(self):
+        # given
+        status = create_character_update_status(
+            character=self.character_1001, section=self.section
+        )
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertEqual(result, status)
+
+    def test_should_return_none_when_status_does_not_exist_for_section(self):
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertIsNone(result)
+
+    def test_should_raise_error_when_called_with_invalid_section(self):
+        # when/then
+        with self.assertRaises(ValueError):
+            self.character_1001.update_status_for_section("invalid")
+
 
 @patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
 class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):

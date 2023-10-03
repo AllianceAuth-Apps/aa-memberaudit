@@ -373,19 +373,26 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         deadline = now() - self._update_section_time_until_stale(section)
         return update_status.started_at < deadline
 
+    def update_status_for_section(
+        self, section: UpdateSection
+    ) -> Optional["CharacterUpdateStatus"]:
+        "Return update status for a section when it exists or None."
+        section = self.UpdateSection(section)
+        try:
+            return self.update_status_set.get(section=section)
+        except CharacterUpdateStatus.DoesNotExist:
+            return None
+
     def has_section_changed(
         self, section: UpdateSection, content: Any, hash_num: int = 1
     ) -> bool:
         """Return False if the content hash for this character's section
         has not changed, else return True.
         """
-        try:
-            section_obj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
+        status = self.update_status_for_section(section)
+        if not status:
             return True
-        return section_obj.has_changed(content=content, hash_num=hash_num)
+        return status.has_changed(content=content, hash_num=hash_num)
 
     def update_section_content_hash(
         self, section: UpdateSection, content: Any, hash_num: int = 1
