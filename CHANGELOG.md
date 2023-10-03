@@ -36,6 +36,23 @@ As explained in the previous article all users need to re-register their charact
 1. Allow users a grace period to re-register their characters
 1. After that grace period is passed, start pushing stragglers to re-register
 
+### Monitoring the migration
+
+You can monitor the progress of the migration on admin site by looking at the update status of the Member Audit characters (the page under "Member Audit / Characters").
+
+Here is an example:
+
+![update_status](https://imgpile.com/images/DlGvdM.png)
+
+The relevant values are:
+
+- "Limited Token": are characters which have not re-registered yet
+- "Incomplete": have not been updated yet after enabling the roles feature
+- "In Progress": are currently being updated
+- "OK": have completed updating after re-registering with the new scope
+
+You goal for the migration is to convert all characters which have "Limited Token" to "OK". At least for characters belonging to a non-guest state.
+
 ### Added
 
 - Corporation roles shown for every character (when enabled)
@@ -50,6 +67,7 @@ As explained in the previous article all users need to re-register their charact
 - Badge with unregistered character count now also includes characters with token errors and disabled characters
 - Users are notified about a token error once only per occurrence
 - New update status "Limited token" shown on the admin page for characters which have a token issue on one section only (e.g. because a new role scope missing)
+- Will no longer try to update sections with token errors since those require the user to re-register the character
 
 ## [2.11.3] - 2023-09-21
 

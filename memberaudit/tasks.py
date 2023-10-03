@@ -271,6 +271,16 @@ def update_character_section(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
+    if not force_update:
+        status = character.update_status_for_section(section)
+        if status and status.has_token_error:
+            logger.warning(
+                "%s: Skipping update for character section with token error: %s",
+                character,
+                section.label,
+            )
+            return
+
     character.reset_update_section(section, root_task_id, parent_task_id)
     logger.info("%s: Updating %s", character, section.label)
 

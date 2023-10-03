@@ -957,9 +957,7 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         section = Character.UpdateSection.LOCATION
         # when
         tasks.update_character_section(
-            character_pk=character.pk,
-            section=section.value,
-            force_update=False,
+            character_pk=character.pk, section=section.value, force_update=False
         )
         # then
         self.assertTrue(mock_update_location.called)
@@ -979,9 +977,7 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         # when
         with self.assertRaises(RuntimeError):
             tasks.update_character_section(
-                character_pk=character.pk,
-                section=section.value,
-                force_update=False,
+                character_pk=character.pk, section=section.value, force_update=False
             )
         # then
         self.assertTrue(mock_update_location.called)
@@ -998,7 +994,7 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         character.clear_cache()
         section = Character.UpdateSection.LOCATION
         finished_at = now() - dt.timedelta(hours=4)
-        create_character_update_status(
+        status = create_character_update_status(
             character=character,
             section=section,
             is_success=False,
@@ -1007,41 +1003,63 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         )
         # when
         tasks.update_character_section(
-            character_pk=character.pk,
-            section=section.value,
-            force_update=False,
+            character_pk=character.pk, section=section.value, force_update=False
         )
         # then
         self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        status.refresh_from_db()
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
         self.assertGreater(status.finished_at, finished_at)
 
-    # def test_should_clear_previous_errors_when_update_succeeded(
-    #     self, mock_update_location
-    # ):
-    #     # given
-    #     character = create_character_from_user(self.user)
-    #     character.clear_cache()
-    #     section = Character.UpdateSection.LOCATION
-    #     finished_at = now() - dt.timedelta(hours=4)
-    #     create_character_update_status(
-    #         character=character,
-    #         section=section,
-    #         is_success=False,
-    #         last_error_message="some error",
-    #         finished_at=finished_at,
-    #     )
-    #     # when
-    #     tasks.update_character_section(
-    #         character_pk=character.pk,
-    #         section=section.value,
-    #         force_update=False,
-    #     )
-    #     # then
-    #     self.assertTrue(mock_update_location.called)
-    #     status: CharacterUpdateStatus = character.update_status_set.get(section=section)
-    #     self.assertTrue(status.is_success)
-    #     self.assertFalse(status.last_error_message)
-    #     self.assertGreater(status.finished_at, finished_at)
+    def test_should_skip_update_when_section_has_token_error_and_not_forced(
+        self, mock_update_location
+    ):
+        # given
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        section = Character.UpdateSection.LOCATION
+        finished_at = now() - dt.timedelta(hours=4)
+        status = create_character_update_status(
+            character=character,
+            section=section,
+            is_success=False,
+            last_error_message="some error",
+            has_token_error=True,
+            finished_at=finished_at,
+        )
+        # when
+        tasks.update_character_section(
+            character_pk=character.pk, section=section.value, force_update=False
+        )
+        # then
+        self.assertFalse(mock_update_location.called)
+        status.refresh_from_db()
+        self.assertFalse(status.is_success)
+        self.assertTrue(status.last_error_message)
+        self.assertEqual(status.finished_at, finished_at)
+
+    def test_should_update_when_section_has_token_error_and_forced(
+        self, mock_update_location
+    ):
+        # given
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        section = Character.UpdateSection.LOCATION
+        finished_at = now() - dt.timedelta(hours=4)
+        status = create_character_update_status(
+            character=character,
+            section=section,
+            is_success=False,
+            last_error_message="some error",
+            has_token_error=True,
+            finished_at=finished_at,
+        )
+        # when
+        tasks.update_character_section(
+            character_pk=character.pk, section=section.value, force_update=True
+        )
+        # then
+        self.assertTrue(mock_update_location.called)
+        status.refresh_from_db()
+        self.assertTrue(status.is_success)
