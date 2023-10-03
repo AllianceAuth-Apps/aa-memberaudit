@@ -208,7 +208,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def save(self, *args, **kwargs):
         super().save(*args, **kwargs)
         if self.pk:  # clear this object from cache if it is there
-            Character.objects.clear_cache(pk=self.pk)
+            self.clear_cache()
 
     @cached_property
     def name(self) -> str:
@@ -700,6 +700,25 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Update the character's wallet transactions from ESI."""
         self.wallet_transactions.update_or_create_esi(self, force_update)
 
+    def update_sharing_consistency(self):
+        """Update sharing to ensure consistency with permissions."""
+        if (
+            self.is_shared
+            and self.user
+            and not self.user.has_perm("memberaudit.share_characters")
+        ):
+            self.is_shared = False
+            self.save()
+            logger.info(
+                "%s: Unshared this character, "
+                "because it's owner no longer has the permission to share characters.",
+                self,
+            )
+
+    def clear_cache(self) -> None:
+        """Remove this character from cache."""
+        Character.objects.clear_cache(pk=self.pk)
+
     @staticmethod
     def get_esi_scopes() -> List[str]:
         """Return all enabled ESI scopes required to update this character."""
@@ -741,23 +760,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "esi-universe.read_structures.v1",
             "esi-wallet.read_character_wallet.v1",
         ]
-
         return sorted(scopes)
-
-    def update_sharing_consistency(self):
-        """Update sharing to ensure consistency with permissions."""
-        if (
-            self.is_shared
-            and self.user
-            and not self.user.has_perm("memberaudit.share_characters")
-        ):
-            self.is_shared = False
-            self.save()
-            logger.info(
-                "%s: Unshared this character, "
-                "because it's owner no longer has the permission to share characters.",
-                self,
-            )
 
 
 class CharacterUpdateStatus(models.Model):

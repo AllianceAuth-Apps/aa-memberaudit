@@ -137,7 +137,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     logger.info(
         "%s: Starting %s character update", character, "forced" if force_update else ""
     )
-    Character.objects.clear_cache(pk=character_pk)
+    character.clear_cache()
 
     enabled_sections = Character.UpdateSection.enabled_sections()
     sections_to_update_in_loop = enabled_sections.difference(

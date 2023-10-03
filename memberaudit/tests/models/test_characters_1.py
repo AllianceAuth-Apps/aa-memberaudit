@@ -192,6 +192,15 @@ class TestCharacter(NoSocketsTestCase):
         character_1002.refresh_from_db()
         self.assertFalse(character_1002.is_shared)
 
+    @patch(MODELS_PATH + ".Character.objects.clear_cache")
+    def test_should_clear_cache(self, mock_clear_cache):
+        # when
+        self.character_1001.clear_cache()
+        # then
+        self.assertTrue(mock_clear_cache.called)
+        _, kwargs = mock_clear_cache.call_args
+        self.assertTrue(kwargs["pk"], self.character_1001.pk)
+
 
 class TestCharacterContract(NoSocketsTestCase):
     @classmethod
