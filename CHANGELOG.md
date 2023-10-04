@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.0.0] - TBD
+## [3.0.0] - 2023-10-04
 
 ### Update notes
 
-This major release adds corporation roles as new optional feature. Corporation roles are disabled by default and need to be explicitly enabled to active them.
+This major release adds corporation roles as new feature. To make migration easier this new feature is disabled by default and need to be enabled through a setting.
 
 ### Enabling corporation roles
 
