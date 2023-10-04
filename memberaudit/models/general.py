@@ -33,7 +33,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class General(models.Model):
-    """Meta model for user permissions"""
+    """A model defining commonly used properties and methods for Member Audit."""
 
     class Meta:
         managed = False
@@ -58,7 +58,7 @@ class General(models.Model):
 
     @classmethod
     def basic_permission(cls):
-        """return basic permission needed to use this app"""
+        """Return basic permission needed to use this app."""
         return Permission.objects.select_related("content_type").get(
             content_type__app_label=cls._meta.app_label, codename="basic_access"
         )
@@ -139,7 +139,7 @@ class ComplianceGroupDesignation(models.Model):
 
 
 class Location(models.Model):
-    """An Eve Online location: Station or Upwell Structure or Solar System"""
+    """An Eve Online location: Station or Upwell Structure or Solar System."""
 
     _ASSET_SAFETY_ID = 2004
     _SOLAR_SYSTEM_ID_START = 30_000_000
@@ -257,7 +257,7 @@ class Location(models.Model):
 
 
 class EveShipType(EveType):
-    """Subset of EveType for all ship types"""
+    """Subset of EveType for all ship types."""
 
     class Meta:
         proxy = True
@@ -266,7 +266,7 @@ class EveShipType(EveType):
 
 
 class EveSkillType(EveType):
-    """Subset of EveType for all skill types"""
+    """Subset of EveType for all skill types."""
 
     class Meta:
         proxy = True
@@ -275,7 +275,7 @@ class EveSkillType(EveType):
 
 
 class SkillSetGroup(models.Model):
-    """A group of SkillSets, e.g. for defining a doctrine"""
+    """A group of SkillSets, e.g. for defining a doctrine."""
 
     description = models.TextField(blank=True, verbose_name=_("description"))
     is_doctrine = models.BooleanField(
@@ -491,7 +491,7 @@ class SkillSetSkill(models.Model):
 
 
 class MailEntity(models.Model):
-    """A sender or recipient in a mail"""
+    """A sender or recipient in a mail."""
 
     class Category(models.TextChoices):
         """A category of a mail entity."""
@@ -526,12 +526,12 @@ class MailEntity(models.Model):
 
     @property
     def name_plus(self) -> str:
-        """returns the name if defined or a generatic name based on category and ID"""
+        """Return the name if defined or a generic name based on category and ID."""
         return self.name if self.name else f"{self.get_category_display()} #{self.id}"
 
     @property
     def eve_entity_categories(self) -> set:
-        """categories which also exist for EveEntity"""
+        """Return categories which also exist for EveEntity."""
         return {
             self.Category.ALLIANCE,
             self.Category.CHARACTER,
@@ -545,7 +545,7 @@ class MailEntity(models.Model):
         super().save(*args, **kwargs)
 
     def external_url(self) -> str:
-        """returns URL for to show details of this entity on external website"""
+        """Return URL for to show details of this entity on external website."""
         if self.category == self.Category.ALLIANCE and self.name:
             return dotlan.alliance_url(self.name)
 

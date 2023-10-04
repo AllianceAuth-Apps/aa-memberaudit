@@ -152,17 +152,34 @@ class EveSkillTypeAdmin(EveUniverseEntityModelAdmin):
     pass
 
 
-class SyncStatusAdminInline(admin.TabularInline):
+class CharacterUpdateStatusAdminInline(admin.TabularInline):
     model = CharacterUpdateStatus
     fields = (
         "section",
-        "is_success",
+        "_is_enabled",
+        "_is_success",
+        "_is_token_ok",
         "last_error_message",
         "started_at",
         "finished_at",
         "root_task_id",
     )
+    readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
     ordering = ["section"]
+
+    @admin.display(boolean=True)
+    def _is_enabled(self, obj: CharacterUpdateStatus) -> bool:
+        return obj.is_enabled
+
+    @admin.display(boolean=True)
+    def _is_success(self, obj: CharacterUpdateStatus) -> bool:
+        if not obj.is_enabled:
+            return None
+        return obj.is_success
+
+    @admin.display(boolean=True)
+    def _is_token_ok(self, obj: CharacterUpdateStatus) -> bool:
+        return not obj.has_token_error
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -178,13 +195,13 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     """Custom filter for update status with counts."""
 
     title = __("update status")
-    parameter_name = "update_status"
+    parameter_name = "total_update_status"
 
     def lookups(self, request, model_admin):
         qs = model_admin.get_queryset(request)
         counts = []
-        for status in Character.UpdateStatus:
-            counts.append((status, qs.filter(update_status=status.value).count()))
+        for status in Character.TotalUpdateStatus:
+            counts.append((status, qs.filter(total_update_status=status.value).count()))
         result = tuple(
             (
                 (status.value, status.label.title() + f" ({count:,})")
@@ -194,9 +211,9 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
         return result
 
     def queryset(self, request, queryset):
-        for value in Character.UpdateStatus.values:
+        for value in Character.TotalUpdateStatus.values:
             if self.value() == value:
-                return queryset.filter(update_status=value)
+                return queryset.filter(total_update_status=value)
         return queryset
 
 
@@ -248,7 +265,10 @@ class CharacterStateListFilter(admin.SimpleListFilter):
 class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     class Media:
         css = {
-            "all": ("authentication/css/admin.css", "memberaudit/css/admin.css"),
+            "all": (
+                "allianceauth/authentication/css/admin.css",
+                "memberaudit/css/admin.css",
+            ),
         }
 
     list_display = (
@@ -293,19 +313,20 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "delete_objects",
         "update_characters",
         "update_assets",
+        "update_roles",
         "update_location",
         "update_online_status",
         "enable_characters",
         "disable_characters",
     ]
-    inlines = (SyncStatusAdminInline,)
+    inlines = (CharacterUpdateStatusAdminInline,)
 
     def get_queryset(self, *args, **kwargs):
         qs = super().get_queryset(*args, **kwargs)
         return (
             qs.prefetch_related("update_status_set")
             .annotate(last_update_at=Max("update_status_set__finished_at"))
-            .annotate_update_status()
+            .annotate_total_update_status()
         )
 
     @admin.display(description="")
@@ -358,17 +379,15 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             result += f" [{obj.main_character.alliance_ticker}]"
         return result
 
-    @admin.display(ordering="update_status", description=__("update status"))
+    @admin.display(ordering="total_update_status", description=__("update status"))
     def _update_status(self, obj: Character):
-        css_class_map = {
-            Character.UpdateStatus.INCOMPLETE: "text-warning",
-            Character.UpdateStatus.ERROR: "text-danger",
-            Character.UpdateStatus.DISABLED: "text-muted",
-        }
-        label = Character.UpdateStatus(obj.update_status).label.title()
-        if css_class := css_class_map.get(obj.update_status):
-            return format_html('<span class="{}">{}</span>', css_class, label)
-        return label
+        update_status_obj = Character.TotalUpdateStatus(obj.total_update_status)
+        label = update_status_obj.label.title()
+        css_class = update_status_obj.bootstrap_style_class()
+        description = update_status_obj.description()
+        return format_html(
+            '<span class="{}" title="{}">{}</span>', css_class, description, label
+        )
 
     @admin.display(ordering="created_at", description=__("created"))
     def _created_at(self, obj: Character):
@@ -380,12 +399,10 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
-        all_sections = set(Character.UpdateSection.values)
-        missing = all_sections.difference(existing)
-        if missing:
-            return sorted(
-                [Character.UpdateSection.display_name(obj) for obj in missing]
-            )
+        enabled_sections = Character.UpdateSection.enabled_sections()
+        missing_sections = enabled_sections.difference(existing)
+        if missing_sections:
+            return sorted(obj.label for obj in missing_sections)
         return None
 
     @admin.display(description=__("Update selected characters from EVE server"))
@@ -424,7 +441,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(
         description=__("Update %s for selected characters from EVE server")
-        % Character.UpdateSection.display_name(Character.UpdateSection.ONLINE_STATUS)
+        % Character.UpdateSection.ONLINE_STATUS.label
     )
     def update_online_status(self, request, queryset):
         self._update_section(request, queryset, Character.UpdateSection.ONLINE_STATUS)
@@ -443,16 +460,17 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             self.message_user(
                 request,
                 __("Started updating section %(section)s for character %(character)s.")
-                % {
-                    "section": Character.UpdateSection.display_name(section),
-                    "character": obj,
-                },
+                % {"section": section.label, "character": obj},
             )
 
-    @admin.display(description=__("Enable selected characters"))
+    @admin.display(
+        description=__("Enable selected characters and reset token notifications")
+    )
     def enable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
-        queryset.filter(pk__in=pks).update(is_disabled=False)
+        queryset.filter(pk__in=pks).update(
+            is_disabled=False, token_error_notified_at=None
+        )
         self.message_user(request, __("Enabled %d characters.") % len(pks))
 
     @admin.display(description=__("Disable selected characters"))

@@ -15,8 +15,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 def fetch_character_if_allowed(*args_select_related):
-    """Asserts the current user has access to the character
-    and loads the given character if it exists
+    """Assert the current user has access to the character
+    and load the given character if it exists.
 
     Args:
     - Optionally add list of parameters to be passed through to select_related().
@@ -80,10 +80,10 @@ def fetch_token_for_character(scopes=None):
 
 
 def when_esi_is_available(func):
-    """Makes sure the decorated task only runs when esi is available.
+    """Make sure the decorated task only runs when esi is available.
 
-    Raised exception when ESI is offline.
-    Completes the task without running it when downtime is detected.
+    Raise exception when ESI is offline.
+    Complete the task without running it when downtime is detected.
 
     Automatically disabled during tests.
     """

@@ -3,14 +3,13 @@
 
 import inspect
 import random
-from typing import Iterable, Optional
+from typing import Callable, Iterable, Optional
 
 from celery import chain, shared_task
 
 from django.apps import apps
 from django.contrib.auth.models import Group, User
 from django.db import transaction
-from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
 from eveuniverse.models import EveEntity, EveMarketPrice
@@ -64,7 +63,7 @@ TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 def run_regular_updates() -> None:
-    """Main task to be run on a regular basis to keep everything updated and running"""
+    """Run regular updates for Member Audit."""
     update_market_prices.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     update_all_characters.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     if ComplianceGroupDesignation.objects.exists():
@@ -76,34 +75,36 @@ def run_regular_updates() -> None:
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @when_esi_is_available
 def update_all_characters(self, force_update: bool = False) -> None:
-    """Start the update of all registered characters
+    """Update all enabled characters from ESI and disable update for orphans.
 
     Args:
-    - force_update: When set to True will always update regardless of stale status
+        - force_update: When set to True will always update regardless of stale status
     """
     if MEMBERAUDIT_LOG_UPDATE_STATS:
         stats = CharacterUpdateStatus.objects.statistics()
         logger.info(f"Update statistics: {stats}")
 
-    # disable characters without owner
-    orphaned_characters = Character.objects.filter(
-        eve_character__character_ownership__isnull=True
-    )
-    if orphaned_count := orphaned_characters.count() > 0:
-        orphaned_characters.update(is_disabled=True)
-        logger.info(
-            "Disabled %d characters which do not belong to a user.", orphaned_count
-        )
+    Character.objects.disable_characters_with_no_owner()
+
     # start sync for all enabled characters
-    enabled_characters = Character.objects.filter(is_disabled=False).values_list(
-        "pk", flat=True
+    enabled_characters = list(
+        Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
     )
-    priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    for character_pk in enabled_characters:
-        update_character.apply_async(
-            kwargs={"character_pk": character_pk, "force_update": force_update},
-            priority=priority,
+    if enabled_characters:
+        update_type = "forced" if force_update else "normal"
+        logger.info(
+            "Starting %s updates for %d characters",
+            update_type,
+            len(enabled_characters),
         )
+        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+        for character_pk in enabled_characters:
+            update_character.apply_async(
+                kwargs={"character_pk": character_pk, "force_update": force_update},
+                priority=priority,
+            )
+    else:
+        logger.info("No enabled characters found for update.")
 
 
 # Main character update tasks
@@ -111,7 +112,7 @@ def update_all_characters(self, force_update: bool = False) -> None:
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character(self, character_pk: int, force_update: bool = False) -> bool:
-    """Start respective update tasks for all stale sections of a character
+    """Update all sections of a character from ESI.
 
     Args:
     - character_pk: PL of character to update
@@ -121,18 +122,14 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     - True when update was conducted
     - False when no updated was needed
     """
-    character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
+    character: Character = Character.objects.get(pk=character_pk)
     if character.is_orphan:
         logger.info("%s: Skipping update for orphaned character", character)
         return False
 
-    all_sections = set(Character.UpdateSection.values)
-    needs_update = force_update
-    for section in all_sections:
-        needs_update |= character.is_update_section_stale(section)
+    character.reset_token_error_notified_if_status_ok()
 
+    needs_update = force_update | character.is_update_needed()
     if not needs_update:
         logger.info("%s: No update required", character)
         return False
@@ -140,7 +137,10 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     logger.info(
         "%s: Starting %s character update", character, "forced" if force_update else ""
     )
-    sections = all_sections.difference(
+    character.clear_cache()
+
+    enabled_sections = Character.UpdateSection.enabled_sections()
+    sections_to_update_in_loop = enabled_sections.difference(
         {
             Character.UpdateSection.ASSETS,
             Character.UpdateSection.MAILS,
@@ -150,9 +150,10 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             Character.UpdateSection.SKILLS,
         }
     )
+
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    for section in sorted(sections):
-        if force_update or character.is_update_section_stale(section):
+    for section in sorted(sections_to_update_in_loop):
+        if force_update or character.is_update_needed_for_section(section):
             update_character_section.apply_async(
                 kwargs={
                     "character_pk": character.pk,
@@ -164,7 +165,9 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 priority=priority,
             )
 
-    if force_update or character.is_update_section_stale(Character.UpdateSection.MAILS):
+    if force_update or character.is_update_needed_for_section(
+        Character.UpdateSection.MAILS
+    ):
         update_character_mails.apply_async(
             kwargs={
                 "character_pk": character.pk,
@@ -174,7 +177,8 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
-    if force_update or character.is_update_section_stale(
+
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.CONTACTS
     ):
         update_character_contacts.apply_async(
@@ -186,7 +190,8 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
-    if force_update or character.is_update_section_stale(
+
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.CONTRACTS
     ):
         update_character_contracts.apply_async(
@@ -198,7 +203,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
-    if force_update or character.is_update_section_stale(
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.ASSETS
     ):
         update_character_assets.apply_async(
@@ -210,10 +215,11 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
+
     if (
         force_update
-        or character.is_update_section_stale(Character.UpdateSection.SKILLS)
-        or character.is_update_section_stale(Character.UpdateSection.SKILL_SETS)
+        or character.is_update_needed_for_section(Character.UpdateSection.SKILLS)
+        or character.is_update_needed_for_section(Character.UpdateSection.SKILL_SETS)
     ):
         chain(
             update_character_section.si(
@@ -231,10 +237,12 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 self.request.id,
             ).set(priority=priority),
         ).delay()
+
     if character.is_shared:
         check_character_consistency.apply_async(
             kwargs={"character_pk": character.pk}, priority=priority
         )
+
     return True
 
 
@@ -259,70 +267,26 @@ def update_character_section(
     force_update: bool,
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
-    **kwargs,
 ) -> None:
-    """Task that updates the section of a character"""
-    character = Character.objects.get_cached(
+    """Update a section for a character from ESI."""
+    section = Character.UpdateSection(section)
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     character.reset_update_section(section, root_task_id, parent_task_id)
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
-    update_method = getattr(character, Character.UpdateSection.method_name(section))
-    args = [character, section, update_method]
-    if not kwargs:
+    logger.info("%s: Updating %s", character, section.label)
+
+    method: Callable = getattr(character, section.method_name)
+    method_signature = inspect.signature(method)
+    if "force_update" in method_signature.parameters:
+        kwargs = {"force_update": force_update}
+    else:
         kwargs = {}
 
-    method_signature = inspect.signature(update_method)
-    if "force_update" in method_signature.parameters:
-        kwargs["force_update"] = force_update
-
-    _character_update_with_error_logging(*args, **kwargs)
-    _log_character_update_success(character, section)
-
-
-def _character_update_with_error_logging(
-    character: Character, section: str, method: object, *args, **kwargs
-):
-    """Facilitate catching and logging of exceptions potentially occurring
-    during a character update.
-    """
-    try:
-        return method(*args, **kwargs)  # type: ignore
-    except Exception as ex:
-        error_message = f"{type(ex).__name__}: {str(ex)}"
-        logger.error(
-            "%s: %s: Error ocurred: %s",
-            character,
-            Character.UpdateSection.display_name(section),
-            error_message,
-            exc_info=True,
-        )
-        CharacterUpdateStatus.objects.update_or_create(
-            character=character,
-            section=section,
-            defaults={
-                "is_success": False,
-                "last_error_message": error_message,
-                "finished_at": now(),
-            },
-        )
-        raise ex
-
-
-def _log_character_update_success(character: Character, section: str):
-    """Logs character update success for a section"""
-    logger.info(
-        "%s: %s update completed",
-        character,
-        Character.UpdateSection.display_name(section),
+    character.perform_update_with_error_logging(
+        section=section, method=method, **kwargs
     )
-    CharacterUpdateStatus.objects.update_or_create(
-        character=character,
-        section=section,
-        defaults={"is_success": True, "last_error_message": "", "finished_at": now()},
-    )
+    character.update_section_log_success(section)
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -356,17 +320,14 @@ def update_character_assets(
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
-    """Main tasks for updating the character's assets"""
-    character = Character.objects.get_cached(
+    """Update the assets of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    logger.info(
-        "%s: Updating %s",
-        character,
-        Character.UpdateSection.display_name(Character.UpdateSection.ASSETS),
-    )
+    section = Character.UpdateSection.ASSETS
+    logger.info("%s: Updating %s", character, section.label)
     character.reset_update_section(
-        section=Character.UpdateSection.ASSETS,
+        section=section,
         root_task_id=root_task_id,
         parent_task_id=parent_task_id,
     )
@@ -381,30 +342,28 @@ def update_character_assets(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def assets_build_list_from_esi(character_pk: int, force_update: bool = False) -> dict:
-    """Building asset list"""
-    character = Character.objects.get_cached(
+    """Build the asset list for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    asset_list = _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.ASSETS,
-        character.assets_build_list_from_esi,
-        force_update,
+    asset_list = character.perform_update_with_error_logging(
+        section=Character.UpdateSection.ASSETS,
+        method=character.assets_build_list_from_esi,
+        force_update=force_update,
     )
     return asset_list
 
 
 @shared_task(**TASK_DEFAULTS)
 def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict]:
-    """Task for preloading asset objects"""
+    """Preload asset objects for a character from ESI."""
     if asset_list is None:
         return None
 
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
+    character.perform_update_with_error_logging(
         Character.UpdateSection.ASSETS,
         character.assets_preload_objects,
         asset_list,
@@ -416,7 +375,7 @@ def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict
 def assets_create_parents(
     self, asset_list: list, character_pk: int, cycle: int = 1
 ) -> None:
-    """creates the parent assets from given asset_list
+    """Create the parent assets from an asset list.
 
     Parent assets are assets attached directly to a Location object (e.g. station)
 
@@ -424,11 +383,11 @@ def assets_create_parents(
     from the asset list have been created.
     Then call another task to create child assets.
     """
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     if asset_list is None:
-        _log_character_update_success(character, Character.UpdateSection.ASSETS)
+        character.update_section_log_success(Character.UpdateSection.ASSETS)
         return
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
@@ -496,21 +455,21 @@ def assets_create_parents(
                 priority=priority,
             )
         else:
-            _log_character_update_success(character, Character.UpdateSection.ASSETS)
+            character.update_section_log_success(Character.UpdateSection.ASSETS)
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_children(
     self, asset_list: dict, character_pk: int, cycle: int = 1
 ) -> None:
-    """Created child assets from given asset list
+    """Create child assets from given asset list.
 
     Child assets are assets located within other assets (aka containers)
 
     This task will recursively call itself until all possible assets from the
     asset list are included into the asset tree
     """
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     logger.info("%s: Creating child assets - pass %s", character, cycle)
@@ -568,7 +527,7 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        _log_character_update_success(character, Character.UpdateSection.ASSETS)
+        character.update_section_log_success(Character.UpdateSection.ASSETS)
         if len(assets_flat) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
@@ -594,14 +553,12 @@ def update_character_mails(
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
-    """Main task for updating mails of a character"""
-    character = Character.objects.get_cached(
+    """Update mails of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.MAILS
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
@@ -626,13 +583,12 @@ def update_character_mailing_lists(
     character_pk: int, force_update: bool = False
 ) -> None:
     """Update mailing list for a character."""
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mailing_lists,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mailing_lists,
         force_update=force_update,
     )
 
@@ -641,13 +597,12 @@ def update_character_mailing_lists(
 @when_esi_is_available
 def update_character_mail_labels(character_pk: int, force_update: bool = False) -> None:
     """Update mail labels for a character."""
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mail_labels,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_labels,
         force_update=force_update,
     )
 
@@ -657,15 +612,13 @@ def update_character_mail_labels(character_pk: int, force_update: bool = False) 
 def update_character_mail_headers(
     character_pk: int, force_update: bool = False
 ) -> None:
-    """Update mail headers for a character."""
-
-    character = Character.objects.get_cached(
+    """Update mail headers for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mail_headers,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_headers,
         force_update=force_update,
     )
 
@@ -673,24 +626,20 @@ def update_character_mail_headers(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_mail_body_esi(character_pk: int, mail_pk: int):
-    """Task for updating the body of a mail from ESI"""
-    character = Character.objects.get_cached(
+    """Update the body of a character's mail from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     mail = CharacterMail.objects.get(pk=mail_pk)
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.MAILS,
-        character.update_mail_body,
-        mail,
+    character.perform_update_with_error_logging(
+        Character.UpdateSection.MAILS, character.update_mail_body, mail
     )
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> None:
-    """Update mail bodies for a character."""
-
-    character = Character.objects.get_cached(
+    """Update mail bodies for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     mails_without_body_qs = character.mails.filter(body="")
@@ -706,7 +655,7 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
             )
 
     # the last task in the chain logs success (if any)
-    _log_character_update_success(character, Character.UpdateSection.MAILS)
+    character.update_section_log_success(Character.UpdateSection.MAILS)
 
 
 # special tasks for updating contacts
@@ -725,17 +674,15 @@ def update_character_contacts(
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
-    """Main task for updating contacts of a character"""
-    character = Character.objects.get_cached(
+    """Update contacts of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTACTS
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contact_labels.si(character.pk, force_update=force_update).set(
@@ -752,15 +699,13 @@ def update_character_contacts(
 def update_character_contact_labels(
     character_pk: int, force_update: bool = False
 ) -> None:
-    """Update contact labels for a character."""
-
-    character = Character.objects.get_cached(
+    """Update contact labels for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTACTS,
-        character.update_contact_labels,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.CONTACTS,
+        method=character.update_contact_labels,
         force_update=force_update,
     )
 
@@ -768,18 +713,16 @@ def update_character_contact_labels(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_contacts_2(character_pk: int, force_update: bool = False) -> None:
-    """Update contacts for a character."""
-
-    character = Character.objects.get_cached(
+    """Update contacts for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTACTS,
-        character.update_contacts,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.CONTACTS,
+        method=character.update_contacts,
         force_update=force_update,
     )
-    _log_character_update_success(character, Character.UpdateSection.CONTACTS)
+    character.update_section_log_success(Character.UpdateSection.CONTACTS)
 
 
 # special tasks for updating contracts
@@ -798,17 +741,15 @@ def update_character_contracts(
     root_task_id: Optional[str] = None,
     parent_task_id: Optional[str] = None,
 ) -> None:
-    """Main task for updating contracts of a character"""
-    character = Character.objects.get_cached(
+    """Update contracts of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTRACTS
     character.reset_update_section(
         section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
     )
-    logger.info(
-        "%s: Updating %s", character, Character.UpdateSection.display_name(section)
-    )
+    logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_contract_headers.si(
@@ -822,23 +763,21 @@ def update_character_contracts(
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_character_contract_headers(character_pk: int, force_update: bool = False):
-    """Update contract headers for a character."""
-
-    character = Character.objects.get_cached(
+    """Update contract headers for a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _character_update_with_error_logging(
-        character,
-        Character.UpdateSection.CONTRACTS,
-        character.update_contract_headers,
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.CONTRACTS,
+        method=character.update_contract_headers,
         force_update=force_update,
     )
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_contracts_items(self, character_pk: int):
-    """Update items for all contracts of a character"""
-    character = Character.objects.get_cached(
+    """Update items for all contracts of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract_pks = set(
@@ -868,8 +807,8 @@ def update_character_contracts_items(self, character_pk: int):
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_contract_items_esi(character_pk: int, contract_pk: int):
-    """Task for updating the items of a contract from ESI"""
-    character = Character.objects.get_cached(
+    """Update the items of a character contract from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract = CharacterContract.objects.get(pk=contract_pk)
@@ -878,8 +817,8 @@ def update_contract_items_esi(character_pk: int, contract_pk: int):
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_contracts_bids(self, character_pk: int):
-    """Update bids for all contracts of a character"""
-    character = Character.objects.get_cached(
+    """Update bids for all contracts of a character from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract_pks = set(
@@ -901,14 +840,14 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
-    _log_character_update_success(character, Character.UpdateSection.CONTRACTS)
+    character.update_section_log_success(Character.UpdateSection.CONTRACTS)
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_contract_bids_esi(character_pk: int, contract_pk: int):
-    """Task for updating the bids of a contract from ESI"""
-    character = Character.objects.get_cached(
+    """Update bids of a character contract from ESI."""
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract = CharacterContract.objects.get(pk=contract_pk)
@@ -921,7 +860,7 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
 def update_market_prices():
-    """Update market prices from ESI"""
+    """Update market prices from ESI."""
     EveMarketPrice.objects.update_from_esi(
         minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2
     )
@@ -934,8 +873,9 @@ def update_market_prices():
     }
 )
 def update_structure_esi(self, id: int, token_pk: int):
-    """Updates a structure object from ESI
-    and retries later if the ESI error limit has already been reached
+    """Update a structure object from ESI.
+
+    If the ESI error limit has already been reached retry later.
     """
     try:
         token = Token.objects.get(pk=token_pk)
@@ -971,23 +911,23 @@ def update_structure_esi(self, id: int, token_pk: int):
     }
 )
 def update_mail_entity_esi(id: int, category: Optional[str] = None):
-    """Updates a mail entity object from ESI
-    and retries later if the ESI error limit has already been reached
+    """Update a mail entity object from ESI
+    and retry later if the ESI error limit has already been reached.
     """
     MailEntity.objects.update_or_create_esi(id=id, category=category)
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_characters_skill_checks(self, force_update: bool = False) -> None:
-    """Start the update of skill checks for all registered characters
+    """Start the update of skill checks for all registered characters.
 
     Args:
-    - force_update: When set to True will always update regardless of stale status
+        - force_update: When set to True will always update regardless of stale status
     """
     section = Character.UpdateSection.SKILL_SETS
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for character in Character.objects.all():
-        if force_update or character.is_update_section_stale(section):
+        if force_update or character.is_update_needed_for_section(section):
             update_character_section.apply_async(
                 kwargs={
                     "character_pk": character.pk,
@@ -1001,7 +941,7 @@ def update_characters_skill_checks(self, force_update: bool = False) -> None:
 @shared_task(**TASK_DEFAULTS_ONCE)
 def check_character_consistency(character_pk) -> None:
     """Check consistency of a character."""
-    character = Character.objects.get_cached(
+    character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     character.update_sharing_consistency()

@@ -1,3 +1,5 @@
+"""Tool for clearing celery locks."""
+
 import argparse
 
 from redis import Redis

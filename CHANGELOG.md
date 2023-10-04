@@ -7,6 +7,86 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.0.0] - 2023-10-04
+
+### Update notes
+
+This major release adds corporation roles as new feature. To make migration easier this new feature is disabled by default and need to be enabled through a setting.
+
+### Enabling corporation roles
+
+You can enable corporation roles by adding the following line to your local setting and then restarting Auth:
+
+```python
+MEMBERAUDIT_FEATURE_ROLES_ENABLED = True
+```
+
+!! Please note that once enabled users will need to re-register their characters to be able to use it !!
+
+This is necessary, because this new feature requires an additional ESI scope. Users will automatically be asked to re-register via Auth notification (If you have the app Discord Notify enabled, those notification will be forwarded automatically as DMs to users on Discord). Users will also be informed through a note on the characters launch page and through a new status icon next to the character name.
+
+Please note that this scope change will not disrupt the update of existing characters. The update status of a character which only issue is the missing esi scope will show with update status "Limited Token" on the admin site, but otherwise all characters will continue to be updated normally.
+
+### Migration approaches
+
+As explained in the previous article all users need to re-register their characters in order to use the new feature. There are two migration approaches:
+
+- Managed migration
+- Unmanaged migration
+
+#### Managed migration
+
+The first approach is a managed migration which attempts to migrate all characters by a deadline. The approach would look something like this:
+
+1. Inform all users that they need to re-register their characters until a deadline
+1. Enable the new feature at the deadline
+1. Allow users a grace period to re-register their characters
+1. After that grace period is passed, start pushing stragglers to re-register
+
+This approach requires active communication with the users and is very visible, but should ensure most characters are migrated within a short time.
+
+#### Unmanaged migration
+
+Alternatively, an unmanaged migration is possible by turning off the automatic notification to users about token errors. Then users will (hopefully) re-register their characters over time once they see the related warnings on the launchers page.
+
+The related settings are:
+
+```python
+MEMBERAUDIT_NOTIFY_TOKEN_ERRORS = False
+```
+
+This approach is does not require much (or any) communication with the users. However, it can take a long time before a significant amount of existing characters are migrated to the new feature.
+
+### Monitoring the migration
+
+You can monitor the progress of the migration on admin site by looking at the update status of the Member Audit characters (the page under "Member Audit / Characters").
+
+Here is an example:
+
+![update_status](https://imgpile.com/images/DlGvdM.png)
+
+The relevant values are:
+
+- "Limited Token": are characters which have not re-registered yet
+- "Incomplete": have not been updated yet after enabling the roles feature
+- "In Progress": are currently being updated
+- "OK": have completed updating after re-registering with the new scope
+
+You goal for the migration is to convert all characters which have "Limited Token" to "OK". At least for characters belonging to a non-guest state.
+
+### Added
+
+- Corporation roles are now shown for characters. This new feature can be enabled via the setting: `MEMBERAUDIT_FEATURE_ROLES_ENABLED`
+- Token errors are now handled automatically: The user is notified and update for the related character section is suspended until the user re-registered the character. The automatic notification can be disabled with the setting `MEMBERAUDIT_NOTIFY_TOKEN_ERRORS`
+- Users are now asked to re-register characters that have a token error on the launcher page
+- New status tag shown next to the character name on launcher and viewer inform about an update issue
+- New status tag and detailed error description shown on each character tab informs about an update issue
+
+## Changed
+
+- App badge now also includes the count of characters with token errors and disabled characters
+- New update status "Limited token" shown on the admin page for characters which have a token issue on one section only (e.g. because a new role scope missing)
+
 ## [2.11.3] - 2023-09-21
 
 ### Changed

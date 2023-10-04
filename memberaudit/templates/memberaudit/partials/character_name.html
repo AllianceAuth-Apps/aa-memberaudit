@@ -1,0 +1,18 @@
+{% comment %}
+Renders the name of a character including widgets
+
+Args: auth_character, main_character_id, total_update_status
+{% endcomment %}
+
+{% load i18n %}
+
+{{ auth_character.character_name }}
+{% if auth_character.character_id == main_character_id %}
+    &nbsp;<i class="fas fa-crown" title="{% translate 'Main character' %}"></i>
+{% endif %}
+{% if auth_character.character.is_shared %}
+    &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
+{% endif %}
+{% if total_update_status.has_issue %}
+    <span class="{{ total_update_status.bootstrap_style_class }}" title="{{ total_update_status.description }}">⬤</span>
+{% endif %}

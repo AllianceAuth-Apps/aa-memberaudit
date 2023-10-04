@@ -5,5 +5,5 @@
     {{ character_details.description_html|default:"-" }}
     <br>
     <br>
-    {% include 'memberaudit/partials/character_viewer/tabs/last_updated.html' with update_section=last_updates.character_details %}
+    {% include 'memberaudit/partials/character_viewer/tabs/update_status.html' with update_section=sections_update_status.character_details %}
 </div>

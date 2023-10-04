@@ -1,7 +1,7 @@
 import datetime as dt
 import hashlib
 import json
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -12,10 +12,10 @@ from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveTyp
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
+from memberaudit.errors import TokenDoesNotExist
 from memberaudit.models import (
     Character,
     CharacterContract,
-    CharacterContractItem,
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
@@ -27,17 +27,24 @@ from memberaudit.models import (
     SkillSetSkill,
 )
 
-from ..testdata.factories import create_character, create_character_update_status
+from ..testdata.factories import (
+    create_character,
+    create_character_contract,
+    create_character_contract_item,
+    create_character_from_user,
+    create_character_update_status,
+)
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..testdata.load_locations import load_locations
 from ..utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
     scope_names_set,
 )
 
-MODELS_PATH = "memberaudit.models"
+MODELS_PATH = "memberaudit.models.characters"
 MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
@@ -47,25 +54,21 @@ class TestCharacter(NoSocketsTestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
 
     def test_user_should_produce_str(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(str(character_1001))
+        self.assertTrue(str(self.character_1001))
 
     def test_user_should_produce_repr(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(repr(character_1001))
+        self.assertTrue(repr(self.character_1001))
 
     def test_user_should_return_user_when_not_orphan(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         # when/then
-        self.assertEqual(character_1001.user, user)
+        self.assertEqual(self.character_1001.user, user)
 
     def test_user_should_be_None_when_orphan(self):
         # given
@@ -75,16 +78,14 @@ class TestCharacter(NoSocketsTestCase):
 
     def test_should_return_main_when_it_exists_1(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         main_character = user.profile.main_character
         # when/then
-        self.assertEqual(character_1001.main_character, main_character)
+        self.assertEqual(self.character_1001.main_character, main_character)
 
     def test_should_return_main_when_it_exists_2(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         main_character = user.profile.main_character
         character_1101 = add_memberaudit_character_to_user(user, 1101)
         # when/then
@@ -92,12 +93,12 @@ class TestCharacter(NoSocketsTestCase):
 
     def test_should_return_None_when_user_has_no_main(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        character_1002 = create_memberaudit_character(1002)
+        user = character_1002.eve_character.character_ownership.user
         user.profile.main_character = None
         user.profile.save()
         # when/then
-        self.assertIsNone(character_1001.main_character)
+        self.assertIsNone(character_1002.main_character)
 
     def test_should_be_None_when_orphan(self):
         # given
@@ -106,28 +107,25 @@ class TestCharacter(NoSocketsTestCase):
         self.assertIsNone(character.main_character)
 
     def test_should_identify_main(self):
-        # given
-        character_1001 = create_memberaudit_character(1001)
         # when/then
-        self.assertTrue(character_1001.is_main)
+        self.assertTrue(self.character_1001.is_main)
 
     def test_should_be_true_for_main_only(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         character_1101 = add_memberaudit_character_to_user(user, 1101)
         # when/then
-        self.assertTrue(character_1001.is_main)
+        self.assertTrue(self.character_1001.is_main)
         self.assertFalse(character_1101.is_main)
 
     def test_should_be_false_when_no_main(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        character_1002 = create_memberaudit_character(1002)
+        user = character_1002.eve_character.character_ownership.user
         user.profile.main_character = None
         user.profile.save()
         # when/then
-        self.assertFalse(character_1001.is_main)
+        self.assertFalse(character_1002.is_main)
 
     def test_should_be_false_when_orphan(self):
         # given
@@ -142,39 +140,35 @@ class TestCharacter(NoSocketsTestCase):
         self.assertTrue(character.is_orphan)
 
     def test_should_be_false_when_not_a_orphan(self):
-        # given
-        character = create_memberaudit_character(1001)
         # when/then
-        self.assertFalse(character.is_orphan)
+        self.assertFalse(self.character_1001.is_orphan)
 
     def test_should_keep_sharing(self):
         # given
         _, character_ownership = create_user_from_evecharacter(
-            1001,
+            1002,
             permissions=["memberaudit.basic_access", "memberaudit.share_characters"],
         )
-        character = create_character(
+        character_1002 = create_character(
             eve_character=character_ownership.character, is_shared=True
         )
         # when
-        character.update_sharing_consistency()
+        character_1002.update_sharing_consistency()
         # then
-        character.refresh_from_db()
-        self.assertTrue(character.is_shared)
+        character_1002.refresh_from_db()
+        self.assertTrue(character_1002.is_shared)
 
     def test_should_identify_user_of_a_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.eve_character.character_ownership.user
+        user = self.character_1001.eve_character.character_ownership.user
         # when/then
-        self.assertTrue(character_1001.user_is_owner(user))
+        self.assertTrue(self.character_1001.user_is_owner(user))
 
     def test_should_identify_not_user_of_a_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
         user = create_user_from_evecharacter(1002)
         # when/then
-        self.assertFalse(character_1001.user_is_owner(user))
+        self.assertFalse(self.character_1001.user_is_owner(user))
 
     def test_should_identify_not_user_of_an_orphan(self):
         # given
@@ -186,17 +180,26 @@ class TestCharacter(NoSocketsTestCase):
     def test_should_remove_sharing(self):
         # given
         _, character_ownership = create_user_from_evecharacter(
-            1001,
+            1002,
             permissions=["memberaudit.basic_access"],
         )
-        character = create_character(
+        character_1002 = create_character(
             eve_character=character_ownership.character, is_shared=True
         )
         # when
-        character.update_sharing_consistency()
+        character_1002.update_sharing_consistency()
         # then
-        character.refresh_from_db()
-        self.assertFalse(character.is_shared)
+        character_1002.refresh_from_db()
+        self.assertFalse(character_1002.is_shared)
+
+    @patch(MODELS_PATH + ".Character.objects.clear_cache")
+    def test_should_clear_cache(self, mock_clear_cache):
+        # when
+        self.character_1001.clear_cache()
+        # then
+        self.assertTrue(mock_clear_cache.called)
+        _, kwargs = mock_clear_cache.call_args
+        self.assertTrue(kwargs["pk"], self.character_1001.pk)
 
 
 class TestCharacterContract(NoSocketsTestCase):
@@ -215,11 +218,11 @@ class TestCharacterContract(NoSocketsTestCase):
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.item_type_1 = EveType.objects.get(id=19540)
-        cls.item_type_2 = EveType.objects.get(id=19551)
+        cls.snake_alpha_type = EveType.objects.get(name="High-grade Snake Alpha")
+        cls.snake_beta_type = EveType.objects.get(name="High-grade Snake Beta")
 
     def setUp(self) -> None:
-        self.contract = CharacterContract.objects.create(
+        self.contract = create_character_contract(
             character=self.character_1001,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -233,7 +236,7 @@ class TestCharacterContract(NoSocketsTestCase):
             start_location=self.jita_44,
             end_location=self.jita_44,
         )
-        self.contract_completed = CharacterContract.objects.create(
+        self.contract_completed = create_character_contract(
             character=self.character_1001,
             contract_id=43,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -265,51 +268,51 @@ class TestCharacterContract(NoSocketsTestCase):
         self.assertEqual(self.contract_completed.hours_issued_2_completed, 24)
 
     def test_summary_one_item_1(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         )
         self.assertEqual(self.contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_one_item_2(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=2,
             is_included=False,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.snake_beta_type,
         )
         self.assertEqual(self.contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_multiple_item(self):
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=2,
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.snake_beta_type,
         )
         self.assertEqual(self.contract.summary(), "[Multiple Items]")
 
@@ -318,15 +321,17 @@ class TestCharacterContract(NoSocketsTestCase):
 
     def test_can_calculate_pricing_1(self):
         """calculate price and total for normal item"""
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=2,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.snake_alpha_type, average_price=5000000
+        )
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertEqual(item_1.price, 5000000)
@@ -334,16 +339,18 @@ class TestCharacterContract(NoSocketsTestCase):
 
     def test_can_calculate_pricing_2(self):
         """calculate price and total for BPO"""
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=self.contract,
             record_id=1,
             is_included=True,
             is_singleton=False,
             quantity=1,
             raw_quantity=-2,
-            eve_type=self.item_type_1,
+            eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.snake_alpha_type, average_price=5000000
+        )
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertIsNone(item_1.price)
@@ -355,10 +362,11 @@ class TestCharacterFetchToken(TestCase):
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_should_return_token_with_default_scopes(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
         token = character.fetch_token()
         # then
@@ -367,7 +375,7 @@ class TestCharacterFetchToken(TestCase):
 
     def test_should_return_token_with_specified_scope(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
         token = character.fetch_token("esi-mail.read_mail.v1")
         self.assertIsInstance(token, Token)
@@ -380,21 +388,50 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
-    @patch(MODELS_PATH + ".characters.notify_throttled")
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", True)
+    @patch(MODELS_PATH + ".notify.danger")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
-        self, mock_notify_throttled
+        self, mock_notify_danger
     ):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         # when
-        with self.assertRaises(TokenError):
+        with self.assertRaises(TokenDoesNotExist):
             character.fetch_token("invalid_scope")
         # then
-        self.assertTrue(mock_notify_throttled.called)
-        _, kwargs = mock_notify_throttled.call_args
+        self.assertTrue(mock_notify_danger.called)
+        _, kwargs = mock_notify_danger.call_args
         self.assertEqual(
             kwargs["user"], character.eve_character.character_ownership.user
         )
+        character.refresh_from_db()
+        self.assertTrue(character.token_error_notified_at)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", True)
+    @patch(MODELS_PATH + ".notify")
+    def test_should_not_notify_user_on_token_error_when_already_notified(
+        self, mock_notify_danger
+    ):
+        # given
+        character = create_character_from_user(self.user, token_error_notified_at=now())
+        # when
+        with self.assertRaises(TokenDoesNotExist):
+            character.fetch_token("invalid_scope")
+        # then
+        self.assertFalse(mock_notify_danger.called)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", False)
+    @patch(MODELS_PATH + ".notify")
+    def test_should_not_notify_user_on_token_error_when_feature_is_disabled(
+        self, mock_notify_danger
+    ):
+        # given
+        character = create_character_from_user(self.user)
+        # when
+        with self.assertRaises(TokenDoesNotExist):
+            character.fetch_token("invalid_scope")
+        # then
+        self.assertFalse(mock_notify_danger.called)
 
 
 class TestCharacterSkillQueue(NoSocketsTestCase):
@@ -568,7 +605,7 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
         )
 
-    def test_passed_required_and_misses_recommendend_skill(self):
+    def test_passed_required_and_misses_recommended_skill(self):
         CharacterSkill.objects.create(
             character=self.character,
             eve_type=self.skill_type_1,
@@ -593,7 +630,7 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
         )
 
-    def test_misses_recommendend_skill_only(self):
+    def test_misses_recommended_skill_only(self):
         CharacterSkill.objects.create(
             character=self.character,
             eve_type=self.skill_type_1,
@@ -658,39 +695,37 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
 
-class TestCharacterWalletJournalEntry(NoSocketsTestCase):
-    def test_match_context_type_id(self):
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id("character_id"),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
-        )
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id("contract_id"),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CONTRACT_ID,
-        )
-        self.assertEqual(
-            CharacterWalletJournalEntry.match_context_type_id(None),
-            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-        )
-
-
-class TestCharacterUpdateStatusOk(NoSocketsTestCase):
+class TestCharacterStatus(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_none_when_not_all_sections_exist(self):
         # when/then
         self.assertIsNone(self.character.is_update_status_ok())
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_false_when_a_section_has_errors(self):
         # given
         create_character_update_status(character=self.character, is_success=False)
         # when/then
         self.assertFalse(self.character.is_update_status_ok())
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_ignore_error_in_disabled_sections(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+        # when/then
+        self.assertIsNone(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_true_when_all_sections_exist_and_have_no_error(self):
         # given
         for section in Character.UpdateSection:
@@ -700,25 +735,61 @@ class TestCharacterUpdateStatusOk(NoSocketsTestCase):
         # when/then
         self.assertTrue(self.character.is_update_status_ok())
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_true_when_all_enabled_sections_exist_and_have_no_error(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(
+                character=self.character, is_success=True, section=section.value
+            )
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+
+        # when/then
+        self.assertTrue(self.character.is_update_status_ok())
+
+    def test_should_log_success_for_section(self):
+        # given
+        section = Character.UpdateSection.LOCATION
+        # when
+        self.character.update_section_log_success(section=section)
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.has_token_error)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
+
 
 class TestCharacterUpdateSection(NoSocketsTestCase):
     def test_method_name(self):
-        result = Character.UpdateSection.method_name(
-            Character.UpdateSection.CORPORATION_HISTORY
-        )
-        self.assertEqual(result, "update_corporation_history")
+        # given
+        section = Character.UpdateSection.CORPORATION_HISTORY
+        # when/then
+        self.assertEqual(section.method_name, "update_corporation_history")
 
-        with self.assertRaises(ValueError):
-            result = Character.UpdateSection.method_name("invalid")
 
-    def test_display_name(self):
-        result = Character.UpdateSection.display_name(
-            Character.UpdateSection.CORPORATION_HISTORY
-        )
-        self.assertEqual(result, "corporation history")
+class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_all_sections(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection)
+        self.assertSetEqual(result, expected)
 
-        with self.assertRaises(ValueError):
-            result = Character.UpdateSection.display_name("invalid")
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_all_sections_except_roles(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection) - {Character.UpdateSection.ROLES}
+        self.assertSetEqual(result, expected)
 
 
 class TestCharacterUpdateStatus(NoSocketsTestCase):
@@ -843,7 +914,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_reset_1(self):
         """when section exists, reset it"""
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=False,
@@ -864,7 +935,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1a(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -881,7 +952,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1b(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -898,7 +969,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
     def test_has_changed_1c(self):
         """When section exists, then return result from has_changed"""
-        section = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=self.section,
             is_success=True,
@@ -921,59 +992,112 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             )
         )
 
-    def test_is_updating_1(self):
-        """When section exists, then return result from is_updating"""
-        section = CharacterUpdateStatus.objects.create(
-            character=self.character_1001, section=self.section, started_at=now()
+    def test_should_return_existing_status_for_section(self):
+        # given
+        status = create_character_update_status(
+            character=self.character_1001, section=self.section
         )
-        self.assertEqual(
-            self.character_1001.is_section_updating(section=self.section),
-            section.is_updating,
-        )
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertEqual(result, status)
 
-    def test_is_updating_2(self):
-        """When section does not exist, then return False"""
-        self.assertTrue(self.character_1001.is_section_updating(section=self.section))
+    def test_should_return_none_when_status_does_not_exist_for_section(self):
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertIsNone(result)
+
+    def test_should_raise_error_when_called_with_invalid_section(self):
+        # when/then
+        with self.assertRaises(ValueError):
+            self.character_1001.update_status_for_section("invalid")
 
 
-@patch(MODELS_PATH + ".characters.MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
-class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
+@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
+class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
         cls.section = Character.UpdateSection.ASSETS
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def setUp(self) -> None:
-        self.character = create_memberaudit_character(1001)
+        self.character = create_character_from_user(self.user)
 
-    def test_recently_updated_successfully(self):
-        """When section has been recently updated successfully then return False"""
-        CharacterUpdateStatus.objects.create(
+    def test_should_report_false_when_section_not_stale(self):
+        # given
+        create_character_update_status(
             character=self.character,
             section=self.section,
             is_success=True,
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
-        self.assertFalse(self.character.is_update_section_stale(self.section))
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
 
-    def test_recently_updated_unsuccessfully(self):
-        """When section has been recently updated, but with errors then return True"""
-        CharacterUpdateStatus.objects.create(
+    def test_should_report_true_when_section_has_error(self):
+        # given
+        create_character_update_status(
             character=self.character, section=self.section, is_success=False
         )
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
 
-    def test_update_long_ago(self):
-        """When section has not been recently updated, then return True"""
-        mocked_update_at = now() - dt.timedelta(hours=12)
-        with patch("django.utils.timezone.now", Mock(return_value=mocked_update_at)):
-            CharacterUpdateStatus.objects.create(
-                character=self.character, section=self.section, is_success=True
-            )
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+    def test_should_report_true_when_section_is_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=started_at,
+        )
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
 
-    def test_does_not_exist(self):
-        """When section does not exist, then return True"""
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+    def test_should_return_true_when_section_does_not_exist(self):
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            started_at=started_at,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+
+class TestCharacterWalletJournalEntry(NoSocketsTestCase):
+    def test_match_context_type_id(self):
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id("character_id"),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
+        )
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id("contract_id"),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CONTRACT_ID,
+        )
+        self.assertEqual(
+            CharacterWalletJournalEntry.match_context_type_id(None),
+            CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+        )

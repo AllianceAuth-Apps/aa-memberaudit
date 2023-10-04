@@ -54,6 +54,7 @@ esi-calendar.read_calendar_events.v1
 esi-characters.read_agents_research.v1
 esi-characters.read_blueprints.v1
 esi-characters.read_contacts.v1
+esi-characters.read_corporation_roles.v1
 esi-characters.read_fatigue.v1
 esi-characters.read_fw_stats.v1
 esi-characters.read_loyalty.v1
@@ -111,7 +112,13 @@ You may want to wait until the loading is complete before continuing.
 These command will spawn a thousands of tasks. One easy way to monitor the progress is to watch the number of tasks shown on the Dashboard.
 ```
 
-### Step 7 - Setup permissions
+### Step 7 - Enable optional features
+
+Some features are disabled by default. Please review and decide which features you want to enable for your installation:
+
+- Corporation roles: Add `MEMBERAUDIT_FEATURE_ROLES_ENABLED = True` to your local settings.
+
+### Step 8 - Setup permissions
 
 Finally you want to setup permission to define which users / groups will have access to which parts of the app. Check out [permissions](#permissions) for details.
 
@@ -189,14 +196,16 @@ Naturally, superusers will have access to everything, without requiring permissi
 
 Name | Description | Default
 -- | -- | --
-`APP_UTILS_NOTIFY_THROTTLED_TIMEOUT`| Timeout for throttled notifications in seconds. This defines how often throttled user notifications are send. | (see [Settings](https://allianceauth-app-utils.readthedocs.io/en/latest/settings.html) for App Utils)
+`APPUTILS_ESI_ERROR_LIMIT_THRESHOLD`| ESI error limit remain threshold. The number of remaining errors is counted down from 100 as errors occur. Because multiple tasks may request the value simultaneously and get the same response, the threshold must be above 0 to prevent the API from shutting down with a 420 error | `25`
 `MEMBERAUDIT_APP_NAME`| Name of this app as shown in the Auth sidebar. | `'Member Audit'`
-`MEMBERAUDIT_DATA_RETENTION_LIMIT`| Maximum number of days to keep historical data for mails, contracts and wallets. Minimum is 7 day. `None` will turn it off. | `360`
-`MEMBERAUDIT_ESI_ERROR_LIMIT_THRESHOLD`| ESI error limit remain threshold. The number of remaining errors is counted down from 100 as errors occur. Because multiple tasks may request the value simultaneously and get the same response, the threshold must be above 0 to prevent the API from shutting down with a 420 error | `25`
+`MEMBERAUDIT_FEATURE_ROLES_ENABLED`| Feature flag to enable or disable the corporation roles feature. | `False`
 `MEMBERAUDIT_BULK_METHODS_BATCH_SIZE`| Technical parameter defining the maximum number of objects processed per run of Django batch methods, e.g. bulk_create and bulk_update | `500`
+`MEMBERAUDIT_DATA_RETENTION_LIMIT`| Maximum number of days to keep historical data for mails, contracts and wallets. Minimum is 7 day. `None` will turn it off. | `360`
 `MEMBERAUDIT_LOCATION_STALE_HOURS`| Hours after a existing location (e.g. structure) becomes stale and gets updated. e.g. for name changes of structures | `24`
 `MEMBERAUDIT_LOG_UPDATE_STATS`| When set True will log the statistics of the latests uns at the start of every new run. The stats show the max, avg, min durations from the last run for each round and each section in seconds. Note that the durations are not 100% exact, because some updates happen in parallel the the main process and may take longer to complete (e.g. loading mail bodies, contract items) | `24`
 `MEMBERAUDIT_MAX_MAILS`| Maximum amount of mails fetched from ESI for each character | `250`
+`MEMBERAUDIT_NOTIFY_TOKEN_ERRORS`| When enabled will automatically notify users when their character has a token error. But only once per character until the character is re-registered or this notification
+is reset manually by admins. | `True`
 `MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS`| Technical parameter defining the maximum number of asset items processed in each pass when updating character assets. A higher value reduces overall duration, but also increases task queue congestion. | `2500`
 `MEMBERAUDIT_TASKS_TIME_LIMIT`| Global timeout for tasks in seconds to reduce task accumulation during outages | `7200`
 `MEMBERAUDIT_UPDATE_STALE_RING_1`| Minutes after which sections belonging to ring 1 are considered stale: location, online status | `55`

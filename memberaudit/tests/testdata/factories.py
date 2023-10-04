@@ -11,6 +11,7 @@ from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import State
+from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_authgroup
 
 from memberaudit.constants import EveCategoryId
@@ -29,6 +30,7 @@ from memberaudit.models import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
+    CharacterRole,
     CharacterStanding,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
@@ -40,7 +42,7 @@ from memberaudit.models import (
 )
 
 
-def create_character(eve_character, **kwargs) -> Character:
+def create_character(eve_character: EveCharacter, **kwargs) -> Character:
     params = {"eve_character": eve_character}
     params.update(kwargs)
     return Character.objects.create(**params)
@@ -180,8 +182,9 @@ def create_character_contract_item(
         "is_included": True,
         "is_singleton": False,
         "quantity": 1,
-        "eve_type_id": 603,
     }
+    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
+        params["eve_type_id"] = 603
     params.update(kwargs)
     return CharacterContractItem.objects.create(**params)
 
@@ -330,6 +333,16 @@ def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     }
     params.update(kwargs)
     return CharacterPlanet.objects.create(**params)
+
+
+def create_character_role(character: Character, **kwargs) -> CharacterRole:
+    params = {
+        "character": character,
+        "role": CharacterRole.Role.DIRECTOR,
+        "location": CharacterRole.Location.UNIVERSAL,
+    }
+    params.update(kwargs)
+    return CharacterRole.objects.create(**params)
 
 
 def create_skill_set(**kwargs) -> SkillSet:

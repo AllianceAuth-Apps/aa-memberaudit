@@ -54,7 +54,7 @@ def launcher(request) -> HttpResponse:
     unregistered_chars = []
     for eve_character in owned_chars_query:
         try:
-            character = eve_character.memberaudit_character
+            character: Character = eve_character.memberaudit_character
         except AttributeError:
             unregistered_chars.append(eve_character.character_name)
         else:
@@ -63,6 +63,9 @@ def launcher(request) -> HttpResponse:
                     "character_id": eve_character.character_id,
                     "character_name": eve_character.character_name,
                     "character": character,
+                    "total_update_status": character.calc_total_update_status(),
+                    "needs_refresh": character.is_disabled
+                    or character.has_token_issue(),
                     "alliance_id": eve_character.alliance_id,
                     "alliance_name": eve_character.alliance_name,
                     "corporation_id": eve_character.corporation_id,
@@ -71,6 +74,9 @@ def launcher(request) -> HttpResponse:
             )
 
     unregistered_chars = sorted(unregistered_chars)
+    characters_need_token_refresh = sorted(
+        obj["character_name"] for obj in auth_characters if obj["needs_refresh"]
+    )
 
     try:
         main_character_id = request.user.profile.main_character.character_id
@@ -84,17 +90,8 @@ def launcher(request) -> HttpResponse:
         "unregistered_chars": unregistered_chars,
         "has_registered_characters": len(auth_characters) > 0,
         "main_character_id": main_character_id,
+        "characters_need_token_refresh": characters_need_token_refresh,
     }
-
-    # if has_auth_characters:
-    #     messages.warning(
-    #         request,
-    #         format_html(
-    #             "Please register all your characters. "
-    #             "You currently have <strong>{}</strong> unregistered characters.",
-    #             unregistered_chars,
-    #         ),
-    #     )
 
     return render(
         request, "memberaudit/launcher.html", add_common_context(request, context)
@@ -112,7 +109,7 @@ def add_character(request, token) -> HttpResponse:
             eve_character=eve_character, defaults={"is_disabled": False}
         )
     tasks.update_character.apply_async(
-        kwargs={"character_pk": character.pk},
+        kwargs={"character_pk": character.pk, "force_update": True},
         priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
     )
     messages.success(

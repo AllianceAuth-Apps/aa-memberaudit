@@ -262,28 +262,24 @@ class _EftItem:
 
     def is_cyber_implant(self) -> bool:
         """Return True if this item is a cyber slot, else False."""
-
         if self.is_empty:
             return False
         return self._item_group_id() == EveGroupId.CYBERIMPLANT
 
     def is_drone(self) -> bool:
         """Return True if this item is a drone, else False."""
-
         if self.is_empty:
             return False
         return self._item_category_id() == EveCategoryId.DRONE
 
     def is_fighter(self) -> bool:
         """Return True if this item is a fighter, else False."""
-
         if self.is_empty:
             return False
         return self._item_category_id() == EveCategoryId.FIGHTER
 
     def is_high_slot(self) -> bool:
         """Return True if this item is a high slot, else False."""
-
         if self.slot_type is _EftSlotType.HIGH_SLOT:
             return True
 

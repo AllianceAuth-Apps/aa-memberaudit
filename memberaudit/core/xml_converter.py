@@ -39,7 +39,7 @@ EVEXML_ALLOWED_PROTOCOLS = {
 
 
 def eve_xml_to_html(xml_doc: str, add_default_style: bool = False) -> str:
-    """Converts Eve Online XML to HTML.
+    """Convert Eve Online XML to HTML.
 
     Args:
     - xml_doc: XML document

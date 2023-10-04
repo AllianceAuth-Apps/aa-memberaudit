@@ -29,11 +29,20 @@ from memberaudit.models import (
 )
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
-from .testdata.factories import create_character, create_compliance_group_designation
+from .testdata.factories import (
+    create_character,
+    create_character_from_user,
+    create_character_update_status,
+    create_compliance_group_designation,
+)
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import TOX_IS_RUNNING, create_memberaudit_character
+from .utils import (
+    TOX_IS_RUNNING,
+    create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
+)
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -540,19 +549,48 @@ class TestCharacterUpdateFull(TestCaseTasks):
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
+    # TODO: Find solution
     @skipIf(TOX_IS_RUNNING, "does not work with tox")
-    def test_should_update_normally(self):
-        """can update from scratch"""
+    def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
         # then
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
+    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_update_enabled_sections_only(self):
+        # given
+        started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                started_at=started_at,
+                finished_at=started_at,
+            )
+
+        # when
+        result = tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertTrue(result)
+        for section in Character.UpdateSection.enabled_sections():
+            with self.subTest(section=section):
+                self.assertFalse(
+                    self.character_1001.is_update_needed_for_section(section=section)
+                )
+        self.assertTrue(
+            self.character_1001.is_update_needed_for_section(
+                section=Character.UpdateSection.ROLES
+            )
+        )
+
     @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
     def test_should_update_normal_section_only_when_stale(self, update_loyalty):
         # given
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.LOYALTY,
             is_success=True,
@@ -569,7 +607,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
         self, mock_update_character_mails
     ):
         # given
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.MAILS,
             is_success=True,
@@ -586,7 +624,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
         then update again
         """
         # given
-        section: CharacterUpdateStatus = CharacterUpdateStatus.objects.create(
+        section = create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS.value,
             is_success=True,
@@ -603,7 +641,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
     def test_should_do_nothing_when_not_required(self):
         # given
         for section in Character.UpdateSection.values:
-            CharacterUpdateStatus.objects.create(
+            create_character_update_status(
                 character=self.character_1001,
                 section=section,
                 is_success=True,
@@ -902,3 +940,74 @@ class TestCheckCharacterConsistency(TestCaseTasks):
         tasks.check_character_consistency(character.pk)
         # then
         self.assertTrue(mock_check_character_consistency.called)
+
+
+@patch(TASKS_PATH + ".Character.update_location")
+class TestUpdateCharacterSection(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+
+    def test_should_update_normally(self, mock_update_location):
+        # given
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        section = Character.UpdateSection.LOCATION
+        # when
+        tasks.update_character_section(
+            character_pk=character.pk, section=section.value, force_update=False
+        )
+        # then
+        self.assertTrue(mock_update_location.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
+
+    def test_should_pass_though_exceptions_from_update_method(
+        self, mock_update_location
+    ):
+        # given
+        mock_update_location.side_effect = RuntimeError
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        section = Character.UpdateSection.LOCATION
+        # when
+        with self.assertRaises(RuntimeError):
+            tasks.update_character_section(
+                character_pk=character.pk, section=section.value, force_update=False
+            )
+        # then
+        self.assertTrue(mock_update_location.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        self.assertFalse(status.is_success)
+        self.assertTrue(status.last_error_message)
+        self.assertTrue(status.finished_at)
+
+    def test_should_clear_previous_errors_when_update_succeeded(
+        self, mock_update_location
+    ):
+        # given
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        section = Character.UpdateSection.LOCATION
+        finished_at = now() - dt.timedelta(hours=4)
+        status = create_character_update_status(
+            character=character,
+            section=section,
+            is_success=False,
+            last_error_message="some error",
+            finished_at=finished_at,
+        )
+        # when
+        tasks.update_character_section(
+            character_pk=character.pk, section=section.value, force_update=False
+        )
+        # then
+        self.assertTrue(mock_update_location.called)
+        status.refresh_from_db()
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+        self.assertGreater(status.finished_at, finished_at)

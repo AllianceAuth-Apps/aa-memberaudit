@@ -89,6 +89,7 @@ class CharacterFinderListJson(
     ]
 
     def get_initial_queryset(self):
+        """Return initial queryset for this view."""
         return self.initial_queryset(self.request)
 
     @classmethod

@@ -37,13 +37,7 @@
                             <li class="cards_item">
                                 <div class="card">
                                     <div class="card-header">
-                                        {{ auth_character.character_name }}
-                                        {% if auth_character.character_id == main_character_id %}
-                                            &nbsp;<i class="fas fa-crown" title="{% translate 'Main character' %}"></i>
-                                        {% endif %}
-                                        {% if auth_character.character.is_shared %}
-                                            &nbsp;<i class="far fa-eye" title="{% translate 'Main Currently shared with recruiters' %}"></i>
-                                        {% endif %}
+                                        {% include 'memberaudit/partials/character_name.html' with total_update_status=auth_character.total_update_status %}
                                     </div>
 
                                     <div class="card-body card__content">
@@ -113,18 +107,28 @@
                 </ul>
             </div>
 
+            {% if characters_need_token_refresh|length > 0 %}
+                <p class="text-warning">
+                    <strong>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    {% translate 'Please re-register characters with issues:' %}&nbsp;&nbsp;</strong>
+                    {{ characters_need_token_refresh|join:", " }}
+                </p>
+            {% endif %}
+
             {% if unregistered_chars|length > 0 %}
                 <p class="text-warning">
                     <strong>
                     <i class="fas fa-exclamation-triangle"></i>
-                    {% translate 'Unregistered character(s):' %}&nbsp;&nbsp;</strong>
+                    {% translate 'Please register unregistered characters:' %}&nbsp;&nbsp;</strong>
                     {{ unregistered_chars|join:", " }}
                 </p>
             {% endif %}
 
             <p class="text-muted">
-                <i class="fas fa-crown"></i> {% translate 'Main character' %}&nbsp;•&nbsp;
-                <i class="far fa-eye"></i> {% translate 'Currently shared with others' %}
+                <i class="fas fa-crown"></i> {% translate 'Main character' %}&nbsp;|&nbsp;
+                <i class="far fa-eye"></i> {% translate 'Currently shared with others' %}&nbsp;|&nbsp;
+                ⬤ {% translate 'Update status' %}
             </p>
         </div>
     </div>

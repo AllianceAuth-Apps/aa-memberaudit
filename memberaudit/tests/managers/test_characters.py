@@ -1,16 +1,28 @@
 import datetime as dt
+from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils.timezone import now
 
-from allianceauth.eveonline.models import EveAllianceInfo
+from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
 from memberaudit.models import Character, CharacterUpdateStatus
 
-from ..testdata.factories import create_character_update_status
+from ..testdata.factories import (
+    create_character,
+    create_character_from_user,
+    create_character_update_status,
+)
 from ..testdata.load_entities import load_entities
-from ..utils import add_memberaudit_character_to_user, create_memberaudit_character
+from ..utils import (
+    add_auth_character_to_user,
+    add_memberaudit_character_to_user,
+    create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
+)
+
+MODELS_PATH = "memberaudit.models.characters"
 
 
 class TestCharacterQuerySet(TestCase):
@@ -52,38 +64,70 @@ class TestCharacterQuerySet(TestCase):
         self.assertSetEqual(character_ids, set())
 
 
-class TestCharacterAnnotateUpdateStatus(TestCase):
+# Includes testing of Character.calc_total_update_status() to ensure they are in sync
+class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         load_entities()
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_ok(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
+        )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.OK)
+        self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.OK)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_annotate_ok_when_all_enabled_sections_are_ok(self):
+        # given
+        character = create_character_from_user(self.user)
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(character, section=section)
+        create_character_update_status(
+            character=character, is_success=False, section=Character.UpdateSection.ROLES
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.OK
+        )
+        # when
+        qs = Character.objects.annotate_total_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.OK)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         create_character_update_status(
             character, section=Character.UpdateSection.ASSETS, is_success=False
         )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.ERROR
+        )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.ERROR)
+        self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.ERROR)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_incomplete(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         sections_to_update = [
             obj
             for obj in Character.UpdateSection
@@ -91,15 +135,22 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
         ]
         for section in sections_to_update:
             create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.INCOMPLETE
+        )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.INCOMPLETE)
+        self.assertEqual(
+            obj.total_update_status, Character.TotalUpdateStatus.INCOMPLETE
+        )
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_in_progress(self):
         # given
-        character = create_memberaudit_character(1001)
+        character = create_character_from_user(self.user)
         for section in Character.UpdateSection:
             if section == Character.UpdateSection.ASSETS:
                 create_character_update_status(
@@ -107,25 +158,83 @@ class TestCharacterAnnotateUpdateStatus(TestCase):
                 )
             else:
                 create_character_update_status(character, section=section)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(),
+            Character.TotalUpdateStatus.IN_PROGRESS,
+        )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.IN_PROGRESS)
+        self.assertEqual(
+            obj.total_update_status, Character.TotalUpdateStatus.IN_PROGRESS
+        )
 
     def test_should_annotate_disabled(self):
         # given
-        character = create_memberaudit_character(1001)
-        character.is_disabled = True
-        character.save()
+        character = create_character_from_user(self.user, is_disabled=True)
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.DISABLED
+        )
         # when
-        qs = Character.objects.annotate_update_status()
+        qs = Character.objects.annotate_total_update_status()
         # then
         obj = qs.first()
-        self.assertEqual(obj.update_status, Character.UpdateStatus.DISABLED)
+        self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.DISABLED)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_annotate_limited_token_when_one_token_issue_only(self):
+        # given
+        character = create_character_from_user(self.user)
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(),
+            Character.TotalUpdateStatus.LIMITED_TOKEN,
+        )
+        # when
+        qs = Character.objects.annotate_total_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(
+            obj.total_update_status, Character.TotalUpdateStatus.LIMITED_TOKEN
+        )
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_annotate_error_when_several_token_issues(self):
+        # given
+        character = create_character_from_user(self.user)
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+        )
+        create_character_update_status(
+            character,
+            section=Character.UpdateSection.LOCATION,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertEqual(
+            character.calc_total_update_status(), Character.TotalUpdateStatus.ERROR
+        )
+        # when
+        qs = Character.objects.annotate_total_update_status()
+        # then
+        obj = qs.first()
+        self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.ERROR)
 
 
-class TestCharacterManagerUserHasScope(TestCase):
+class TestCharacterUserHasScope(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -225,7 +334,7 @@ class TestCharacterManagerUserHasScope(TestCase):
         )
 
 
-class TestCharacterManagerUserHasAccess(TestCase):
+class TestCharacterUserHasAccess(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -426,7 +535,7 @@ class TestCharacterUpdateStatusManager(TestCase):
         """normal calculation"""
         my_now = now()
         root_task_id = "1"
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.CONTACTS,
             is_success=True,
@@ -434,7 +543,7 @@ class TestCharacterUpdateStatusManager(TestCase):
             finished_at=my_now,
             root_task_id=root_task_id,
         )
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS,
             is_success=True,
@@ -442,7 +551,7 @@ class TestCharacterUpdateStatusManager(TestCase):
             finished_at=my_now + dt.timedelta(seconds=30),
             root_task_id=root_task_id,
         )
-        CharacterUpdateStatus.objects.create(
+        create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.ASSETS,
             is_success=True,
@@ -462,3 +571,190 @@ class TestCharacterUpdateStatusManager(TestCase):
         self.assertEqual(stats["ring_2"]["last"]["section"], "skills")
         self.assertEqual(stats["ring_3"]["max"]["section"], "assets")
         self.assertEqual(stats["ring_3"]["max"]["duration"], 90)
+
+
+class TestCharacterUnregisteredCharacterCount(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        # main character with alts
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.user = cls.character_1001.character_ownership.user
+
+    def test_should_return_zero_when_no_unregistered(self):
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 0)
+
+    def test_should_return_count_including_unregistered(self):
+        # given
+        add_auth_character_to_user(self.user, 1002)
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 1)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_count_including_registered_with_token_error(self):
+        # given
+        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+            last_error_message="TokenError 1",
+        )
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.CONTRACTS,
+            is_success=False,
+            last_error_message="TokenError 2",
+        )
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 1)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_count_not_including_token_errors_for_disabled_sections(self):
+        # given
+        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.ROLES,
+            is_success=False,
+            has_token_error=True,
+            last_error_message="TokenError 1",
+        )
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 0)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_count_disabled_characters(self):
+        # given
+        character_1002 = add_memberaudit_character_to_user(
+            self.user, 1002, is_disabled=True
+        )
+        create_character_update_status(
+            character_1002,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
+            has_token_error=True,
+            last_error_message="TokenError 1",
+        )
+
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 1)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_not_count_disabled_and_token_errors_twice(self):
+        # given
+        add_memberaudit_character_to_user(self.user, 1002, is_disabled=True)
+        # when
+        result = Character.objects.characters_of_user_to_register_count(self.user)
+        # then
+        self.assertEqual(result, 1)
+
+
+class TestCharacterDisableCharacterWithoutOwner(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_disable_orphans(self):
+        # given
+        orphan_1 = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=False
+        )
+        orphan_2 = create_character(
+            EveCharacter.objects.get(character_id=1111), is_disabled=False
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 2)
+        orphan_1.refresh_from_db()
+        self.assertTrue(orphan_1.is_disabled)
+        orphan_2.refresh_from_db()
+        self.assertTrue(orphan_2.is_disabled)
+        self.assertFalse(self.character.is_disabled)
+
+    def test_should_ignore_already_disables_orphans(self):
+        # given
+        orphan_disabled = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=True
+        )
+        orphan_enabled = create_character(
+            EveCharacter.objects.get(character_id=1111), is_disabled=False
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 1)
+        orphan_disabled.refresh_from_db()
+        self.assertTrue(orphan_disabled.is_disabled)
+        orphan_enabled.refresh_from_db()
+        self.assertTrue(orphan_enabled.is_disabled)
+        self.assertFalse(self.character.is_disabled)
+
+    def test_should_return_zero_when_nothing_to_disable(self):
+        # given
+        orphan_disabled = create_character(
+            EveCharacter.objects.get(character_id=1121), is_disabled=True
+        )
+        # when
+        result = Character.objects.disable_characters_with_no_owner()
+        # then
+        self.assertEqual(result, 0)
+        orphan_disabled.refresh_from_db()
+        self.assertTrue(orphan_disabled.is_disabled)
+        self.assertFalse(self.character.is_disabled)
+
+
+class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_enabled_sections_only_1(self):
+        # given
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ASSETS
+        )
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ROLES
+        )
+        # when
+        result = self.character_1001.update_status_set.filter_enabled_sections()
+        # then
+        expected = {Character.UpdateSection.ASSETS, Character.UpdateSection.ROLES}
+        sections = set(result.values_list("section", flat=True))
+        self.assertSetEqual(sections, expected)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_enabled_sections_only_2(self):
+        # given
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ASSETS
+        )
+        create_character_update_status(
+            self.character_1001, section=Character.UpdateSection.ROLES
+        )
+        # when
+        result = self.character_1001.update_status_set.filter_enabled_sections()
+        # then
+        expected = {Character.UpdateSection.ASSETS}
+        sections = set(result.values_list("section", flat=True))
+        self.assertSetEqual(sections, expected)

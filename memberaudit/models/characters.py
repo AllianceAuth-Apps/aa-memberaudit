@@ -1,11 +1,9 @@
-"""
-Character and CharacterUpdateStatus models
-"""
+"""Character and CharacterUpdateStatus models."""
 
 import datetime as dt
 import hashlib
 import json
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPInternalServerError
 
@@ -22,19 +20,22 @@ from eveuniverse.models import EveEntity
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
+from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.allianceauth import notify_throttled
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
     MEMBERAUDIT_DEVELOPER_MODE,
+    MEMBERAUDIT_FEATURE_ROLES_ENABLED,
+    MEMBERAUDIT_NOTIFY_TOKEN_ERRORS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.errors import TokenDoesNotExist
 from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.characters import (
     CharacterManager,
@@ -45,10 +46,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class Character(models.Model):  # pylint: disable=too-many-public-methods
-    """A character synced by this app
-
-    This is the head model for all characters
-    """
+    """A character in Eve Online managed by Member Audit."""
 
     class UpdateSection(models.TextChoices):
         """A section of content for a character that can be updated separately."""
@@ -68,6 +66,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         MINING_LEDGER = "mining_ledger", _("mining ledger")
         ONLINE_STATUS = "online_status", _("online status")
         PLANETS = "planets", _("planets")
+        ROLES = "roles", _("roles")
         SHIP = "ship", _("ship")
         SKILLS = "skills", _("skills")
         SKILL_QUEUE = "skill_queue", _("skill queue")
@@ -77,30 +76,18 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
 
-        @classmethod
-        def method_name(cls, section: str) -> str:
-            """returns name of update method corresponding with the given section
-
-            Raises:
-            - ValueError if section is invalid
-            """
-            if section not in cls.values:
-                raise ValueError(f"Unknown section: {section}")
-
-            return f"update_{section}"
+        @property
+        def method_name(self) -> str:
+            """Return name of update method corresponding with this section."""
+            return f"update_{self.value}"
 
         @classmethod
-        def display_name(cls, section: str) -> str:
-            """returns display name of given section
-
-            Raises:
-            - ValueError if section is invalid
-            """
-            for short_name, long_name in cls.choices:
-                if short_name == section:
-                    return long_name
-
-            raise ValueError(f"Unknown section: {section}")
+        def enabled_sections(cls) -> Set["Character.UpdateSection"]:
+            """Return enabled sections."""
+            sections = set(Character.UpdateSection)
+            if not MEMBERAUDIT_FEATURE_ROLES_ENABLED:
+                sections.discard(Character.UpdateSection.ROLES)
+            return sections
 
     UPDATE_SECTION_RINGS_MAP = {
         UpdateSection.ASSETS: 3,
@@ -118,6 +105,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.MINING_LEDGER: 2,
         UpdateSection.ONLINE_STATUS: 1,
         UpdateSection.PLANETS: 2,
+        UpdateSection.ROLES: 2,
         UpdateSection.SHIP: 1,
         UpdateSection.SKILLS: 2,
         UpdateSection.SKILL_SETS: 2,
@@ -128,14 +116,52 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.WALLET_TRANSACTIONS: 2,
     }
 
-    class UpdateStatus(models.TextChoices):
-        """Update status of a character."""
+    class TotalUpdateStatus(models.TextChoices):
+        """An summary update status of a character
+        representing the update status of all sections.
+        """
 
-        OK = "ok", _("ok")
-        IN_PROGRESS = "in_progress", _("in progress")
-        INCOMPLETE = "incomplete", _("incomplete")
-        ERROR = "error", _("error")
         DISABLED = "disabled", _("disabled")
+        ERROR = "error", _("error")
+        LIMITED_TOKEN = "limited_token", _("limited token")
+        INCOMPLETE = "incomplete", _("incomplete")
+        IN_PROGRESS = "in_progress", _("in progress")
+        OK = "ok", _("ok")
+
+        def has_issue(self) -> bool:
+            """Return True when status is representing an issue."""
+            return self in {
+                self.DISABLED,
+                self.ERROR,
+                self.INCOMPLETE,
+                self.LIMITED_TOKEN,
+            }
+
+        def bootstrap_style_class(self) -> str:
+            """Return bootstrap corresponding bootstrap style class."""
+            my_map = {
+                self.DISABLED: "text-muted",
+                self.ERROR: "text-danger",
+                self.IN_PROGRESS: "text-info",
+                self.INCOMPLETE: "text-warning",
+                self.LIMITED_TOKEN: "text-warning",
+                self.OK: "text-success",
+            }
+            return my_map.get(self, "")
+
+        def description(self) -> str:
+            """Return description for an enum object."""
+            my_map = {
+                self.DISABLED: _("Update is disabled"),
+                self.ERROR: _("Errors occurred during update"),
+                self.IN_PROGRESS: _("Update is in progress"),
+                self.INCOMPLETE: _("One or more sections have not yet been updated"),
+                self.LIMITED_TOKEN: _(
+                    "One section can not be updated due to a token error"
+                ),
+                self.OK: _("Update completed successfully"),
+            }
+            return my_map.get(self, "")
 
     id = models.AutoField(primary_key=True)
     eve_character = models.OneToOneField(
@@ -161,6 +187,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     mailing_lists = models.ManyToManyField(
         "MailEntity", related_name="characters", verbose_name=_("mailing lists")
     )
+    token_error_notified_at = models.DateTimeField(
+        default=None,
+        null=True,
+        help_text=_("Time when user was last notified about a token error."),
+    )
 
     objects = CharacterManager()
 
@@ -175,10 +206,15 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
 
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.pk:  # clear this object from cache if it is there
+            self.clear_cache()
+
     @cached_property
     def name(self) -> str:
         """Return the name of this character."""
-        return self.eve_character.character_name
+        return str(self.eve_character.character_name)
 
     @cached_property
     def character_ownership(self) -> Optional[CharacterOwnership]:
@@ -206,7 +242,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     @cached_property
     def is_main(self) -> bool:
-        """Return True if this character is a main character, else False"""
+        """Return True if this character is a main character, else False."""
         try:
             return self.main_character.character_id == self.eve_character.character_id
         except AttributeError:
@@ -214,7 +250,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     @cached_property
     def is_orphan(self) -> bool:
-        """Whether this character is not owned by a user."""
+        """Return True if this character is an orphan else False.
+
+        An orphan is a character that is not owned anymore by a user."""
         return self.character_ownership is None
 
     def details_or_none(self):
@@ -232,7 +270,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return False
 
     def user_has_scope(self, user: User) -> bool:
-        """Returns True if given user has scope to access this character"""
+        """Returns True if the given user has the permission to access this character."""
         try:
             if self.user == user:  # shortcut for better performance
                 return True
@@ -242,7 +280,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def user_has_access(self, user: User) -> bool:
         """Returns True if given user has permission to access this character
-        in the character viewer
+        in the character viewer.
         """
         try:
             if self.user == user:  # shortcut for better performance
@@ -251,26 +289,50 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             pass
         return Character.objects.user_has_access(user).filter(pk=self.pk).exists()
 
+    def has_token_issue(self) -> bool:
+        """Return True if character has run into a token error during update, else False."""
+        return (
+            self.update_status_set.filter_enabled_sections()
+            .filter(has_token_error=True)
+            .exists()
+        )
+
+    def calc_total_update_status(self) -> TotalUpdateStatus:
+        """Calculate and return the total update status of this character."""
+        if self.is_disabled:
+            return self.TotalUpdateStatus.DISABLED
+
+        qs = Character.objects.filter(pk=self.pk).annotate_total_update_status()
+        total_update_status = list(qs.values_list("total_update_status", flat=True))[0]
+        return self.TotalUpdateStatus(total_update_status)
+
     def is_update_status_ok(self) -> Optional[bool]:
-        """returns status of last update
+        """Return summary status of last update for this character.
 
         Returns:
-        - True: If update was complete and without errors
+        - True: if update was complete and without errors
         - False if there where any errors
         - None: if last update is incomplete
         """
-        errors_count = self.update_status_set.filter(is_success=False).count()
-        ok_count = self.update_status_set.filter(is_success=True).count()
-        if errors_count > 0:
-            return False
-        if ok_count == len(Character.UpdateSection.choices):
+        status = self.calc_total_update_status()
+        if status == Character.TotalUpdateStatus.OK:
             return True
+        if status == Character.TotalUpdateStatus.ERROR:
+            return False
         return None
 
+    def reset_token_error_notified_if_status_ok(self):
+        """Reset last notification on token error when update is OK again."""
+        if self.token_error_notified_at:
+            if self.calc_total_update_status() == Character.TotalUpdateStatus.OK:
+                self.token_error_notified_at = None
+                self.save(update_fields=["token_error_notified_at"])
+
     @classmethod
-    def update_section_time_until_stale(cls, section: str) -> dt.timedelta:
-        """time until given update section is considered stale"""
-        ring = cls.UPDATE_SECTION_RINGS_MAP[cls.UpdateSection(section)]
+    def _update_section_time_until_stale(cls, section: UpdateSection) -> dt.timedelta:
+        """Return time until given update section is considered stale."""
+        section = cls.UpdateSection(section)
+        ring = cls.UPDATE_SECTION_RINGS_MAP[section]
         if ring == 1:
             minutes = MEMBERAUDIT_UPDATE_STALE_RING_1
         elif ring == 2:
@@ -283,93 +345,107 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return dt.timedelta(minutes=minutes - MEMBERAUDIT_UPDATE_STALE_OFFSET)
 
     @classmethod
-    def sections_in_ring(cls, ring: int) -> set:
-        """returns set of sections for given ring"""
+    def sections_in_ring(cls, ring: int) -> Set["Character.UpdateSection"]:
+        """Return the sections for a given ring."""
         return {
             section
             for section, ring_num in cls.UPDATE_SECTION_RINGS_MAP.items()
             if ring_num == ring
         }
 
-    def is_update_section_stale(self, section: str) -> bool:
-        """returns True if the give update section is stale, else False"""
-        try:
-            update_status = self.update_status_set.get(
-                section=section,
-                is_success=True,
-                started_at__isnull=False,
-                finished_at__isnull=False,
-            )
-        except (CharacterUpdateStatus.DoesNotExist, ObjectDoesNotExist, AttributeError):
+    def is_update_needed(self) -> bool:
+        """Return True when this character needs to be updated, otherwise False."""
+        needs_update = False
+        for section in Character.UpdateSection.enabled_sections():
+            needs_update |= self.is_update_needed_for_section(section, silent=True)
+        return needs_update
+
+    def is_update_needed_for_section(
+        self, section: UpdateSection, silent: bool = False
+    ) -> bool:
+        """Return True if the given section is stale and needs to be updated, else False.
+        But never report sections with token error as stale.
+        """
+        update_status = self.update_status_for_section(section)
+        if not update_status:
             return True
 
-        deadline = now() - self.update_section_time_until_stale(section)
-        return update_status.started_at < deadline
+        if not update_status.is_success or not update_status.started_at:
+            needs_update = True
+        else:
+            deadline = now() - self._update_section_time_until_stale(section)
+            needs_update = update_status.started_at < deadline
+
+        if needs_update and update_status.has_token_error:
+            if not silent:
+                logger.warning(
+                    "%s: Skipping update due to token error for section: %s",
+                    self,
+                    section.label,
+                )
+            return False
+
+        return needs_update
+
+    def update_status_for_section(
+        self, section: UpdateSection
+    ) -> Optional["CharacterUpdateStatus"]:
+        "Return update status for a section when it exists or None."
+        section = self.UpdateSection(section)
+        try:
+            return self.update_status_set.get(section=section)
+        except CharacterUpdateStatus.DoesNotExist:
+            return None
 
     def has_section_changed(
-        self, section: str, content: Any, hash_num: int = 1
+        self, section: UpdateSection, content: Any, hash_num: int = 1
     ) -> bool:
-        """returns False if the content hash for this section has not changed, else True"""
-        try:
-            section_obj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
+        """Return False if the content hash for this character's section
+        has not changed, else return True.
+        """
+        status = self.update_status_for_section(section)
+        if not status:
             return True
-        return section_obj.has_changed(content=content, hash_num=hash_num)
+        return status.has_changed(content=content, hash_num=hash_num)
 
     def update_section_content_hash(
-        self, section: str, content: Any, hash_num: int = 1
+        self, section: UpdateSection, content: Any, hash_num: int = 1
     ) -> None:
         """Update hash for a section."""
-        try:
-            section_obj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
-            section_obj, _ = CharacterUpdateStatus.objects.get_or_create(
-                character=self, section=section
-            )
+        section_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
+            character=self, section=section
+        )[0]
         section_obj.update_content_hash(content=content, hash_num=hash_num)
 
     def reset_update_section(
         self,
-        section: str,
+        section: UpdateSection,
         root_task_id: Optional[str] = None,
         parent_task_id: Optional[str] = None,
     ) -> "CharacterUpdateStatus":
         """Reset status of given update section and returns it."""
-        try:
-            section_onj: CharacterUpdateStatus = self.update_status_set.get(
-                section=section
-            )
-        except CharacterUpdateStatus.DoesNotExist:
-            section_onj, _ = CharacterUpdateStatus.objects.get_or_create(
-                character=self, section=section
-            )
-        section_onj.reset(root_task_id, parent_task_id)
-        return section_onj
+        update_status_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
+            section=section
+        )[0]
+        update_status_obj.reset(root_task_id, parent_task_id)
+        return update_status_obj
 
-    def is_section_updating(self, section: str) -> bool:
-        """returns True if section is currently updating, or does not exist, else False"""
-        try:
-            section_obj = self.update_status_set.get(section=section)
-        except CharacterUpdateStatus.DoesNotExist:
-            return True
-        return section_obj.is_updating
+    def update_status_as_dict(self) -> Dict[str, Any]:
+        """Return current update status for this character as dict."""
+        return {obj.section: obj for obj in self.update_status_set.all()}
 
-    def update_data_if_changed_or_forced(
+    def update_section_if_changed(
         self,
-        section: str,
+        section: UpdateSection,
         fetch_func: Callable,
         store_func: Optional[Callable],
         force_update: bool = False,
         hash_num: int = 1,
     ) -> Tuple[Any, Optional[bool]]:
-        """Fetch data from ESI and store it if it has changed or it is forced.
+        """Update a character's section from ESI if it has changed or is forced.
 
         Args:
-            - section: Name of the section this update related to
+            - section: Section this update is related to
             - fetch_func: A function that fetched the data from ESI
             - store_func: A function that stored the data in the DB.
                 This can be skipped by providing None.
@@ -382,7 +458,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 and a flag that is True if data was changed,
                 False when it was not change, else None
         """
-
         try:
             data = fetch_func(character=self)
         except HTTPInternalServerError as ex:
@@ -422,20 +497,63 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
         return data, True
 
+    def update_section_log_success(self, section: UpdateSection) -> None:
+        """Log success after successfully updating a character's section."""
+        logger.info("%s: %s update completed", self, section.label)
+        self.update_status_set.update_or_create(
+            section=section,
+            defaults={
+                "is_success": True,
+                "has_token_error": False,
+                "last_error_message": "",
+                "finished_at": now(),
+            },
+        )
+
+    def perform_update_with_error_logging(
+        self, section: UpdateSection, method: Callable, *args, **kwargs
+    ) -> None:
+        """Facilitate catching and logging of exceptions potentially occurring
+        during a character update.
+        """
+        try:
+            return method(*args, **kwargs)
+        except Exception as ex:
+            error_message = f"{type(ex).__name__}: {str(ex)}"
+            is_token_error = isinstance(ex, (TokenError))
+            logger.error(
+                "%s: %s: Error ocurred: %s",
+                self,
+                section.label,
+                error_message,
+                exc_info=not is_token_error,  # hide details when token error
+            )
+            self.update_status_set.update_or_create(
+                character=self,
+                section=section,
+                defaults={
+                    "is_success": False,
+                    "has_token_error": is_token_error,
+                    "last_error_message": error_message,
+                    "finished_at": now(),
+                },
+            )
+            raise ex
+
     def fetch_token(self, scopes=None) -> Token:
-        """returns valid token for character
+        """Return a valid token for this character and scope.
 
         Args:
-        - scopes: Optionally provide the required scopes.
-        Otherwise will use all scopes defined for this character.
+            - scopes: Optionally provide the required scopes.
+            Otherwise will use all scopes defined for this character.
 
         Exceptions:
-        - TokenError: If no valid token can be found
+            - TokenDoesNotExist: If no matching token is found
+            - TokenError: Various token errors
         """
         if self.is_orphan:
-            raise TokenError(
-                f"Can not find token for orphaned character: {self}"
-            ) from None
+            raise TokenError(f"Orphaned characters have no token: {self}") from None
+
         token = (
             Token.objects.prefetch_related("scopes")
             .filter(user=self.user, character_id=self.eve_character.character_id)
@@ -444,170 +562,200 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .first()
         )
         if not token:
-            message_id = f"{__title__}-fetch_token-{self.pk}-TokenError"
-            title = f"{__title__}: Invalid or missing token for {self.eve_character}"
-            message = (
-                f"{MEMBERAUDIT_APP_NAME} could not find a valid token for your "
-                f"character {self.eve_character}.\n"
-                f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
-                "at your earliest convenience to update your token."
-            )
-            if self.user:
-                notify_throttled(
-                    message_id=message_id, user=self.user, title=title, message=message
+            if (
+                MEMBERAUDIT_NOTIFY_TOKEN_ERRORS
+                and self.user
+                and not self.token_error_notified_at
+            ):
+                title = (
+                    f"{__title__}: Invalid or missing token for {self.eve_character}"
                 )
-            raise TokenError(f"Could not find a matching token for {self}")
+                message = (
+                    f"{MEMBERAUDIT_APP_NAME} could not find a valid token for your "
+                    f"character {self.eve_character}.\n"
+                    f"Please re-add that character to {MEMBERAUDIT_APP_NAME} "
+                    "at your earliest convenience to update your token."
+                )
+                notify.danger(user=self.user, title=title, message=message)
+                self.token_error_notified_at = now()
+                self.save(update_fields=["token_error_notified_at"])
+
+            raise TokenDoesNotExist(
+                f"Could not find a matching token for {self} with scopes: {scopes}."
+            )
         return token
 
     def assets_build_list_from_esi(self, force_update=False) -> Optional[list]:
-        """fetches assets from ESI and preloads related objects from ESI
+        """Fetch character's assets from ESI and return it.
 
-        returns the asset_list or None if no update is required
+        Or return None if no update is required.
         """
         return self.assets.fetch_from_esi(self, force_update)
 
     def assets_preload_objects(self, asset_list: list) -> None:
-        """preloads objects needed to build the asset tree"""
+        """Preload objects needed to build the character's asset tree from ESI."""
         self.assets.preload_objects_from_esi(self, asset_list)
 
     def update_attributes(self, force_update: bool = False):
-        """update the character's attributes"""
+        """Update the character's learning attributes from ESI."""
         from memberaudit.models import CharacterAttributes
 
         CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
     def update_character_details(self, force_update: bool = False):
-        """syncs the character details for the given character"""
+        """Update the character's details from ESI."""
         from memberaudit.models import CharacterDetails
 
         CharacterDetails.objects.update_or_create_esi(self, force_update)
 
     def update_contact_labels(self, force_update: bool = False):
-        """Update contact labels for this character."""
+        """Update character's contact labels from ESI."""
         self.contact_labels.update_or_create_esi(self, force_update)
 
     def update_contacts(self, force_update: bool = False):
-        """Update contacts for this character."""
+        """Update character's contacts from ESI."""
         self.contacts.update_or_create_esi(self, force_update)
 
     def update_contract_headers(self, force_update: bool = False):
-        """Update the character's contract headers."""
+        """Update the character's contract headers from ESI."""
         self.contracts.update_or_create_esi(self, force_update)
 
     def update_contract_items(self, contract):
-        """Update the character's contract items."""
+        """Update the character's contract items from ESI."""
         contract.items.update_or_create_esi(self, contract)
 
     def update_contract_bids(self, contract):
-        """Update the character's contract bids."""
+        """Update the character's contract bids from ESI."""
         contract.bids.update_or_create_esi(self, contract)
 
     def update_corporation_history(self, force_update: bool = False):
-        """syncs the character's corporation history"""
+        """Update the character's corporation history from ESI."""
         self.corporation_history.update_or_create_esi(self, force_update)
 
     def update_fw_stats(self, force_update: bool = False):
-        """Update FW stats  for the given character"""
+        """Update character's FW stats from ESI."""
         from memberaudit.models import CharacterFwStats
 
         CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
     def update_implants(self, force_update: bool = False):
-        """update the character's implants"""
+        """Update the character's current implants from ESI."""
         self.implants.update_or_create_esi(self, force_update)
 
     def update_location(self, force_update: bool = False):
-        """update the location for the given character"""
+        """Update the character's current location from ESI."""
         from memberaudit.models import CharacterLocation
 
         CharacterLocation.objects.update_or_create_esi(self, force_update)
 
     def update_loyalty(self, force_update: bool = False):
-        """syncs the character's loyalty entries"""
+        """Update the character's loyalty entries from ESI."""
         self.loyalty_entries.update_or_create_esi(self, force_update)
 
     def update_jump_clones(self, force_update: bool = False):
-        """updates the character's jump clones"""
+        """Update the character's jump clones from ESI."""
         self.jump_clones.update_or_create_esi(self, force_update)
 
     def update_mailing_lists(self, force_update: bool = False):
-        """Update mailing lists with input from given character."""
+        """Update the character's mailing lists from ESI."""
         self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
 
     def update_mail_labels(self, force_update: bool = False):
-        """Update the mail labels for the given character"""
+        """Update the character's mail labels from ESI."""
         self.mail_labels.update_or_create_esi(self, force_update)
 
     def update_mail_headers(self, force_update: bool = False):
-        """Update the mail headers for the given character"""
+        """Update the character's mail headers from ESI."""
         self.mails.update_or_create_headers_esi(self, force_update)
 
     def update_mail_body(self, mail) -> None:
-        """Update the mail body for the given character"""
+        """Update the characters's mail body from ESI."""
         self.mails.update_or_create_body_esi(self, mail)
 
     def update_mining_ledger(self, force_update: bool = False):
-        """Update mining ledger from ESI for this character."""
+        """Update character's mining ledger from ESI."""
         self.mining_ledger.update_or_create_esi(self, force_update)
 
     def update_online_status(self, force_update: bool = False):
-        """Update the character's online status"""
+        """Update the character's online status from ESI."""
         from memberaudit.models import CharacterOnlineStatus
 
         CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
     def update_planets(self, force_update: bool = False):
-        """Update the character's planets."""
+        """Update the character's planets from ESI."""
         self.planets.update_or_create_esi(self, force_update)
 
+    def update_roles(self, force_update: bool = False):
+        """Update the character's corporation roles from ESI."""
+        self.roles.update_or_create_esi(self, force_update)
+
     def update_ship(self, force_update: bool = False):
-        """Update the ship for the given character."""
+        """Update the character's current ship from ESI."""
         from memberaudit.models import CharacterShip
 
         CharacterShip.objects.update_or_create_esi(self, force_update)
 
     def update_skill_queue(self, force_update: bool = False):
-        """update the character's skill queue"""
+        """Update the character's skill queue from ESI."""
         self.skillqueue.update_or_create_esi(self, force_update)
 
     def update_skill_sets(self):
-        """Checks if character has the skills needed for skill sets
-        and updates results in database
-        """
+        """Update the character's skill sets."""
         self.skill_set_checks.update_for_character(self)
 
     def update_skills(self, force_update: bool = False):
-        """update the character's skill"""
+        """Update the character's skills from ESI."""
         self.skills.update_or_create_esi(self, force_update)
 
     def update_standings(self, force_update: bool = False):
-        """Update the character's standings."""
+        """Update the character's standings from ESI."""
         self.standings.update_or_create_esi(self, force_update)
 
     def update_wallet_balance(self, force_update: bool = False):
-        """syncs the character's wallet balance"""
+        """Update the character's wallet balance from ESI."""
         from memberaudit.models import CharacterWalletBalance
 
         CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
     def update_wallet_journal(self, force_update: bool = False) -> None:
-        """syncs the character's wallet journal"""
+        """Update the character's wallet journal from ESI."""
         self.wallet_journal.update_or_create_esi(self, force_update)
 
     def update_wallet_transactions(self, force_update: bool = False):
-        """syncs the character's wallet transactions"""
+        """Update the character's wallet transactions from ESI."""
         self.wallet_transactions.update_or_create_esi(self, force_update)
 
-    @classmethod
-    def get_esi_scopes(cls) -> list:
-        """Return the ESI scopes required to update this character."""
-        return [
+    def update_sharing_consistency(self):
+        """Update sharing to ensure consistency with permissions."""
+        if (
+            self.is_shared
+            and self.user
+            and not self.user.has_perm("memberaudit.share_characters")
+        ):
+            self.is_shared = False
+            self.save()
+            logger.info(
+                "%s: Unshared this character, "
+                "because it's owner no longer has the permission to share characters.",
+                self,
+            )
+
+    def clear_cache(self) -> None:
+        """Remove this character from cache."""
+        Character.objects.clear_cache(pk=self.pk)
+
+    @staticmethod
+    def get_esi_scopes() -> List[str]:
+        """Return all enabled ESI scopes required to update this character."""
+        scopes = [
             "esi-assets.read_assets.v1",
             "esi-bookmarks.read_character_bookmarks.v1",
             "esi-calendar.read_calendar_events.v1",
             "esi-characters.read_agents_research.v1",
             "esi-characters.read_blueprints.v1",
             "esi-characters.read_contacts.v1",
+            "esi-characters.read_corporation_roles.v1",
             "esi-characters.read_fatigue.v1",
             "esi-characters.read_fw_stats.v1",
             "esi-characters.read_loyalty.v1",
@@ -638,41 +786,31 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "esi-universe.read_structures.v1",
             "esi-wallet.read_character_wallet.v1",
         ]
-
-    def update_sharing_consistency(self):
-        """Update sharing to ensure consistency with permissions."""
-        if (
-            self.is_shared
-            and self.user
-            and not self.user.has_perm("memberaudit.share_characters")
-        ):
-            self.is_shared = False
-            self.save()
-            logger.info(
-                "%s: Unshared this character, "
-                "because it's owner no longer has the permission to share characters.",
-                self,
-            )
+        return sorted(scopes)
 
 
 class CharacterUpdateStatus(models.Model):
-    """Update status for a character"""
+    """An object for tracking the update status of a character's section."""
 
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="update_status_set"
     )
-
     section = models.CharField(
         max_length=64, choices=Character.UpdateSection.choices, db_index=True
     )
+
+    content_hash_1 = models.CharField(max_length=32, default="")
+    content_hash_2 = models.CharField(max_length=32, default="")
+    content_hash_3 = models.CharField(max_length=32, default="")
+    has_token_error = models.BooleanField(
+        default=False, help_text="Whether this section has a token error."
+    )
+    finished_at = models.DateTimeField(null=True, default=None, db_index=True)
     is_success = models.BooleanField(
         null=True,
         default=None,
         db_index=True,
     )
-    content_hash_1 = models.CharField(max_length=32, default="")
-    content_hash_2 = models.CharField(max_length=32, default="")
-    content_hash_3 = models.CharField(max_length=32, default="")
     last_error_message = models.TextField()
     root_task_id = models.CharField(
         max_length=36,
@@ -687,7 +825,6 @@ class CharacterUpdateStatus(models.Model):
         help_text="ID of character_update task that started this update",
     )
     started_at = models.DateTimeField(null=True, default=None, db_index=True)
-    finished_at = models.DateTimeField(null=True, default=None, db_index=True)
 
     objects = CharacterUpdateStatusManager()
 
@@ -706,6 +843,11 @@ class CharacterUpdateStatus(models.Model):
         return f"{self.character}-{self.section}"
 
     @property
+    def is_enabled(self) -> bool:
+        """Return True if this section is currently enabled."""
+        return self.section in Character.UpdateSection.enabled_sections()
+
+    @property
     def is_updating(self) -> bool:
         """Return True if this section is currently being updated."""
         if not self.started_at and not self.finished_at:
@@ -714,7 +856,7 @@ class CharacterUpdateStatus(models.Model):
         return self.started_at is not None and self.finished_at is None
 
     def has_changed(self, content: Any, hash_num: int = 1) -> bool:
-        """Returns True if given content is not the same as previous one, else False.
+        """Return True when given content is not the same as previous one, else False.
 
         Specify optionally which sub section to update via the hash_num (1, 2 or 3).
         """
@@ -752,9 +894,10 @@ class CharacterUpdateStatus(models.Model):
     def reset(
         self, root_task_id: Optional[str] = None, parent_task_id: Optional[str] = None
     ) -> None:
-        """resets this update status"""
+        """Reset this update status."""
         self.is_success = None
         self.last_error_message = ""
+        self.has_token_error = False
         self.started_at = now()
         self.finished_at = None
         self.root_task_id = root_task_id if root_task_id else ""

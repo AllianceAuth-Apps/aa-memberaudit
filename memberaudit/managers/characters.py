@@ -41,54 +41,121 @@ class CharacterQuerySet(models.QuerySet):
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)
 
-    def annotate_update_status(self):
-        """Add update_status annotations."""
-        num_sections_total = len(self.model.UpdateSection.choices)
-        UpdateStatus = self.model.UpdateStatus  # pylint: disable=invalid-name
-        return (
-            self.annotate(num_sections_total=Count("update_status_set"))
+    def annotate_total_update_status(self) -> models.QuerySet:
+        """Add total_update_status annotations."""
+        from memberaudit.models import Character
+
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
+        num_sections_total = len(enabled_sections)
+        qs = (
+            self.annotate(
+                num_sections_total=Count(
+                    "update_status_set",
+                    filter=Q(update_status_set__section__in=enabled_sections),
+                )
+            )
             .annotate(
                 num_sections_ok=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=True)
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__is_success=True,
+                    ),
                 )
             )
             .annotate(
                 num_sections_failed=Count(
-                    "update_status_set", filter=Q(update_status_set__is_success=False)
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__is_success=False,
+                    ),
                 )
             )
             .annotate(
-                update_status=Case(
-                    When(is_disabled=True, then=Value(UpdateStatus.DISABLED.value)),
+                num_sections_token_error=Count(
+                    "update_status_set",
+                    filter=Q(
+                        update_status_set__section__in=enabled_sections,
+                        update_status_set__has_token_error=True,
+                    ),
+                )
+            )
+            .annotate(
+                total_update_status=Case(
                     When(
-                        num_sections_failed__gt=0, then=Value(UpdateStatus.ERROR.value)
+                        is_disabled=True,
+                        then=Value(Character.TotalUpdateStatus.DISABLED.value),
+                    ),
+                    When(
+                        num_sections_token_error=1,
+                        then=Value(Character.TotalUpdateStatus.LIMITED_TOKEN.value),
+                    ),
+                    When(
+                        num_sections_failed__gt=0,
+                        then=Value(Character.TotalUpdateStatus.ERROR.value),
                     ),
                     When(
                         num_sections_ok=num_sections_total,
-                        then=Value(UpdateStatus.OK.value),
+                        then=Value(Character.TotalUpdateStatus.OK.value),
                     ),
                     When(
                         num_sections_total__lt=num_sections_total,
-                        then=Value(UpdateStatus.INCOMPLETE.value),
+                        then=Value(Character.TotalUpdateStatus.INCOMPLETE.value),
                     ),
-                    default=Value(UpdateStatus.IN_PROGRESS.value),
+                    default=Value(Character.TotalUpdateStatus.IN_PROGRESS.value),
                 )
             )
         )
+        return qs
+
+    def disable_characters_with_no_owner(self) -> int:
+        """Disable characters which have no owner. Return count of disabled characters."""
+        orphaned_characters = self.filter(
+            eve_character__character_ownership__isnull=True, is_disabled=False
+        )
+        if orphaned_characters.exists():
+            orphans = list(
+                orphaned_characters.values_list(
+                    "eve_character__character_name", flat=True
+                ).order_by("eve_character__character_name")
+            )
+            orphaned_characters.update(is_disabled=True)
+            logger.info(
+                "Disabled %d characters which do not belong to a user: %s",
+                len(orphans),
+                ", ".join(orphans),
+            )
+            return len(orphans)
+
+        return 0
 
 
 class CharacterManagerBase(ObjectCacheMixin, models.Manager):
-    def unregistered_characters_of_user_count(self, user: User) -> int:
-        """Return count of unregistered character for a user."""
-
-        return CharacterOwnership.objects.filter(
+    def characters_of_user_to_register_count(self, user: User) -> int:
+        """Return count of a users's characters known to Auth,
+        which needs to be (re-)registered.
+        """
+        unregistered = CharacterOwnership.objects.filter(
             user=user, character__memberaudit_character__isnull=True
         ).count()
+        enabled_sections = list(self.model.UpdateSection.enabled_sections())
+        token_errors = (
+            self.filter(eve_character__character_ownership__user=user)
+            .filter(
+                Q(
+                    update_status_set__section__in=enabled_sections,
+                    update_status_set__has_token_error=True,
+                )
+                | Q(is_disabled=True),
+            )
+            .distinct()
+            .count()
+        )
+        return unregistered + token_errors
 
     def user_has_scope(self, user: User) -> models.QuerySet:
-        """Return characters the given user has permission to access
-        by scope only.
-        """
+        """Return characters the given user has the scope permission to access."""
         if user.has_perm("memberaudit.view_everything"):
             return self.all()
         qs = self.filter(eve_character__character_ownership__user=user)
@@ -154,9 +221,18 @@ class CharacterManagerBase(ObjectCacheMixin, models.Manager):
 CharacterManager = CharacterManagerBase.from_queryset(CharacterQuerySet)
 
 
-class CharacterUpdateStatusManager(models.Manager):
+class CharacterUpdateStatusQuerySet(models.QuerySet):
+    def filter_enabled_sections(self) -> models.QuerySet:
+        """Filter enabled sections."""
+        from memberaudit.models import Character
+
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
+        return self.filter(section__in=enabled_sections)
+
+
+class CharacterUpdateStatusManagerBase(models.Manager):
     def statistics(self) -> dict:
-        """returns detailed statistics about the last update run and the app"""
+        """Return detailed statistics about the last update run and the app."""
 
         from memberaudit.models import (
             Character,
@@ -386,3 +462,8 @@ class CharacterUpdateStatusManager(models.Manager):
             "character": character_name,
             "duration": duration,
         }
+
+
+CharacterUpdateStatusManager = CharacterUpdateStatusManagerBase.from_queryset(
+    CharacterUpdateStatusQuerySet
+)

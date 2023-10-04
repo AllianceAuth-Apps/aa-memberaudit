@@ -51,7 +51,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
-    """returns generated HTML with name and icon for asset and contract items"""
+    """Return generated HTML with name and icon for asset and contract items."""
     if item.is_blueprint_copy:
         variant = item.eve_type.IconVariant.BPC
     else:
@@ -91,10 +91,11 @@ def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
     "ship__eve_type",
 )
 def character_viewer(request, character_pk: int, character: Character) -> HttpResponse:
-    """main view for showing a character with all details
+    """Main view for showing a character with all details.
 
     Args:
     - character_pk: PK for character to be shown
+    - character: character object to be shown
 
     GET Params:
     - tab: ID of tab to be shown  (optional)
@@ -105,7 +106,6 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     all_characters = _identify_user_characters(request, character)
     character_assets_total = _asset_total_for_character(character)
     has_implants = character.implants.exists()
-    last_updates = _last_update_for_character(character)
     connection_skills_differ = _connection_skills_differ_for_character(character)
     page_title = _page_title_for_character(request, character)
 
@@ -113,6 +113,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "page_title": page_title,
         "character": character,
         "auth_character": character.eve_character,
+        "total_update_status": character.calc_total_update_status(),
         "character_details": character.details_or_none(),
         "mail_labels": mail_labels,
         "mailing_lists": mailing_lists,
@@ -120,13 +121,12 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "main_character_id": main_character_id,
         "all_characters": all_characters,
         "show_tab": request.GET.get("tab", ""),
-        "last_updates": last_updates,
+        "sections_update_status": character.update_status_as_dict(),
         "character_assets_total": character_assets_total,
         "has_implants": has_implants,
         "connection_skills_differ": connection_skills_differ,
-        "is_assets_updating": character.is_section_updating(
-            Character.UpdateSection.ASSETS
-        ),
+        "UpdateSection": Character.UpdateSection,
+        "enabled_sections": Character.UpdateSection.enabled_sections(),
     }
     return render(
         request,
@@ -190,19 +190,6 @@ def _connection_skills_differ_for_character(character):
     )
 
     return connection_skills_differ
-
-
-def _last_update_for_character(character):
-    try:
-        last_updates = {
-            obj["section"]: obj["finished_at"]
-            for obj in character.update_status_set.filter(is_success=True).values(
-                "section", "finished_at"
-            )
-        }
-    except ObjectDoesNotExist:
-        last_updates = None
-    return last_updates
 
 
 def _mail_labels_for_character(character, mailing_lists):
