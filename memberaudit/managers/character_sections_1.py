@@ -313,11 +313,7 @@ class CharacterContactManager(models.Manager):
         )
 
     def _update_contact_contact_labels(
-        self,
-        character,
-        contacts_list: dict,
-        contact_ids: list,
-        is_new=False,
+        self, character, contacts_list: dict, contact_ids: list, is_new=False
     ):
         from memberaudit.models import CharacterContactLabel
 

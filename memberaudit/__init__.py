@@ -5,5 +5,5 @@ and related reports for auditing, vetting and monitoring.
 # pylint: disable=invalid-name
 default_app_config = "memberaudit.apps.MemberAuditConfig"
 
-__version__ = "3.0.0b2"
+__version__ = "3.0.0b3"
 __title__ = "Member Audit"

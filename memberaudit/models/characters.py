@@ -330,6 +330,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     @classmethod
     def _update_section_time_until_stale(cls, section: UpdateSection) -> dt.timedelta:
         """Return time until given update section is considered stale."""
+        section = cls.UpdateSection(section)
         ring = cls.UPDATE_SECTION_RINGS_MAP[section]
         if ring == 1:
             minutes = MEMBERAUDIT_UPDATE_STALE_RING_1
@@ -355,23 +356,35 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Return True when this character needs to be updated, otherwise False."""
         needs_update = False
         for section in Character.UpdateSection.enabled_sections():
-            needs_update |= self.is_update_section_stale(section)
+            needs_update |= self.is_update_needed_for_section(section, silent=True)
         return needs_update
 
-    def is_update_section_stale(self, section: UpdateSection) -> bool:
-        """Return True if the give section is stale for this character, else False."""
-        try:
-            update_status = self.update_status_set.get(
-                section=section,
-                is_success=True,
-                started_at__isnull=False,
-                finished_at__isnull=False,
-            )
-        except CharacterUpdateStatus.DoesNotExist:
+    def is_update_needed_for_section(
+        self, section: UpdateSection, silent: bool = False
+    ) -> bool:
+        """Return True if the given section is stale and needs to be updated, else False.
+        But never report sections with token error as stale.
+        """
+        update_status = self.update_status_for_section(section)
+        if not update_status:
             return True
 
-        deadline = now() - self._update_section_time_until_stale(section)
-        return update_status.started_at < deadline
+        if not update_status.is_success or not update_status.started_at:
+            needs_update = True
+        else:
+            deadline = now() - self._update_section_time_until_stale(section)
+            needs_update = update_status.started_at < deadline
+
+        if needs_update and update_status.has_token_error:
+            if not silent:
+                logger.warning(
+                    "%s: Skipping update due to token error for section: %s",
+                    self,
+                    section.label,
+                )
+            return False
+
+        return needs_update
 
     def update_status_for_section(
         self, section: UpdateSection

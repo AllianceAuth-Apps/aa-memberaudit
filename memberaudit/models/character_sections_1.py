@@ -133,8 +133,7 @@ class CharacterContactLabel(models.Model):
         default_permissions = ()
         constraints = [
             models.UniqueConstraint(
-                fields=["character", "label_id"],
-                name="functional_pk_characterlabel",
+                fields=["character", "label_id"], name="functional_pk_characterlabel"
             )
         ]
 
@@ -248,9 +247,7 @@ class CharacterContract(EveEntityIdsMixin, models.Model):
     }
 
     character = models.ForeignKey(
-        Character,
-        on_delete=models.CASCADE,
-        related_name="contracts",
+        Character, on_delete=models.CASCADE, related_name="contracts"
     )
     contract_id = models.IntegerField()
 
@@ -269,7 +266,7 @@ class CharacterContract(EveEntityIdsMixin, models.Model):
         null=True,
         related_name="+",
         help_text="corporation of acceptor",
-    )  # This field is currently unused
+    )  # TODO: This field is currently unused
     assignee = models.ForeignKey(
         EveEntity,
         on_delete=models.CASCADE,

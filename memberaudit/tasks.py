@@ -153,7 +153,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for section in sorted(sections_to_update_in_loop):
-        if force_update or character.is_update_section_stale(section):
+        if force_update or character.is_update_needed_for_section(section):
             update_character_section.apply_async(
                 kwargs={
                     "character_pk": character.pk,
@@ -165,7 +165,9 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 priority=priority,
             )
 
-    if force_update or character.is_update_section_stale(Character.UpdateSection.MAILS):
+    if force_update or character.is_update_needed_for_section(
+        Character.UpdateSection.MAILS
+    ):
         update_character_mails.apply_async(
             kwargs={
                 "character_pk": character.pk,
@@ -176,7 +178,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             priority=priority,
         )
 
-    if force_update or character.is_update_section_stale(
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.CONTACTS
     ):
         update_character_contacts.apply_async(
@@ -189,7 +191,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             priority=priority,
         )
 
-    if force_update or character.is_update_section_stale(
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.CONTRACTS
     ):
         update_character_contracts.apply_async(
@@ -201,7 +203,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             },
             priority=priority,
         )
-    if force_update or character.is_update_section_stale(
+    if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.ASSETS
     ):
         update_character_assets.apply_async(
@@ -216,8 +218,8 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 
     if (
         force_update
-        or character.is_update_section_stale(Character.UpdateSection.SKILLS)
-        or character.is_update_section_stale(Character.UpdateSection.SKILL_SETS)
+        or character.is_update_needed_for_section(Character.UpdateSection.SKILLS)
+        or character.is_update_needed_for_section(Character.UpdateSection.SKILL_SETS)
     ):
         chain(
             update_character_section.si(
@@ -271,16 +273,6 @@ def update_character_section(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    if not force_update:
-        status = character.update_status_for_section(section)
-        if status and status.has_token_error:
-            logger.warning(
-                "%s: Skipping update for character section with token error: %s",
-                character,
-                section.label,
-            )
-            return
-
     character.reset_update_section(section, root_task_id, parent_task_id)
     logger.info("%s: Updating %s", character, section.label)
 
@@ -935,7 +927,7 @@ def update_characters_skill_checks(self, force_update: bool = False) -> None:
     section = Character.UpdateSection.SKILL_SETS
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for character in Character.objects.all():
-        if force_update or character.is_update_section_stale(section):
+        if force_update or character.is_update_needed_for_section(section):
             update_character_section.apply_async(
                 kwargs={
                     "character_pk": character.pk,

@@ -1002,7 +1002,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 
 
 @patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
-class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
+class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -1013,8 +1013,8 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
     def setUp(self) -> None:
         self.character = create_character_from_user(self.user)
 
-    def test_recently_updated_successfully(self):
-        """When section has been recently updated successfully then return False"""
+    def test_should_report_false_when_section_not_stale(self):
+        # given
         create_character_update_status(
             character=self.character,
             section=self.section,
@@ -1022,17 +1022,19 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
             started_at=now() - dt.timedelta(seconds=30),
             finished_at=now(),
         )
-        self.assertFalse(self.character.is_update_section_stale(self.section))
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
 
-    def test_recently_updated_unsuccessfully(self):
-        """When section has been recently updated, but with errors then return True"""
+    def test_should_report_true_when_section_has_error(self):
+        # given
         create_character_update_status(
             character=self.character, section=self.section, is_success=False
         )
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
 
-    def test_update_long_ago(self):
-        """When section has not been recently updated, then return True"""
+    def test_should_report_true_when_section_is_stale(self):
+        # given
         started_at = now() - dt.timedelta(hours=12)
         create_character_update_status(
             character=self.character,
@@ -1040,11 +1042,36 @@ class TestCharacterIsUpdateSectionStale(NoSocketsTestCase):
             is_success=True,
             started_at=started_at,
         )
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
 
-    def test_does_not_exist(self):
-        """When section does not exist, then return True"""
-        self.assertTrue(self.character.is_update_section_stale(self.section))
+    def test_should_return_true_when_section_does_not_exist(self):
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            started_at=started_at,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
 
 
 class TestCharacterWalletJournalEntry(NoSocketsTestCase):
