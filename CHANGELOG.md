@@ -29,24 +29,33 @@ Please note that this scope change will not disrupt the update of existing chara
 
 ### Migration approaches
 
+As explained in the previous article all users need to re-register their characters in order to use the new feature. There are two migration approaches:
+
+- Managed migration
+- Unmanaged migration
+
 #### Managed migration
 
-As explained in the previous article all users need to re-register their characters in order to use the new feature. To ensure a smooth migration we would suggest the following approach:
+The first approach is a managed migration which attempts to migrate all characters by a deadline. The approach would look something like this:
 
 1. Inform all users that they need to re-register their characters until a deadline
 1. Enable the new feature at the deadline
 1. Allow users a grace period to re-register their characters
 1. After that grace period is passed, start pushing stragglers to re-register
 
-#### Silent migration
+This approach requires active communication with the users and is very visible, but should ensure most characters are migrated within a short time.
 
-Alternatively, a silent migration is possible by turning off the automatic notification to users about token errors. Then you can enable the role feature and users will have the chance to re-register over time once they see the related warning on the web.
+#### Unmanaged migration
 
-The related setting is:
+Alternatively, an unmanaged migration is possible by turning off the automatic notification to users about token errors. Then users will (hopefully) re-register their characters over time once they see the related warnings on the launchers page.
+
+The related settings are:
 
 ```python
 MEMBERAUDIT_NOTIFY_TOKEN_ERRORS = False
 ```
+
+This approach is does not require much (or any) communication with the users. However, it can take a long time before a significant amount of existing characters are migrated to the new feature.
 
 ### Monitoring the migration
 
@@ -67,20 +76,16 @@ You goal for the migration is to convert all characters which have "Limited Toke
 
 ### Added
 
-- Corporation roles shown for every character (when enabled)
-- User is now asked to re-register characters that need a token refresh on the launcher page
-- Users get an auth notification when a character runs into a token error (can be disabled by setting)
-- New status tag shown next to the character name on launcher and viewer when there is an update issue
-- New status tag shown on each character tab which has an update issue
-- Detailed error description added to each character tab that has an issue
-- Admins can see which sections are enabled when checking the update status for a character
+- Corporation roles are now shown for characters. This new feature can be enabled via the setting: `MEMBERAUDIT_FEATURE_ROLES_ENABLED`
+- Token errors are now handled automatically: The user is notified and update for the related character section is suspended until the user re-registered the character. The automatic notification can be disabled with the setting `MEMBERAUDIT_NOTIFY_TOKEN_ERRORS`
+- Users are now asked to re-register characters that have a token error on the launcher page
+- New status tag shown next to the character name on launcher and viewer inform about an update issue
+- New status tag and detailed error description shown on each character tab informs about an update issue
 
 ## Changed
 
-- Badge with unregistered character count now also includes characters with token errors and disabled characters
-- Users are notified about a token error once only per occurrence
+- App badge now also includes the count of characters with token errors and disabled characters
 - New update status "Limited token" shown on the admin page for characters which have a token issue on one section only (e.g. because a new role scope missing)
-- Will no longer try to update sections with token errors since those require the user to re-register the character
 
 ## [2.11.3] - 2023-09-21
 
