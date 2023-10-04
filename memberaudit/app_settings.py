@@ -36,15 +36,15 @@ MEMBERAUDIT_FEATURE_ROLES_ENABLED = clean_setting(
 )
 """Feature flag to enable or disable the corporation roles feature."""
 
-MEMBERAUDIT_LOCATION_STALE_HOURS = clean_setting("MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
-"""Hours after a existing location (e.g. structure) becomes stale and gets updated
-e.g. for name changes of structures.
-"""
-
 MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE = clean_setting(
     "MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE", 60
 )
 """Minimum age of existing export file before next update can be started in minutes."""
+
+MEMBERAUDIT_LOCATION_STALE_HOURS = clean_setting("MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
+"""Hours after a existing location (e.g. structure) becomes stale and gets updated
+e.g. for name changes of structures.
+"""
 
 MEMBERAUDIT_LOG_UPDATE_STATS = clean_setting("MEMBERAUDIT_LOG_UPDATE_STATS", False)
 """When set True will log the update stats at the start of every run
@@ -53,6 +53,12 @@ The update stats include the measures durations from the last run per round and 
 
 MEMBERAUDIT_MAX_MAILS = clean_setting("MEMBERAUDIT_MAX_MAILS", 250)
 """Maximum amount of mails fetched from ESI for each character."""
+
+MEMBERAUDIT_NOTIFY_TOKEN_ERRORS = clean_setting("MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", True)
+"""When enabled will automatically notify users when their character has a token error.
+But only once per character until the character is re-registered or this notification
+is reset manually by admins.
+"""
 
 MEMBERAUDIT_UPDATE_STALE_RING_1 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_1", 60)
 """Character sections are updated on different schedules, called rings.
@@ -70,7 +76,6 @@ all except those in ring 1 & 3.
 
 MEMBERAUDIT_UPDATE_STALE_RING_3 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_3", 480)
 """Minutes after which sections belonging to ring 3 are considered stale, assets."""
-
 
 MEMBERAUDIT_UPDATE_STALE_OFFSET = clean_setting("MEMBERAUDIT_UPDATE_STALE_OFFSET", 5)
 """Actual value for considering staleness of a ring will be the above value

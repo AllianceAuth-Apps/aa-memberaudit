@@ -27,7 +27,9 @@ This is necessary, because this new feature requires an additional ESI scope. Us
 
 Please note that this scope change will not disrupt the update of existing characters. The update status of a character which only issue is the missing esi scope will show with update status "Limited Token" on the admin site, but otherwise all characters will continue to be updated normally.
 
-### Suggested migration approach
+### Migration approaches
+
+#### Managed migration
 
 As explained in the previous article all users need to re-register their characters in order to use the new feature. To ensure a smooth migration we would suggest the following approach:
 
@@ -35,6 +37,16 @@ As explained in the previous article all users need to re-register their charact
 1. Enable the new feature at the deadline
 1. Allow users a grace period to re-register their characters
 1. After that grace period is passed, start pushing stragglers to re-register
+
+#### Silent migration
+
+Alternatively, a silent migration is possible by turning off the automatic notification to users about token errors. Then you can enable the role feature and users will have the chance to re-register over time once they see the related warning on the web.
+
+The related setting is:
+
+```python
+MEMBERAUDIT_NOTIFY_TOKEN_ERRORS = False
+```
 
 ### Monitoring the migration
 
@@ -57,6 +69,7 @@ You goal for the migration is to convert all characters which have "Limited Toke
 
 - Corporation roles shown for every character (when enabled)
 - User is now asked to re-register characters that need a token refresh on the launcher page
+- Users get an auth notification when a character runs into a token error (can be disabled by setting)
 - New status tag shown next to the character name on launcher and viewer when there is an update issue
 - New status tag shown on each character tab which has an update issue
 - Detailed error description added to each character tab that has an issue

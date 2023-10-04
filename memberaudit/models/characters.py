@@ -29,6 +29,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
     MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_FEATURE_ROLES_ENABLED,
+    MEMBERAUDIT_NOTIFY_TOKEN_ERRORS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
     MEMBERAUDIT_UPDATE_STALE_RING_1,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
@@ -561,7 +562,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             .first()
         )
         if not token:
-            if self.user and not self.token_error_notified_at:
+            if (
+                MEMBERAUDIT_NOTIFY_TOKEN_ERRORS
+                and self.user
+                and not self.token_error_notified_at
+            ):
                 title = (
                     f"{__title__}: Invalid or missing token for {self.eve_character}"
                 )
@@ -574,6 +579,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 notify.danger(user=self.user, title=title, message=message)
                 self.token_error_notified_at = now()
                 self.save(update_fields=["token_error_notified_at"])
+
             raise TokenDoesNotExist(
                 f"Could not find a matching token for {self} with scopes: {scopes}."
             )

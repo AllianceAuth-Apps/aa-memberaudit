@@ -388,9 +388,10 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenError):
             character.fetch_token()
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", True)
     @patch(MODELS_PATH + ".notify.danger")
     def test_should_raise_exception_and_notify_user_if_scope_not_found(
-        self, mock_notify
+        self, mock_notify_danger
     ):
         # given
         character = create_character_from_user(self.user)
@@ -398,27 +399,39 @@ class TestCharacterFetchToken(TestCase):
         with self.assertRaises(TokenDoesNotExist):
             character.fetch_token("invalid_scope")
         # then
-        self.assertTrue(mock_notify.called)
-        _, kwargs = mock_notify.call_args
+        self.assertTrue(mock_notify_danger.called)
+        _, kwargs = mock_notify_danger.call_args
         self.assertEqual(
             kwargs["user"], character.eve_character.character_ownership.user
         )
         character.refresh_from_db()
         self.assertTrue(character.token_error_notified_at)
 
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", True)
     @patch(MODELS_PATH + ".notify")
     def test_should_not_notify_user_on_token_error_when_already_notified(
-        self, mock_notify
+        self, mock_notify_danger
     ):
         # given
-        character = create_character_from_user(self.user)
-        character.token_error_notified_at = now()
-        character.save()
+        character = create_character_from_user(self.user, token_error_notified_at=now())
         # when
         with self.assertRaises(TokenDoesNotExist):
             character.fetch_token("invalid_scope")
         # then
-        self.assertFalse(mock_notify.called)
+        self.assertFalse(mock_notify_danger.called)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_NOTIFY_TOKEN_ERRORS", False)
+    @patch(MODELS_PATH + ".notify")
+    def test_should_not_notify_user_on_token_error_when_feature_is_disabled(
+        self, mock_notify_danger
+    ):
+        # given
+        character = create_character_from_user(self.user)
+        # when
+        with self.assertRaises(TokenDoesNotExist):
+            character.fetch_token("invalid_scope")
+        # then
+        self.assertFalse(mock_notify_danger.called)
 
 
 class TestCharacterSkillQueue(NoSocketsTestCase):
