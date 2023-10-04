@@ -6,19 +6,19 @@
 
     <li role="presentation">
         <a href="#assets" aria-controls="assets" role="tab" data-toggle="tab">
-            {% translate 'Assets' %} {% tab_status_indicator UpdateSection.ASSETS %}
+            {% translate 'Assets' %}{% tab_status_indicator UpdateSection.ASSETS %}
         </a>
     </li>
 
     <li role="presentation">
         <a href="#bio" aria-controls="bio" role="tab" data-toggle="tab">
-            {% translate 'Bio' %} {% tab_status_indicator UpdateSection.CHARACTER_DETAILS %}
+            {% translate 'Bio' %}{% tab_status_indicator UpdateSection.CHARACTER_DETAILS %}
         </a>
     </li>
 
     <li role="presentation">
         <a href="#contracts" aria-controls="contracts" role="tab" data-toggle="tab">
-            {% translate 'Contracts' %} {% tab_status_indicator UpdateSection.CONTRACTS %}
+            {% translate 'Contracts' %}{% tab_status_indicator UpdateSection.CONTRACTS %}
         </a>
     </li>
     {% comment %} <li role="presentation"><a href="#history" aria-controls="history" role="tab" data-toggle="tab">{% translate 'Corporations' %}</a></li> {% endcomment %}
@@ -32,12 +32,12 @@
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
                 <a href="#implants" tabindex="-1" data-toggle="tab">
-                    {% translate 'Implants' %} {% tab_status_indicator UpdateSection.IMPLANTS %}
+                    {% translate 'Implants' %}{% tab_status_indicator UpdateSection.IMPLANTS %}
                 </a>
             </li>
             <li class="">
                 <a href="#clones" tabindex="-1" data-toggle="tab">
-                    {% translate 'Jump Clones' %} {% tab_status_indicator UpdateSection.JUMP_CLONES %}
+                    {% translate 'Jump Clones' %}{% tab_status_indicator UpdateSection.JUMP_CLONES %}
                 </a>
             </li>
         </ul>
@@ -45,7 +45,7 @@
 
     <li role="presentation">
         <a href="#fw_stats" aria-controls="fw_stats" role="tab" data-toggle="tab">
-            {% translate 'Faction Warfare' %} {% tab_status_indicator UpdateSection.FW_STATS %}
+            {% translate 'Faction Warfare' %}{% tab_status_indicator UpdateSection.FW_STATS %}
         </a>
     </li>
 
@@ -58,12 +58,12 @@
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop3">
             <li class="">
                 <a href="#mining_ledger" tabindex="-1" data-toggle="tab">
-                    {% translate 'Mining' %} {% tab_status_indicator UpdateSection.MINING_LEDGER %}
+                    {% translate 'Mining' %}{% tab_status_indicator UpdateSection.MINING_LEDGER %}
                 </a>
             </li>
             <li class="">
                 <a href="#planets" tabindex="-1" data-toggle="tab">
-                    {% translate 'Planets' %} {% tab_status_indicator UpdateSection.PLANETS %}
+                    {% translate 'Planets' %}{% tab_status_indicator UpdateSection.PLANETS %}
                 </a>
             </li>
         </ul>
@@ -71,7 +71,7 @@
 
     <li role="presentation">
         <a href="#loyalty" aria-controls="loyalty" role="tab" data-toggle="tab">
-            {% translate 'Loyalty' %} {% tab_status_indicator UpdateSection.LOYALTY %}
+            {% translate 'Loyalty' %}{% tab_status_indicator UpdateSection.LOYALTY %}
         </a>
     </li>
 
@@ -84,12 +84,12 @@
         <ul class="dropdown-menu" role="menu">
             <li class="">
                 <a href="#contacts" tabindex="-1" data-toggle="tab">
-                    {% translate 'Contacts' %} {% tab_status_indicator UpdateSection.CONTACTS %}
+                    {% translate 'Contacts' %}{% tab_status_indicator UpdateSection.CONTACTS %}
                 </a>
             </li>
             <li class="">
                 <a href="#standings" tabindex="-1" data-toggle="tab">
-                    {% translate 'NPC Standings' %} {% tab_status_indicator UpdateSection.STANDINGS %}
+                    {% translate 'NPC Standings' %}{% tab_status_indicator UpdateSection.STANDINGS %}
                 </a>
             </li>
         </ul>
@@ -97,7 +97,7 @@
 
     <li role="presentation">
         <a href="#mail" aria-controls="mail" role="tab" data-toggle="tab">
-            {% translate 'Mails' %} {% tab_status_indicator UpdateSection.MAILS %}
+            {% translate 'Mails' %}{% tab_status_indicator UpdateSection.MAILS %}
         </a>
     </li>
 
@@ -110,24 +110,24 @@
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
                 <a href="#attributes" tabindex="-1" data-toggle="tab">
-                    {% translate 'Attributes' %} {% tab_status_indicator UpdateSection.ATTRIBUTES %}
+                    {% translate 'Attributes' %}{% tab_status_indicator UpdateSection.ATTRIBUTES %}
                 </a>
             </li>
             <li class="">
                 <a href="#skillqueue" tabindex="-1" data-toggle="tab">
-                    {% translate 'Skill Queue' %} {% tab_status_indicator UpdateSection.SKILL_QUEUE %}
+                    {% translate 'Skill Queue' %}{% tab_status_indicator UpdateSection.SKILL_QUEUE %}
                 </a>
             </li>
             {% if perms.memberaudit.view_skill_sets %}
                 <li class="">
                     <a href="#skill_sets" tabindex="-1" data-toggle="tab">
-                        {% translate 'Skill Sets' %} {% tab_status_indicator UpdateSection.SKILL_SETS %}
+                        {% translate 'Skill Sets' %}{% tab_status_indicator UpdateSection.SKILL_SETS %}
                     </a>
                 </li>
             {% endif %}
             <li class="">
                 <a href="#skills" tabindex="-1" data-toggle="tab">
-                    {% translate 'Skills' %} {% tab_status_indicator UpdateSection.SKILLS %}
+                    {% translate 'Skills' %}{% tab_status_indicator UpdateSection.SKILLS %}
                 </a>
             </li>
         </ul>
@@ -136,7 +136,7 @@
     {% if UpdateSection.ROLES in enabled_sections %}
         <li role="presentation">
             <a href="#roles" aria-controls="skillqueue" role="tab" data-toggle="tab">
-                {% translate 'Roles' %} {% tab_status_indicator UpdateSection.ROLES %}
+                {% translate 'Roles' %}{% tab_status_indicator UpdateSection.ROLES %}
             </a>
         </li>
     {% endif %}
@@ -150,12 +150,12 @@
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop1">
             <li class="">
                 <a href="#wallet_journal" tabindex="-1" data-toggle="tab">
-                    {% translate 'Transactions' %} {% tab_status_indicator UpdateSection.WALLET_JOURNAL %}
+                    {% translate 'Transactions' %}{% tab_status_indicator UpdateSection.WALLET_JOURNAL %}
                 </a>
             </li>
             <li class="">
                 <a href="#wallet_transactions" tabindex="-1" data-toggle="tab">
-                    {% translate 'Market Transactions' %} {% tab_status_indicator UpdateSection.WALLET_TRANSACTIONS %}
+                    {% translate 'Market Transactions' %}{% tab_status_indicator UpdateSection.WALLET_TRANSACTIONS %}
                 </a>
             </li>
         </ul>
