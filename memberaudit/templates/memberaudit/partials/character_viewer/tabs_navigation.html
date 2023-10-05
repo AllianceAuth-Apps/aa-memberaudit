@@ -21,7 +21,13 @@
             {% translate 'Contracts' %}{% tab_status_indicator UpdateSection.CONTRACTS %}
         </a>
     </li>
-    {% comment %} <li role="presentation"><a href="#history" aria-controls="history" role="tab" data-toggle="tab">{% translate 'Corporations' %}</a></li> {% endcomment %}
+
+    <li role="presentation">
+        <a href="#history" aria-controls="history" role="tab" data-toggle="tab">
+            {% translate 'Corporations' %}
+            {% tab_status_indicator UpdateSection.CORPORATION_HISTORY %}
+        </a>
+    </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
         <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">
