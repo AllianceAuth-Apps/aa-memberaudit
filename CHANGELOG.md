@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.0.1] - 2023-10-05
+
+### Changed
+
+- Re-activated corporation histories
+
 ## [3.0.0] - 2023-10-04
 
 ### Update notes
