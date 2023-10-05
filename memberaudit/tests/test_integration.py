@@ -427,7 +427,7 @@ class TestAdminSite(TestCase):
         self.client.post(
             "/admin/memberaudit/character/",
             data={
-                "action": "update_location",
+                "action": "update_section_location",
                 "_selected_action": [character_1001.pk],
             },
         )
@@ -435,24 +435,6 @@ class TestAdminSite(TestCase):
         # then character is updated
         character_1001.refresh_from_db()
         self.assertEqual(character_1001.location.eve_solar_system.name, "Jita")
-
-    def test_should_update_online_status_for_characters(self):
-        # given 2 characters
-        character_1001 = create_memberaudit_character(1001)
-        self.client.force_login(self.user)
-
-        # when user starts action
-        self.client.post(
-            "/admin/memberaudit/character/",
-            data={
-                "action": "update_online_status",
-                "_selected_action": [character_1001.pk],
-            },
-        )
-
-        # then character is updated
-        character_1001.refresh_from_db()
-        self.assertTrue(character_1001.online_status.last_login)
 
     def test_should_update_assets_for_characters(self):
         # given 2 characters

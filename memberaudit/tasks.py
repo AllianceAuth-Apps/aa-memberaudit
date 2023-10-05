@@ -139,19 +139,10 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     )
     character.clear_cache()
 
-    enabled_sections = Character.UpdateSection.enabled_sections()
-    sections_to_update_in_loop = enabled_sections.difference(
-        {
-            Character.UpdateSection.ASSETS,
-            Character.UpdateSection.MAILS,
-            Character.UpdateSection.CONTACTS,
-            Character.UpdateSection.CONTRACTS,
-            Character.UpdateSection.SKILL_SETS,
-            Character.UpdateSection.SKILLS,
-        }
-    )
-
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+    sections_to_update_in_loop = list(
+        Character.UpdateSection.enabled_sections_for_simple_update_tasks()
+    )
     for section in sorted(sections_to_update_in_loop):
         if force_update or character.is_update_needed_for_section(section):
             update_character_section.apply_async(

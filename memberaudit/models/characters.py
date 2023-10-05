@@ -89,6 +89,24 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 sections.discard(Character.UpdateSection.ROLES)
             return sections
 
+        @classmethod
+        def enabled_sections_for_simple_update_tasks(
+            cls,
+        ) -> Set["Character.UpdateSection"]:
+            """Return enabled section that can be updated by
+            ``update_character_section`` task.
+            """
+            return cls.enabled_sections().difference(
+                {
+                    Character.UpdateSection.ASSETS,
+                    Character.UpdateSection.MAILS,
+                    Character.UpdateSection.CONTACTS,
+                    Character.UpdateSection.CONTRACTS,
+                    Character.UpdateSection.SKILL_SETS,
+                    Character.UpdateSection.SKILLS,
+                }
+            )
+
     UPDATE_SECTION_RINGS_MAP = {
         UpdateSection.ASSETS: 3,
         UpdateSection.ATTRIBUTES: 3,
