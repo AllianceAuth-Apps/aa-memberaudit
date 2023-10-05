@@ -1,6 +1,7 @@
 """Define admin site for Member Audit."""
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
+import functools
 from typing import List, Optional
 
 from django import forms
@@ -46,7 +47,7 @@ class AddDeleteObjects:
             del actions["delete_selected"]
         return actions
 
-    @admin.display(description=__("Delete selected objects"))
+    @admin.action(description=__("Delete selected objects"))
     def delete_objects(self, request, queryset):
         if "apply" in request.POST:
             pks = list(queryset.values_list("pk", flat=True))
@@ -261,6 +262,26 @@ class CharacterStateListFilter(admin.SimpleListFilter):
         return queryset
 
 
+def generic_action_update_section(
+    modeladmin, request, queryset, section: Character.UpdateSection
+):
+    """Update a section for the selected characters as generic action."""
+    for obj in queryset:
+        tasks.update_character_section.apply_async(
+            kwargs={
+                "character_pk": obj.pk,
+                "section": section,
+                "force_update": True,
+            },
+            priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+        )  # type: ignore
+        modeladmin.message_user(
+            request,
+            __("Started updating section %(section)s for character %(character)s.")
+            % {"section": section.label, "character": obj},
+        )
+
+
 @admin.register(Character)
 class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     class Media:
@@ -328,6 +349,23 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             .annotate(last_update_at=Max("update_status_set__finished_at"))
             .annotate_total_update_status()
         )
+
+    def get_actions(self, request):
+        """Generate and add generated actions for all sections
+        which can be updated through ``update_character_section`` task.
+        """
+        actions: dict = super().get_actions(request)
+        sections = sorted(
+            list(Character.UpdateSection.enabled_sections_for_simple_update_tasks())
+        )
+        for section in sections:
+            action_name = f"update_section_{section}"
+            func = functools.partial(generic_action_update_section, section=section)
+            description = (
+                f"Update {section.label} for selected characters from EVE server"
+            )
+            actions[action_name] = (func, action_name, description)
+        return dict(sorted(actions.items(), key=lambda item: item[1][2]))
 
     @admin.display(description="")
     def _character_pic(self, obj: Character):
@@ -405,7 +443,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             return sorted(obj.label for obj in missing_sections)
         return None
 
-    @admin.display(description=__("Update selected characters from EVE server"))
+    @admin.action(description=__("Update all for selected characters from EVE server"))
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
@@ -414,7 +452,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             )  # type: ignore
             self.message_user(request, __("Started updating character %s.") % obj)
 
-    @admin.display(
+    @admin.action(
         description=__("Update assets for selected characters from EVE server")
     )
     def update_assets(self, request, queryset):
@@ -427,43 +465,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
                 request, __("Started updating assets for character %s.") % obj
             )
 
-    @admin.display(
-        description=(__("Update location for selected characters from EVE server"))
-    )
-    def update_location(self, request, queryset):
-        self._update_section(request, queryset, Character.UpdateSection.LOCATION)
-
-    @admin.display(
-        description=(__("Update roles for selected characters from EVE server"))
-    )
-    def update_roles(self, request, queryset):
-        self._update_section(request, queryset, Character.UpdateSection.ROLES)
-
-    @admin.display(
-        description=__("Update %s for selected characters from EVE server")
-        % Character.UpdateSection.ONLINE_STATUS.label
-    )
-    def update_online_status(self, request, queryset):
-        self._update_section(request, queryset, Character.UpdateSection.ONLINE_STATUS)
-
-    def _update_section(self, request, queryset, section: Character.UpdateSection):
-        """Trigger updating a section for the selected characters."""
-        for obj in queryset:
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": obj.pk,
-                    "section": section,
-                    "force_update": True,
-                },
-                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )  # type: ignore
-            self.message_user(
-                request,
-                __("Started updating section %(section)s for character %(character)s.")
-                % {"section": section.label, "character": obj},
-            )
-
-    @admin.display(
+    @admin.action(
         description=__("Enable selected characters and reset token notifications")
     )
     def enable_characters(self, request, queryset):
@@ -473,7 +475,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         )
         self.message_user(request, __("Enabled %d characters.") % len(pks))
 
-    @admin.display(description=__("Disable selected characters"))
+    @admin.action(description=__("Disable selected characters"))
     def disable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
@@ -724,7 +726,7 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
         )  # type: ignore
 
-    @admin.display(description=__("Clone selected skill sets"))
+    @admin.action(description=__("Clone selected skill sets"))
     def clone_skill_sets(self, request, queryset):
         for obj in queryset:
             obj.clone(request.user)
