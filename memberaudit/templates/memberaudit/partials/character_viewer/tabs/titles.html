@@ -1,0 +1,16 @@
+{% load i18n %}
+
+<div role="tabpanel" class="tab-pane" id="titles">
+    <h3>{% translate 'Titles' %}</h3>
+    {% if has_implants %}
+        <div class="table-responsive">
+            <table class="table table-striped table-width-fix" id="tab_titles">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    {% else %}
+        <p>{% translate "No titles" %}</p>
+    {% endif %}
+    {% include 'memberaudit/partials/character_viewer/tabs/update_status.html' with update_section=sections_update_status.implants %}
+</div>
