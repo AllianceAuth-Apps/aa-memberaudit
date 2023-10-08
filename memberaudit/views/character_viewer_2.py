@@ -741,6 +741,20 @@ def character_standings_data(
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed()
+def character_titles_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    """Render data view for character titles."""
+    data = [
+        {"id": title.title_id, "name": title.name}
+        for title in character.titles.order_by("name")
+    ]
+    return JsonResponse({"data": data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
 def character_wallet_journal_data(
     request, character_pk: int, character: Character
 ) -> JsonResponse:

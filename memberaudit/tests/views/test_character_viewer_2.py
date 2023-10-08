@@ -40,6 +40,7 @@ from memberaudit.views.character_viewer_2 import (
     character_skillqueue_data,
     character_skills_data,
     character_standings_data,
+    character_titles_data,
     character_wallet_journal_data,
     character_wallet_transactions_data,
 )
@@ -51,6 +52,7 @@ from ..testdata.factories import (
     create_character_planet,
     create_character_role,
     create_character_standing,
+    create_character_title,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
     create_skill_set,
@@ -683,6 +685,46 @@ class TestStandings(LoadTestDataMixin, TestCase):
         self.assertEqual("NPC corporation", obj["name"]["sort"])
         self.assertEqual(obj["type"], "Corporation")
         self.assertEqual(obj["standing"]["sort"], 5.0)
+
+
+class TestCharacterTitlesData(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
+    def test_should_return_correct_character_titles(self):
+        # given
+        create_character_title(character=self.character, name="Bravo")
+        create_character_title(character=self.character, name="Alpha")
+        request = self.factory.get(
+            reverse("memberaudit:character_roles_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_titles_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        names = [obj["name"] for obj in data]
+        self.assertListEqual(names, ["Alpha", "Bravo"])
+
+    def test_should_return_nothing_when_no_data(self):
+        # given
+        request = self.factory.get(
+            reverse("memberaudit:character_titles_data", args=[self.character.pk])
+        )
+        request.user = self.user
+        # when
+        response = character_titles_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        self.assertEqual(data, [])
 
 
 class TestWallet(LoadTestDataMixin, TestCase):
