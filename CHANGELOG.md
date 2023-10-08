@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.2.0] - 2023-10-08
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+### Added
+
+- Localization to Ukrainian (🇺🇦)
+
+### Changed
+
+- Update to localizations
+
 ## [3.1.0] - 2023-10-05
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!

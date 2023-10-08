@@ -72,7 +72,7 @@ Member Audit adds the following features to Auth:
 - Designed to work efficiently with large number of characters
 - Data retention policy allows managing storage capacity needs
 - Data can be exported for processing it with third party apps like Google Sheets (currently wallet journal only)
-- Language support for English :us:, Russian :ru: and Chinese :cn:
+- Language support for Chinese :cn:, English :us:, German :de:, Russian :ru: and Ukrainian 🇺🇦
 
 ## Highlights
 

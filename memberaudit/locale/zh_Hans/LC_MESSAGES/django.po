@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-28 14:19+0200\n"
+"POT-Creation-Date: 2023-10-08 13:14+0200\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -42,84 +42,84 @@ msgstr ""
 msgid "terrible standing"
 msgstr ""
 
-#: models/character_sections_1.py:183
+#: models/character_sections_1.py:182
 msgid "alliance"
 msgstr ""
 
-#: models/character_sections_1.py:184
+#: models/character_sections_1.py:183
 msgid "corporation"
 msgstr ""
 
-#: models/character_sections_1.py:185
+#: models/character_sections_1.py:184
 msgid "private"
 msgstr ""
 
-#: models/character_sections_1.py:186
+#: models/character_sections_1.py:185
 msgid "public"
 msgstr ""
 
-#: models/character_sections_1.py:206
+#: models/character_sections_1.py:205
 msgid "canceled"
 msgstr ""
 
-#: models/character_sections_1.py:207
+#: models/character_sections_1.py:206
 msgid "deleted"
 msgstr ""
 
-#: models/character_sections_1.py:208
+#: models/character_sections_1.py:207
 #: templates/memberaudit/partials/character_viewer/tabs/update_status.html:14
 msgid "failed"
 msgstr ""
 
-#: models/character_sections_1.py:209
+#: models/character_sections_1.py:208
 msgid "finished"
 msgstr ""
 
-#: models/character_sections_1.py:210
+#: models/character_sections_1.py:209
 msgid "finished contractor"
 msgstr ""
 
-#: models/character_sections_1.py:211
+#: models/character_sections_1.py:210
 msgid "finished issuer"
 msgstr ""
 
-#: models/character_sections_1.py:212 models/characters.py:127
+#: models/character_sections_1.py:211 models/characters.py:146
 msgid "in progress"
 msgstr ""
 
-#: models/character_sections_1.py:213
+#: models/character_sections_1.py:212
 msgid "outstanding"
 msgstr ""
 
-#: models/character_sections_1.py:214
+#: models/character_sections_1.py:213
 msgid "rejected"
 msgstr ""
 
-#: models/character_sections_1.py:215
+#: models/character_sections_1.py:214
 msgid "reversed"
 msgstr ""
 
-#: models/character_sections_1.py:236
+#: models/character_sections_1.py:235
 msgid "auction"
 msgstr ""
 
-#: models/character_sections_1.py:237
+#: models/character_sections_1.py:236
 msgid "courier"
 msgstr ""
 
-#: models/character_sections_1.py:238
+#: models/character_sections_1.py:237
 msgid "item exchange"
 msgstr ""
 
-#: models/character_sections_1.py:239
+#: models/character_sections_1.py:238
 msgid "loan"
 msgstr ""
 
-#: models/character_sections_1.py:240
+#: models/character_sections_1.py:239
 msgid "unknown"
 msgstr ""
 
-#: models/character_sections_1.py:404
+#: models/character_sections_1.py:401
 msgid "[Multiple Items]"
 msgstr ""
 
@@ -595,175 +595,175 @@ msgstr ""
 msgid "type ID"
 msgstr ""
 
-#: models/characters.py:53
+#: models/characters.py:54
 msgid "assets"
 msgstr ""
 
-#: models/characters.py:54
+#: models/characters.py:55
 msgid "attributes"
 msgstr ""
 
-#: models/characters.py:56
+#: models/characters.py:57
 msgid "contacts"
 msgstr ""
 
-#: models/characters.py:57
+#: models/characters.py:58
 msgid "contracts"
 msgstr ""
 
-#: models/characters.py:58
+#: models/characters.py:59
 msgid "corporation history"
 msgstr ""
 
-#: models/characters.py:59
+#: models/characters.py:60
 msgid "faction warfare statistics"
 msgstr ""
 
-#: models/characters.py:60
+#: models/characters.py:61
 msgid "implants"
 msgstr ""
 
-#: models/characters.py:61
+#: models/characters.py:62
 msgid "jump clones"
 msgstr ""
 
-#: models/characters.py:62 models/general.py:193
+#: models/characters.py:63 models/general.py:193
 msgid "location"
 msgstr ""
 
-#: models/characters.py:63
+#: models/characters.py:64
 msgid "loyalty"
 msgstr ""
 
-#: models/characters.py:64
+#: models/characters.py:65
 msgid "mails"
 msgstr ""
 
-#: models/characters.py:65
+#: models/characters.py:66
 msgid "mining ledger"
 msgstr ""
 
-#: models/characters.py:66
+#: models/characters.py:67
 msgid "online status"
 msgstr ""
 
-#: models/characters.py:67
+#: models/characters.py:68
 msgid "planets"
 msgstr ""
 
-#: models/characters.py:68
+#: models/characters.py:69
 msgid "roles"
 msgstr ""
 
-#: models/characters.py:69
+#: models/characters.py:70
 msgid "ship"
 msgstr ""
 
-#: models/characters.py:70 models/general.py:405 models/general.py:438
+#: models/characters.py:71 models/general.py:405 models/general.py:438
 msgid "skills"
 msgstr ""
 
-#: models/characters.py:71
+#: models/characters.py:72
 msgid "skill queue"
 msgstr ""
 
-#: models/characters.py:72 models/general.py:305 models/general.py:368
+#: models/characters.py:73 models/general.py:305 models/general.py:368
 msgid "skill sets"
 msgstr ""
 
-#: models/characters.py:73
+#: models/characters.py:74
 msgid "standings"
 msgstr ""
 
-#: models/characters.py:74
+#: models/characters.py:75
 msgid "wallet balance"
 msgstr ""
 
-#: models/characters.py:75
+#: models/characters.py:76
 msgid "wallet journal"
 msgstr ""
 
-#: models/characters.py:76
+#: models/characters.py:77
 msgid "wallet transactions"
 msgstr ""
 
-#: models/characters.py:123
+#: models/characters.py:142
 msgid "disabled"
 msgstr ""
 
-#: models/characters.py:124
+#: models/characters.py:143
 msgid "error"
 msgstr ""
 
-#: models/characters.py:125
+#: models/characters.py:144
 msgid "limited token"
 msgstr ""
 
-#: models/characters.py:126
+#: models/characters.py:145
 msgid "incomplete"
 msgstr ""
 
-#: models/characters.py:128
+#: models/characters.py:147
 msgid "ok"
 msgstr ""
 
-#: models/characters.py:154
+#: models/characters.py:173
 msgid "Update is disabled"
 msgstr ""
 
-#: models/characters.py:155
+#: models/characters.py:174
 msgid "Errors occurred during update"
 msgstr ""
 
-#: models/characters.py:156
+#: models/characters.py:175
 msgid "Update is in progress"
 msgstr ""
 
-#: models/characters.py:157
+#: models/characters.py:176
 msgid "One or more sections have not yet been updated"
 msgstr ""
 
-#: models/characters.py:159
+#: models/characters.py:178
 msgid "One section can not be updated due to a token error"
 msgstr ""
 
-#: models/characters.py:161
+#: models/characters.py:180
 msgid "Update completed successfully"
 msgstr ""
 
-#: models/characters.py:170
+#: models/characters.py:189
 msgid "eve character"
 msgstr ""
 
-#: models/characters.py:174
+#: models/characters.py:193
 msgid "created at"
 msgstr ""
 
-#: models/characters.py:178
+#: models/characters.py:197
 msgid "is shared"
 msgstr ""
 
-#: models/characters.py:183
+#: models/characters.py:202
 msgid "is disabled"
 msgstr ""
 
-#: models/characters.py:187
+#: models/characters.py:206
 msgid "mailing lists"
 msgstr ""
 
-#: models/characters.py:192
+#: models/characters.py:211
 msgid "Time when user was last notified about a token error."
 msgstr ""
 
-#: models/characters.py:199
+#: models/characters.py:218
 msgid "character"
 msgstr ""
 
-#: models/characters.py:200
+#: models/characters.py:219
 msgid "characters"
 msgstr ""
 
-#: models/characters.py:810 models/characters.py:811
+#: models/characters.py:857 models/characters.py:858
 msgid "character update status"
 msgstr ""
 
@@ -982,42 +982,42 @@ msgstr ""
 msgid "Unregistered?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:197
-#: templates/memberaudit/character_viewer.html:606
+#: templates/memberaudit/character_viewer.html:196
+#: templates/memberaudit/character_viewer.html:605
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:9
 msgid "Region"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:201
-#: templates/memberaudit/character_viewer.html:610
+#: templates/memberaudit/character_viewer.html:200
+#: templates/memberaudit/character_viewer.html:609
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:13
 msgid "Solar System"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:208
+#: templates/memberaudit/character_viewer.html:207
 msgid "Ship?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:309
+#: templates/memberaudit/character_viewer.html:308
 msgid "NPC?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:313
+#: templates/memberaudit/character_viewer.html:312
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:14
 msgid "Watched?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:317
+#: templates/memberaudit/character_viewer.html:316
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:15
 msgid "Blocked?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:614
+#: templates/memberaudit/character_viewer.html:613
 msgid "Planet Type"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:748
+#: templates/memberaudit/character_viewer.html:747
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:28
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:12
 #: templates/memberaudit/partials/character_viewer/tabs/roles.html:9
@@ -1025,22 +1025,22 @@ msgstr ""
 msgid "Group"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:752
+#: templates/memberaudit/character_viewer.html:751
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:14
 #: templates/memberaudit/reports.html:224
 msgid "Required Skills?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:756
+#: templates/memberaudit/character_viewer.html:755
 #: templates/memberaudit/reports.html:229
 msgid "Doctrine?"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:795
+#: templates/memberaudit/character_viewer.html:794
 msgid "Level"
 msgstr ""
 
-#: templates/memberaudit/character_viewer.html:946
+#: templates/memberaudit/character_viewer.html:945
 msgid "Buy and Sell"
 msgstr ""
 
@@ -1447,7 +1447,7 @@ msgid "Prices are average market prices."
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:114
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:119
 msgid "Attributes"
 msgstr ""
 
@@ -1493,7 +1493,7 @@ msgid "Bio"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:88
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:93
 msgid "Contacts"
 msgstr ""
 
@@ -1556,7 +1556,7 @@ msgid "Today"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:49
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:54
 msgid "Faction Warfare"
 msgstr ""
 
@@ -1601,7 +1601,7 @@ msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/implants.html:4
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:12
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:36
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:41
 msgid "Implants"
 msgstr ""
 
@@ -1610,7 +1610,7 @@ msgid "No implants"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:41
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:46
 msgid "Jump Clones"
 msgstr ""
 
@@ -1620,7 +1620,7 @@ msgid "System"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:75
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:80
 msgid "Loyalty"
 msgstr ""
 
@@ -1629,7 +1629,7 @@ msgid "Loyalty Points"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:6
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:101
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:106
 msgid "Mails"
 msgstr ""
 
@@ -1642,7 +1642,7 @@ msgid "Subject"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:62
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:67
 msgid "Mining"
 msgstr ""
 
@@ -1658,7 +1658,7 @@ msgid "Quantity"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:67
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:72
 msgid "Planets"
 msgstr ""
 
@@ -1679,7 +1679,7 @@ msgid "Last Update"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/roles.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:140
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:145
 msgid "Roles"
 msgstr ""
 
@@ -1692,7 +1692,7 @@ msgid "Granted?"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:119
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:124
 msgid "Skill Queue"
 msgstr ""
 
@@ -1710,7 +1710,7 @@ msgid "Position"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:125
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:130
 #: templates/memberaudit/partials/reports/tabs_navigation.html:19
 msgid "Skill Sets"
 msgstr ""
@@ -1737,13 +1737,13 @@ msgid "Missing Recommended Skills"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/skills.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:107
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:131
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:112
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:136
 msgid "Skills"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/standings.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:93
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:98
 msgid "NPC Standings"
 msgstr ""
 
@@ -1776,7 +1776,7 @@ msgid "Error"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:154
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:159
 msgid "Transactions"
 msgstr ""
 
@@ -1797,7 +1797,7 @@ msgid "Balance"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:159
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:164
 msgid "Market Transactions"
 msgstr ""
 
@@ -1813,19 +1813,23 @@ msgstr ""
 msgid "Where"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:29
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:27
+msgid "Corporations"
+msgstr ""
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:34
 msgid "Clones"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:55
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:60
 msgid "Industry"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:81
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:86
 msgid "Standings"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:147
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:152
 msgid "Wallet"
 msgstr ""
 
