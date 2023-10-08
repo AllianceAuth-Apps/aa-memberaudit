@@ -32,6 +32,7 @@ from memberaudit.models import (
     CharacterPlanet,
     CharacterRole,
     CharacterStanding,
+    CharacterTitle,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
@@ -343,6 +344,19 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     }
     params.update(kwargs)
     return CharacterRole.objects.create(**params)
+
+
+def create_character_title(character: Character, **kwargs) -> CharacterRole:
+    title_id = (
+        next_number("title_id") if "title_id" not in kwargs else kwargs["title_id"]
+    )
+    params = {
+        "character": character,
+        "name": f"Dummy title #{title_id}",
+        "title_id": title_id,
+    }
+    params.update(kwargs)
+    return CharacterTitle.objects.create(**params)
 
 
 def create_skill_set(**kwargs) -> SkillSet:

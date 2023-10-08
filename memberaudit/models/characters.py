@@ -72,6 +72,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         SKILL_QUEUE = "skill_queue", _("skill queue")
         SKILL_SETS = "skill_sets", _("skill sets")
         STANDINGS = "standings", _("standings")
+        TITLES = "titles", _("titles")
         WALLET_BALLANCE = "wallet_balance", _("wallet balance")
         WALLET_JOURNAL = "wallet_journal", _("wallet journal")
         WALLET_TRANSACTIONS = "wallet_transactions", _("wallet transactions")
@@ -113,12 +114,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.CHARACTER_DETAILS: 2,
         UpdateSection.CONTACTS: 2,
         UpdateSection.CONTRACTS: 2,
-        UpdateSection.CORPORATION_HISTORY: 2,
+        UpdateSection.CORPORATION_HISTORY: 3,
         UpdateSection.FW_STATS: 3,
         UpdateSection.IMPLANTS: 2,
         UpdateSection.JUMP_CLONES: 2,
         UpdateSection.LOCATION: 1,
-        UpdateSection.LOYALTY: 2,
+        UpdateSection.LOYALTY: 3,
         UpdateSection.MAILS: 2,
         UpdateSection.MINING_LEDGER: 2,
         UpdateSection.ONLINE_STATUS: 1,
@@ -128,7 +129,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.SKILLS: 2,
         UpdateSection.SKILL_SETS: 2,
         UpdateSection.SKILL_QUEUE: 1,
-        UpdateSection.STANDINGS: 21,
+        UpdateSection.STANDINGS: 2,
+        UpdateSection.TITLES: 3,
         UpdateSection.WALLET_BALLANCE: 2,
         UpdateSection.WALLET_JOURNAL: 2,
         UpdateSection.WALLET_TRANSACTIONS: 2,
@@ -707,6 +709,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def update_roles(self, force_update: bool = False):
         """Update the character's corporation roles from ESI."""
         self.roles.update_or_create_esi(self, force_update)
+
+    def update_titles(self, force_update: bool = False):
+        """Update the character's corporation titles from ESI."""
+        self.titles.update_or_create_esi(self, force_update)
 
     def update_ship(self, force_update: bool = False):
         """Update the character's current ship from ESI."""
