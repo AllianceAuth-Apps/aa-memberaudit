@@ -3,296 +3,296 @@
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
 #
+# Translators:
+# Kristof Swensen, 2023
+#
 #, fuzzy
 msgid ""
 msgstr ""
 "Project-Id-Version: PACKAGE VERSION\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2023-09-28 14:19+0200\n"
+"POT-Creation-Date: 2023-10-08 13:14+0200\n"
 "PO-Revision-Date: 2020-12-07 21:40+0000\n"
-"Language-Team: Ukrainian (https://app.transifex.com/kalkoken-apps/"
-"teams/107978/uk/)\n"
-"Language: uk\n"
+"Last-Translator: Kristof Swensen, 2023\n"
+"Language-Team: Ukrainian (https://app.transifex.com/kalkoken-apps/teams/107978/uk/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != "
-"11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % "
-"100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || "
-"(n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=4; plural=(n % 1 == 0 && n % 10 == 1 && n % 100 != 11 ? 0 : n % 1 == 0 && n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 1 : n % 1 == 0 && (n % 10 ==0 || (n % 10 >=5 && n % 10 <=9) || (n % 100 >=11 && n % 100 <=14 )) ? 2: 3);\n"
 
 #: app_settings.py:10
 msgid "Member Audit"
-msgstr ""
+msgstr "Аудит посіпаки"
 
 #: core/standings.py:10
 msgid "excellent standing"
-msgstr ""
+msgstr "відмінний статус"
 
 #: core/standings.py:11
 msgid "good standing"
-msgstr ""
+msgstr "гарний статус"
 
 #: core/standings.py:12
 msgid "neutral standing"
-msgstr ""
+msgstr "нейтральний статус"
 
 #: core/standings.py:13
 msgid "bad standing"
-msgstr ""
+msgstr "поганий статус"
 
 #: core/standings.py:14
 msgid "terrible standing"
-msgstr ""
+msgstr "жахливий статус"
+
+#: models/character_sections_1.py:182
+msgid "alliance"
+msgstr "альянс"
 
 #: models/character_sections_1.py:183
-msgid "alliance"
-msgstr ""
+msgid "corporation"
+msgstr "корпорація"
 
 #: models/character_sections_1.py:184
-msgid "corporation"
-msgstr ""
+msgid "private"
+msgstr "приватний"
 
 #: models/character_sections_1.py:185
-msgid "private"
-msgstr ""
-
-#: models/character_sections_1.py:186
 msgid "public"
-msgstr ""
+msgstr "публічний"
+
+#: models/character_sections_1.py:205
+msgid "canceled"
+msgstr "скасовано"
 
 #: models/character_sections_1.py:206
-msgid "canceled"
-msgstr ""
+msgid "deleted"
+msgstr "видалено"
 
 #: models/character_sections_1.py:207
-msgid "deleted"
-msgstr ""
-
-#: models/character_sections_1.py:208
 #: templates/memberaudit/partials/character_viewer/tabs/update_status.html:14
 msgid "failed"
-msgstr ""
+msgstr "не вдалося"
+
+#: models/character_sections_1.py:208
+msgid "finished"
+msgstr "завершено"
 
 #: models/character_sections_1.py:209
-msgid "finished"
-msgstr ""
+msgid "finished contractor"
+msgstr "завершено (виконавець)"
 
 #: models/character_sections_1.py:210
-msgid "finished contractor"
-msgstr ""
-
-#: models/character_sections_1.py:211
 msgid "finished issuer"
-msgstr ""
+msgstr "завершено (замовник)"
 
-#: models/character_sections_1.py:212 models/characters.py:127
+#: models/character_sections_1.py:211 models/characters.py:146
 msgid "in progress"
-msgstr ""
+msgstr "у процесі"
+
+#: models/character_sections_1.py:212
+msgid "outstanding"
+msgstr "очікує"
 
 #: models/character_sections_1.py:213
-msgid "outstanding"
-msgstr ""
+msgid "rejected"
+msgstr "відхилено"
 
 #: models/character_sections_1.py:214
-msgid "rejected"
-msgstr ""
-
-#: models/character_sections_1.py:215
 msgid "reversed"
-msgstr ""
+msgstr "скасовано"
+
+#: models/character_sections_1.py:235
+msgid "auction"
+msgstr "аукціон"
 
 #: models/character_sections_1.py:236
-msgid "auction"
-msgstr ""
+msgid "courier"
+msgstr "кур'єр"
 
 #: models/character_sections_1.py:237
-msgid "courier"
-msgstr ""
+msgid "item exchange"
+msgstr "обмін предметами"
 
 #: models/character_sections_1.py:238
-msgid "item exchange"
-msgstr ""
+msgid "loan"
+msgstr "позика"
 
 #: models/character_sections_1.py:239
-msgid "loan"
-msgstr ""
-
-#: models/character_sections_1.py:240
 msgid "unknown"
-msgstr ""
+msgstr "невідомо"
 
-#: models/character_sections_1.py:404
+#: models/character_sections_1.py:401
 msgid "[Multiple Items]"
-msgstr ""
+msgstr "[Декілька предметів]"
 
 #: models/character_sections_2.py:78
 msgid "male"
-msgstr ""
+msgstr "чоловік"
 
 #: models/character_sections_2.py:79
 msgid "female"
-msgstr ""
+msgstr "жінка"
 
 #: models/character_sections_2.py:148
 msgid "Paladin Crusader"
-msgstr ""
+msgstr "Паладін-Хрестоносець"
 
 #: models/character_sections_2.py:149
 msgid "Templar Lieutenant"
-msgstr ""
+msgstr "Лейтенант Тамплієр"
 
 #: models/character_sections_2.py:150
 msgid "Cardinal Lieutenant"
-msgstr ""
+msgstr "Лейтенант Кардинал"
 
 #: models/character_sections_2.py:151
 msgid "Arch Lieutenant"
-msgstr ""
+msgstr "Лейтенант-Архієпископ"
 
 #: models/character_sections_2.py:152
 msgid "Imperial Major"
-msgstr ""
+msgstr "Майор Імперії"
 
 #: models/character_sections_2.py:153
 msgid "Marshal Commander"
-msgstr ""
+msgstr "Командир-Маршал"
 
 #: models/character_sections_2.py:154
 msgid "Imperator Commander"
-msgstr ""
+msgstr "Командир-Імператор"
 
 #: models/character_sections_2.py:155
 msgid "Tribunus Colonel"
-msgstr ""
+msgstr "Трибун-полковник"
 
 #: models/character_sections_2.py:156
 msgid "Legatus Commodore"
-msgstr ""
+msgstr "Легат-комодор"
 
 #: models/character_sections_2.py:157
 msgid "Divine Commodore"
-msgstr ""
+msgstr "Божественний комодор"
 
 #: models/character_sections_2.py:160
 msgid "Protectorate Ensign"
-msgstr ""
+msgstr "Енсин Протекторату"
 
 #: models/character_sections_2.py:161
 msgid "Second Lieutenant"
-msgstr ""
+msgstr "Сублейтенант"
 
 #: models/character_sections_2.py:162
 msgid "First Lieutenant"
-msgstr ""
+msgstr "Лейтенант"
 
 #: models/character_sections_2.py:163
 msgid "Captain"
-msgstr ""
+msgstr "Капітан"
 
 #: models/character_sections_2.py:164
 msgid "Major"
-msgstr ""
+msgstr "Майор"
 
 #: models/character_sections_2.py:165
 msgid "Lieutenant Colonel"
-msgstr ""
+msgstr "Підполковник"
 
 #: models/character_sections_2.py:166
 msgid "Colonel"
-msgstr ""
+msgstr "Полковник"
 
 #: models/character_sections_2.py:167
 msgid "Wing Commander"
-msgstr ""
+msgstr "Командир відділення"
 
 #: models/character_sections_2.py:168
 msgid "Strike Commander"
-msgstr ""
+msgstr "Командир удару"
 
 #: models/character_sections_2.py:169
 msgid "Brigadier General"
-msgstr ""
+msgstr "Бригадний генерал"
 
 #: models/character_sections_2.py:172
 msgid "Federation Minuteman"
-msgstr ""
+msgstr "Мінутмен Федерації"
 
 #: models/character_sections_2.py:173
 msgid "Defender Lieutenant"
-msgstr ""
+msgstr "Лейтенант Захисника"
 
 #: models/character_sections_2.py:174
 msgid "Guardian Lieutenant"
-msgstr ""
+msgstr "Лейтенант Стража"
 
 #: models/character_sections_2.py:175
 msgid "Lieutenant Sentinel"
-msgstr ""
+msgstr "Лейтенант Сентинел"
 
 #: models/character_sections_2.py:176
 msgid "Shield Commander"
-msgstr ""
+msgstr "Командир Щита"
 
 #: models/character_sections_2.py:177
 msgid "Aegis Commander"
-msgstr ""
+msgstr "Командир Егіда"
 
 #: models/character_sections_2.py:178
 msgid "Vice Commander"
-msgstr ""
+msgstr "Віце-командир"
 
 #: models/character_sections_2.py:179
 msgid "Major General"
-msgstr ""
+msgstr "Генерал-майор"
 
 #: models/character_sections_2.py:180
 msgid "Lieutenant General"
-msgstr ""
+msgstr "Генерал-лейтенант"
 
 #: models/character_sections_2.py:181
 msgid "Luminaire General"
-msgstr ""
+msgstr "Генерал Люменера"
 
 #: models/character_sections_2.py:184
 msgid "Nation Warrior"
-msgstr ""
+msgstr "Воїн Нації"
 
 #: models/character_sections_2.py:185
 msgid "Spike Lieutenant"
-msgstr ""
+msgstr "Лейтенант Спайк"
 
 #: models/character_sections_2.py:186
 msgid "Spear Lieutenant"
-msgstr ""
+msgstr "Лейтенант Спір"
 
 #: models/character_sections_2.py:187
 msgid "Venge Captain"
-msgstr ""
+msgstr "Капітан Венж"
 
 #: models/character_sections_2.py:188
 msgid "Lance Commander"
-msgstr ""
+msgstr "Командир Ланцюга"
 
 #: models/character_sections_2.py:189
 msgid "Blade Commander"
-msgstr ""
+msgstr "Командир Клинка"
 
 #: models/character_sections_2.py:190
 msgid "Talon Commander"
-msgstr ""
+msgstr "Командир Талону"
 
 #: models/character_sections_2.py:191
 msgid "Voshud Major"
-msgstr ""
+msgstr "Майор Вошуд"
 
 #: models/character_sections_2.py:192
 msgid "Matar Colonel"
-msgstr ""
+msgstr "Полковник Матар"
 
 #: models/character_sections_2.py:193
 msgid "Valklear General"
-msgstr ""
+msgstr "Генерал Вальклір"
 
 #: models/character_sections_3.py:125
 msgid "base"
@@ -552,362 +552,368 @@ msgstr ""
 
 #: models/character_sections_3.py:540
 msgid "undefined"
-msgstr ""
+msgstr "невизначено"
 
 #: models/character_sections_3.py:541
 msgid "station ID"
-msgstr ""
+msgstr "ID станції"
 
 #: models/character_sections_3.py:542
 msgid "market transaction ID"
-msgstr ""
+msgstr "ID операції на ринку"
 
 #: models/character_sections_3.py:543
 msgid "character ID"
-msgstr ""
+msgstr "ID персонажа"
 
 #: models/character_sections_3.py:544
 msgid "corporation ID"
-msgstr ""
+msgstr "ID корпорації"
 
 #: models/character_sections_3.py:545
 msgid "alliance ID"
-msgstr ""
+msgstr "ID альянсу"
 
 #: models/character_sections_3.py:546
 msgid "eve system"
-msgstr ""
+msgstr "система EVE"
 
 #: models/character_sections_3.py:547
 msgid "industry job ID"
-msgstr ""
+msgstr "ID завдання в галузі"
 
 #: models/character_sections_3.py:548
 msgid "contract ID"
-msgstr ""
+msgstr "ID контракту"
 
 #: models/character_sections_3.py:549
 msgid "planet ID"
-msgstr ""
+msgstr "ID планети"
 
 #: models/character_sections_3.py:550
 msgid "system ID"
-msgstr ""
+msgstr "ID системи"
 
 #: models/character_sections_3.py:551
 msgid "type ID"
-msgstr ""
-
-#: models/characters.py:53
-msgid "assets"
-msgstr ""
+msgstr "ID типу"
 
 #: models/characters.py:54
-msgid "attributes"
-msgstr ""
+msgid "assets"
+msgstr "майно"
 
-#: models/characters.py:56
-msgid "contacts"
-msgstr ""
+#: models/characters.py:55
+msgid "attributes"
+msgstr "атрибути"
 
 #: models/characters.py:57
-msgid "contracts"
-msgstr ""
+msgid "contacts"
+msgstr "контакти"
 
 #: models/characters.py:58
-msgid "corporation history"
-msgstr ""
+msgid "contracts"
+msgstr "контракти"
 
 #: models/characters.py:59
-msgid "faction warfare statistics"
-msgstr ""
+msgid "corporation history"
+msgstr "історія корпорацій"
 
 #: models/characters.py:60
-msgid "implants"
-msgstr ""
+msgid "faction warfare statistics"
+msgstr "статистика фракційних війн"
 
 #: models/characters.py:61
+msgid "implants"
+msgstr "імпланти"
+
+#: models/characters.py:62
 msgid "jump clones"
-msgstr ""
+msgstr "клони"
 
-#: models/characters.py:62 models/general.py:193
+#: models/characters.py:63 models/general.py:193
 msgid "location"
-msgstr ""
-
-#: models/characters.py:63
-msgid "loyalty"
-msgstr ""
+msgstr "розташування"
 
 #: models/characters.py:64
-msgid "mails"
-msgstr ""
+msgid "loyalty"
+msgstr "лояльність (lp)"
 
 #: models/characters.py:65
-msgid "mining ledger"
-msgstr ""
+msgid "mails"
+msgstr "пошта"
 
 #: models/characters.py:66
-msgid "online status"
-msgstr ""
+msgid "mining ledger"
+msgstr "журнал копача"
 
 #: models/characters.py:67
-msgid "planets"
-msgstr ""
+msgid "online status"
+msgstr "статус онлайну"
 
 #: models/characters.py:68
+msgid "planets"
+msgstr "планети"
+
+#: models/characters.py:69
 msgid "roles"
 msgstr ""
 
-#: models/characters.py:69
+#: models/characters.py:70
 msgid "ship"
-msgstr ""
+msgstr "корабель"
 
-#: models/characters.py:70 models/general.py:405 models/general.py:438
+#: models/characters.py:71 models/general.py:405 models/general.py:438
 msgid "skills"
-msgstr ""
+msgstr "навички"
 
-#: models/characters.py:71
+#: models/characters.py:72
 msgid "skill queue"
-msgstr ""
+msgstr "черга навичок"
 
-#: models/characters.py:72 models/general.py:305 models/general.py:368
+#: models/characters.py:73 models/general.py:305 models/general.py:368
 msgid "skill sets"
-msgstr ""
+msgstr "категорії навичок"
 
-#: models/characters.py:73
+#: models/characters.py:74
 msgid "standings"
 msgstr ""
 
-#: models/characters.py:74
-msgid "wallet balance"
-msgstr ""
-
 #: models/characters.py:75
-msgid "wallet journal"
-msgstr ""
+msgid "wallet balance"
+msgstr "баланс рахунку"
 
 #: models/characters.py:76
+msgid "wallet journal"
+msgstr "журнал транзакцій"
+
+#: models/characters.py:77
 msgid "wallet transactions"
-msgstr ""
+msgstr "історія транзакцій"
 
-#: models/characters.py:123
+#: models/characters.py:142
 msgid "disabled"
-msgstr ""
+msgstr "вимкнено"
 
-#: models/characters.py:124
+#: models/characters.py:143
 msgid "error"
-msgstr ""
+msgstr "помилка"
 
-#: models/characters.py:125
+#: models/characters.py:144
 msgid "limited token"
 msgstr ""
 
-#: models/characters.py:126
+#: models/characters.py:145
 msgid "incomplete"
-msgstr ""
+msgstr "незавершений"
 
-#: models/characters.py:128
+#: models/characters.py:147
 msgid "ok"
-msgstr ""
+msgstr "ок"
 
-#: models/characters.py:154
+#: models/characters.py:173
 msgid "Update is disabled"
 msgstr ""
 
-#: models/characters.py:155
+#: models/characters.py:174
 msgid "Errors occurred during update"
 msgstr ""
 
-#: models/characters.py:156
+#: models/characters.py:175
 msgid "Update is in progress"
 msgstr ""
 
-#: models/characters.py:157
+#: models/characters.py:176
 msgid "One or more sections have not yet been updated"
 msgstr ""
 
-#: models/characters.py:159
+#: models/characters.py:178
 msgid "One section can not be updated due to a token error"
 msgstr ""
 
-#: models/characters.py:161
+#: models/characters.py:180
 msgid "Update completed successfully"
 msgstr ""
 
-#: models/characters.py:170
+#: models/characters.py:189
 msgid "eve character"
-msgstr ""
+msgstr "персонаж EVE"
 
-#: models/characters.py:174
+#: models/characters.py:193
 msgid "created at"
-msgstr ""
+msgstr "створений"
 
-#: models/characters.py:178
+#: models/characters.py:197
 msgid "is shared"
-msgstr ""
+msgstr "спільне використання"
 
-#: models/characters.py:183
+#: models/characters.py:202
 msgid "is disabled"
-msgstr ""
+msgstr "вимкнений"
 
-#: models/characters.py:187
+#: models/characters.py:206
 msgid "mailing lists"
-msgstr ""
+msgstr "списки розсилки"
 
-#: models/characters.py:192
+#: models/characters.py:211
 msgid "Time when user was last notified about a token error."
 msgstr ""
 
-#: models/characters.py:199
+#: models/characters.py:218
 msgid "character"
-msgstr ""
+msgstr "персонаж"
 
-#: models/characters.py:200
+#: models/characters.py:219
 msgid "characters"
-msgstr ""
+msgstr "персонажі"
 
-#: models/characters.py:810 models/characters.py:811
+#: models/characters.py:857 models/characters.py:858
 msgid "character update status"
-msgstr ""
+msgstr "стан оновлення персонажа"
 
 #: models/general.py:124
 msgid "compliance group designation"
-msgstr ""
+msgstr "призначення групи відповідності"
 
 #: models/general.py:125
 msgid "compliance group designations"
-msgstr ""
+msgstr "призначення групи відповідності"
 
 #: models/general.py:194
 msgid "locations"
-msgstr ""
+msgstr "розташування"
 
 #: models/general.py:280 models/general.py:328
 msgid "description"
-msgstr ""
+msgstr "опис"
 
 #: models/general.py:284
 msgid "is doctrine"
-msgstr ""
+msgstr "є доктринним"
 
 #: models/general.py:286
-msgid "This enables a skill set group to show up correctly in doctrine reports"
-msgstr ""
+msgid ""
+"This enables a skill set group to show up correctly in doctrine reports"
+msgstr "Вмикає групу навичок для коректного відображення у звітах доктрин"
 
 #: models/general.py:292
 msgid "is active"
-msgstr ""
+msgstr "активний"
 
 #: models/general.py:293
 msgid "Whether this skill set group is in active use"
-msgstr ""
+msgstr "Чи використовується ця група навичок активно"
 
 #: models/general.py:302 models/general.py:345
 msgid "name"
-msgstr ""
+msgstr "ім'я"
 
 #: models/general.py:310
 msgid "skill set group"
-msgstr ""
+msgstr "група навичок"
 
 #: models/general.py:311
 msgid "skill set groups"
-msgstr ""
+msgstr "групи навичок"
 
 #: models/general.py:319
 msgid "Doctrine: "
-msgstr ""
+msgstr "Доктрина:"
 
 #: models/general.py:332
 msgid "is visible"
-msgstr ""
+msgstr "видимий"
 
 #: models/general.py:334
 msgid ""
 "Non visible skill sets are not shown to users on their character sheet and "
 "used for audit purposes only."
 msgstr ""
+"Невидимі групи навичок не відображаться для користувачів у їх листі "
+"персонажа та використовуються лише для аудиту"
 
 #: models/general.py:354
 msgid "ship type"
-msgstr ""
+msgstr "тип корабля"
 
 #: models/general.py:357
 msgid ""
 "Ship type is used for visual presentation only. All skill requirements must "
 "be explicitly defined."
 msgstr ""
+"Тип корабля використовується лише для візуального відображення. Усі вимоги "
+"до навичок мають бути явно зазначені"
 
 #: models/general.py:367
 msgid "skill set"
-msgstr ""
+msgstr "набір навичок"
 
 #: models/general.py:410 models/general.py:437
 msgid "skill"
-msgstr ""
+msgstr "навичка"
 
 #: models/general.py:419
 msgid "required level"
-msgstr ""
+msgstr "обов'язковий рівень"
 
 #: models/general.py:426
 msgid "recommended level"
-msgstr ""
+msgstr "рекомендований рівень"
 
 #: models/general.py:499 templates/memberaudit/reports.html:75
 #: templates/memberaudit/reports.html:140
 #: templates/memberaudit/reports.html:214
 msgid "Alliance"
-msgstr ""
+msgstr "Альянс"
 
 #: models/general.py:500 templates/memberaudit/character_finder.html:18
 #: templates/memberaudit/character_finder.html:19
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:13
 msgid "Character"
-msgstr ""
+msgstr "Персонаж"
 
 #: models/general.py:501
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:6
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:9
-#: templates/memberaudit/reports.html:80 templates/memberaudit/reports.html:145
+#: templates/memberaudit/reports.html:80
+#: templates/memberaudit/reports.html:145
 #: templates/memberaudit/reports.html:219 views/character_viewer_2.py:716
 msgid "Corporation"
-msgstr ""
+msgstr "Корпорація"
 
 #: models/general.py:502
 msgid "Mailing List"
-msgstr ""
+msgstr "Список розсилки"
 
 #: models/general.py:503
 msgid "Unknown"
-msgstr ""
+msgstr "Невідомо"
 
 #: templates/admin/memberaudit/confirm_deleting_objects.html:16
 msgid "Delete"
-msgstr ""
+msgstr "Видалити"
 
 #: templates/admin/memberaudit/confirm_deleting_objects.html:17
 #: templates/admin/memberaudit/skillset/import_skills.html:21
 msgid "Cancel"
-msgstr ""
+msgstr "Скасувати"
 
 #: templates/admin/memberaudit/skillset/change_list.html:9
 msgid "skill set from fitting"
-msgstr ""
+msgstr "набір навичок від зброї"
 
 #: templates/admin/memberaudit/skillset/change_list.html:14
 msgid "skill set from skill plan"
-msgstr ""
+msgstr "набір навичок від плану"
 
 #: templates/admin/memberaudit/skillset/import_skills.html:6
 msgid "Home"
-msgstr ""
+msgstr "Головна"
 
 #: templates/memberaudit/character_finder.html:10
 #: templates/memberaudit/launcher.html:11
 #: templates/memberaudit/partials/character_viewer/sidebar.html:7
 msgid "Characters"
-msgstr ""
+msgstr "Персонажі"
 
 #: templates/memberaudit/character_finder.html:18
 #: templates/memberaudit/character_finder.html:20
@@ -920,7 +926,7 @@ msgstr ""
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/standings.html:11
 msgid "Name"
-msgstr ""
+msgstr "Ім'я"
 
 #: templates/memberaudit/character_finder.html:19
 #: templates/memberaudit/character_finder.html:21
@@ -928,142 +934,143 @@ msgstr ""
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:12
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:10
 msgid "Organization"
-msgstr ""
+msgstr "Організація"
 
 #: templates/memberaudit/character_finder.html:20
 #: templates/memberaudit/character_finder.html:21
 #: templates/memberaudit/character_finder.html:22
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:10
 msgid "Main"
-msgstr ""
+msgstr "Головний"
 
 #: templates/memberaudit/character_finder.html:22
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:11
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:9
-#: templates/memberaudit/reports.html:70 templates/memberaudit/reports.html:209
+#: templates/memberaudit/reports.html:70
+#: templates/memberaudit/reports.html:209
 msgid "State"
-msgstr ""
+msgstr "Статус"
 
 #: templates/memberaudit/character_finder.html:31
 #: templates/memberaudit/launcher.html:129
 #: templates/memberaudit/partials/character_name.html:11
 #: templates/memberaudit/partials/character_viewer/sidebar_character.html:10
 msgid "Main character"
-msgstr ""
+msgstr "Головний персонаж"
 
 #: templates/memberaudit/character_finder.html:32
 #: templates/memberaudit/launcher.html:130
 msgid "Currently shared with others"
-msgstr ""
+msgstr "Зараз спільно використовується іншими"
 
 #: templates/memberaudit/character_finder.html:84
 msgid "Char Alliance"
-msgstr ""
+msgstr "Альянс Персонажа"
 
 #: templates/memberaudit/character_finder.html:88
 msgid "Char Corporation"
-msgstr ""
+msgstr "Корпорація Персонажа"
 
 #: templates/memberaudit/character_finder.html:92
 msgid "Main Alliance"
-msgstr ""
+msgstr "Головний Альянс"
 
 #: templates/memberaudit/character_finder.html:96
 msgid "Main Corporation"
-msgstr ""
+msgstr "Головна Корпорація"
 
 #: templates/memberaudit/character_finder.html:100
 #: templates/memberaudit/reports.html:234
 msgid "Main?"
-msgstr ""
+msgstr "Головний?"
 
 #: templates/memberaudit/character_finder.html:104
 msgid "Main State"
-msgstr ""
+msgstr "Статус Головного"
 
 #: templates/memberaudit/character_finder.html:108
 msgid "Unregistered?"
-msgstr ""
+msgstr "Не зареєстрований?"
 
-#: templates/memberaudit/character_viewer.html:197
-#: templates/memberaudit/character_viewer.html:606
+#: templates/memberaudit/character_viewer.html:196
+#: templates/memberaudit/character_viewer.html:605
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:9
 msgid "Region"
-msgstr ""
+msgstr "Регіон"
 
-#: templates/memberaudit/character_viewer.html:201
-#: templates/memberaudit/character_viewer.html:610
+#: templates/memberaudit/character_viewer.html:200
+#: templates/memberaudit/character_viewer.html:609
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:13
 msgid "Solar System"
-msgstr ""
+msgstr "Сонячна система"
 
-#: templates/memberaudit/character_viewer.html:208
+#: templates/memberaudit/character_viewer.html:207
 msgid "Ship?"
-msgstr ""
+msgstr "Корабель?"
 
-#: templates/memberaudit/character_viewer.html:309
+#: templates/memberaudit/character_viewer.html:308
 msgid "NPC?"
-msgstr ""
+msgstr "NPC?"
 
-#: templates/memberaudit/character_viewer.html:313
+#: templates/memberaudit/character_viewer.html:312
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:14
 msgid "Watched?"
-msgstr ""
+msgstr "В спостереженні?"
 
-#: templates/memberaudit/character_viewer.html:317
+#: templates/memberaudit/character_viewer.html:316
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:15
 msgid "Blocked?"
-msgstr ""
+msgstr "Заблокований?"
 
-#: templates/memberaudit/character_viewer.html:614
+#: templates/memberaudit/character_viewer.html:613
 msgid "Planet Type"
-msgstr ""
+msgstr "Тип планети"
 
-#: templates/memberaudit/character_viewer.html:748
+#: templates/memberaudit/character_viewer.html:747
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:28
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:12
 #: templates/memberaudit/partials/character_viewer/tabs/roles.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/skills.html:9
 msgid "Group"
-msgstr ""
+msgstr "Група"
 
-#: templates/memberaudit/character_viewer.html:752
+#: templates/memberaudit/character_viewer.html:751
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:14
 #: templates/memberaudit/reports.html:224
 msgid "Required Skills?"
-msgstr ""
+msgstr "Необхідні навички?"
 
-#: templates/memberaudit/character_viewer.html:756
+#: templates/memberaudit/character_viewer.html:755
 #: templates/memberaudit/reports.html:229
 msgid "Doctrine?"
-msgstr ""
+msgstr "Доктрина?"
 
-#: templates/memberaudit/character_viewer.html:795
+#: templates/memberaudit/character_viewer.html:794
 msgid "Level"
-msgstr ""
+msgstr "Рівень"
 
-#: templates/memberaudit/character_viewer.html:946
+#: templates/memberaudit/character_viewer.html:945
 msgid "Buy and Sell"
-msgstr ""
+msgstr "Купля та продаж"
 
 #: templates/memberaudit/data_export.html:10
 msgid "Topics"
-msgstr ""
+msgstr "Теми"
 
 #: templates/memberaudit/data_export.html:16
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:37
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:15
 msgid "Description"
-msgstr ""
+msgstr "Опис"
 
 #: templates/memberaudit/data_export.html:17
 msgid "Rows"
-msgstr ""
+msgstr "Рядки"
 
 #: templates/memberaudit/data_export.html:18
 msgid "Export file age"
-msgstr ""
+msgstr "Вік файлу експорту"
 
 #: templates/memberaudit/data_export.html:45
 #, python-format
@@ -1071,10 +1078,12 @@ msgid ""
 "Export files contain the complete data of all %(amount_of_characters)s "
 "characters known to Member Audit."
 msgstr ""
+"Файли експорту містять повні дані всіх %(amount_of_characters)s персонажів, "
+"відомих Member Audit."
 
 #: templates/memberaudit/data_export.html:46
 msgid "They are in CSV format and zipped."
-msgstr ""
+msgstr "Вони в форматі CSV і стиснуті."
 
 #: templates/memberaudit/data_export.html:47
 #, python-format
@@ -1082,45 +1091,47 @@ msgid ""
 "Existing export files are updated after %(minutes_until_next_update)s "
 "minutes."
 msgstr ""
+"Існуючі файли експорту оновлюються після %(minutes_until_next_update)s "
+"хвилин."
 
 #: templates/memberaudit/launcher.html:20
 msgid "Register Character"
-msgstr ""
+msgstr "Зареєструвати персонажа"
 
 #: templates/memberaudit/launcher.html:29
 msgid "Register"
-msgstr ""
+msgstr "Зареєструвати"
 
 #: templates/memberaudit/launcher.html:67
 #: templates/memberaudit/partials/character_viewer/overview.html:47
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:21
 #: templates/memberaudit/partials/solar_system.html:16
 msgid "(no data yet)"
-msgstr ""
+msgstr "(поки що немає даних)"
 
 #: templates/memberaudit/launcher.html:75
 msgid "View this character."
-msgstr ""
+msgstr "Переглянути цього персонажа."
 
 #: templates/memberaudit/launcher.html:82
 msgid "Disable access to this character for recruiters."
-msgstr ""
+msgstr "Вимкнути доступ до цього персонажа для рекрутерів."
 
 #: templates/memberaudit/launcher.html:86
 msgid "Are you sure you want to allow others to see this character?"
-msgstr ""
+msgstr "Ви впевнені, що хочете дозволити іншим бачити цього персонажа?"
 
 #: templates/memberaudit/launcher.html:90
 msgid "Allow others to see this character."
-msgstr ""
+msgstr "Дозволити іншим бачити цього персонажа."
 
 #: templates/memberaudit/launcher.html:96
 msgid "Are you sure you want to remove this character?"
-msgstr ""
+msgstr "Ви впевнені, що хочете видалити цього персонажа?"
 
 #: templates/memberaudit/launcher.html:98
 msgid "Remove this character."
-msgstr ""
+msgstr "Видалити цього персонажа."
 
 #: templates/memberaudit/launcher.html:114
 msgid "Please re-register characters with issues:"
@@ -1138,7 +1149,7 @@ msgstr ""
 #: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:14
 #: templates/memberaudit/modals/character_viewer/contract.html:14
 msgid "Loading..."
-msgstr ""
+msgstr "Завантаження..."
 
 #: templates/memberaudit/modals/character_viewer/asset_container.html:26
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:52
@@ -1148,28 +1159,28 @@ msgstr ""
 #: templates/memberaudit/modals/character_viewer/mail.html:31
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:87
 msgid "Close"
-msgstr ""
+msgstr "Закрити"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:10
 msgid "Asset Container"
-msgstr ""
+msgstr "Контейнер інвентарю"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:27
 #: templates/memberaudit/modals/character_viewer/contract_items.html:7
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:11
 msgid "Qty"
-msgstr ""
+msgstr "Кількість"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:29
 msgid "Volume"
-msgstr ""
+msgstr "Об'єм"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:30
 #: templates/memberaudit/modals/character_viewer/contract_items.html:10
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:14
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:12
 msgid "Price"
-msgstr ""
+msgstr "Ціна"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:31
 #: templates/memberaudit/modals/character_viewer/contract_items.html:11
@@ -1178,124 +1189,124 @@ msgstr ""
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:60
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:13
 msgid "Total"
-msgstr ""
+msgstr "Загальна сума"
 
 #: templates/memberaudit/modals/character_viewer/asset_container_content.html:42
 #: templates/memberaudit/modals/character_viewer/contract_items.html:23
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:28
 msgid "Grand Total:"
-msgstr ""
+msgstr "Загальна сума:"
 
 #: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:23
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:46
 msgid "Required"
-msgstr ""
+msgstr "Обов'язкові"
 
 #: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:24
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:47
 msgid "Recommended"
-msgstr ""
+msgstr "Рекомендовані"
 
 #: templates/memberaudit/modals/character_viewer/character_skill_set_details.html:25
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:48
 msgid "Current"
-msgstr ""
+msgstr "Поточні"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:16
 msgid "Info by Issuer:"
-msgstr ""
+msgstr "Інформація від видачі:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:17
 msgid "Type:"
-msgstr ""
+msgstr "Тип:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:18
 msgid "Issued By:"
-msgstr ""
+msgstr "Видано ким:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:19
 msgid "Availability:"
-msgstr ""
+msgstr "Доступність:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:23
 msgid "Region:"
-msgstr ""
+msgstr "Регіон:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:28
 msgid "Status:"
-msgstr ""
+msgstr "Статус:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:29
 #: templates/memberaudit/partials/character_viewer/overview.html:142
 msgid "Location:"
-msgstr ""
+msgstr "Місце розташування:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:35
 msgid "Date Issued:"
-msgstr ""
+msgstr "Дата видачі:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:36
 msgid "Expiration Date:"
-msgstr ""
+msgstr "Дата закінчення:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:39
 msgid "Complete In:"
-msgstr ""
+msgstr "Завершити через:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:40
 msgid "Volume:"
-msgstr ""
+msgstr "Об'єм:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:40
 msgid "m3"
-msgstr ""
+msgstr "м³"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:41
 msgid "Reward:"
-msgstr ""
+msgstr "Винагорода:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:41
 #: templates/memberaudit/modals/character_viewer/contract_content.html:53
 #: templates/memberaudit/modals/character_viewer/contract_content.html:65
 msgid "ISK"
-msgstr ""
+msgstr "ISK"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:42
 msgid "Collateral:"
-msgstr ""
+msgstr "Забезпечення:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:43
 msgid "Destination:"
-msgstr ""
+msgstr "Призначення:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:51
 msgid "Buyer will pay"
-msgstr ""
+msgstr "Покупець заплатить"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:63
 #: templates/memberaudit/modals/character_viewer/contract_content.html:79
 msgid "Buyer will get"
-msgstr ""
+msgstr "Покупець отримає"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:72
 msgid "Starting Bid:"
-msgstr ""
+msgstr "Початкова ставка:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:73
 msgid "Buyout Price:"
-msgstr ""
+msgstr "Викупна ціна:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:74
 msgid "Current Bid:"
-msgstr ""
+msgstr "Поточна ставка:"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:74
 msgid "so far"
-msgstr ""
+msgstr "до цього часу"
 
 #: templates/memberaudit/modals/character_viewer/contract_content.html:75
 msgid "Time Left:"
-msgstr ""
+msgstr "Час що залишився:"
 
 #: templates/memberaudit/modals/character_viewer/contract_items.html:8
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:12
@@ -1305,158 +1316,158 @@ msgstr ""
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:10
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:11
 msgid "Type"
-msgstr ""
+msgstr "Тип"
 
 #: templates/memberaudit/modals/character_viewer/contract_items.html:9
 msgid "Category"
-msgstr ""
+msgstr "Категорія"
 
 #: templates/memberaudit/modals/character_viewer/mail.html:15
 msgid "Mail"
-msgstr ""
+msgstr "Пошта"
 
 #: templates/memberaudit/modals/character_viewer/mail_content.html:5
 msgid "From:"
-msgstr ""
+msgstr "Від:"
 
 #: templates/memberaudit/modals/character_viewer/mail_content.html:6
 msgid "To:"
-msgstr ""
+msgstr "Кому:"
 
 #: templates/memberaudit/modals/character_viewer/mail_content.html:7
 msgid "Sent:"
-msgstr ""
+msgstr "Відправлено:"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:25
 msgid "You meet all the required skills."
-msgstr ""
+msgstr "Ви відповідаєте всім необхідним навичкам."
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:27
 msgid "You do not meet the skill requirements"
-msgstr ""
+msgstr "Ви не відповідаєте вимогам до навичок"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:69
 msgid "Copy missing skills to clipboard"
-msgstr ""
+msgstr "Скопіювати відсутні навички в буфер обміну"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:73
 msgid "Legend:"
-msgstr ""
+msgstr "Легенда:"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:75
 msgid "Below minimum requirements"
-msgstr ""
+msgstr "Нижче мінімальних вимог"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:78
 msgid "Above required, but below recommended level"
-msgstr ""
+msgstr "Вище вимог, але нижче рекомендованого рівня"
 
 #: templates/memberaudit/modals/character_viewer/skill_set_content.html:81
 msgid "At/Above recommended level"
-msgstr ""
+msgstr "На/вище рекомендованого рівня"
 
 #: templates/memberaudit/partials/character_name.html:14
 msgid "Main Currently shared with recruiters"
-msgstr ""
+msgstr "Головний зараз спільно використовується з рекрутерами"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:8
 msgid "Overview"
-msgstr ""
+msgstr "Огляд"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:53
 msgid "Character:"
-msgstr ""
+msgstr "Персонаж:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:58
 msgid "Corporation:"
-msgstr ""
+msgstr "Корпорація:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:65
 msgid "Alliance:"
-msgstr ""
+msgstr "Альянс:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:76
 msgid "Faction:"
-msgstr ""
+msgstr "Фракція:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:83
 msgid "Race:"
-msgstr ""
+msgstr "Раса:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:90
 msgid "Main:"
-msgstr ""
+msgstr "Головний персонаж:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:97
 msgid "Born:"
-msgstr ""
+msgstr "Дата народження:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:104
 msgid "Skillpoints:"
-msgstr ""
+msgstr "Навички:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:114
 msgid "Sec. Status:"
-msgstr ""
+msgstr "Статус безпеки:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:124
 msgid "Assets:"
-msgstr ""
+msgstr "Активи:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:131
 msgid "Wallet:"
-msgstr ""
+msgstr "Гаманець:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:149
 msgid "Ship:"
-msgstr ""
+msgstr "Корабель:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:156
 msgid "System:"
-msgstr ""
+msgstr "Система:"
 
 #: templates/memberaudit/partials/character_viewer/overview.html:159
 msgid "Last Login:"
-msgstr ""
+msgstr "Останній вхід:"
 
 #: templates/memberaudit/partials/character_viewer/sidebar.html:23
 msgid "Unregistered character"
-msgstr ""
+msgstr "Незареєстрований персонаж"
 
 #: templates/memberaudit/partials/character_viewer/sidebar.html:29
 msgid "(orphan)"
-msgstr ""
+msgstr "(сирота)"
 
 #: templates/memberaudit/partials/character_viewer/sidebar_character.html:14
 msgid "Currently shared with recruiters"
-msgstr ""
+msgstr "В даний момент доступно рекрутерам"
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:4
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:9
 msgid "Assets"
-msgstr ""
+msgstr "Активи"
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:11
 msgid "Location"
-msgstr ""
+msgstr "Місцезнаходження"
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:13
 msgid "Volume (m3)"
-msgstr ""
+msgstr "Об'єм (м³)"
 
 #: templates/memberaudit/partials/character_viewer/tabs/assets.html:36
 msgid "Prices are average market prices."
-msgstr ""
+msgstr "Ціни є середніми ринковими цінами."
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:114
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:119
 msgid "Attributes"
-msgstr ""
+msgstr "Атрибути"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:10
 msgid "Perception"
-msgstr ""
+msgstr "Сприйняття"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:13
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:22
@@ -1464,210 +1475,210 @@ msgstr ""
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:40
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:49
 msgid "points"
-msgstr ""
+msgstr "бали"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:19
 msgid "Memory"
-msgstr ""
+msgstr "Пам'ять"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:28
 msgid "Willpower"
-msgstr ""
+msgstr "Сила волі"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:37
 msgid "Intelligence"
-msgstr ""
+msgstr "Інтелект"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:46
 msgid "Charisma"
-msgstr ""
+msgstr "Харизма"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:58
 msgid "Neural Remap Available:"
-msgstr ""
+msgstr "Доступна переналаштування нейронів:"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_attributes_content.html:61
 msgid "Bonus Remaps Available:"
-msgstr ""
+msgstr "Доступні бонусні переналаштування:"
 
 #: templates/memberaudit/partials/character_viewer/tabs/character_bio.html:4
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:15
 msgid "Bio"
-msgstr ""
+msgstr "Біо"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:88
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:93
 msgid "Contacts"
-msgstr ""
+msgstr "Контакти"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:10
 #: templates/memberaudit/partials/character_viewer/tabs/standings.html:10
 msgid "Standing"
-msgstr ""
+msgstr "Репутація"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contacts.html:13
 msgid "Standing Value"
-msgstr ""
+msgstr "Значення репутації"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:4
 #: templates/memberaudit/partials/character_viewer/tabs_navigation.html:21
 msgid "Contracts"
-msgstr ""
+msgstr "Контракти"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:9
 msgid "Contract"
-msgstr ""
+msgstr "Контракт"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:54
 msgid "From"
-msgstr ""
+msgstr "Від"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:12
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:55
 msgid "To"
-msgstr ""
+msgstr "Кому"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:13
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:20
 #: templates/memberaudit/partials/character_viewer/tabs/update_status.html:6
 msgid "Status"
-msgstr ""
+msgstr "Статус"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:14
 msgid "Date Issued"
-msgstr ""
+msgstr "Дата видачі"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:15
 msgid "Time Left"
-msgstr ""
+msgstr "Час до завершення"
 
 #: templates/memberaudit/partials/character_viewer/tabs/contracts.html:16
 msgid "Info"
-msgstr ""
+msgstr "Інформація"
 
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history.html:6
 msgid "History"
-msgstr ""
+msgstr "Історія"
 
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:9
 msgid "(Closed)"
-msgstr ""
+msgstr "(Закрито)"
 
 #: templates/memberaudit/partials/character_viewer/tabs/corporation_history_2.html:15
 msgid "Today"
-msgstr ""
+msgstr "Сьогодні"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:49
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:54
 msgid "Faction Warfare"
-msgstr ""
+msgstr "Фракційна війна"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:22
 #: views/character_viewer_2.py:717
 msgid "Faction"
-msgstr ""
+msgstr "Фракція"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:29
 msgid "Not enlisted"
-msgstr ""
+msgstr "Не зараховано"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:32
 msgid "Enlisted on"
-msgstr ""
+msgstr "Зараховано"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:34
 msgid "Current rank"
-msgstr ""
+msgstr "Поточний ранг"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:36
 msgid "Highest rank"
-msgstr ""
+msgstr "Найвищий ранг"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:42
 msgid "Kills"
-msgstr ""
+msgstr "Вбивства"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:44
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:56
 msgid "Yesterday"
-msgstr ""
+msgstr "Вчора"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:46
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:58
 msgid "Last week"
-msgstr ""
+msgstr "Минулого тижня"
 
 #: templates/memberaudit/partials/character_viewer/tabs/fw_stats_content.html:54
 msgid "Victory Points"
-msgstr ""
+msgstr "Бали перемоги"
 
 #: templates/memberaudit/partials/character_viewer/tabs/implants.html:4
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:12
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:36
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:41
 msgid "Implants"
-msgstr ""
+msgstr "Імпланти"
 
 #: templates/memberaudit/partials/character_viewer/tabs/implants.html:13
 msgid "No implants"
-msgstr ""
+msgstr "Імплантів немає"
 
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:41
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:46
 msgid "Jump Clones"
-msgstr ""
+msgstr "Клони переміщення"
 
 #: templates/memberaudit/partials/character_viewer/tabs/jump_clones.html:10
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:10
 msgid "System"
-msgstr ""
+msgstr "Система"
 
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:75
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:80
 msgid "Loyalty"
-msgstr ""
+msgstr "Лояльність"
 
 #: templates/memberaudit/partials/character_viewer/tabs/loyalty.html:10
 msgid "Loyalty Points"
-msgstr ""
+msgstr "Бали лояльності"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:6
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:101
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:106
 msgid "Mails"
-msgstr ""
+msgstr "Пошта"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:53
 msgid "Sent"
-msgstr ""
+msgstr "Відправлено"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mails.html:56
 msgid "Subject"
-msgstr ""
+msgstr "Тема"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:62
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:67
 msgid "Mining"
-msgstr ""
+msgstr "Видобуток"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:9
 msgid "Date"
-msgstr ""
+msgstr "Дата"
 
 #: templates/memberaudit/partials/character_viewer/tabs/mining_ledger.html:11
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:10
 msgid "Quantity"
-msgstr ""
+msgstr "Кількість"
 
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:67
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:72
 msgid "Planets"
-msgstr ""
+msgstr "Планети"
 
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:11
 msgid "Planet"
-msgstr ""
+msgstr "Планета"
 
 #: templates/memberaudit/partials/character_viewer/tabs/planets.html:13
 msgid "Installations"
@@ -1682,7 +1693,7 @@ msgid "Last Update"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/roles.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:140
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:145
 msgid "Roles"
 msgstr ""
 
@@ -1695,58 +1706,58 @@ msgid "Granted?"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:119
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:124
 msgid "Skill Queue"
-msgstr ""
+msgstr "Черга навчання"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:9
 #: templates/memberaudit/partials/character_viewer/tabs/skills.html:10
 msgid "Skill"
-msgstr ""
+msgstr "Навичка"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:10
 msgid "Finished"
-msgstr ""
+msgstr "Завершено"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_queue.html:11
 msgid "Position"
-msgstr ""
+msgstr "Позиція"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:125
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:130
 #: templates/memberaudit/partials/reports/tabs_navigation.html:19
 msgid "Skill Sets"
-msgstr ""
+msgstr "Групи навичок"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:10
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:9
 msgid "Skill Set Group"
-msgstr ""
+msgstr "Група груп навичок"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:11
 msgid "Skill Set"
-msgstr ""
+msgstr "Група навичок"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:12
 msgid "Has all required?"
-msgstr ""
+msgstr "Має всі необхідні?"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:13
 msgid "Missing Required Skills"
-msgstr ""
+msgstr "Відсутні необхідні навички"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skill_sets.html:14
 msgid "Missing Recommended Skills"
-msgstr ""
+msgstr "Відсутні рекомендовані навички"
 
 #: templates/memberaudit/partials/character_viewer/tabs/skills.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:107
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:131
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:112
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:136
 msgid "Skills"
-msgstr ""
+msgstr "Навички"
 
 #: templates/memberaudit/partials/character_viewer/tabs/standings.html:5
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:93
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:98
 msgid "NPC Standings"
 msgstr ""
 
@@ -1779,180 +1790,185 @@ msgid "Error"
 msgstr ""
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:154
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:159
 msgid "Transactions"
-msgstr ""
+msgstr "Транзакції"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:11
 msgid "First party"
-msgstr ""
+msgstr "Перша сторона"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:12
 msgid "Second party"
-msgstr ""
+msgstr "Друга сторона"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:13
 msgid "Amount"
-msgstr ""
+msgstr "Сума"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_journal.html:14
 msgid "Balance"
-msgstr ""
+msgstr "Баланс"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:4
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:159
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:164
 msgid "Market Transactions"
-msgstr ""
+msgstr "Транзакції на ринку"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:12
 msgid "Unit Price"
-msgstr ""
+msgstr "Ціна за одиницю"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:14
 msgid "Client"
-msgstr ""
+msgstr "Клієнт"
 
 #: templates/memberaudit/partials/character_viewer/tabs/wallet_transactions.html:15
 msgid "Where"
+msgstr "Де"
+
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:27
+msgid "Corporations"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:29
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:34
 msgid "Clones"
-msgstr ""
+msgstr "Клони"
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:55
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:60
 msgid "Industry"
-msgstr ""
+msgstr "Промисловість"
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:81
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:86
 msgid "Standings"
 msgstr ""
 
-#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:147
+#: templates/memberaudit/partials/character_viewer/tabs_navigation.html:152
 msgid "Wallet"
-msgstr ""
+msgstr "Гаманець"
 
 #: templates/memberaudit/partials/menu.html:11
 msgid "Toggle navigation"
-msgstr ""
+msgstr "Перемкнути навігацію"
 
 #: templates/memberaudit/partials/menu.html:26
 msgid "My Characters"
-msgstr ""
+msgstr "Мої персонажі"
 
 #: templates/memberaudit/partials/menu.html:35 views/character_viewer_1.py:170
 msgid "Character Sheet"
-msgstr ""
+msgstr "Аркуш персонажа"
 
 #: templates/memberaudit/partials/menu.html:42 views/character_finder.py:38
 msgid "Character Finder"
-msgstr ""
+msgstr "Пошук персонажів"
 
 #: templates/memberaudit/partials/menu.html:50 views/reports.py:44
 msgid "Reports"
-msgstr ""
+msgstr "Звіти"
 
 #: templates/memberaudit/partials/menu.html:58 views/data_export.py:28
 msgid "Data Export"
-msgstr ""
+msgstr "Експорт даних"
 
 #: templates/memberaudit/partials/reports/tabs/_compliance_color_code.html:3
 msgid "Color code:"
-msgstr ""
+msgstr "Код кольору:"
 
 #: templates/memberaudit/partials/reports/tabs/_compliance_color_code.html:4
 msgid "fully compliant"
-msgstr ""
+msgstr "повністю відповідає"
 
 #: templates/memberaudit/partials/reports/tabs/_compliance_color_code.html:5
 msgid "partly compliant"
-msgstr ""
+msgstr "частково відповідає"
 
 #: templates/memberaudit/partials/reports/tabs/_compliance_color_code.html:6
 msgid "not compliant"
-msgstr ""
+msgstr "не відповідає"
 
 #: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:9
 msgid "Total Users"
-msgstr ""
+msgstr "Загальна кількість користувачів"
 
 #: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:10
 msgid "Total Characters"
-msgstr ""
+msgstr "Загальна кількість персонажів"
 
 #: templates/memberaudit/partials/reports/tabs/corporation_compliance.html:11
 #, python-format
 msgid "Compliance %%"
-msgstr ""
+msgstr "Відповідність %%"
 
 #: templates/memberaudit/partials/reports/tabs/skill_sets.html:15
 msgid "Is Main?"
-msgstr ""
+msgstr "Основний?"
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:8
 msgid "User"
-msgstr ""
+msgstr "Користувач"
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:11
 #: templates/memberaudit/reports.html:85
 msgid "Registered?"
-msgstr ""
+msgstr "Зареєстрований?"
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:12
-#: templates/memberaudit/reports.html:90 templates/memberaudit/reports.html:150
+#: templates/memberaudit/reports.html:90
+#: templates/memberaudit/reports.html:150
 msgid "Compliant?"
-msgstr ""
+msgstr "Відповідає?"
 
 #: templates/memberaudit/partials/reports/tabs/user_compliance.html:13
 msgid "Total Chars"
-msgstr ""
+msgstr "Загальна кількість персонажів"
 
 #: templates/memberaudit/partials/reports/tabs_navigation.html:7
 msgid "User Compliance"
-msgstr ""
+msgstr "Відповідність користувача"
 
 #: templates/memberaudit/partials/reports/tabs_navigation.html:13
 msgid "Corporation Compliance"
-msgstr ""
+msgstr "Відповідність корпорації"
 
 #: templates/memberaudit/reports.html:204
 msgid "Groups"
-msgstr ""
+msgstr "Групи"
 
 #: views/_common.py:14
 msgid "[Ungrouped]"
-msgstr ""
+msgstr "[Без групи]"
 
 #: views/admin.py:39 views/admin.py:74
 #, python-format
 msgid "Skill Set %s has been created"
-msgstr ""
+msgstr "Набір навичок %s створено"
 
 #: views/admin.py:41 views/admin.py:76
 #, python-format
 msgid "Skill Set %s has been updated"
-msgstr ""
+msgstr "Набір навичок %s оновлено"
 
 #: views/admin.py:52
 msgid "Create skill set from fitting"
-msgstr ""
+msgstr "Створити набір навичок зі зброєвим обладнанням"
 
 #: views/admin.py:85
 msgid "Create skill set from skill plan"
-msgstr ""
+msgstr "Створити набір навичок з плану навичок"
 
 #: views/character_viewer_1.py:175
 msgid "You do not own this character"
-msgstr ""
+msgstr "Ви не володієте цим персонажем"
 
 #: views/character_viewer_2.py:212
 #, python-format
 msgid "Mail with pk %s not found for character %s"
-msgstr ""
+msgstr "Поштове повідомлення з pk %s не знайдено для персонажа %s"
 
 #: views/character_viewer_2.py:384
 msgid "(training not active)"
-msgstr ""
+msgstr "(навчання не активне)"
 
 #: views/character_viewer_2.py:715
 msgid "Agent"
@@ -1960,11 +1976,11 @@ msgstr ""
 
 #: views/character_viewer_2.py:785
 msgid "Buy"
-msgstr ""
+msgstr "Купити"
 
 #: views/character_viewer_2.py:785
 msgid "Sell"
-msgstr ""
+msgstr "Продати"
 
 #: views/data_export.py:59
 #, python-format
@@ -1972,3 +1988,5 @@ msgid ""
 "Data export for topic %s has been started. This can take a couple of "
 "minutes. You will get a notification once it is completed."
 msgstr ""
+"Розпочато експорт даних для теми %s. Це може зайняти кілька хвилин. Ви "
+"отримаєте повідомлення, якщо він буде завершено."
