@@ -21,13 +21,14 @@ from memberaudit.managers.character_sections_3 import (
     CharacterSkillqueueEntryManager,
     CharacterSkillSetCheckManager,
     CharacterStandingManager,
+    CharacterTitleManager,
     CharacterWalletBalanceManager,
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
 )
 
 from .characters import Character
-from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS
+from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -284,10 +285,7 @@ class CharacterRole(models.Model):
     ]
 
     character = models.ForeignKey(
-        Character,
-        on_delete=models.CASCADE,
-        related_name="roles",
-        related_query_name="role",
+        Character, on_delete=models.CASCADE, related_name="roles"
     )
 
     location = models.CharField(
@@ -499,6 +497,31 @@ class CharacterStanding(models.Model):
             unadjusted_standing, skill_level, skill_modifier, max_possible_standing
         )
         return effective_standing
+
+
+class CharacterTitle(models.Model):
+    """Title of a character."""
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="titles"
+    )
+    title_id = models.PositiveIntegerField()
+
+    name = models.CharField(max_length=NAMES_MAX_LENGTH)
+
+    objects = CharacterTitleManager()
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character", "title_id"],
+                name="functional_pk_charactertitle",
+            )
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.character}-{self.name}"
 
 
 class CharacterWalletBalance(models.Model):

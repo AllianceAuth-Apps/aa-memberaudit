@@ -406,6 +406,14 @@
                     "Fitting_Manager"
                 ]
             }
+        },
+        "get_characters_character_id_titles": {
+            "1001": [
+                {
+                    "name": "Awesome Title",
+                    "title_id": 1
+                }
+            ]
         }
     },
     "Contacts": {

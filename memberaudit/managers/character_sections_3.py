@@ -1,7 +1,7 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
-from typing import Set
+from typing import List, Set
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -268,6 +268,51 @@ class CharacterPlanetManager(models.Manager):
             self.bulk_create(planets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
         else:
             logger.info("%s: No planets", character)
+
+
+class CharacterTitleManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create titles for a character from ESI."""
+
+        character.update_section_if_changed(
+            section=character.UpdateSection.TITLES,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_titles.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+        """Update the character's roles"""
+
+        logger.info("%s: Fetching titles from ESI", character)
+        titles_data = esi.client.Character.get_characters_character_id_titles(
+            character_id=character.eve_character.character_id,
+            token=token.valid_access_token(),
+        ).results()
+        return titles_data
+
+    # TODO: Refactor to only write changes
+    def _update_or_create_objs(self, character, titles_data: List[dict]):
+        if titles_data:
+            objs = [
+                self.model(
+                    character=character,
+                    title_id=entry["title_id"],
+                    name=entry["name"][:100],
+                )
+                for entry in titles_data
+            ]
+        else:
+            objs = []
+
+        with transaction.atomic():
+            self.filter(character=character).delete()
+            if objs:
+                logger.info("%s: Writing %s titles", character, len(objs))
+                self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+            else:
+                logger.info("%s: No titles", character)
 
 
 class CharacterShipManager(models.Manager):

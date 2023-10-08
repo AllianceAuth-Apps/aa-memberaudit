@@ -35,6 +35,7 @@ from ..testdata.factories import (
     create_character_planet,
     create_character_role,
     create_character_standing,
+    create_character_title,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -495,6 +496,30 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         entry = self.character_1001.skillqueue.get(queue_position=0)
         self.assertEqual(entry.finished_level, 3)
 
+    def test_should_remove_existing_entries(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Skills",
+                "get_characters_character_id_skillqueue",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        self.character_1001.skillqueue.create(
+            queue_position=0,
+            eve_type=EveType.objects.get(id=24311),
+            finish_date=now() + dt.timedelta(days=1),
+            finished_level=4,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        # when
+        self.character_1001.update_skill_queue()
+        # then
+        self.assertEqual(self.character_1001.skillqueue.count(), 0)
+
 
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
@@ -541,6 +566,99 @@ class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         CharacterStanding.objects.update_or_create_esi(self.character_1002)
         # then
         self.assertEqual(self.character_1002.standings.count(), 0)
+
+
+@patch(MANAGERS_PATH + ".esi")
+class TestCharacterTitleManager(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
+    def test_should_add_new_role(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_titles",
+                "character_id",
+                needs_token=True,
+                data={"1001": [{"name": "Awesome Title", "title_id": 1}]},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        self.character_1001.update_titles()
+        # then
+        self.assertEqual(self.character_1001.titles.count(), 1)
+        obj = self.character_1001.titles.first()
+        self.assertEqual(obj.name, "Awesome Title")
+        self.assertEqual(obj.title_id, 1)
+
+    def test_should_update_existing_entries(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_titles",
+                "character_id",
+                needs_token=True,
+                data={"1001": [{"name": "Awesome Title", "title_id": 1}]},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        create_character_title(
+            character=self.character_1001, name="Old title", title_id=1
+        )
+        # when
+        self.character_1001.update_titles()
+        # then
+        obj = self.character_1001.titles.get(title_id=1)
+        self.assertEqual(obj.name, "Awesome Title")
+
+    def test_should_replace_existing_entries(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_titles",
+                "character_id",
+                needs_token=True,
+                data={"1001": [{"name": "Awesome Title", "title_id": 2}]},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        create_character_title(
+            character=self.character_1001, name="Old title", title_id=1
+        )
+        # when
+        self.character_1001.update_titles()
+        # then
+        self.assertEqual(self.character_1001.titles.count(), 1)
+        obj = self.character_1001.titles.get(title_id=2)
+        self.assertEqual(obj.name, "Awesome Title")
+
+    def test_should_remove_existing_roles(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_titles",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        create_character_title(
+            character=self.character_1001, name="Old title", title_id=1
+        )
+        # when
+        self.character_1001.update_titles()
+        # then
+        self.assertEqual(self.character_1001.titles.count(), 0)
 
 
 @patch(MANAGERS_PATH + ".esi")

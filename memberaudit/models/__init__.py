@@ -33,6 +33,7 @@ from .character_sections_3 import (
     CharacterSkillqueueEntry,
     CharacterSkillSetCheck,
     CharacterStanding,
+    CharacterTitle,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,

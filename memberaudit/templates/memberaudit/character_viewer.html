@@ -37,21 +37,21 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/titles.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
 
                         {% if UpdateSection.ROLES in enabled_sections %}
                             {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
                         {% endif%}
 
-                        {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
-
                         {% if perms.memberaudit.view_skill_sets %}
                             {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
                         {% endif %}
 
-                        {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
                     </div>
                 </div>
             </div>
@@ -849,6 +849,24 @@
                 autoSize: false,
                 bootstrap: true
             }
+        });
+
+        /* Titles */
+        $('#tab_titles').DataTable({
+            ajax: {
+                url: "{% url 'memberaudit:character_titles_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                {
+                    data: 'name'
+                },
+            ],
+            order: [[0, "asc"]],
+            paging: false,
+            searching: false,
+            info: false
         });
 
         /* Wallet Journal */

@@ -6,6 +6,7 @@ from memberaudit.models import CharacterFwStats
 
 from ..testdata.factories import (
     create_character_standing,
+    create_character_title,
     create_character_wallet_journal_entry,
     create_fw_stats,
 )
@@ -76,6 +77,23 @@ class TestCharacterStanding(TestCase):
         result = obj.effective_standing(0, 0, 5)
         # then
         self.assertAlmostEqual(result, -1.81, 2)
+
+
+class TestCharacterTitle(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_str(self):
+        # given
+        obj = create_character_title(character=self.character, name="Dummy")
+        # when
+        result = str(obj)
+        # then
+        self.assertIn("Dummy", result)
 
 
 class TestCharacterWalletJournals(TestCase):
