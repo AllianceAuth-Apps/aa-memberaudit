@@ -285,10 +285,7 @@ class CharacterRole(models.Model):
     ]
 
     character = models.ForeignKey(
-        Character,
-        on_delete=models.CASCADE,
-        related_name="roles",
-        related_query_name="role",
+        Character, on_delete=models.CASCADE, related_name="roles"
     )
 
     location = models.CharField(
@@ -516,12 +513,12 @@ class CharacterTitle(models.Model):
 
     class Meta:
         default_permissions = ()
-        # constraints = [
-        #     models.UniqueConstraint(
-        #         fields=["character", "title_id"],
-        #         name="functional_pk_charactertitle",
-        #     )
-        # ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["character", "title_id"],
+                name="functional_pk_charactertitle",
+            )
+        ]
 
     def __str__(self) -> str:
         return f"{self.character}-{self.name}"
