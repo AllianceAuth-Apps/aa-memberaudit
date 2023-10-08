@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Localization to Ukrainian (:ukraine:)
+- Localization to Ukrainian (:flag_ukraine:)
 
 ### Changed
 
