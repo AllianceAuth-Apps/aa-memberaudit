@@ -21,6 +21,7 @@ from memberaudit.models import (
 
 from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
+    create_character_asset,
     create_character_contract,
     create_character_contract_bid,
     create_character_from_user,
@@ -50,13 +51,8 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         cls.merlin = EveType.objects.get(id=603)
 
     def test_can_calculate_pricing(self):
-        CharacterAsset.objects.create(
-            character=self.character,
-            item_id=1100000000666,
-            location=self.jita_44,
-            eve_type=self.merlin,
-            is_singleton=False,
-            quantity=5,
+        create_character_asset(
+            character=self.character, eve_type=self.merlin, quantity=5
         )
         EveMarketPrice.objects.create(eve_type=self.merlin, average_price=500000)
         asset = CharacterAsset.objects.annotate_pricing().first()
@@ -64,13 +60,10 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         self.assertEqual(asset.total, 2500000)
 
     def test_does_not_price_blueprint_copies(self):
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
-            item_id=1100000000666,
-            location=self.jita_44,
             eve_type=self.merlin,
             is_blueprint_copy=True,
-            is_singleton=False,
             quantity=1,
         )
         EveMarketPrice.objects.create(eve_type=self.merlin, average_price=500000)

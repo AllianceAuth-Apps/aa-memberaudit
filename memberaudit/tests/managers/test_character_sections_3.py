@@ -22,6 +22,7 @@ from memberaudit.models import (
     CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
+    CharacterSkillSetCheck,
     CharacterStanding,
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
@@ -34,8 +35,12 @@ from ..testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
+    create_character_skill,
+    create_character_skill_set_check,
     create_character_standing,
     create_character_title,
+    create_skill_set,
+    create_skill_set_skill,
 )
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
@@ -519,6 +524,106 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.character_1001.update_skill_queue()
         # then
         self.assertEqual(self.character_1001.skillqueue.count(), 0)
+
+
+class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+        # amarr carrier skill set
+        cls.amarr_carrier_skill_type = EveType.objects.get(name="Amarr Carrier")
+        cls.amarr_carrier_skill_set = create_skill_set()
+        cls.amarr_carrier_skill_set_skill = create_skill_set_skill(
+            skill_set=cls.amarr_carrier_skill_set,
+            eve_type=cls.amarr_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+        # caldari carrier skill set
+        cls.caldari_carrier_skill_type = EveType.objects.get(name="Caldari Carrier")
+        cls.caldari_carrier_skill_set = create_skill_set()
+        cls.caldari_carrier_skill_set_skill = create_skill_set_skill(
+            skill_set=cls.caldari_carrier_skill_set,
+            eve_type=cls.caldari_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+
+    def test_should_record_character_has_all_required_but_missing_recommended_skills(
+        self,
+    ):
+        # given
+        create_character_skill(self.character, eve_type=self.amarr_carrier_skill_type)
+        # when
+        self.character.update_skill_sets()
+        # then
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.amarr_carrier_skill_set
+        ).first()
+        self.assertTrue(obj.can_fly)
+        self.assertEqual(obj.failed_required_skills.count(), 0)
+        self.assertIn(
+            self.amarr_carrier_skill_set_skill, obj.failed_recommended_skills.all()
+        )
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.caldari_carrier_skill_set
+        ).first()
+        self.assertFalse(obj.can_fly)
+
+    def test_should_record_character_is_missing_all_skills(self):
+        # given
+        create_character_skill(
+            self.character, eve_type=self.amarr_carrier_skill_type, active_skill_level=1
+        )
+        # when
+        self.character.update_skill_sets()
+        # then
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.amarr_carrier_skill_set
+        ).first()
+        self.assertFalse(obj.can_fly)
+        self.assertIn(
+            self.amarr_carrier_skill_set_skill, obj.failed_required_skills.all()
+        )
+        self.assertIn(
+            self.amarr_carrier_skill_set_skill, obj.failed_recommended_skills.all()
+        )
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.caldari_carrier_skill_set
+        ).first()
+        self.assertFalse(obj.can_fly)
+
+    def test_should_update_existing_skill_set_check(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+        )
+        skill_set_check = create_character_skill_set_check(
+            character=self.character, skill_set=self.amarr_carrier_skill_set
+        )
+        skill_set_check.failed_required_skills.add(self.amarr_carrier_skill_set_skill)
+        skill_set_check.failed_recommended_skills.add(
+            self.amarr_carrier_skill_set_skill
+        )
+        # when
+        self.character.update_skill_sets()
+        # then
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.amarr_carrier_skill_set
+        ).first()
+        self.assertTrue(obj.can_fly)
+        self.assertEqual(obj.failed_required_skills.count(), 0)
+        self.assertEqual(obj.failed_recommended_skills.count(), 0)
+        obj: CharacterSkillSetCheck = self.character.skill_set_checks.filter(
+            skill_set=self.caldari_carrier_skill_set
+        ).first()
+        self.assertFalse(obj.can_fly)
 
 
 @patch(MANAGERS_PATH + ".esi")

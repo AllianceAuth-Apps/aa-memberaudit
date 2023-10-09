@@ -20,6 +20,7 @@ from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.models import (
     Character,
+    CharacterAsset,
     CharacterContact,
     CharacterContract,
     CharacterContractBid,
@@ -31,6 +32,8 @@ from memberaudit.models import (
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
+    CharacterSkill,
+    CharacterSkillSetCheck,
     CharacterStanding,
     CharacterTitle,
     CharacterUpdateStatus,
@@ -67,77 +70,23 @@ def create_character_from_user(user: User, **kwargs):
     return Character.objects.create(**params)
 
 
-def create_character_mail(
-    character: Character,
-    recipients: Iterable[MailEntity] = None,
-    labels: Iterable[CharacterMailLabel] = None,
-    **kwargs,
-) -> CharacterMail:
-    timestamp = now() if "timestamp" not in kwargs else kwargs["timestamp"]
+def create_character_asset(
+    character: Character, eve_type: EveType, **kwargs
+) -> CharacterAsset:
+    item_id = kwargs.get("item_id", next_number("asset_item_id"))
     params = {
         "character": character,
-        "subject": "Test Mail",
-        "body": "Test Body",
-        "timestamp": timestamp,
-    }
-    if "mail_id" not in kwargs:
-        params["mail_id"] = next_number("mail_id")
-    if "sender" not in kwargs and "sender_id" not in kwargs:
-        params["sender"] = create_mail_entity_from_eve_entity(id=1002)
-    params.update(kwargs)
-    obj = CharacterMail.objects.create(**params)
-    if not recipients:
-        character_id = character.eve_character.character_id
-        recipients = [create_mail_entity_from_eve_entity(id=character_id)]
-    obj.recipients.add(*recipients)
-    if labels:
-        obj.labels.add(*labels)
-    return obj
-
-
-def create_character_mail_label(character: Character, **kwargs) -> CharacterMailLabel:
-    label_id = next_number("mail_label_id")
-    params = {
-        "character": character,
-        "label_id": label_id,
-        "name": f"Label #{label_id}",
+        "item_id": item_id,
+        "eve_type": eve_type,
+        "is_singleton": True,
+        "quantity": 1,
+        "location_flag": "Hangar",
+        "name": "",
     }
     params.update(kwargs)
-    return CharacterMailLabel.objects.create(**params)
-
-
-def create_character_mining_ledger_entry(
-    character: Character, **kwargs
-) -> CharacterMiningLedgerEntry:
-    solar_system_ids = EveSolarSystem.objects.values_list("id", flat=True)
-    ore_type_ids = EveType.objects.filter(
-        eve_group__eve_category_id=EveCategoryId.ASTEROID, published=True
-    ).values_list("id", flat=True)
-    params = {
-        "character": character,
-        "date": (now() - dt.timedelta(days=random.randint(0, 300))).date(),
-        "quantity": random.randint(10_000, 50_000),
-        "eve_solar_system": EveSolarSystem.objects.get(
-            id=random.choice(solar_system_ids)
-        ),
-        "eve_type": EveType.objects.get(id=random.choice(ore_type_ids)),
-    }
-    params.update(kwargs)
-    return CharacterMiningLedgerEntry.objects.create(**params)
-
-
-def create_character_update_status(
-    character: Character, **kwargs
-) -> CharacterUpdateStatus:
-    params = {
-        "character": character,
-        "section": Character.UpdateSection.ASSETS,
-        "is_success": True,
-        "started_at": now() - dt.timedelta(minutes=5),
-        "finished_at": now(),
-    }
-    params.update(kwargs)
-    return CharacterUpdateStatus.objects.create(**params)
+    if params["is_singleton"] and not params["name"]:
+        params["name"] = (f"Generated asset #{item_id}",)
+    return CharacterAsset.objects.create(**params)
 
 
 def create_character_contact(
@@ -204,6 +153,215 @@ def create_character_contract_bid(
     return CharacterContractBid.objects.create(**params)
 
 
+def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStats:
+    current_rank = random.randint(1, 5)
+    highest_rank = max(current_rank, random.randint(1, 5))
+    kills_yesterday = random.randint(1, 100)
+    kills_last_week = max(kills_yesterday, random.randint(1, 700))
+    kills_total = max(kills_last_week, random.randint(1, 5000))
+    victory_points_yesterday = random.randint(1, 1000)
+    victory_points_last_week = max(victory_points_yesterday, random.randint(1, 7000))
+    victory_points_total = max(victory_points_last_week, random.randint(1, 50000))
+    enlisted_on = now() - dt.timedelta(
+        days=random.randint(1, 180), hours=random.randint(1, 24)
+    )
+    params = {
+        "character": character,
+        "current_rank": current_rank,
+        "enlisted_on": enlisted_on,
+        "highest_rank": highest_rank,
+        "kills_last_week": kills_last_week,
+        "kills_total": kills_total,
+        "kills_yesterday": kills_yesterday,
+        "victory_points_last_week": victory_points_last_week,
+        "victory_points_total": victory_points_total,
+        "victory_points_yesterday": victory_points_yesterday,
+    }
+    if "faction" not in kwargs and "faction_id" not in kwargs:
+        params["faction_id"] = 500001
+    params.update(kwargs)
+    return CharacterFwStats.objects.create(**params)
+
+
+def create_character_mail(
+    character: Character,
+    recipients: Iterable[MailEntity] = None,
+    labels: Iterable[CharacterMailLabel] = None,
+    **kwargs,
+) -> CharacterMail:
+    timestamp = now() if "timestamp" not in kwargs else kwargs["timestamp"]
+    params = {
+        "character": character,
+        "subject": "Test Mail",
+        "body": "Test Body",
+        "timestamp": timestamp,
+    }
+    if "mail_id" not in kwargs:
+        params["mail_id"] = next_number("mail_id")
+    if "sender" not in kwargs and "sender_id" not in kwargs:
+        params["sender"] = create_mail_entity_from_eve_entity(id=1002)
+    params.update(kwargs)
+    obj = CharacterMail.objects.create(**params)
+    if not recipients:
+        character_id = character.eve_character.character_id
+        recipients = [create_mail_entity_from_eve_entity(id=character_id)]
+    obj.recipients.add(*recipients)
+    if labels:
+        obj.labels.add(*labels)
+    return obj
+
+
+def create_character_mail_label(character: Character, **kwargs) -> CharacterMailLabel:
+    label_id = next_number("mail_label_id")
+    params = {
+        "character": character,
+        "label_id": label_id,
+        "name": f"Label #{label_id}",
+    }
+    params.update(kwargs)
+    return CharacterMailLabel.objects.create(**params)
+
+
+def create_character_mining_ledger_entry(
+    character: Character, **kwargs
+) -> CharacterMiningLedgerEntry:
+    solar_system_ids = EveSolarSystem.objects.values_list("id", flat=True)
+    ore_type_ids = EveType.objects.filter(
+        eve_group__eve_category_id=EveCategoryId.ASTEROID, published=True
+    ).values_list("id", flat=True)
+    params = {
+        "character": character,
+        "date": (now() - dt.timedelta(days=random.randint(0, 300))).date(),
+        "quantity": random.randint(10_000, 50_000),
+        "eve_solar_system": EveSolarSystem.objects.get(
+            id=random.choice(solar_system_ids)
+        ),
+        "eve_type": EveType.objects.get(id=random.choice(ore_type_ids)),
+    }
+    params.update(kwargs)
+    return CharacterMiningLedgerEntry.objects.create(**params)
+
+
+def create_character_online_status(
+    character: Character, **kwargs
+) -> CharacterOnlineStatus:
+    params = {
+        "character": character,
+        "last_login": now() - dt.timedelta(days=1),
+        "last_logout": now() - dt.timedelta(days=1) + dt.timedelta(hours=4),
+        "logins": 42,
+    }
+    params.update(kwargs)
+    return CharacterOnlineStatus.objects.create(**params)
+
+
+def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
+    all_planets = set(EvePlanet.objects.values_list("id", flat=True))
+    colonized_planets = set(
+        CharacterPlanet.objects.values_list("eve_planet_id", flat=True)
+    )
+    available_planets = all_planets - colonized_planets
+    if not available_planets:
+        raise RuntimeError("No free planet to colonize")
+    params = {
+        "character": character,
+        "last_update_at": now() - dt.timedelta(days=random.randint(0, 300)),
+        "num_pins": random.randint(1, 10),
+        "eve_planet": EvePlanet.objects.get(id=random.choice(list(available_planets))),
+        "upgrade_level": random.randint(0, 5),
+    }
+    params.update(kwargs)
+    return CharacterPlanet.objects.create(**params)
+
+
+def create_character_role(character: Character, **kwargs) -> CharacterRole:
+    params = {
+        "character": character,
+        "role": CharacterRole.Role.DIRECTOR,
+        "location": CharacterRole.Location.UNIVERSAL,
+    }
+    params.update(kwargs)
+    return CharacterRole.objects.create(**params)
+
+
+def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
+    params = {
+        "character": character,
+        "active_skill_level": 3,
+        "skillpoints_in_skill": 1000,
+        "trained_skill_level": 3,
+    }
+    params.update(kwargs)
+    return CharacterSkill.objects.create(**params)
+
+
+def create_character_skill_set_check(
+    character: Character, skill_set: SkillSet, **kwargs
+) -> CharacterSkillSetCheck:
+    return CharacterSkillSetCheck.objects.create(
+        character=character, skill_set=skill_set, **kwargs
+    )
+
+
+def create_character_standing(
+    character: Character, eve_entity: EveEntity, **kwargs
+) -> CharacterStanding:
+    params = {
+        "character": character,
+        "eve_entity": eve_entity,
+        "standing": 0.0,
+    }
+    params.update(kwargs)
+    return CharacterStanding.objects.create(**params)
+
+
+def create_character_title(character: Character, **kwargs) -> CharacterRole:
+    title_id = (
+        next_number("title_id") if "title_id" not in kwargs else kwargs["title_id"]
+    )
+    params = {
+        "character": character,
+        "name": f"Dummy title #{title_id}",
+        "title_id": title_id,
+    }
+    params.update(kwargs)
+    return CharacterTitle.objects.create(**params)
+
+
+def create_character_update_status(
+    character: Character, **kwargs
+) -> CharacterUpdateStatus:
+    params = {
+        "character": character,
+        "section": Character.UpdateSection.ASSETS,
+        "is_success": True,
+        "started_at": now() - dt.timedelta(minutes=5),
+        "finished_at": now(),
+    }
+    params.update(kwargs)
+    return CharacterUpdateStatus.objects.create(**params)
+
+
+def create_character_wallet_journal_entry(
+    character: Character, **kwargs
+) -> CharacterWalletJournalEntry:
+    params = {
+        "character": character,
+        "entry_id": next_number("wallet_journal_entry_id"),
+        "amount": 1000000.0,
+        "balance": 20000000.0,
+        "ref_type": "player_donation",
+        "context_id_type": CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
+        "date": now(),
+        "description": "test description",
+        "first_party_id": 1001,
+        "second_party_id": 1002,
+        "reason": "test reason",
+    }
+    params.update(kwargs)
+    return CharacterWalletJournalEntry.objects.create(**params)
+
+
 def create_compliance_group(states: Iterable[State] = None, **kwargs) -> Group:
     group = create_authgroup(states, internal=True, **kwargs)
     create_compliance_group_designation(group)
@@ -253,6 +411,22 @@ def create_fitting_text(file_name: str) -> str:
         return file.read()
 
 
+def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
+    obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=id)
+    return obj
+
+
+def create_mailing_list(**kwargs) -> MailEntity:
+    my_id = next_number("mailing_list_id")
+    params = {
+        "id": my_id,
+        "name": f"Mailing List #{my_id}",
+        "category": MailEntity.Category.MAILING_LIST,
+    }
+    params.update(kwargs)
+    return MailEntity.objects.create(**params)
+
+
 def create_skill(**kwargs) -> Skill:
     params = {}
     if "eve_type" not in kwargs:
@@ -276,87 +450,6 @@ def create_skill_plan(**kwargs) -> SkillPlan:
         params["skills"] = [create_skill() for _ in range(random.randint(1, 5))]
     params.update(kwargs)
     return SkillPlan(**params)
-
-
-def create_character_standing(
-    character: Character, eve_entity: EveEntity, **kwargs
-) -> CharacterStanding:
-    params = {
-        "character": character,
-        "eve_entity": eve_entity,
-        "standing": 0.0,
-    }
-    params.update(kwargs)
-    return CharacterStanding.objects.create(**params)
-
-
-def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
-    obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=id)
-    return obj
-
-
-def create_mailing_list(**kwargs) -> MailEntity:
-    my_id = next_number("mailing_list_id")
-    params = {
-        "id": my_id,
-        "name": f"Mailing List #{my_id}",
-        "category": MailEntity.Category.MAILING_LIST,
-    }
-    params.update(kwargs)
-    return MailEntity.objects.create(**params)
-
-
-def create_online_status(character: Character, **kwargs) -> CharacterOnlineStatus:
-    params = {
-        "character": character,
-        "last_login": now() - dt.timedelta(days=1),
-        "last_logout": now() - dt.timedelta(days=1) + dt.timedelta(hours=4),
-        "logins": 42,
-    }
-    params.update(kwargs)
-    return CharacterOnlineStatus.objects.create(**params)
-
-
-def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
-    all_planets = set(EvePlanet.objects.values_list("id", flat=True))
-    colonized_planets = set(
-        CharacterPlanet.objects.values_list("eve_planet_id", flat=True)
-    )
-    available_planets = all_planets - colonized_planets
-    if not available_planets:
-        raise RuntimeError("No free planet to colonize")
-    params = {
-        "character": character,
-        "last_update_at": now() - dt.timedelta(days=random.randint(0, 300)),
-        "num_pins": random.randint(1, 10),
-        "eve_planet": EvePlanet.objects.get(id=random.choice(list(available_planets))),
-        "upgrade_level": random.randint(0, 5),
-    }
-    params.update(kwargs)
-    return CharacterPlanet.objects.create(**params)
-
-
-def create_character_role(character: Character, **kwargs) -> CharacterRole:
-    params = {
-        "character": character,
-        "role": CharacterRole.Role.DIRECTOR,
-        "location": CharacterRole.Location.UNIVERSAL,
-    }
-    params.update(kwargs)
-    return CharacterRole.objects.create(**params)
-
-
-def create_character_title(character: Character, **kwargs) -> CharacterRole:
-    title_id = (
-        next_number("title_id") if "title_id" not in kwargs else kwargs["title_id"]
-    )
-    params = {
-        "character": character,
-        "name": f"Dummy title #{title_id}",
-        "title_id": title_id,
-    }
-    params.update(kwargs)
-    return CharacterTitle.objects.create(**params)
 
 
 def create_skill_set(**kwargs) -> SkillSet:
@@ -383,55 +476,6 @@ def create_skill_set_skill(
     }
     params.update(kwargs)
     return SkillSetSkill.objects.create(**params)
-
-
-def create_character_wallet_journal_entry(
-    character: Character, **kwargs
-) -> CharacterWalletJournalEntry:
-    params = {
-        "character": character,
-        "entry_id": next_number("wallet_journal_entry_id"),
-        "amount": 1000000.0,
-        "balance": 20000000.0,
-        "ref_type": "player_donation",
-        "context_id_type": CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
-        "date": now(),
-        "description": "test description",
-        "first_party_id": 1001,
-        "second_party_id": 1002,
-        "reason": "test reason",
-    }
-    params.update(kwargs)
-    return CharacterWalletJournalEntry.objects.create(**params)
-
-
-def create_fw_stats(**kwargs) -> CharacterFwStats:
-    current_rank = random.randint(1, 5)
-    highest_rank = max(current_rank, random.randint(1, 5))
-    kills_yesterday = random.randint(1, 100)
-    kills_last_week = max(kills_yesterday, random.randint(1, 700))
-    kills_total = max(kills_last_week, random.randint(1, 5000))
-    victory_points_yesterday = random.randint(1, 1000)
-    victory_points_last_week = max(victory_points_yesterday, random.randint(1, 7000))
-    victory_points_total = max(victory_points_last_week, random.randint(1, 50000))
-    enlisted_on = now() - dt.timedelta(
-        days=random.randint(1, 180), hours=random.randint(1, 24)
-    )
-    params = {
-        "current_rank": current_rank,
-        "enlisted_on": enlisted_on,
-        "highest_rank": highest_rank,
-        "kills_last_week": kills_last_week,
-        "kills_total": kills_total,
-        "kills_yesterday": kills_yesterday,
-        "victory_points_last_week": victory_points_last_week,
-        "victory_points_total": victory_points_total,
-        "victory_points_yesterday": victory_points_yesterday,
-    }
-    if "faction" not in kwargs and "faction_id" not in kwargs:
-        params["faction_id"] = 500001
-    params.update(kwargs)
-    return CharacterFwStats(**params)
 
 
 def next_number(key=None) -> int:

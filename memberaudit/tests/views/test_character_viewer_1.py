@@ -42,7 +42,11 @@ from memberaudit.views.character_viewer_1 import (
     character_viewer,
 )
 
-from ..testdata.factories import create_character, create_fw_stats
+from ..testdata.factories import (
+    create_character,
+    create_character_asset,
+    create_character_fw_stats,
+)
 from ..utils import (
     LoadTestDataMixin,
     json_response_to_dict_2,
@@ -111,7 +115,7 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
 class TestCharacterFwStats(LoadTestDataMixin, TestCase):
     def test_should_load_with_stats(self):
         # given
-        create_fw_stats(character=self.character).save()
+        create_character_fw_stats(character=self.character).save()
         request = self.factory.get(
             reverse("memberaudit:character_fw_stats", args=[self.character.pk])
         )
@@ -135,7 +139,7 @@ class TestCharacterFwStats(LoadTestDataMixin, TestCase):
 
 class TestCharacterAssets(LoadTestDataMixin, TestCase):
     def test_character_assets_data_1(self):
-        container = CharacterAsset.objects.create(
+        container = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -144,7 +148,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=container,
@@ -176,7 +180,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertTrue(row["actions"])
 
     def test_character_assets_data_2(self):
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -208,7 +212,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
     def test_character_assets_data_3(self):
         obj1 = EveType.objects.get(id=603)
         obj2 = EveType.objects.get(id=20185)
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -217,7 +221,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="",
             quantity=5,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             location=self.jita_44,
@@ -261,7 +265,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertFalse(row["actions"])
 
     def test_character_asset_children_normal(self):
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -270,7 +274,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=parent_asset,
@@ -307,7 +311,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertIn("not found for character", response_text(response))
 
     def test_character_asset_children_data(self):
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -316,7 +320,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=parent_asset,
@@ -325,7 +329,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="My Precious",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=3,
             parent=parent_asset,
@@ -513,7 +517,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
 
         # main view
@@ -576,7 +580,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -584,7 +588,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
         request = self.factory.get(
             reverse("memberaudit:character_contracts_data", args=[self.character.pk])
@@ -707,7 +711,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -715,9 +719,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=False,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_included_data",
@@ -771,7 +777,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_singleton=True,
             quantity=1,
             raw_quantity=-2,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -779,9 +785,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_included_data",
@@ -834,7 +842,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=False,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -842,9 +850,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_requested_data",
