@@ -5,10 +5,10 @@ from memberaudit.constants import EveFactionId
 from memberaudit.models import CharacterFwStats
 
 from ..testdata.factories import (
+    create_character_fw_stats,
     create_character_standing,
     create_character_title,
     create_character_wallet_journal_entry,
-    create_fw_stats,
 )
 from ..utils import create_memberaudit_character, load_entities, load_eveuniverse
 
@@ -41,13 +41,13 @@ class TestCharacterFwStatsRankNameObject(TestCase):
 
     def test_should_return_rank_name_when_found(self):
         # given
-        obj = create_fw_stats(character=self.character, current_rank=4)
+        obj = create_character_fw_stats(character=self.character, current_rank=4)
         # when/then
         self.assertEqual(obj.current_rank_name(), "Major")
 
     def test_should_return_rank_name_when_not_found(self):
         # given
-        obj = create_fw_stats(character=self.character, faction=None)
+        obj = create_character_fw_stats(character=self.character, faction=None)
         # when/then
         self.assertEqual(obj.current_rank_name(), "")
 

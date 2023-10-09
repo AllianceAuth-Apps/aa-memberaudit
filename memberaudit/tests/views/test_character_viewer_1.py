@@ -42,7 +42,7 @@ from memberaudit.views.character_viewer_1 import (
     character_viewer,
 )
 
-from ..testdata.factories import create_character, create_fw_stats
+from ..testdata.factories import create_character, create_character_fw_stats
 from ..utils import (
     LoadTestDataMixin,
     json_response_to_dict_2,
@@ -111,7 +111,7 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
 class TestCharacterFwStats(LoadTestDataMixin, TestCase):
     def test_should_load_with_stats(self):
         # given
-        create_fw_stats(character=self.character).save()
+        create_character_fw_stats(character=self.character).save()
         request = self.factory.get(
             reverse("memberaudit:character_fw_stats", args=[self.character.pk])
         )
