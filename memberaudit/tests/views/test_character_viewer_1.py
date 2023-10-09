@@ -42,7 +42,11 @@ from memberaudit.views.character_viewer_1 import (
     character_viewer,
 )
 
-from ..testdata.factories import create_character, create_character_fw_stats
+from ..testdata.factories import (
+    create_character,
+    create_character_asset,
+    create_character_fw_stats,
+)
 from ..utils import (
     LoadTestDataMixin,
     json_response_to_dict_2,
@@ -135,7 +139,7 @@ class TestCharacterFwStats(LoadTestDataMixin, TestCase):
 
 class TestCharacterAssets(LoadTestDataMixin, TestCase):
     def test_character_assets_data_1(self):
-        container = CharacterAsset.objects.create(
+        container = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -144,7 +148,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=container,
@@ -176,7 +180,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertTrue(row["actions"])
 
     def test_character_assets_data_2(self):
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -208,7 +212,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
     def test_character_assets_data_3(self):
         obj1 = EveType.objects.get(id=603)
         obj2 = EveType.objects.get(id=20185)
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -217,7 +221,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="",
             quantity=5,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             location=self.jita_44,
@@ -261,7 +265,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertFalse(row["actions"])
 
     def test_character_asset_children_normal(self):
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -270,7 +274,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=parent_asset,
@@ -307,7 +311,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertIn("not found for character", response_text(response))
 
     def test_character_asset_children_data(self):
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character,
             item_id=1,
             location=self.jita_44,
@@ -316,7 +320,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="Trucker",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=2,
             parent=parent_asset,
@@ -325,7 +329,7 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="My Precious",
             quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
             item_id=3,
             parent=parent_asset,

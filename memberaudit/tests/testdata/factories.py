@@ -20,6 +20,7 @@ from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.models import (
     Character,
+    CharacterAsset,
     CharacterContact,
     CharacterContract,
     CharacterContractBid,
@@ -67,6 +68,25 @@ def create_character_from_user(user: User, **kwargs):
         params = {"character_ownership": character_ownership}
     params.update(kwargs)
     return Character.objects.create(**params)
+
+
+def create_character_asset(
+    character: Character, eve_type: EveType, **kwargs
+) -> CharacterAsset:
+    item_id = kwargs.get("item_id", next_number("asset_item_id"))
+    params = {
+        "character": character,
+        "item_id": item_id,
+        "eve_type": eve_type,
+        "is_singleton": True,
+        "quantity": 1,
+        "location_flag": "Hangar",
+        "name": "",
+    }
+    params.update(kwargs)
+    if params["is_singleton"] and not params["name"]:
+        params["name"] = (f"Generated asset #{item_id}",)
+    return CharacterAsset.objects.create(**params)
 
 
 def create_character_contact(
