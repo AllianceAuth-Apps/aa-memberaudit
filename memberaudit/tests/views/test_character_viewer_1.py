@@ -517,7 +517,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
 
         # main view
@@ -580,7 +580,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -588,7 +588,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=1,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
         request = self.factory.get(
             reverse("memberaudit:character_contracts_data", args=[self.character.pk])
@@ -711,7 +711,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -719,9 +719,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=False,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_included_data",
@@ -775,7 +777,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_singleton=True,
             quantity=1,
             raw_quantity=-2,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -783,9 +785,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_included_data",
@@ -838,7 +842,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=False,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_1,
+            eve_type=self.high_grade_snake_alpha_type,
         )
         CharacterContractItem.objects.create(
             contract=contract,
@@ -846,9 +850,11 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             is_included=True,
             is_singleton=False,
             quantity=3,
-            eve_type=self.item_type_2,
+            eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(eve_type=self.item_type_1, average_price=5000000)
+        EveMarketPrice.objects.create(
+            eve_type=self.high_grade_snake_alpha_type, average_price=5000000
+        )
         request = self.factory.get(
             reverse(
                 "memberaudit:character_contract_items_requested_data",

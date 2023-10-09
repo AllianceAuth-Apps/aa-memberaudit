@@ -122,12 +122,12 @@ class LoadTestDataMixin:
         cls.corporation_2001 = EveEntity.objects.get(id=2001)
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.skill_type_1 = EveType.objects.get(id=24311)
-        cls.skill_type_2 = EveType.objects.get(id=24312)
-        cls.skill_type_3 = EveType.objects.get(id=24313)
-        cls.skill_type_4 = EveType.objects.get(id=24314)
-        cls.item_type_1 = EveType.objects.get(id=19540)
-        cls.item_type_2 = EveType.objects.get(id=19551)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+        cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
+        cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
 
 
 def json_response_to_python_2(response: JsonResponse, data_key="data") -> object:

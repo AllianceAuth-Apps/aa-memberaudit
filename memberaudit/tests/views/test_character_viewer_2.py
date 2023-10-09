@@ -365,14 +365,14 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         )
         create_character_skill(
             character=self.character,
-            eve_type=self.skill_type_1,
+            eve_type=self.amarr_carrier_skill_type,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
         create_character_skill(
             character=self.character,
-            eve_type=self.skill_type_2,
+            eve_type=self.caldari_carrier_skill_type,
             active_skill_level=2,
             skillpoints_in_skill=10,
             trained_skill_level=5,
@@ -385,7 +385,7 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         ship_1 = create_skill_set(name="Ship 1")
         create_skill_set_skill(
             skill_set=ship_1,
-            eve_type=self.skill_type_1,
+            eve_type=self.amarr_carrier_skill_type,
             required_level=3,
             recommended_level=5,
         )
@@ -395,17 +395,17 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         # can not fly ship 2
         ship_2 = create_skill_set(name="Ship 2")
         create_skill_set_skill(
-            skill_set=ship_2, eve_type=self.skill_type_1, required_level=3
+            skill_set=ship_2, eve_type=self.amarr_carrier_skill_type, required_level=3
         )
         create_skill_set_skill(
-            skill_set=ship_2, eve_type=self.skill_type_2, required_level=3
+            skill_set=ship_2, eve_type=self.caldari_carrier_skill_type, required_level=3
         )
         doctrine_1.skill_sets.add(ship_2)
 
         # can fly ship 3 (No SkillSetGroup)
         ship_3 = create_skill_set(name="Ship 3")
         create_skill_set_skill(
-            skill_set=ship_3, eve_type=self.skill_type_1, required_level=1
+            skill_set=ship_3, eve_type=self.amarr_carrier_skill_type, required_level=1
         )
 
         self.character.update_skill_sets()
@@ -586,7 +586,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
     def test_character_skills_data(self):
         create_character_skill(
             character=self.character,
-            eve_type=self.skill_type_1,
+            eve_type=self.amarr_carrier_skill_type,
             active_skill_level=1,
             skillpoints_in_skill=1000,
             trained_skill_level=1,
@@ -609,7 +609,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         finish_date_1 = now() + dt.timedelta(days=3)
         CharacterSkillqueueEntry.objects.create(
             character=self.character,
-            eve_type=self.skill_type_1,
+            eve_type=self.amarr_carrier_skill_type,
             finish_date=finish_date_1,
             finished_level=5,
             queue_position=0,
@@ -618,7 +618,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         finish_date_2 = now() + dt.timedelta(days=10)
         CharacterSkillqueueEntry.objects.create(
             character=self.character,
-            eve_type=self.skill_type_2,
+            eve_type=self.caldari_carrier_skill_type,
             finish_date=finish_date_2,
             finished_level=5,
             queue_position=1,
@@ -647,7 +647,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         """Char has no skills in training"""
         CharacterSkillqueueEntry.objects.create(
             character=self.character,
-            eve_type=self.skill_type_1,
+            eve_type=self.amarr_carrier_skill_type,
             finished_level=5,
             queue_position=0,
         )
