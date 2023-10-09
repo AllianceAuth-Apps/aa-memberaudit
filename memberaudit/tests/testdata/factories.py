@@ -31,6 +31,8 @@ from memberaudit.models import (
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
+    CharacterSkill,
+    CharacterSkillSetCheck,
     CharacterStanding,
     CharacterTitle,
     CharacterUpdateStatus,
@@ -260,6 +262,25 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     }
     params.update(kwargs)
     return CharacterRole.objects.create(**params)
+
+
+def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
+    params = {
+        "character": character,
+        "active_skill_level": 3,
+        "skillpoints_in_skill": 1000,
+        "trained_skill_level": 3,
+    }
+    params.update(kwargs)
+    return CharacterSkill.objects.create(**params)
+
+
+def create_character_skill_set_check(
+    character: Character, skill_set: SkillSet, **kwargs
+) -> CharacterSkillSetCheck:
+    return CharacterSkillSetCheck.objects.create(
+        character=character, skill_set=skill_set, **kwargs
+    )
 
 
 def create_character_standing(

@@ -21,7 +21,6 @@ from memberaudit.models import (
     CharacterJumpCloneImplant,
     CharacterMail,
     CharacterRole,
-    CharacterSkill,
     CharacterSkillqueueEntry,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
@@ -51,6 +50,7 @@ from ..testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
+    create_character_skill,
     create_character_standing,
     create_character_title,
     create_mail_entity_from_eve_entity,
@@ -363,14 +363,14 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
         self.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.view_skill_sets", self.user
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_2,
             active_skill_level=2,
@@ -492,21 +492,21 @@ class TestSkillSetsDetails(TestCase):
         caldari_carrier = EveType.objects.get(name="Caldari Carrier")
         gallente_carrier = EveType.objects.get(name="Gallente Carrier")
         minmatar_carrier = EveType.objects.get(name="Minmatar Carrier")
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=amarr_carrier,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=caldari_carrier,
             active_skill_level=2,
             skillpoints_in_skill=10,
             trained_skill_level=2,
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=gallente_carrier,
             active_skill_level=4,
@@ -584,7 +584,7 @@ class TestSkillSetsDetails(TestCase):
 
 class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
     def test_character_skills_data(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=1,

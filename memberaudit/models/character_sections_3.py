@@ -447,7 +447,7 @@ class CharacterSkillSetCheck(models.Model):
         """Return True if character has all required skills for this skill set,
         else False.
         """
-        return self.failed_required_skills.count() == 0
+        return not self.failed_required_skills.exists()
 
 
 class CharacterStanding(models.Model):
