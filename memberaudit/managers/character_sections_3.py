@@ -3,6 +3,8 @@
 
 from typing import List, Set
 
+import yaml
+
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from esi.models import Token
@@ -85,6 +87,104 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
 CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_queryset(
     CharacterMiningLedgerEntryQueryset
 )
+
+
+class CharacterNotificationManager(models.Manager):
+    def update_or_create_esi(self, character, force_update: bool = False):
+        """Update or create notifications for a character from ESI."""
+        character.update_section_if_changed(
+            section=character.UpdateSection.NOTIFICATIONS,
+            fetch_func=self._fetch_data_from_esi,
+            store_func=self._update_or_create_objs,
+            force_update=force_update,
+        )
+
+    @fetch_token_for_character("esi-characters.read_notifications.v1")
+    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+        logger.info("%s: Fetching notifications from ESI", character)
+        notifications_data = (
+            esi.client.Character.get_characters_character_id_notifications(
+                character_id=character.eve_character.character_id,
+                token=token.valid_access_token(),
+            ).results()
+        )
+        return notifications_data
+
+    def _update_or_create_objs(self, character, notifications_data: List[dict]):
+        existing_notification_ids = set(self.values_list("notification_id", flat=True))
+
+        new_notifications = [
+            record
+            for record in notifications_data
+            if record["notification_id"] not in existing_notification_ids
+        ]
+        new_entity_ids = self._create_new_notifications(character, new_notifications)
+
+        notifications_for_update = [
+            record
+            for record in notifications_data
+            if record["notification_id"] in existing_notification_ids
+        ]
+        self._update_read_status_for_notifications(notifications_for_update)
+
+        return new_entity_ids
+
+    def _create_new_notifications(self, character, new_notifications):
+        new_objs = []
+        new_entity_ids = set()
+        for notification in new_notifications:
+            if notification["sender_type"] != "other":
+                sender, _ = EveEntity.objects.get_or_create(
+                    id=notification["sender_id"]
+                )
+                new_entity_ids.add(sender.id)
+            else:
+                sender = None
+
+            text = notification["text"] if "text" in notification else None
+            is_read = notification["is_read"] if "is_read" in notification else None
+            new_objs.append(
+                self.model(
+                    notification_id=notification["notification_id"],
+                    character=character,
+                    details=yaml.safe_load(text) if text else {},
+                    is_read=is_read,
+                    # at least one type has a trailing white space
+                    # which we need to remove
+                    notification_type=notification["type"].strip(),
+                    sender=sender,
+                    timestamp=notification["timestamp"],
+                )
+            )
+
+        if new_objs:
+            self.bulk_create(new_objs, ignore_conflicts=True)
+            logger.info(
+                "%s: Received %d new notifications from ESI",
+                character,
+                len(new_objs),
+            )
+        else:
+            logger.info("%s: No new notifications received from ESI", character)
+        return new_entity_ids
+
+    def _update_read_status_for_notifications(self, notifications_for_update):
+        is_read_ids = [
+            record["notification_id"]
+            for record in notifications_for_update
+            if record.get("is_read") is True
+        ]
+        is_unread_ids = [
+            record["notification_id"]
+            for record in notifications_for_update
+            if record.get("is_read") is False
+        ]
+        self.filter(notification_id__in=is_read_ids).exclude(is_read=True).update(
+            is_read=True
+        )
+        self.filter(notification_id__in=is_unread_ids).exclude(is_read=False).update(
+            is_read=False
+        )
 
 
 class CharacterOnlineStatusManager(models.Manager):

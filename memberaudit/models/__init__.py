@@ -24,6 +24,7 @@ from .character_sections_2 import (
 )
 from .character_sections_3 import (
     CharacterMiningLedgerEntry,
+    CharacterNotification,
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
