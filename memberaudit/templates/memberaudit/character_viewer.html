@@ -36,6 +36,7 @@
                         {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/notifications.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
                         {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
@@ -561,6 +562,49 @@
                     }
                 });
         })
+
+        /* Notifications */
+        $('#tab_notifications').DataTable({
+            "paging": true,
+            ajax: {
+                url: "{% url 'memberaudit:character_notifications_data' character.pk %}",
+                dataSrc: 'data',
+                cache: false
+            },
+            columns: [
+                {
+                    data: 'timestamp',
+                    render: $.fn.dataTable.render.momentUTC(moment.ISO_8601, DATETIME_FORMAT)
+                },
+                { data: 'sender_name'},
+                { data: 'type'},
+                { data: 'is_read'}
+
+            ],
+            order: [[0, "desc"]],
+            /*
+            columnDefs: [
+                {
+                    "visible": false, "targets": [0, 4]
+                }
+            ],
+            */
+            filterDropDown: {
+                columns: [
+                    {
+                        idx: 1
+                    },
+                    {
+                        idx: 2
+                    },
+                    {
+                        idx: 3
+                    }
+                ],
+                autoSize: false,
+                bootstrap: true
+            }
+        });
 
         /* Planets */
         $('#tab_planets').DataTable({

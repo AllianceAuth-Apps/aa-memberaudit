@@ -126,6 +126,11 @@ urlpatterns = [
         name="character_mining_ledger_data",
     ),
     path(
+        "character_notifications_data/<int:character_pk>/",
+        character_viewer_2.character_notifications_data,
+        name="character_notifications_data",
+    ),
+    path(
         "character_planets_data/<int:character_pk>/",
         character_viewer_2.character_planets_data,
         name="character_planets_data",
