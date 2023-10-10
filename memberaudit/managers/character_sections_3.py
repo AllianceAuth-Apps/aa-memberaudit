@@ -141,14 +141,13 @@ class CharacterNotificationManager(models.Manager):
             else:
                 sender = None
 
-            text = notification["text"] if "text" in notification else None
-            is_read = notification["is_read"] if "is_read" in notification else None
+            text = notification.get("text", None)
             new_objs.append(
                 self.model(
                     notification_id=notification["notification_id"],
                     character=character,
                     details=yaml.safe_load(text) if text else {},
-                    is_read=is_read,
+                    is_read=notification.get("is_read", False),
                     # at least one type has a trailing white space
                     # which we need to remove
                     notification_type=notification["type"].strip(),
@@ -172,12 +171,12 @@ class CharacterNotificationManager(models.Manager):
         is_read_ids = [
             record["notification_id"]
             for record in notifications_for_update
-            if record.get("is_read") is True
+            if record.get("is_read", False) is True
         ]
         is_unread_ids = [
             record["notification_id"]
             for record in notifications_for_update
-            if record.get("is_read") is False
+            if record.get("is_read", False) is False
         ]
         self.filter(notification_id__in=is_read_ids).exclude(is_read=True).update(
             is_read=True

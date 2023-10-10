@@ -73,8 +73,7 @@ class CharacterNotification(models.Model):
 
     details = models.JSONField(default=dict)
     is_read = models.BooleanField(
-        null=True,
-        default=None,
+        default=False,
         help_text=_("True when this notification has been read in the eve client"),
     )
     notification_type = models.CharField(
