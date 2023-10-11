@@ -87,6 +87,8 @@ class CharacterNotification(models.Model):
         EveEntity, on_delete=models.CASCADE, null=True, default=None, related_name="+"
     )
     timestamp = models.DateTimeField()
+    title = models.CharField(max_length=255, default="")  # rendered from details
+    text = models.TextField(default="")  # rendered from details
 
     objects = CharacterNotificationManager()
 
