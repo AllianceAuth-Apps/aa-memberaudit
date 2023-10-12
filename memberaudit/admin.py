@@ -275,11 +275,12 @@ def generic_action_update_section(
             },
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
         )  # type: ignore
-        modeladmin.message_user(
-            request,
-            __("Started updating section %(section)s for character %(character)s.")
-            % {"section": section.label, "character": obj},
-        )
+
+    modeladmin.message_user(
+        request,
+        __("Started updating %(section)s for %(count)s characters.")
+        % {"section": section.label, "count": queryset.count()},
+    )
 
 
 @admin.register(Character)
@@ -355,15 +356,14 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         which can be updated through ``update_character_section`` task.
         """
         actions: dict = super().get_actions(request)
-        sections = sorted(
-            list(Character.UpdateSection.enabled_sections_for_simple_update_tasks())
+        sections = (
+            Character.UpdateSection.enabled_sections_for_simple_update_tasks()
+            | {Character.UpdateSection.SKILLS, Character.UpdateSection.SKILL_SETS}
         )
-        for section in sections:
+        for section in sorted(list(sections)):
             action_name = f"update_section_{section}"
             func = functools.partial(generic_action_update_section, section=section)
-            description = (
-                f"Update {section.label} for selected characters from EVE server"
-            )
+            description = f"Update {section.label} for selected characters"
             actions[action_name] = (func, action_name, description)
         return dict(sorted(actions.items(), key=lambda item: item[1][2]))
 
@@ -443,27 +443,29 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             return sorted(obj.label for obj in missing_sections)
         return None
 
-    @admin.action(description=__("Update all for selected characters from EVE server"))
+    @admin.action(description=__("Update all for selected characters"))
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
-            self.message_user(request, __("Started updating character %s.") % obj)
 
-    @admin.action(
-        description=__("Update assets for selected characters from EVE server")
-    )
+        self.message_user(
+            request, __("Started updating %d characters.") % queryset.count()
+        )
+
+    @admin.action(description=__("Update assets for selected characters"))
     def update_assets(self, request, queryset):
         for obj in queryset:
             tasks.update_character_assets.apply_async(
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
-            self.message_user(
-                request, __("Started updating assets for character %s.") % obj
-            )
+
+        self.message_user(
+            request, __("Started updating assets for %d character.") % queryset.count()
+        )
 
     @admin.action(
         description=__("Enable selected characters and reset token notifications")

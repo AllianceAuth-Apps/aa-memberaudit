@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.3.2] - 2023-10-12
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+### Changed
+
+- Update actions for characters on the admin site now also include skills and skill sets
+- Show one message only to users when updating multiple characters on admin page
+
+### Fixed
+
+- Reduced page load time for user compliance report
+
 ## [3.3.1] - 2023-10-09
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!

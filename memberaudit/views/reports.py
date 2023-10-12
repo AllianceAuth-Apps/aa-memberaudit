@@ -1,6 +1,7 @@
 """Report views."""
 
 from collections import defaultdict
+from typing import Dict, List, Sequence
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
@@ -21,7 +22,14 @@ from app_utils.views import bootstrap_icon_plus_name_html, yesno_str
 
 from memberaudit import __title__
 from memberaudit.constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
-from memberaudit.models import CharacterSkillSetCheck, General, SkillSet, SkillSetSkill
+from memberaudit.models import (
+    Character,
+    CharacterSkillSetCheck,
+    General,
+    SkillSet,
+    SkillSetGroup,
+    SkillSetSkill,
+)
 
 from ._common import UNGROUPED_SKILL_SET, add_common_context
 
@@ -62,7 +70,11 @@ def user_compliance_report_data(request) -> JsonResponse:
                 distinct=True,
             )
         )
-        .select_related("profile__main_character", "profile__state")
+        .select_related(
+            "profile__main_character",
+            "profile__state",
+            "profile__main_character__memberaudit_character",
+        )
     )
     user_data = []
     for user in users_and_character_counts:
@@ -223,73 +235,6 @@ def corporation_compliance_report_data(request) -> JsonResponse:
 def skill_sets_report_data(request) -> JsonResponse:
     """Render data view for skill sets report."""
 
-    def _create_data_row(group, character, skill_sets) -> dict:
-        if character.main_character:
-            main_name = character.main_character.character_name
-            main_html = bootstrap_icon_plus_name_html(
-                character.main_character.portrait_url(), main_name, avatar=True
-            )
-            main_corporation = character.main_character.corporation_name
-            main_alliance = (
-                character.main_character.alliance_name
-                if character.main_character.alliance_name
-                else ""
-            )
-            organization_html = format_html(
-                "{}{}",
-                main_corporation,
-                f" [{character.main_character.alliance_ticker}]"
-                if character.main_character.alliance_name
-                else "",
-            )
-        else:
-            main_html = main_name = ""
-            main_corporation = main_alliance = organization_html = ""
-        base_url = reverse("memberaudit:character_viewer", args=[character.pk])
-        character_viewer_url = f"{base_url}?tab=skill_sets"
-        character_html = bootstrap_icon_plus_name_html(
-            character.eve_character.portrait_url(),
-            character.eve_character.character_name,
-            avatar=True,
-            url=character_viewer_url,
-        )
-        group_pk = group.pk if group else 0
-        has_required = [
-            bootstrap_icon_plus_name_html(
-                obj.ship_type.icon_url(
-                    DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
-                )
-                if obj.ship_type
-                else eveimageserver.type_icon_url(
-                    SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
-                ),
-                obj.name,
-            )
-            for obj in sorted(skill_sets, key=lambda o: o.name.lower())
-        ]
-        has_required_html = (
-            "<br>".join(has_required)
-            if has_required
-            else '<i class="fas fa-times boolean-icon-false"></i>'
-        )
-        state_name = character.user.profile.state.name if character.user else ""
-        return {
-            "id": f"{group_pk}_{character.pk}",
-            "group": group.name_plus if group else UNGROUPED_SKILL_SET,
-            "main": main_name,
-            "main_html": main_html,
-            "state": state_name,
-            "organization_html": organization_html,
-            "corporation": main_corporation,
-            "alliance": main_alliance,
-            "character": character.eve_character.character_name,
-            "character_html": character_html,
-            "has_required": has_required_html,
-            "has_required_str": yesno_str(bool(has_required)),
-            "is_doctrine_str": yesno_str(group.is_doctrine if group else False),
-            "is_main_str": yesno_str(character.is_main),
-        }
-
     failed_required_skills_qs = SkillSetSkill.objects.filter(
         failed_required_skill_set_checks__pk=OuterRef("pk")
     )
@@ -309,18 +254,18 @@ def skill_sets_report_data(request) -> JsonResponse:
         )
         .annotate(has_skills=~Exists(failed_required_skills_qs))
     )
-    character_skill_checks = defaultdict(list)
+    character_skill_checks: Dict[int, List[CharacterSkillSetCheck]] = defaultdict(list)
     for skill_set_check in skill_set_checks_qs:
         character_skill_checks[skill_set_check.skill_set.pk].append(skill_set_check)
 
     data = []
-    groups_map = SkillSet.objects.compile_groups_map()
+    groups_map: Dict[int, str] = SkillSet.objects.compile_groups_map()
     for group_map in groups_map.values():
-        group = group_map["group"]
+        group: SkillSetGroup = group_map["group"]
         characters_map = {}
         for skill_set in group_map["skill_sets"]:
             for skill_check in character_skill_checks[skill_set.pk]:
-                character = skill_check.character
+                character: Character = skill_check.character
                 if character.pk not in characters_map:
                     characters_map[character.pk] = {
                         "character": character,
@@ -333,8 +278,80 @@ def skill_sets_report_data(request) -> JsonResponse:
                     )
         for character_map in characters_map.values():
             data.append(
-                _create_data_row(
+                _build_skill_set_report_row(
                     group, character_map["character"], character_map["skill_sets"]
                 )
             )
     return JsonResponse({"data": data})
+
+
+def _build_skill_set_report_row(
+    group: SkillSetGroup, character: Character, skill_sets: Sequence[SkillSet]
+) -> dict:
+    if character.main_character:
+        main_name = character.main_character.character_name
+        main_html = bootstrap_icon_plus_name_html(
+            character.main_character.portrait_url(), main_name, avatar=True
+        )
+        main_corporation = character.main_character.corporation_name
+        main_alliance = (
+            character.main_character.alliance_name
+            if character.main_character.alliance_name
+            else ""
+        )
+        organization_html = format_html(
+            "{}{}",
+            main_corporation,
+            f" [{character.main_character.alliance_ticker}]"
+            if character.main_character.alliance_name
+            else "",
+        )
+    else:
+        main_html = main_name = ""
+        main_corporation = main_alliance = organization_html = ""
+
+    base_url = reverse("memberaudit:character_viewer", args=[character.pk])
+    character_viewer_url = f"{base_url}?tab=skill_sets"
+    character_html = bootstrap_icon_plus_name_html(
+        character.eve_character.portrait_url(),
+        character.eve_character.character_name,
+        avatar=True,
+        url=character_viewer_url,
+    )
+
+    has_required = [
+        bootstrap_icon_plus_name_html(
+            obj.ship_type.icon_url(
+                DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
+            )
+            if obj.ship_type
+            else eveimageserver.type_icon_url(
+                SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
+            ),
+            obj.name,
+        )
+        for obj in sorted(skill_sets, key=lambda o: o.name.lower())
+    ]
+    has_required_html = (
+        "<br>".join(has_required)
+        if has_required
+        else '<i class="fas fa-times boolean-icon-false"></i>'
+    )
+    group_pk = group.pk if group else 0
+    state_name = character.user.profile.state.name if character.user else ""
+    return {
+        "id": f"{group_pk}_{character.pk}",
+        "group": group.name_plus if group else UNGROUPED_SKILL_SET,
+        "main": main_name,
+        "main_html": main_html,
+        "state": state_name,
+        "organization_html": organization_html,
+        "corporation": main_corporation,
+        "alliance": main_alliance,
+        "character": character.eve_character.character_name,
+        "character_html": character_html,
+        "has_required": has_required_html,
+        "has_required_str": yesno_str(bool(has_required)),
+        "is_doctrine_str": yesno_str(group.is_doctrine if group else False),
+        "is_main_str": yesno_str(character.is_main),
+    }
