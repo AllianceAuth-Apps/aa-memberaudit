@@ -275,11 +275,12 @@ def generic_action_update_section(
             },
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
         )  # type: ignore
-        modeladmin.message_user(
-            request,
-            __("Started updating section %(section)s for character %(character)s.")
-            % {"section": section.label, "character": obj},
-        )
+
+    modeladmin.message_user(
+        request,
+        __("Started updating %(section)s for %(count)s characters.")
+        % {"section": section.label, "count": queryset.count()},
+    )
 
 
 @admin.register(Character)
@@ -449,7 +450,10 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
-            self.message_user(request, __("Started updating character %s.") % obj)
+
+        self.message_user(
+            request, __("Started updating %d characters.") % queryset.count()
+        )
 
     @admin.action(description=__("Update assets for selected characters"))
     def update_assets(self, request, queryset):
@@ -458,9 +462,10 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
                 kwargs={"character_pk": obj.pk, "force_update": True},
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
-            self.message_user(
-                request, __("Started updating assets for character %s.") % obj
-            )
+
+        self.message_user(
+            request, __("Started updating assets for %d character.") % queryset.count()
+        )
 
     @admin.action(
         description=__("Enable selected characters and reset token notifications")
