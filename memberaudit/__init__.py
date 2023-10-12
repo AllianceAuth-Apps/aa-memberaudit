@@ -1,4 +1,4 @@
-""""An Alliance Auth app that provides full access to Eve characters
+"""An Alliance Auth app that provides full access to Eve characters
 and related reports for auditing, vetting and monitoring.
 """
 
