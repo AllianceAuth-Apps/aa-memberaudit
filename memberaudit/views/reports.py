@@ -70,7 +70,11 @@ def user_compliance_report_data(request) -> JsonResponse:
                 distinct=True,
             )
         )
-        .select_related("profile__main_character", "profile__state")
+        .select_related(
+            "profile__main_character",
+            "profile__state",
+            "profile__main_character__memberaudit_character",
+        )
     )
     user_data = []
     for user in users_and_character_counts:
