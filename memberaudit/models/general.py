@@ -306,7 +306,7 @@ class SkillSetGroup(models.Model):
     )
 
     class Meta:
-        default_permissions = ()
+        # default_permissions are required for this model
         verbose_name = _("skill set group")
         verbose_name_plural = _("skill set groups")
 
@@ -363,7 +363,7 @@ class SkillSet(models.Model):
     objects = SkillSetManager()
 
     class Meta:
-        default_permissions = ()
+        # default_permissions are required for this model
         verbose_name = _("skill set")
         verbose_name_plural = _("skill sets")
 
@@ -427,15 +427,15 @@ class SkillSetSkill(models.Model):
     )
 
     class Meta:
+        # default_permissions are required for this model
+        verbose_name = _("skill")
+        verbose_name_plural = _("skills")
         constraints = [
             models.UniqueConstraint(
                 fields=["skill_set", "eve_type"],
                 name="functional_pk_skillsetskill",
             )
         ]
-        default_permissions = ()
-        verbose_name = _("skill")
-        verbose_name_plural = _("skills")
 
     def __str__(self) -> str:
         if self.recommended_level:
@@ -514,6 +514,9 @@ class MailEntity(models.Model):
     name = models.CharField(max_length=255, db_index=True)  # optional
 
     objects = MailEntityManager()
+
+    class Meta:
+        default_permissions = ()
 
     def __str__(self) -> str:
         return self.name

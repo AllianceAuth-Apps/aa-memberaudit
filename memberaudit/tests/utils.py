@@ -4,7 +4,8 @@ import json
 import os
 from typing import Tuple
 
-from django.contrib.auth.models import User
+from django.contrib.auth.models import Permission, User
+from django.db.models import QuerySet
 from django.http import JsonResponse
 from django.test import RequestFactory, TestCase
 from esi.models import Token
@@ -147,6 +148,15 @@ class TestCaseWithFixtures(TestCase):
 
 class NoSocketsTestCaseFixtures(NoSocketsTestCase):
     fixtures = ["disable_analytics.json"]
+
+
+def permissions_for_model(model_class) -> QuerySet:
+    """Return all permissions defined for a model."""
+    app_label = model_class._meta.app_label
+    model_name = model_class._meta.model_name
+    return Permission.objects.filter(
+        content_type__app_label=app_label, content_type__model=model_name
+    )
 
 
 TOX_IS_RUNNING = os.getenv("TOX_IS_RUNNING") == "1"
