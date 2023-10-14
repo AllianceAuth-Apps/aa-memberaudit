@@ -10,7 +10,16 @@ from app_utils.testing import (
     queryset_pks,
 )
 
-from memberaudit.models import General, Location, MailEntity, SkillSetSkill
+from memberaudit.models import (
+    EveShipType,
+    EveSkillType,
+    General,
+    Location,
+    MailEntity,
+    SkillSet,
+    SkillSetGroup,
+    SkillSetSkill,
+)
 
 from ..testdata.factories import (
     create_compliance_group_designation,
@@ -24,6 +33,7 @@ from ..utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
+    permissions_for_model,
 )
 
 MODELS_PATH = "memberaudit.models"
@@ -304,3 +314,17 @@ class TestSkillSet(NoSocketsTestCase):
         self.assertEqual(skill_2.eve_type, skill_1.eve_type)
         self.assertEqual(skill_2.required_level, skill_1.required_level)
         self.assertEqual(skill_2.recommended_level, skill_1.recommended_level)
+
+
+class TestPermissions(NoSocketsTestCase):
+    def test_should_have_default_permissions_for_skill_set_models(self):
+        for model_class in [
+            EveSkillType,
+            EveShipType,
+            SkillSet,
+            SkillSetGroup,
+            SkillSetSkill,
+        ]:
+            with self.subTest(model=model_class.__name__):
+                # when/then
+                self.assertTrue(permissions_for_model(model_class).exists())
