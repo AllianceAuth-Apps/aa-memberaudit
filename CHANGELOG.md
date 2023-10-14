@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.3.3] - 2023-10-14
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+### Changed
+
+- Removed default permissions from MailEntity
+
+### Fixed
+
+- Added missing default permissions for skil set related models
+
 ## [3.3.2] - 2023-10-12
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
