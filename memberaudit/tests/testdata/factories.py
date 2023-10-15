@@ -29,6 +29,7 @@ from memberaudit.models import (
     CharacterMail,
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
+    CharacterNotification,
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
@@ -240,6 +241,29 @@ def create_character_mining_ledger_entry(
     }
     params.update(kwargs)
     return CharacterMiningLedgerEntry.objects.create(**params)
+
+
+def create_character_notification(
+    character: Character, **kwargs
+) -> CharacterNotification:
+    notification_id = kwargs.get("notification_id", next_number("notification_id"))
+    params = {
+        "character": character,
+        "notification_id": notification_id,
+        "notification_type": "CorpAppRejectCustomMsg",
+        "details": {
+            "applicationText": "example1",
+            "charID": 1011,
+            "corpID": 2001,
+            "customMessage": "example2",
+        },
+        "is_read": True,
+        "timestamp": now(),
+    }
+    if "sender_id" not in kwargs and "sender" not in kwargs:
+        params["sender_id"] = 2901
+    params.update(kwargs)
+    return CharacterNotification.objects.create(**params)
 
 
 def create_character_online_status(

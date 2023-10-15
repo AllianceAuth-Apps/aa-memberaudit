@@ -183,22 +183,16 @@
             ],
             "1002": []
         },
-        "get_characters_character_id_standings": {
+        "get_characters_character_id_notifications": {
             "1001": [
                 {
-                    "from_id": 1901,
-                    "from_type": "agent",
-                    "standing": 0.1
-                },
-                {
-                    "from_id": 2901,
-                    "from_type": "npc_corp",
-                    "standing": 0
-                },
-                {
-                    "from_id": 500001,
-                    "from_type": "faction",
-                    "standing": -1
+                    "is_read": true,
+                    "notification_id": 1,
+                    "sender_id": 2901,
+                    "sender_type": "corporation",
+                    "text": "amount: 3731016.4000000004\nitemID: 1024881021663\npayout: 1\n",
+                    "timestamp": "2017-08-16T10:08:00Z",
+                    "type": "InsurancePayoutMsg"
                 }
             ],
             "1002": []
@@ -406,6 +400,26 @@
                     "Fitting_Manager"
                 ]
             }
+        },
+        "get_characters_character_id_standings": {
+            "1001": [
+                {
+                    "from_id": 1901,
+                    "from_type": "agent",
+                    "standing": 0.1
+                },
+                {
+                    "from_id": 2901,
+                    "from_type": "npc_corp",
+                    "standing": 0
+                },
+                {
+                    "from_id": 500001,
+                    "from_type": "faction",
+                    "standing": -1
+                }
+            ],
+            "1002": []
         },
         "get_characters_character_id_titles": {
             "1001": [

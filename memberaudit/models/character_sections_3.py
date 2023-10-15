@@ -13,6 +13,7 @@ from memberaudit.core import standings
 from memberaudit.helpers import EveEntityIdsMixin
 from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
+    CharacterNotificationManager,
     CharacterOnlineStatusManager,
     CharacterPlanetManager,
     CharacterRoleManager,
@@ -60,6 +61,48 @@ class CharacterMiningLedgerEntry(models.Model):
 
     def __str__(self) -> str:
         return f"{self.character} {self.id}"
+
+
+class CharacterNotification(models.Model):
+    """A notification of a character."""
+
+    character = models.ForeignKey(
+        Character, on_delete=models.CASCADE, related_name="notifications"
+    )
+    notification_id = models.PositiveBigIntegerField()
+
+    details = models.JSONField(default=dict)
+    is_read = models.BooleanField(
+        default=False,
+        help_text=_("True when this notification has been read in the eve client"),
+    )
+    notification_type = models.CharField(
+        max_length=100,
+        default="",
+        db_index=True,
+        verbose_name="type",
+        help_text=_("type of this notification as reported by ESI"),
+    )
+    sender = models.ForeignKey(
+        EveEntity, on_delete=models.CASCADE, null=True, default=None, related_name="+"
+    )
+    timestamp = models.DateTimeField()
+    title = models.CharField(max_length=255, default="")  # rendered from details
+    text = models.TextField(default="")  # rendered from details
+
+    objects = CharacterNotificationManager()
+
+    class Meta:
+        default_permissions = ()
+        # constraints = [
+        #     models.UniqueConstraint(
+        #         fields=["character", "notification_id"],
+        #         name="functional_pk_characternotification"
+        #     )
+        # ]
+
+    def __str__(self) -> str:
+        return f"{self.character} {self.notification_id}"
 
 
 class CharacterOnlineStatus(models.Model):

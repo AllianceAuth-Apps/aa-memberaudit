@@ -31,23 +31,29 @@ _endpoints = [
     ),
     EsiEndpoint(
         "Character",
-        "get_characters_character_id_corporationhistory",
-        "character_id",
-    ),
-    EsiEndpoint(
-        "Character",
         "get_characters_character_id",
         "character_id",
     ),
     EsiEndpoint(
         "Character",
-        "get_characters_character_id_standings",
+        "get_characters_character_id_corporationhistory",
+        "character_id",
+    ),
+    EsiEndpoint(
+        "Character",
+        "get_characters_character_id_notifications",
         "character_id",
         needs_token=True,
     ),
     EsiEndpoint(
         "Character",
         "get_characters_character_id_roles",
+        "character_id",
+        needs_token=True,
+    ),
+    EsiEndpoint(
+        "Character",
+        "get_characters_character_id_standings",
         "character_id",
         needs_token=True,
     ),

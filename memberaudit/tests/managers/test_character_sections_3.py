@@ -16,6 +16,7 @@ from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import (
     Character,
+    CharacterNotification,
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
@@ -33,6 +34,7 @@ from memberaudit.models import (
 from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_mining_ledger_entry,
+    create_character_notification,
     create_character_planet,
     create_character_role,
     create_character_skill,
@@ -119,6 +121,140 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
             eve_type=EveType.objects.get(name="Dense Veldspar"),
         )
         self.assertEqual(obj.quantity, 7004)
+
+
+@patch(MANAGERS_PATH + ".esi")
+class TestCharacterNotificationManager(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
+    def test_should_add_new_notification(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_notifications",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "is_read": True,
+                            "notification_id": 1,
+                            "sender_id": 2901,
+                            "sender_type": "corporation",
+                            "text": "amount: 3731016.4000000004\nitemID: 1024881021663\npayout: 1\n",
+                            "timestamp": "2017-08-16T10:08:00Z",
+                            "type": "InsurancePayoutMsg",
+                        }
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        self.character_1001.update_notifications()
+        # then
+        self.assertEqual(self.character_1001.notifications.count(), 1)
+        obj: CharacterNotification = self.character_1001.notifications.get(
+            notification_id=1
+        )
+        self.assertIsInstance(obj.timestamp, dt.datetime)
+        self.assertEqual(obj.sender, EveEntity.objects.get(id=2901))
+        self.assertTrue(obj.is_read)
+        self.assertEqual(obj.notification_type, "InsurancePayoutMsg")
+        self.assertDictEqual(
+            obj.details,
+            {"amount": 3731016.4000000004, "itemID": 1024881021663, "payout": 1},
+        )
+
+    def test_should_update_read_status_1(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_notifications",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "is_read": True,
+                            "notification_id": 1,
+                            "sender_id": 2901,
+                            "sender_type": "corporation",
+                            "text": "amount: 3731016.4000000004\nitemID: 1024881021663\npayout: 1\n",
+                            "timestamp": "2017-08-16T10:08:00Z",
+                            "type": "InsurancePayoutMsg",
+                        }
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        obj = create_character_notification(
+            character=self.character_1001,
+            notification_id=1,
+            is_read=False,
+            notification_type="InsurancePayoutMsg",
+            details={
+                "amount": 3731016.4000000004,
+                "itemID": 1024881021663,
+                "payout": 1,
+            },
+        )
+        # when
+        self.character_1001.update_notifications()
+        # then
+        self.assertEqual(self.character_1001.notifications.count(), 1)
+        obj.refresh_from_db()
+        self.assertTrue(obj.is_read)
+
+    def test_should_update_read_status_2(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_notifications",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "is_read": False,
+                            "notification_id": 1,
+                            "sender_id": 2901,
+                            "sender_type": "corporation",
+                            "text": "amount: 3731016.4000000004\nitemID: 1024881021663\npayout: 1\n",
+                            "timestamp": "2017-08-16T10:08:00Z",
+                            "type": "InsurancePayoutMsg",
+                        }
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        obj = create_character_notification(
+            character=self.character_1001,
+            notification_id=1,
+            is_read=True,
+            notification_type="InsurancePayoutMsg",
+            details={
+                "amount": 3731016.4000000004,
+                "itemID": 1024881021663,
+                "payout": 1,
+            },
+        )
+        # when
+        self.character_1001.update_notifications()
+        # then
+        self.assertEqual(self.character_1001.notifications.count(), 1)
+        obj.refresh_from_db()
+        self.assertFalse(obj.is_read)
 
 
 @patch(MANAGERS_PATH + ".esi")

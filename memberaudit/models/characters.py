@@ -64,6 +64,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         LOYALTY = "loyalty", _("loyalty")
         MAILS = "mails", _("mails")
         MINING_LEDGER = "mining_ledger", _("mining ledger")
+        NOTIFICATIONS = "notifications", _("notifications")
         ONLINE_STATUS = "online_status", _("online status")
         PLANETS = "planets", _("planets")
         ROLES = "roles", _("roles")
@@ -122,6 +123,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         UpdateSection.LOYALTY: 3,
         UpdateSection.MAILS: 2,
         UpdateSection.MINING_LEDGER: 2,
+        UpdateSection.NOTIFICATIONS: 2,
         UpdateSection.ONLINE_STATUS: 1,
         UpdateSection.PLANETS: 2,
         UpdateSection.ROLES: 2,
@@ -695,6 +697,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def update_mining_ledger(self, force_update: bool = False):
         """Update character's mining ledger from ESI."""
         self.mining_ledger.update_or_create_esi(self, force_update)
+
+    def update_notifications(self, force_update: bool = False):
+        """Update the character's notifications from ESI."""
+        self.notifications.update_or_create_esi(self, force_update)
 
     def update_online_status(self, force_update: bool = False):
         """Update the character's online status from ESI."""

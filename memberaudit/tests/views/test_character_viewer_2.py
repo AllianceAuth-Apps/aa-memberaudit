@@ -32,6 +32,7 @@ from memberaudit.views.character_viewer_2 import (
     character_mail_headers_by_label_data,
     character_mail_headers_by_list_data,
     character_mining_ledger_data,
+    character_notifications_data,
     character_planets_data,
     character_roles_data,
     character_skill_set_details,
@@ -48,6 +49,7 @@ from ..testdata.factories import (
     create_character_mail,
     create_character_mail_label,
     create_character_mining_ledger_entry,
+    create_character_notification,
     create_character_planet,
     create_character_role,
     create_character_skill,
@@ -141,6 +143,48 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["quantity"], entry.quantity)
+
+
+class TestCharacterNotificationsData(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
+    def test_should_return_notifications_data(self):
+        # given
+        create_character_notification(character=self.character)
+        request = self.factory.get(
+            reverse(
+                "memberaudit:character_notifications_data", args=[self.character.pk]
+            )
+        )
+        request.user = self.user
+        # when
+        response = character_notifications_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        record = data[0]
+        self.assertEqual(record["type"], "CorpAppRejectCustomMsg")
+
+    def test_should_return_nothing_when_no_data(self):
+        # given
+        request = self.factory.get(
+            reverse(
+                "memberaudit:character_notifications_data", args=[self.character.pk]
+            )
+        )
+        request.user = self.user
+        # when
+        response = character_notifications_data(request, self.character.pk)
+        # then
+        self.assertEqual(response.status_code, 200)
+        data = json_response_to_python_2(response)
+        self.assertEqual(data, [])
 
 
 class TestCharacterPlanetData(NoSocketsTestCase):

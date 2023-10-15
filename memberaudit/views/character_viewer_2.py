@@ -3,7 +3,7 @@
 
 import datetime as dt
 from collections import defaultdict
-from typing import Optional
+from typing import Iterable, Optional
 
 import humanize
 
@@ -45,6 +45,7 @@ from memberaudit.helpers import implant_slot_num
 from memberaudit.models import (
     Character,
     CharacterMail,
+    CharacterNotification,
     CharacterPlanet,
     CharacterRole,
     CharacterStanding,
@@ -262,6 +263,28 @@ def character_mining_ledger_data(
             "price": row.price,
             "total": row.total,
             "type": row.eve_type.name,
+        }
+        for row in qs
+    ]
+    return JsonResponse({"data": data})
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+@fetch_character_if_allowed()
+def character_notifications_data(
+    request, character_pk: int, character: Character
+) -> JsonResponse:
+    """Render data view for character notifications."""
+    qs: Iterable[CharacterNotification] = character.notifications.select_related(
+        "sender"
+    )
+    data = [
+        {
+            "timestamp": row.timestamp.isoformat(),
+            "is_read": row.is_read,
+            "type": row.notification_type,
+            "sender_name": row.sender.name if row.sender else "",
         }
         for row in qs
     ]
