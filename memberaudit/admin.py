@@ -435,6 +435,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def _last_update_at(self, obj: Character):
         return obj.last_update_at
 
+    @admin.display
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
         enabled_sections = Character.UpdateSection.enabled_sections()
@@ -568,6 +569,7 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
             )
         )
 
+    @admin.display
     def _skill_sets(self, obj):
         return format_html(
             "<br>".join([skill_set.name for skill_set in obj.skill_sets_ordered])
@@ -688,6 +690,7 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
             ),
         )
 
+    @admin.display
     def _skills(self, obj):
         skills = []
         for skill in obj.skills_ordered:
@@ -699,6 +702,7 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
             skills.append(f"{skill_name} {required_level} {recommended_level}")
         return skills
 
+    @admin.display
     def _groups(self, obj) -> Optional[List[str]]:
         groups = [f"{group.name}" for group in obj.groups_ordered]
         return groups if groups else None
