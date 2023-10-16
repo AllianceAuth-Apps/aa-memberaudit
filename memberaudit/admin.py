@@ -581,6 +581,22 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
         super().save_model(request, obj, form, change)
 
 
+class SkillSetGroupAdminInline(admin.TabularInline):
+    model = SkillSetGroup.skill_sets.through
+
+    def get_formset(self, request, obj=None, **kwargs):
+        """
+        Override the formset function in order to remove the add and change buttons beside the foreign key pull-down
+        menus in the inline.
+        """
+        formset = super().get_formset(request, obj, **kwargs)
+        form = formset.form
+        widget = form.base_fields["skillsetgroup"].widget
+        widget.can_add_related = False
+        widget.can_change_related = False
+        return formset
+
+
 class SkillSetSkillAdminFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
@@ -646,6 +662,14 @@ class SkillSetSkillAdminInline(admin.TabularInline):
 
 @admin.register(SkillSet)
 class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
+    class Media:
+        css = {
+            "all": (
+                "allianceauth/authentication/css/admin.css",
+                "memberaudit/css/admin.css",
+            ),
+        }
+
     autocomplete_fields = ("ship_type",)
     list_display = (
         "name",
@@ -671,7 +695,10 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
         ("last_modified_at", "last_modified_by"),
     ]
     readonly_fields = ("last_modified_at", "last_modified_by")
-    inlines = (SkillSetSkillAdminInline,)
+    inlines = (
+        SkillSetGroupAdminInline,
+        SkillSetSkillAdminInline,
+    )
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -703,9 +730,13 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
         return skills
 
     @admin.display
-    def _groups(self, obj) -> Optional[List[str]]:
+    def _groups(self, obj) -> List[str] | str:
         groups = [f"{group.name}" for group in obj.groups_ordered]
-        return groups if groups else None
+        return (
+            groups
+            if groups
+            else format_html('<span class="text-warning">(No group)</span>')
+        )
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "ship_type":
