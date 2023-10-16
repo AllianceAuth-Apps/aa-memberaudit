@@ -1,11 +1,9 @@
 """Report views."""
 
-from collections import defaultdict
-from typing import Dict, List, Sequence
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Exists, OuterRef, Q
+from django.db.models import Count, F, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -22,16 +20,9 @@ from app_utils.views import bootstrap_icon_plus_name_html, yesno_str
 
 from memberaudit import __title__
 from memberaudit.constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
-from memberaudit.models import (
-    Character,
-    CharacterSkillSetCheck,
-    General,
-    SkillSet,
-    SkillSetGroup,
-    SkillSetSkill,
-)
+from memberaudit.models import Character, CharacterSkillSetCheck, General, SkillSetGroup
 
-from ._common import UNGROUPED_SKILL_SET, add_common_context
+from ._common import add_common_context
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -235,59 +226,45 @@ def corporation_compliance_report_data(request) -> JsonResponse:
 def skill_sets_report_data(request) -> JsonResponse:
     """Render data view for skill sets report."""
 
-    failed_required_skills_qs = SkillSetSkill.objects.filter(
-        failed_required_skill_set_checks__pk=OuterRef("pk")
+    group_ids = list(SkillSetGroup.objects.values_list("id", flat=True))
+    passed_checks_qs = (
+        CharacterSkillSetCheck.objects.filter(failed_required_skills__isnull=True)
+        .select_related("skill_set", "skill_set__ship_type")
+        .order_by("skill_set__name")
     )
-    skill_set_checks_qs = (
-        CharacterSkillSetCheck.objects.select_related(
-            "character",
-            "character__eve_character__character_ownership__user",
-            "character__eve_character__character_ownership__user__profile__main_character",
-            "character__eve_character__character_ownership__user__profile__state",
-            "skill_set",
-            "skill_set__ship_type",
+    queryset = (
+        Character.objects.select_related(
+            "eve_character__character_ownership__user",
+            "eve_character__character_ownership__user__profile__main_character",
+            "eve_character__character_ownership__user__profile__state",
         )
         .exclude(
-            character__eve_character__character_ownership__user__profile__state__pk=(
+            eve_character__character_ownership__user__profile__state__pk=(
                 get_guest_state_pk()
             )
         )
-        .annotate(has_skills=~Exists(failed_required_skills_qs))
+        .prefetch_related(
+            Prefetch(
+                "skill_set_checks", queryset=passed_checks_qs, to_attr="passed_checks"
+            )
+        )
+        .filter(skill_set_checks__skill_set__groups__in=group_ids)
+        .annotate(group_pk=F("skill_set_checks__skill_set__groups__pk"))
+        .annotate(group_name=F("skill_set_checks__skill_set__groups__name"))
+        .annotate(
+            group_is_doctrine=F("skill_set_checks__skill_set__groups__is_doctrine")
+        )
+        .distinct()
     )
-    character_skill_checks: Dict[int, List[CharacterSkillSetCheck]] = defaultdict(list)
-    for skill_set_check in skill_set_checks_qs:
-        character_skill_checks[skill_set_check.skill_set.pk].append(skill_set_check)
 
     data = []
-    groups_map: Dict[int, str] = SkillSet.objects.compile_groups_map()
-    for group_map in groups_map.values():
-        group: SkillSetGroup = group_map["group"]
-        characters_map = {}
-        for skill_set in group_map["skill_sets"]:
-            for skill_check in character_skill_checks[skill_set.pk]:
-                character: Character = skill_check.character
-                if character.pk not in characters_map:
-                    characters_map[character.pk] = {
-                        "character": character,
-                        "character_name": character,
-                        "skill_sets": [],
-                    }
-                if skill_check.has_skills:
-                    characters_map[character.pk]["skill_sets"].append(
-                        skill_check.skill_set
-                    )
-        for character_map in characters_map.values():
-            data.append(
-                _build_skill_set_report_row(
-                    group, character_map["character"], character_map["skill_sets"]
-                )
-            )
+    for obj in queryset:
+        data.append(_build_skill_set_report_row(obj))
+
     return JsonResponse({"data": data})
 
 
-def _build_skill_set_report_row(
-    group: SkillSetGroup, character: Character, skill_sets: Sequence[SkillSet]
-) -> dict:
+def _build_skill_set_report_row(character: Character) -> dict:
     if character.main_character:
         main_name = character.main_character.character_name
         main_html = bootstrap_icon_plus_name_html(
@@ -319,29 +296,33 @@ def _build_skill_set_report_row(
         url=character_viewer_url,
     )
 
-    has_required = [
+    passed_skill_sets = [
         bootstrap_icon_plus_name_html(
-            obj.ship_type.icon_url(
+            skill_set_check.skill_set.ship_type.icon_url(
                 DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
             )
-            if obj.ship_type
+            if skill_set_check.skill_set.ship_type
             else eveimageserver.type_icon_url(
                 SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
             ),
-            obj.name,
+            skill_set_check.skill_set.name,
         )
-        for obj in sorted(skill_sets, key=lambda o: o.name.lower())
+        for skill_set_check in character.passed_checks
     ]
     has_required_html = (
-        "<br>".join(has_required)
-        if has_required
+        "<br>".join(passed_skill_sets)
+        if passed_skill_sets
         else '<i class="fas fa-times boolean-icon-false"></i>'
     )
-    group_pk = group.pk if group else 0
+    group_pk = character.group_pk if character.group_pk else 0
     state_name = character.user.profile.state.name if character.user else ""
+    group_name = character.group_name
+    is_doctrine = character.group_is_doctrine if character.group_is_doctrine else False
+    if is_doctrine:
+        group_name = f"Doctrine: {group_name}"
     return {
         "id": f"{group_pk}_{character.pk}",
-        "group": group.name_plus if group else UNGROUPED_SKILL_SET,
+        "group": group_name,
         "main": main_name,
         "main_html": main_html,
         "state": state_name,
@@ -351,7 +332,7 @@ def _build_skill_set_report_row(
         "character": character.eve_character.character_name,
         "character_html": character_html,
         "has_required": has_required_html,
-        "has_required_str": yesno_str(bool(has_required)),
-        "is_doctrine_str": yesno_str(group.is_doctrine if group else False),
+        "has_required_str": yesno_str(bool(passed_skill_sets)),
+        "is_doctrine_str": yesno_str(is_doctrine),
         "is_main_str": yesno_str(character.is_main),
     }
