@@ -1,5 +1,8 @@
-
 @media all {
+    h3 {
+        margin-top: 0px;
+    }
+
     /* User Compliance Tab */
     #tab_user_compliance tbody td:nth-child(1) {
         white-space: nowrap;
@@ -8,6 +11,7 @@
     #tab_user_compliance tbody td:nth-child(6) {
         text-align: right;
     }
+
     /* Corporation Compliance Tab */
     #tab_corporation_compliance tbody td:nth-child(1) {
         white-space: nowrap;
