@@ -1,5 +1,8 @@
 """Report views."""
 
+from typing import Any
+
+from datatables.views import DataTableView
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
@@ -226,6 +229,14 @@ def corporation_compliance_report_data(request) -> JsonResponse:
 def skill_sets_report_data(request) -> JsonResponse:
     """Render data view for skill sets report."""
 
+    data = []
+    for obj in _skillset_report_query():
+        data.append(_build_skill_set_report_row(obj))
+
+    return JsonResponse({"data": data})
+
+
+def _skillset_report_query():
     group_ids = list(SkillSetGroup.objects.values_list("id", flat=True))
     passed_checks_qs = (
         CharacterSkillSetCheck.objects.filter(failed_required_skills__isnull=True)
@@ -257,11 +268,7 @@ def skill_sets_report_data(request) -> JsonResponse:
         .distinct()
     )
 
-    data = []
-    for obj in queryset:
-        data.append(_build_skill_set_report_row(obj))
-
-    return JsonResponse({"data": data})
+    return queryset
 
 
 def _build_skill_set_report_row(character: Character) -> dict:
@@ -336,3 +343,77 @@ def _build_skill_set_report_row(character: Character) -> dict:
         "is_doctrine_str": yesno_str(is_doctrine),
         "is_main_str": yesno_str(character.is_main),
     }
+
+
+class SkillSetReportDataTableView(DataTableView):
+    columns = ["group_name", "main", "state", "organization", "character", "skills"]
+    group_column = "group_name"
+
+    def get_queryset(self):
+        return _skillset_report_query().order_by(
+            "group_name", "eve_character__character_name"
+        )  # FIXME - this sorting should be automatic
+
+    def render_column(self, obj: Character, column: str) -> Any:
+        has_main = bool(obj.main_character)
+        if column == "main":
+            if not has_main:
+                return ""
+
+            return bootstrap_icon_plus_name_html(
+                obj.main_character.portrait_url(),
+                obj.main_character.character_name,
+                avatar=True,
+            )
+
+        if column == "state":
+            if not has_main:
+                return ""
+            return obj.user.profile.state.name
+
+        if column == "organization":
+            if not has_main:
+                return ""
+
+            organization_html = format_html(
+                "{}{}",
+                obj.main_character.corporation_name,
+                f" [{obj.main_character.alliance_ticker}]"
+                if obj.main_character.alliance_name
+                else "",
+            )
+            return organization_html
+
+        if column == "character":
+            base_url = reverse("memberaudit:character_viewer", args=[obj.pk])
+            character_viewer_url = f"{base_url}?tab=skill_sets"
+            character_html = bootstrap_icon_plus_name_html(
+                obj.eve_character.portrait_url(),
+                obj.eve_character.character_name,
+                avatar=True,
+                url=character_viewer_url,
+            )
+            return character_html
+
+        if column == "skills":
+            passed_skill_sets = [
+                bootstrap_icon_plus_name_html(
+                    skill_set_check.skill_set.ship_type.icon_url(
+                        DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
+                    )
+                    if skill_set_check.skill_set.ship_type
+                    else eveimageserver.type_icon_url(
+                        SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
+                    ),
+                    skill_set_check.skill_set.name,
+                )
+                for skill_set_check in obj.passed_checks
+            ]
+            has_required_html = format_html(
+                "<br>".join(passed_skill_sets)
+                if passed_skill_sets
+                else '<i class="fas fa-times boolean-icon-false"></i>'
+            )
+            return has_required_html
+
+        return super().render_column(obj, column)

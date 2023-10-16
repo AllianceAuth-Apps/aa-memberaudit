@@ -1,0 +1,8 @@
+{% load i18n %}
+{% load datatables %}
+
+<div role="tabpanel" class="tab-pane" id="skill_sets_2">
+    <h3>{% translate 'Skill Sets 2' %}</h3>
+    {% datatables url="memberaudit:skill_sets_report_2_data" %}
+    <p class="text-muted">Note: Skill sets without a group are ignored.</p>
+</div>

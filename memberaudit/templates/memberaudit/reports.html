@@ -3,6 +3,7 @@
 {% load i18n %}
 {% load humanize %}
 {% load static %}
+{% load datatables %}
 
 {% block details %}
     <div>
@@ -15,6 +16,7 @@
                     {% include 'memberaudit/partials/reports/tabs/user_compliance.html' %}
                     {% include 'memberaudit/partials/reports/tabs/corporation_compliance.html' %}
                     {% include 'memberaudit/partials/reports/tabs/skill_sets.html' %}
+                    {% include 'memberaudit/partials/reports/tabs/skill_sets_2.html' %}
                 </div>
             </div>
 
@@ -23,6 +25,7 @@
 {% endblock details %}
 
 {% block extra_javascript %}
+    {% enable_htmx_js %}
     {% include 'bundles/datatables-js.html' %}
 
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/dataTables.rowGroup.min.js' %}"></script>
