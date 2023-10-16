@@ -777,9 +777,9 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
             skill_name = skill.eve_type.name
             required_level = skill.required_level if skill.required_level else ""
             recommended_level = (
-                f"[{skill.recommended_level}]" if skill.recommended_level else ""
+                f" [{skill.recommended_level}]" if skill.recommended_level else ""
             )
-            skills.append(f"{skill_name} {required_level} {recommended_level}")
+            skills.append(f"{skill_name} {required_level}{recommended_level}")
         return skills
 
     @admin.display

@@ -4,6 +4,7 @@ from django.contrib.admin.sites import AdminSite
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
+from eveuniverse.models import EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from app_utils.testdata_factories import UserFactory
@@ -31,6 +32,8 @@ from .testdata.factories import (
     create_character_update_status,
     create_compliance_group,
     create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
@@ -280,7 +283,6 @@ class TestCharacterDeleteCharactersAdmin(TestCase):
         self.assertTrue(mock_message_user.called)
 
 
-@patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
 class TestSkillSetAdmin(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -290,7 +292,10 @@ class TestSkillSetAdmin(TestCase):
         load_eveuniverse()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
 
+    @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
     def test_save_model(self, mock_update_characters_skill_checks):
         # given
         obj = SkillSet(name="Dummy")
@@ -306,6 +311,7 @@ class TestSkillSetAdmin(TestCase):
         self.assertEqual(obj_2.last_modified_at, my_now)
         self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
 
+    @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
     def test_delete_model(self, mock_update_characters_skill_checks):
         # given
         obj = create_skill_set(name="Dummy")
@@ -315,6 +321,75 @@ class TestSkillSetAdmin(TestCase):
         # then
         self.assertFalse(SkillSet.objects.filter(pk=obj.pk).exists())
         self.assertTrue(mock_update_characters_skill_checks.apply_async.called)
+
+    def test_should_return_none_if_no_group_defined(self):
+        # given
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set, eve_type=self.amarr_carrier_skill_type
+        )
+        request = MockRequest(self.user)
+        qs = self.modeladmin.get_queryset(request)
+        obj = qs.first()
+        # when
+        result = self.modeladmin._groups(obj)
+        # then
+        self.assertIsNone(result)
+
+    def test_should_return_list_of_group_names(self):
+        # given
+        group_1 = create_skill_set_group(name="Alpha")
+        group_2 = create_skill_set_group(name="Bravo")
+        skill_set = create_skill_set()
+        skill_set.groups.add(group_1, group_2)
+        create_skill_set_skill(
+            skill_set=skill_set, eve_type=self.amarr_carrier_skill_type
+        )
+        request = MockRequest(self.user)
+        qs = self.modeladmin.get_queryset(request)
+        obj = qs.first()
+        # when
+        result = self.modeladmin._groups(obj)
+        # then
+        self.assertListEqual(result, ["Alpha", "Bravo"])
+
+    def test_should_return_required_skills(self):
+        # given
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=3,
+        )
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=5,
+        )
+        request = MockRequest(self.user)
+        qs = self.modeladmin.get_queryset(request)
+        obj = qs.first()
+        # when
+        result = self.modeladmin._skills(obj)
+        # then
+        self.assertListEqual(result, ["Amarr Carrier 3", "Caldari Carrier 5"])
+
+    def test_should_return_required_skills_and_recommended_skills(self):
+        # given
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+        request = MockRequest(self.user)
+        qs = self.modeladmin.get_queryset(request)
+        obj = qs.first()
+        # when
+        result = self.modeladmin._skills(obj)
+        # then
+        self.assertListEqual(result, ["Amarr Carrier 3 [5]"])
 
     # def test_ship_type_filter(self):
     #     class SkillSetAdminTest(SkillSetAdmin):
