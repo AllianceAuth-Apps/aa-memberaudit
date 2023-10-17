@@ -346,25 +346,32 @@ def _build_skill_set_report_row(character: Character) -> dict:
 
 
 class SkillSetReportDataTableView(DataTableView):
+    """ "A data table view for skill set reports."""
+
     columns = ["group_name", "main", "state", "organization", "character", "skills"]
     group_column = "group_name"
+    # filters = ["state"]
 
     def get_queryset(self):
+        """Return base queryset."""
         return _skillset_report_query().order_by(
             "group_name", "eve_character__character_name"
         )  # FIXME - this sorting should be automatic
 
     def render_column(self, obj: Character, column: str) -> Any:
+        """Return a rendered column."""
         has_main = bool(obj.main_character)
+
         if column == "main":
             if not has_main:
                 return ""
 
-            return bootstrap_icon_plus_name_html(
+            main_character_html = bootstrap_icon_plus_name_html(
                 obj.main_character.portrait_url(),
                 obj.main_character.character_name,
                 avatar=True,
             )
+            return main_character_html
 
         if column == "state":
             if not has_main:
