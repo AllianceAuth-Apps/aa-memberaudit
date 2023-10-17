@@ -30,9 +30,30 @@
 
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/dataTables.rowGroup.min.js' %}"></script>
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/filterDropDown.min.js' %}"></script>
+    <script type="application/javascript" src="{% static 'memberaudit/js/global.js' %}"></script>
 
     <script>
+        const COOKIE_LAST_TAB_ID = "memberaudit_reports_last_tab_id"
+        const COOKIE_LAST_TAB_HOURS = 2
         $(document).ready(function() {
+            /* show last selected tab or default */
+            let tabId = "{{show_tab}}"
+            if (tabId != "") {
+                setCookie(COOKIE_LAST_TAB_ID, tabId, 1)
+            }
+            else {
+                tabId = getCookie(COOKIE_LAST_TAB_ID)
+                if (tabId == "") tabId = "mail"
+            }
+            $('a[href="#' + tabId + '"]').tab("show")
+
+            /* remember last selected tab */
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const selectedTabId = $(e.target).attr("href").substr(1)
+                setCookie(COOKIE_LAST_TAB_ID, selectedTabId, COOKIE_LAST_TAB_HOURS)
+            });
+
+
             $('#tab_user_compliance').DataTable({
                 ajax: {
                     url: '{% url 'memberaudit:user_compliance_report_data' %}',
