@@ -6,7 +6,7 @@ from datatables.views import DataTableView
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, F, Prefetch, Q
+from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -236,41 +236,6 @@ def skill_sets_report_data(request) -> JsonResponse:
     return JsonResponse({"data": data})
 
 
-def _skillset_report_query():
-    group_ids = list(SkillSetGroup.objects.values_list("id", flat=True))
-    passed_checks_qs = (
-        CharacterSkillSetCheck.objects.filter(failed_required_skills__isnull=True)
-        .select_related("skill_set", "skill_set__ship_type")
-        .order_by("skill_set__name")
-    )
-    queryset = (
-        Character.objects.select_related(
-            "eve_character__character_ownership__user",
-            "eve_character__character_ownership__user__profile__main_character",
-            "eve_character__character_ownership__user__profile__state",
-        )
-        .exclude(
-            eve_character__character_ownership__user__profile__state__pk=(
-                get_guest_state_pk()
-            )
-        )
-        .prefetch_related(
-            Prefetch(
-                "skill_set_checks", queryset=passed_checks_qs, to_attr="passed_checks"
-            )
-        )
-        .filter(skill_set_checks__skill_set__groups__in=group_ids)
-        .annotate(group_pk=F("skill_set_checks__skill_set__groups__pk"))
-        .annotate(group_name=F("skill_set_checks__skill_set__groups__name"))
-        .annotate(
-            group_is_doctrine=F("skill_set_checks__skill_set__groups__is_doctrine")
-        )
-        .distinct()
-    )
-
-    return queryset
-
-
 def _build_skill_set_report_row(character: Character) -> dict:
     if character.main_character:
         main_name = character.main_character.character_name
@@ -345,18 +310,63 @@ def _build_skill_set_report_row(character: Character) -> dict:
     }
 
 
+def _skillset_report_query():
+    group_ids = list(SkillSetGroup.objects.values_list("id", flat=True))
+    passed_checks_qs = (
+        CharacterSkillSetCheck.objects.filter(failed_required_skills__isnull=True)
+        .select_related("skill_set", "skill_set__ship_type")
+        .order_by("skill_set__name")
+    )
+    passed_skills_qs = CharacterSkillSetCheck.objects.filter(
+        character=OuterRef("pk"), failed_required_skills__isnull=True
+    )
+    queryset = (
+        Character.objects.select_related(
+            "eve_character__character_ownership__user",
+            "eve_character__character_ownership__user__profile__main_character",
+            "eve_character__character_ownership__user__profile__state",
+        )
+        .exclude(
+            eve_character__character_ownership__user__profile__state__pk=(
+                get_guest_state_pk()
+            )
+        )
+        .prefetch_related(
+            Prefetch(
+                "skill_set_checks", queryset=passed_checks_qs, to_attr="passed_checks"
+            )
+        )
+        .filter(skill_set_checks__skill_set__groups__in=group_ids)
+        .annotate(group_pk=F("skill_set_checks__skill_set__groups__pk"))
+        .annotate(group_name=F("skill_set_checks__skill_set__groups__name"))
+        .annotate(
+            group_is_doctrine=F("skill_set_checks__skill_set__groups__is_doctrine")
+        )
+        .annotate(has_skills=Exists(passed_skills_qs))
+        .distinct()
+    )
+
+    return queryset
+
+
 class SkillSetReportDataTableView(DataTableView):
     """ "A data table view for skill set reports."""
 
     columns = ["group_name", "main", "state", "organization", "character", "skills"]
     group_column = "group_name"
-    # filters = ["state"]
+    filters = [
+        "group_name",
+        ("eve_character__character_ownership__user__profile__state__name", _("State")),
+        ("eve_character__alliance_name", _("Alliance")),
+        ("eve_character__corporation_name", _("Corporation")),
+        ("group_is_doctrine", _("Is Doctrine?")),
+        "has_skills",
+    ]
+    search_fields = ["eve_character__character_name"]
 
-    def get_queryset(self):
+    def get_initial_queryset(self):
         """Return base queryset."""
-        return _skillset_report_query().order_by(
-            "group_name", "eve_character__character_name"
-        )  # FIXME - this sorting should be automatic
+        return _skillset_report_query()
 
     def render_column(self, obj: Character, column: str) -> Any:
         """Return a rendered column."""
