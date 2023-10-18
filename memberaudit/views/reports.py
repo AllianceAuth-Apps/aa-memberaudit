@@ -6,7 +6,7 @@ from datatables.views import DataTableView
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Count, Exists, F, OuterRef, Prefetch, Q
+from django.db.models import Case, Count, Exists, F, OuterRef, Prefetch, Q, Value, When
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.urls import reverse
@@ -343,6 +343,12 @@ def _skillset_report_query():
             group_is_doctrine=F("skill_set_checks__skill_set__groups__is_doctrine")
         )
         .annotate(has_skills=Exists(passed_skills_qs))
+        .annotate(
+            is_main_2=Case(
+                When(eve_character__userprofile__isnull=False, then=Value(True)),
+                default=Value(False),
+            )
+        )
         .distinct()
     )
 
@@ -360,16 +366,15 @@ class SkillSetReportDataTableView(DataTableView):
         ("eve_character__alliance_name", _("Alliance")),
         ("eve_character__corporation_name", _("Corporation")),
         ("group_is_doctrine", _("Is Doctrine?")),
-        "has_skills",
+        ("has_skills", _("Required Skills?")),
+        ("is_main_2", _("Main?")),
     ]
     search_fields = ["eve_character__character_name"]
 
     def get_initial_queryset(self):
-        """Return base queryset."""
         return _skillset_report_query()
 
     def render_column(self, obj: Character, column: str) -> Any:
-        """Return a rendered column."""
         has_main = bool(obj.main_character)
 
         if column == "main":
