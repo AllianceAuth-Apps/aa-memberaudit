@@ -34,7 +34,8 @@ from memberaudit.models import Character, SkillSet
 from memberaudit.tests.testdata.factories import create_character_skill_set_check
 from memberaudit.tests.utils import create_memberaudit_character
 
-CHARACTER_COUNT = 0  # max number of character to generate
+PURGE_STALE_CHARACTER = True  # whether to first purge all stale characters
+CHARACTER_COUNT = 1000  # max number of characters to generate
 CORPORATION_IDS = [
     98615046,  # KarmaFleet University
     98627389,  # Alpha Academic
@@ -45,7 +46,8 @@ CORPORATION_IDS = [
 
 def main():
     my_state = _get_or_create_state_for_test_users()
-    _delete_previous_test_characters(my_state)
+    if PURGE_STALE_CHARACTER:
+        _delete_previous_test_characters(my_state)
 
     if CHARACTER_COUNT:
         created_count = 0
