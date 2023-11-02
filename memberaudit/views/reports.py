@@ -426,6 +426,8 @@ class SkillSetReportDataTableView(HtmxDataTableView):
         )
 
     def _group_name(self, obj: Character):
+        if obj.group_is_doctrine:
+            return f"Doctrine: {obj.group_name}"
         return obj.group_name
 
     def _main(self, obj: Character):
