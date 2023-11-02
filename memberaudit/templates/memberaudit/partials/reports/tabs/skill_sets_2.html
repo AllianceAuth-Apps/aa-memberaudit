@@ -1,8 +1,8 @@
 {% load i18n %}
-{% load datatables %}
+{% load htmx_datatables %}
 
 <div role="tabpanel" class="tab-pane" id="skill_sets_2">
     <h3>{% translate 'Skill Sets 2' %}</h3>
-    {% render_datatable url="memberaudit:skill_sets_report_2_data" is_dark_mode=NIGHT_MODE %}
+    {% render_htmx_datatable url="memberaudit:skill_sets_report_2_data" is_dark_mode=NIGHT_MODE %}
     <p class="text-muted">Note: Skill sets without a group are ignored.</p>
 </div>

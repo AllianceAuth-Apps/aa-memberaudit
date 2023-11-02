@@ -1,8 +1,7 @@
 """Report views."""
 
-from typing import Any
 
-from datatables.views import DataTableView
+from htmx_datatables.views import HtmxDataTableView
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
@@ -355,11 +354,18 @@ def _skillset_report_query():
     return queryset
 
 
-class SkillSetReportDataTableView(DataTableView):
+class SkillSetReportDataTableView(HtmxDataTableView):
     """ "A data table view for skill set reports."""
 
-    columns = ["group_name", "main", "state", "organization", "character", "skills"]
-    group_column = "group_name"
+    columns = [
+        "_main",
+        "_state",
+        "_organization",
+        "_character",
+        "_skills",
+    ]
+    group_column = "_group_name"
+    order_columns = {"_group_name": "group_name"}
     filters = [
         "group_name",
         ("eve_character__character_ownership__user__profile__state__name", _("State")),
@@ -370,72 +376,115 @@ class SkillSetReportDataTableView(DataTableView):
         ("is_main_2", _("Main?")),
     ]
     search_fields = ["eve_character__character_name"]
+    paginate_by = 10
 
     def get_initial_queryset(self):
-        return _skillset_report_query()
-
-    def render_column(self, obj: Character, column: str) -> Any:
-        has_main = bool(obj.main_character)
-
-        if column == "main":
-            if not has_main:
-                return ""
-
-            main_character_html = bootstrap_icon_plus_name_html(
-                obj.main_character.portrait_url(),
-                obj.main_character.character_name,
-                avatar=True,
-            )
-            return main_character_html
-
-        if column == "state":
-            if not has_main:
-                return ""
-            return obj.user.profile.state.name
-
-        if column == "organization":
-            if not has_main:
-                return ""
-
-            organization_html = format_html(
-                "{}{}",
-                obj.main_character.corporation_name,
-                f" [{obj.main_character.alliance_ticker}]"
-                if obj.main_character.alliance_name
-                else "",
-            )
-            return organization_html
-
-        if column == "character":
-            base_url = reverse("memberaudit:character_viewer", args=[obj.pk])
-            character_viewer_url = f"{base_url}?tab=skill_sets"
-            character_html = bootstrap_icon_plus_name_html(
-                obj.eve_character.portrait_url(),
-                obj.eve_character.character_name,
-                avatar=True,
-                url=character_viewer_url,
-            )
-            return character_html
-
-        if column == "skills":
-            passed_skill_sets = [
-                bootstrap_icon_plus_name_html(
-                    skill_set_check.skill_set.ship_type.icon_url(
-                        DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
-                    )
-                    if skill_set_check.skill_set.ship_type
-                    else eveimageserver.type_icon_url(
-                        SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
-                    ),
-                    skill_set_check.skill_set.name,
+        group_ids = list(SkillSetGroup.objects.values_list("id", flat=True))
+        passed_skills_qs = CharacterSkillSetCheck.objects.filter(
+            character=OuterRef("pk"), failed_required_skills__isnull=True
+        )
+        queryset = (
+            Character.objects.exclude(
+                eve_character__character_ownership__user__profile__state__pk=(
+                    get_guest_state_pk()
                 )
-                for skill_set_check in obj.passed_checks
-            ]
-            has_required_html = format_html(
-                "<br>".join(passed_skill_sets)
-                if passed_skill_sets
-                else '<i class="fas fa-times boolean-icon-false"></i>'
             )
-            return has_required_html
+            .filter(skill_set_checks__skill_set__groups__in=group_ids)
+            .annotate(group_pk=F("skill_set_checks__skill_set__groups__pk"))
+            .annotate(group_name=F("skill_set_checks__skill_set__groups__name"))
+            .annotate(
+                group_is_doctrine=F("skill_set_checks__skill_set__groups__is_doctrine")
+            )
+            .annotate(has_skills=Exists(passed_skills_qs))
+            .annotate(
+                is_main_2=Case(
+                    When(eve_character__userprofile__isnull=False, then=Value(True)),
+                    default=Value(False),
+                )
+            )
+            .distinct()
+        )
+        return queryset
 
-        return super().render_column(obj, column)
+    def get_data_queryset(self):
+        qs = super().get_data_queryset()
+        passed_checks_qs = (
+            CharacterSkillSetCheck.objects.filter(failed_required_skills__isnull=True)
+            .select_related("skill_set", "skill_set__ship_type")
+            .order_by("skill_set__name")
+        )
+        return qs.prefetch_related(
+            Prefetch(
+                "skill_set_checks",
+                queryset=passed_checks_qs,
+                to_attr="passed_checks",
+            )
+        ).select_related(
+            "eve_character__character_ownership__user",
+            "eve_character__character_ownership__user__profile__main_character",
+            "eve_character__character_ownership__user__profile__state",
+        )
+
+    def _group_name(self, obj: Character):
+        return obj.group_name
+
+    def _main(self, obj: Character):
+        if not obj.has_main:
+            return ""
+
+        main_character_html = bootstrap_icon_plus_name_html(
+            obj.main_character.portrait_url(),
+            obj.main_character.character_name,
+            avatar=True,
+        )
+        return main_character_html
+
+    def _state(self, obj: Character):
+        if not obj.has_main:
+            return ""
+        return obj.user.profile.state.name
+
+    def _organization(self, obj: Character):
+        if not obj.has_main:
+            return ""
+
+        organization_html = format_html(
+            "{}{}",
+            obj.main_character.corporation_name,
+            f" [{obj.main_character.alliance_ticker}]"
+            if obj.main_character.alliance_name
+            else "",
+        )
+        return organization_html
+
+    def _character(self, obj: Character):
+        base_url = reverse("memberaudit:character_viewer", args=[obj.pk])
+        character_viewer_url = f"{base_url}?tab=skill_sets"
+        character_html = bootstrap_icon_plus_name_html(
+            obj.eve_character.portrait_url(),
+            obj.eve_character.character_name,
+            avatar=True,
+            url=character_viewer_url,
+        )
+        return character_html
+
+    def _skills(self, obj: Character):
+        passed_skill_sets = [
+            bootstrap_icon_plus_name_html(
+                skill_set_check.skill_set.ship_type.icon_url(
+                    DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
+                )
+                if skill_set_check.skill_set.ship_type
+                else eveimageserver.type_icon_url(
+                    SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
+                ),
+                skill_set_check.skill_set.name,
+            )
+            for skill_set_check in obj.passed_checks
+        ]
+        has_required_html = format_html(
+            "<br>".join(passed_skill_sets)
+            if passed_skill_sets
+            else '<i class="fas fa-times boolean-icon-false"></i>'
+        )
+        return has_required_html

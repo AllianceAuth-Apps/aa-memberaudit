@@ -260,6 +260,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except AttributeError:
             return None
 
+    @property
+    def has_main(self) -> bool:
+        """Return True when character has a main, else False."""
+        return bool(self.main_character)
+
     @cached_property
     def is_main(self) -> bool:
         """Return True if this character is a main character, else False."""
