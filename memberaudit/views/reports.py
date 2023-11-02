@@ -4,6 +4,7 @@
 from htmx_datatables.views import HtmxDataTableView
 
 from django.contrib.auth.decorators import login_required, permission_required
+from django.contrib.auth.mixins import PermissionRequiredMixin
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import Case, Count, Exists, F, OuterRef, Prefetch, Q, Value, When
 from django.http import HttpResponse, JsonResponse
@@ -354,8 +355,10 @@ def _skillset_report_query():
     return queryset
 
 
-class SkillSetReportDataTableView(HtmxDataTableView):
+class SkillSetReportDataTableView(PermissionRequiredMixin, HtmxDataTableView):
     """ "A data table view for skill set reports."""
+
+    permission_required = "memberaudit.reports_access"
 
     columns = [
         "_main",
