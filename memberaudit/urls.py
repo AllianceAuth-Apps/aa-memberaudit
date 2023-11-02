@@ -207,11 +207,6 @@ urlpatterns = [
         name="corporation_compliance_report_data",
     ),
     path(
-        "skill_sets_report_data",
-        reports.skill_sets_report_data,
-        name="skill_sets_report_data",
-    ),
-    path(
         "skill_sets_report_2_data",
         reports.SkillSetReportDataTableView.as_view(),
         name="skill_sets_report_2_data",
