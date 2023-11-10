@@ -1,9 +1,16 @@
+from htmx_datatables.helpers import extract_data_objs
+
 from django.contrib.auth.models import Group
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from eveuniverse.models import EveType
 
 from allianceauth.authentication.models import State
-from allianceauth.eveonline.models import EveAllianceInfo, EveCorporationInfo
+from allianceauth.eveonline.models import (
+    EveAllianceInfo,
+    EveCharacter,
+    EveCorporationInfo,
+)
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import create_user_from_evecharacter
 
@@ -13,6 +20,13 @@ from memberaudit.views.reports import (
     user_compliance_report_data,
 )
 
+from ..testdata.factories import (
+    create_character,
+    create_character_skill,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
+)
 from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
@@ -227,151 +241,149 @@ class TestCorporationComplianceReportTestData(TestCase):
         self.assertSetEqual(set(result.keys()), {2001})
 
 
-# TODO: Re-enable for new report variant
-# class TestSkillSetReportData(TestCase):
-#     @classmethod
-#     def setUpClass(cls) -> None:
-#         super().setUpClass()
-#         cls.factory = RequestFactory()
-#         load_eveuniverse()
-#         load_entities()
-#         state = AuthUtils.get_member_state()
-#         state.member_alliances.add(EveAllianceInfo.objects.get(alliance_id=3001))
+class TestSkillSetReportData(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        state = AuthUtils.get_member_state()
+        state.member_alliances.add(EveAllianceInfo.objects.get(alliance_id=3001))
 
-#         # user 1 is manager requesting the report
-#         cls.character_1001 = create_memberaudit_character(1001)
-#         cls.user = cls.character_1001.eve_character.character_ownership.user
-#         cls.user = AuthUtils.add_permission_to_user_by_name(
-#             "memberaudit.reports_access", cls.user
-#         )
-#         cls.user = AuthUtils.add_permission_to_user_by_name(
-#             "memberaudit.view_everything", cls.user
-#         )
+        # user 1 is manager requesting the report
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.user = cls.character_1001.eve_character.character_ownership.user
+        cls.user = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.reports_access", cls.user
+        )
+        cls.user = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_everything", cls.user
+        )
 
-#         # user 2 is normal user and has two characters
-#         cls.character_1002 = create_memberaudit_character(1002)
-#         cls.character_1101 = add_memberaudit_character_to_user(
-#             cls.character_1002.eve_character.character_ownership.user, 1101
-#         )
-#         # cls.character_1003 = create_memberaudit_character(1003)
+        # user 2 is normal user and has two characters
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.character_1101 = add_memberaudit_character_to_user(
+            cls.character_1002.eve_character.character_ownership.user, 1101
+        )
+        # cls.character_1003 = create_memberaudit_character(1003)
 
-#         cls.amarr_carrier_type = EveType.objects.get(id=24311)
-#         cls.caldari_carrier_type = EveType.objects.get(id=24312)
+        cls.amarr_carrier_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_type = EveType.objects.get(id=24312)
 
-#         AuthUtils.create_user("John Doe")  # this user should not show up in view
-#         cls.character_1103 = create_memberaudit_character(1103)
+        AuthUtils.create_user("John Doe")  # this user should not show up in view
+        cls.character_1103 = create_memberaudit_character(1103)
 
-#         # orphaned character, i.e. without a user
-#         create_character(EveCharacter.objects.get(character_id=1121))
+        # orphaned character, i.e. without a user
+        create_character(EveCharacter.objects.get(character_id=1121))
 
-#     def test_normal(self):
-#         def make_data_id(doctrine: SkillSetGroup, character: Character) -> str:
-#             doctrine_pk = doctrine.pk if doctrine else 0
-#             return f"{doctrine_pk}_{character.pk}"
+    def test_normal(self):
+        # def make_data_id(doctrine: SkillSetGroup, character: Character) -> str:
+        #     doctrine_pk = doctrine.pk if doctrine else 0
+        #     return f"{doctrine_pk}_{character.pk}"
 
-#         # define doctrines
-#         ship_1 = create_skill_set(name="Ship 1")
-#         create_skill_set_skill(
-#             skill_set=ship_1, eve_type=self.amarr_carrier_type, required_level=3
-#         )
+        # define doctrines
+        ship_1 = create_skill_set(name="Ship 1")
+        create_skill_set_skill(
+            skill_set=ship_1, eve_type=self.amarr_carrier_type, required_level=3
+        )
 
-#         ship_2 = create_skill_set(name="Ship 2")
-#         create_skill_set_skill(
-#             skill_set=ship_2, eve_type=self.amarr_carrier_type, required_level=5
-#         )
-#         create_skill_set_skill(
-#             skill_set=ship_2, eve_type=self.caldari_carrier_type, required_level=3
-#         )
+        ship_2 = create_skill_set(name="Ship 2")
+        create_skill_set_skill(
+            skill_set=ship_2, eve_type=self.amarr_carrier_type, required_level=5
+        )
+        create_skill_set_skill(
+            skill_set=ship_2, eve_type=self.caldari_carrier_type, required_level=3
+        )
 
-#         ship_3 = create_skill_set(name="Ship 3")
-#         create_skill_set_skill(
-#             skill_set=ship_3, eve_type=self.amarr_carrier_type, required_level=1
-#         )
+        ship_3 = create_skill_set(name="Ship 3")
+        create_skill_set_skill(
+            skill_set=ship_3, eve_type=self.amarr_carrier_type, required_level=1
+        )
 
-#         doctrine_1 = create_skill_set_group(name="Alpha")
-#         doctrine_1.skill_sets.add(ship_1)
-#         doctrine_1.skill_sets.add(ship_2)
+        doctrine_1 = create_skill_set_group(name="Alpha")
+        doctrine_1.skill_sets.add(ship_1)
+        doctrine_1.skill_sets.add(ship_2)
 
-#         doctrine_2 = create_skill_set_group(name="Bravo", is_doctrine=True)
-#         doctrine_2.skill_sets.add(ship_1)
+        doctrine_2 = create_skill_set_group(name="Bravo", is_doctrine=True)
+        doctrine_2.skill_sets.add(ship_1)
 
-#         # character 1002
-#         create_character_skill(
-#             character=self.character_1002,
-#             eve_type=self.amarr_carrier_type,
-#             active_skill_level=5,
-#             skillpoints_in_skill=10,
-#             trained_skill_level=5,
-#         )
-#         create_character_skill(
-#             character=self.character_1002,
-#             eve_type=self.caldari_carrier_type,
-#             active_skill_level=2,
-#             skillpoints_in_skill=10,
-#             trained_skill_level=2,
-#         )
+        # character 1002
+        create_character_skill(
+            character=self.character_1002,
+            eve_type=self.amarr_carrier_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character_1002,
+            eve_type=self.caldari_carrier_type,
+            active_skill_level=2,
+            skillpoints_in_skill=10,
+            trained_skill_level=2,
+        )
 
-#         # character 1101
-#         create_character_skill(
-#             character=self.character_1101,
-#             eve_type=self.amarr_carrier_type,
-#             active_skill_level=5,
-#             skillpoints_in_skill=10,
-#             trained_skill_level=5,
-#         )
-#         create_character_skill(
-#             character=self.character_1101,
-#             eve_type=self.caldari_carrier_type,
-#             active_skill_level=5,
-#             skillpoints_in_skill=10,
-#             trained_skill_level=5,
-#         )
+        # character 1101
+        create_character_skill(
+            character=self.character_1101,
+            eve_type=self.amarr_carrier_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character_1101,
+            eve_type=self.caldari_carrier_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
 
-#         self.character_1001.update_skill_sets()
-#         self.character_1002.update_skill_sets()
-#         self.character_1101.update_skill_sets()
-#         self.character_1103.update_skill_sets()
+        self.character_1001.update_skill_sets()
+        self.character_1002.update_skill_sets()
+        self.character_1101.update_skill_sets()
+        self.character_1103.update_skill_sets()
 
-#         request = self.factory.get(reverse("memberaudit:skill_sets_report_data"))
-#         request.user = self.user
-#         response = skill_sets_report_data(request)
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("memberaudit:skill_sets_report_2_data"))
+        data = extract_data_objs(response.context["data"], strip_tags=True)
 
-#         self.assertEqual(response.status_code, 200)
-#         data = json_response_to_dict_2(response)
-#         # self.assertEqual(len(data), 9)
+        self.assertEqual(response.status_code, 200)
+        # self.assertEqual(len(data), 9)
 
-#         mains = {x["main"] for x in data.values()}
-#         self.assertSetEqual(mains, {"Bruce Wayne", "Clark Kent"})
+        mains = {obj["_main"] for obj in data}
+        self.assertSetEqual(mains, {"Bruce Wayne", "Clark Kent"})
 
-#         row = data[make_data_id(doctrine_1, self.character_1001)]
-#         self.assertEqual(row["group"], "Alpha")
-#         self.assertEqual(row["character"], "Bruce Wayne")
-#         self.assertEqual(row["main"], "Bruce Wayne")
-#         self.assertEqual(row["is_main_str"], "yes")
-#         self.assertTrue(multi_assert_not_in(["Ship 1", "Ship 2"], row["has_required"]))
+        # row = data[make_data_id(doctrine_1, self.character_1001)]
+        # self.assertEqual(row["group"], "Alpha")
+        # self.assertEqual(row["character"], "Bruce Wayne")
+        # self.assertEqual(row["main"], "Bruce Wayne")
+        # self.assertEqual(row["is_main_str"], "yes")
+        # self.assertTrue(multi_assert_not_in(["Ship 1", "Ship 2"], row["has_required"]))
 
-#         row = data[make_data_id(doctrine_1, self.character_1002)]
-#         self.assertEqual(row["group"], "Alpha")
-#         self.assertEqual(row["character"], "Clark Kent")
-#         self.assertEqual(row["main"], "Clark Kent")
-#         self.assertEqual(row["is_main_str"], "yes")
+        # row = data[make_data_id(doctrine_1, self.character_1002)]
+        # self.assertEqual(row["group"], "Alpha")
+        # self.assertEqual(row["character"], "Clark Kent")
+        # self.assertEqual(row["main"], "Clark Kent")
+        # self.assertEqual(row["is_main_str"], "yes")
 
-#         self.assertTrue(multi_assert_in(["Ship 1", "Ship 3"], row["has_required"]))
-#         self.assertTrue(multi_assert_not_in(["Ship 2"], row["has_required"]))
+        # self.assertTrue(multi_assert_in(["Ship 1", "Ship 3"], row["has_required"]))
+        # self.assertTrue(multi_assert_not_in(["Ship 2"], row["has_required"]))
 
-#         row = data[make_data_id(doctrine_1, self.character_1101)]
-#         self.assertEqual(row["group"], "Alpha")
-#         self.assertEqual(row["character"], "Lex Luther")
-#         self.assertEqual(row["main"], "Clark Kent")
-#         self.assertEqual(row["is_main_str"], "no")
-#         self.assertTrue(multi_assert_in(["Ship 1", "Ship 2"], row["has_required"]))
+        # row = data[make_data_id(doctrine_1, self.character_1101)]
+        # self.assertEqual(row["group"], "Alpha")
+        # self.assertEqual(row["character"], "Lex Luther")
+        # self.assertEqual(row["main"], "Clark Kent")
+        # self.assertEqual(row["is_main_str"], "no")
+        # self.assertTrue(multi_assert_in(["Ship 1", "Ship 2"], row["has_required"]))
 
-#         row = data[make_data_id(doctrine_2, self.character_1101)]
-#         self.assertEqual(row["group"], "Doctrine: Bravo")
-#         self.assertEqual(row["character"], "Lex Luther")
-#         self.assertEqual(row["main"], "Clark Kent")
-#         self.assertEqual(row["is_main_str"], "no")
-#         self.assertTrue(multi_assert_in(["Ship 1", "Ship 2"], row["has_required"]))
+        # row = data[make_data_id(doctrine_2, self.character_1101)]
+        # self.assertEqual(row["group"], "Doctrine: Bravo")
+        # self.assertEqual(row["character"], "Lex Luther")
+        # self.assertEqual(row["main"], "Clark Kent")
+        # self.assertEqual(row["is_main_str"], "no")
+        # self.assertTrue(multi_assert_in(["Ship 1", "Ship 2"], row["has_required"]))
+
 
 # row = data[make_data_id(None, self.character_1101)]
 # self.assertEqual(row["group"], "[Ungrouped]")

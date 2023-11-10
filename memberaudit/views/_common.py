@@ -1,5 +1,6 @@
 """Shared view components."""
 
+
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy
 from eveuniverse.core import dotlan

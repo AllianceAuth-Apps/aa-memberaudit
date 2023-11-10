@@ -17,7 +17,7 @@ from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 from app_utils.views import (
-    bootstrap_icon_plus_name_html,
+    bootstrap_icon_plus_text_html,
     fontawesome_link_button_html,
     yesno_str,
 )
@@ -205,7 +205,7 @@ class CharacterFinderListJson(
         )
         if column == "main_character":
             if main_character:
-                return bootstrap_icon_plus_name_html(
+                return bootstrap_icon_plus_text_html(
                     main_character.portrait_url(),
                     main_character.character_name,
                     avatar=True,
@@ -264,12 +264,12 @@ class CharacterFinderListJson(
             )
             if row.is_orphan:
                 character_text += mark_safe(" [orphan]")
-            return bootstrap_icon_plus_name_html(
+            return bootstrap_icon_plus_text_html(
                 row.portrait_url(),
                 row.character_name,
                 avatar=True,
                 url=character_viewer_url,
-                text=character_text,
+                suffix=character_text,
             )
         if column == "actions":
             if character_viewer_url:

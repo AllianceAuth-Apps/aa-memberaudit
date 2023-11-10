@@ -19,7 +19,7 @@ from allianceauth.authentication.models import get_guest_state_pk
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
-from app_utils.views import bootstrap_icon_plus_name_html, yesno_str
+from app_utils.views import bootstrap_icon_plus_text_html, no_wrap_html, yesno_str
 
 from memberaudit import __title__
 from memberaudit.constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
@@ -86,7 +86,7 @@ def user_compliance_report_data(request) -> JsonResponse:
             else:
                 url = None
             main_name = main_character.character_name
-            main_html = bootstrap_icon_plus_name_html(
+            main_html = bootstrap_icon_plus_text_html(
                 main_character.portrait_url(),
                 main_character.character_name,
                 avatar=True,
@@ -100,7 +100,7 @@ def user_compliance_report_data(request) -> JsonResponse:
             is_compliant = user.unregistered_chars == 0
         else:
             main_name = user.username
-            main_html = bootstrap_icon_plus_name_html(
+            main_html = bootstrap_icon_plus_text_html(
                 eveimageserver.character_portrait_url(1, size=DEFAULT_ICON_SIZE),
                 main_name,
                 avatar=True,
@@ -201,12 +201,12 @@ def corporation_compliance_report_data(request) -> JsonResponse:
             {
                 "id": corporation["corporation_id"],
                 "organization_html": {
-                    "display": bootstrap_icon_plus_name_html(
+                    "display": bootstrap_icon_plus_text_html(
                         icon_url=eveimageserver.corporation_logo_url(
                             corporation_id=corporation["corporation_id"],
                             size=DEFAULT_ICON_SIZE,
                         ),
-                        name=organization_name,
+                        text=organization_name,
                     ),
                     "sort": corporation["corporation_name"],
                 },
@@ -306,7 +306,7 @@ class SkillSetReportDataTableView(PermissionRequiredMixin, HtmxDataTableView):
         if not obj.has_main:
             return ""
 
-        main_character_html = bootstrap_icon_plus_name_html(
+        main_character_html = bootstrap_icon_plus_text_html(
             obj.main_character.portrait_url(),
             obj.main_character.character_name,
             avatar=True,
@@ -334,7 +334,7 @@ class SkillSetReportDataTableView(PermissionRequiredMixin, HtmxDataTableView):
     def _character(self, obj: Character):
         base_url = reverse("memberaudit:character_viewer", args=[obj.pk])
         character_viewer_url = f"{base_url}?tab=skill_sets"
-        character_html = bootstrap_icon_plus_name_html(
+        character_html = bootstrap_icon_plus_text_html(
             obj.eve_character.portrait_url(),
             obj.eve_character.character_name,
             avatar=True,
@@ -343,19 +343,22 @@ class SkillSetReportDataTableView(PermissionRequiredMixin, HtmxDataTableView):
         return character_html
 
     def _skills(self, obj: Character):
-        passed_skill_sets = [
-            bootstrap_icon_plus_name_html(
+        passed_skill_sets = []
+        for skill_set_check in obj.passed_checks:
+            icon_url = (
                 skill_set_check.skill_set.ship_type.icon_url(
                     DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
                 )
                 if skill_set_check.skill_set.ship_type
                 else eveimageserver.type_icon_url(
                     SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
-                ),
-                skill_set_check.skill_set.name,
+                )
             )
-            for skill_set_check in obj.passed_checks
-        ]
+            html = no_wrap_html(
+                bootstrap_icon_plus_text_html(icon_url, skill_set_check.skill_set.name)
+            )
+            passed_skill_sets.append(html)
+
         has_required_html = format_html(
             "<br>".join(passed_skill_sets)
             if passed_skill_sets
