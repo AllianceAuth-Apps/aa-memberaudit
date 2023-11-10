@@ -5,7 +5,7 @@ from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
 from celery_once import AlreadyQueued
 
 from django.core.cache import cache
-from django.test import override_settings
+from django.test import TestCase, override_settings
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
@@ -40,7 +40,6 @@ from ..testdata.load_entities import load_entities
 from ..testdata.load_eveuniverse import load_eveuniverse
 from ..utils import (
     CharacterUpdateTestDataMixin,
-    NoSocketsTestCaseFixtures,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -416,7 +415,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
-class TestMailEntityManagerAsync(NoSocketsTestCaseFixtures):
+class TestMailEntityManagerAsync(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -948,7 +947,7 @@ class TestLocationManagerPreload(NoSocketsTestCase):
         self.assertSetEqual(result, set())
 
 
-class TestLocationManagerAsync(NoSocketsTestCaseFixtures):
+class TestLocationManagerAsync(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()

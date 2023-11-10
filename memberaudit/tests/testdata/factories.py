@@ -49,7 +49,9 @@ from memberaudit.models import (
 def create_character(eve_character: EveCharacter, **kwargs) -> Character:
     params = {"eve_character": eve_character}
     params.update(kwargs)
-    return Character.objects.create(**params)
+    obj = Character(**params)
+    obj.save(ignore_cache=True)
+    return obj
 
 
 def create_character_from_user(user: User, **kwargs):
@@ -58,16 +60,12 @@ def create_character_from_user(user: User, **kwargs):
     This factory is designed to work with both the old and new variant of Character
     introduced in version 2.
     """
-    try:
-        character_ownership = user.profile.main_character.character_ownership
-    except AttributeError:
-        raise ValueError("User needs to have a main character.") from None
-    if hasattr(Character, "eve_character"):
-        params = {"eve_character": character_ownership.character}
-    else:
-        params = {"character_ownership": character_ownership}
-    params.update(kwargs)
-    return Character.objects.create(**params)
+    eve_character = user.profile.main_character
+    if not eve_character:
+        raise ValueError("User needs to have a main character.")
+
+    kwargs.update({"eve_character": eve_character})
+    return create_character(**kwargs)
 
 
 def create_character_asset(
