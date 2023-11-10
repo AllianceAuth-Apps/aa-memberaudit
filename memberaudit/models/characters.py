@@ -226,9 +226,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
 
-    def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs: dict):
+        ignore_cache = kwargs.pop("ignore_cache", False)  # needed for NoSocketsTestCase
         super().save(*args, **kwargs)
-        if self.pk:  # clear this object from cache if it is there
+        if self.pk and not ignore_cache:  # clear this object from cache if it is there
             self.clear_cache()
 
     @cached_property

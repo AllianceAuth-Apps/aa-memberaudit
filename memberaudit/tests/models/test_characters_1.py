@@ -49,7 +49,7 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-class TestCharacter(NoSocketsTestCase):
+class TestCharacter(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
@@ -91,7 +91,7 @@ class TestCharacter(NoSocketsTestCase):
         # when/then
         self.assertEqual(character_1101.main_character, main_character)
 
-    def test_should_return_None_when_user_has_no_main(self):
+    def test_should_return_none_when_user_has_no_main(self):
         # given
         character_1002 = create_memberaudit_character(1002)
         user = character_1002.eve_character.character_ownership.user
