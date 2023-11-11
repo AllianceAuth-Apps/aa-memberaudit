@@ -1,10 +1,9 @@
 import datetime as dt
-from unittest import skipIf
 from unittest.mock import patch
 
 from celery.exceptions import Retry as CeleryRetry
 
-from django.test import TestCase, override_settings
+from django.test import TestCase, override_settings, tag
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
@@ -38,7 +37,6 @@ from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
 from .utils import (
-    TOX_IS_RUNNING,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -547,7 +545,7 @@ class TestCharacterUpdateFull(TestCase):
         self.character_1001 = create_memberaudit_character(1001)
 
     # TODO: Find solution
-    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @tag("breaks_with_tox")
     def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
@@ -555,7 +553,7 @@ class TestCharacterUpdateFull(TestCase):
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @tag("breaks_with_tox")
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given

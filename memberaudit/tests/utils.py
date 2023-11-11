@@ -1,7 +1,6 @@
 """Shared utils for tests."""
 
 import json
-import os
 from typing import Tuple
 
 from django.contrib.auth.models import Permission, User
@@ -157,6 +156,3 @@ def permissions_for_model(model_class) -> QuerySet:
     return Permission.objects.filter(
         content_type__app_label=app_label, content_type__model=model_name
     )
-
-
-TOX_IS_RUNNING = os.getenv("TOX_IS_RUNNING") == "1"
