@@ -21,7 +21,9 @@ from memberaudit.core.skills import Skill
 from memberaudit.models import (
     Character,
     CharacterAsset,
+    CharacterAttributes,
     CharacterContact,
+    CharacterContactLabel,
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
@@ -87,6 +89,20 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     return CharacterAsset.objects.create(**params)
 
 
+def create_character_attributes(character: Character, **kwargs) -> CharacterAttributes:
+    params = {
+        "character": character,
+        "bonus_remaps": 4,
+        "charisma": 16,
+        "intelligence": 17,
+        "memory": 18,
+        "perception": 19,
+        "willpower": 20,
+    }
+    params.update(kwargs)
+    return CharacterAttributes.objects.create(**params)
+
+
 def create_character_contact(
     character: Character, eve_entity: EveEntity, **kwargs
 ) -> CharacterContact:
@@ -101,23 +117,39 @@ def create_character_contact(
     return CharacterContact.objects.create(**params)
 
 
-def create_character_contract(character: Character, **kwargs) -> CharacterContract:
-    date_issued = now() if "date_issued" not in kwargs else kwargs["date_issued"]
+def create_character_contact_label(
+    character: Character, **kwargs
+) -> CharacterContactLabel:
+    label_id = kwargs.get("label_id") or next_number("character_contact_label_id") + 100
     params = {
         "character": character,
-        "contract_id": next_number("contract_id"),
+        "label_id": label_id,
+        "name": f"Test Label #{label_id}",
+    }
+    params.update(kwargs)
+    return CharacterContactLabel.objects.create(**params)
+
+
+def create_character_contract(character: Character, **kwargs) -> CharacterContract:
+    date_issued = kwargs.get("date_issued") or now()
+    contract_id = kwargs.get("contract_id") or next_number("contract_id") + 190_000_000
+    params = {
+        "character": character,
+        "contract_id": contract_id,
         "availability": CharacterContract.AVAILABILITY_PERSONAL,
         "contract_type": CharacterContract.TYPE_ITEM_EXCHANGE,
-        "assignee_id": 1002,
         "date_issued": date_issued,
         "date_expired": date_issued + dt.timedelta(days=3),
         "for_corporation": False,
-        "issuer_id": 1001,
-        "issuer_corporation_id": 2001,
         "status": CharacterContract.STATUS_OUTSTANDING,
-        "title": "Dummy info",
+        "title": f"Test Contract #{contract_id}",
     }
     params.update(kwargs)
+    if "assignee_id" not in params and "assignee" not in kwargs:
+        params["assignee_id"] = 1002
+    if "issuer_id" not in params and "issuer" not in kwargs:
+        params["issuer_id"] = 1001
+        params["issuer_corporation_id"] = 2001
     return CharacterContract.objects.create(**params)
 
 

@@ -11,7 +11,6 @@ from app_utils.testing import NoSocketsTestCase
 from memberaudit.models import (
     CharacterAsset,
     CharacterAttributes,
-    CharacterContact,
     CharacterContactLabel,
     CharacterContract,
     CharacterContractBid,
@@ -22,6 +21,9 @@ from memberaudit.models import (
 from ..testdata.esi_client_stub import esi_client_stub
 from ..testdata.factories import (
     create_character_asset,
+    create_character_attributes,
+    create_character_contact,
+    create_character_contact_label,
     create_character_contract,
     create_character_contract_bid,
     create_character_from_user,
@@ -191,10 +193,11 @@ class TestCharacterAttributesManager(CharacterUpdateTestDataMixin, NoSocketsTest
     def test_can_update_existing_attributes(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterAttributes.objects.create(
+
+        create_character_attributes(
             character=self.character_1001,
-            accrued_remap_cooldown_date="2020-10-24T09:00:00Z",
-            last_remap_date="2020-10-24T09:00:00Z",
+            accrued_remap_cooldown_date=None,
+            last_remap_date=None,
             bonus_remaps=4,
             charisma=102,
             intelligence=103,
@@ -247,9 +250,7 @@ class TestCharacterContactLabelManager(CharacterUpdateTestDataMixin, NoSocketsTe
     def test_update_contact_labels_2(self, mock_esi):
         """can remove obsolete labels"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=99, name="Obsolete"
-        )
+        create_character_contact_label(character=self.character_1001, label_id=99)
 
         self.character_1001.update_contact_labels()
         self.assertEqual(
@@ -259,9 +260,7 @@ class TestCharacterContactLabelManager(CharacterUpdateTestDataMixin, NoSocketsTe
     def test_update_contact_labels_3(self, mock_esi):
         """can update existing labels"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="Obsolete"
-        )
+        create_character_contact_label(character=self.character_1001, label_id=1)
 
         self.character_1001.update_contact_labels()
         self.assertEqual(
@@ -308,12 +307,8 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_1(self, mock_esi):
         """can create contacts"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="friend"
-        )
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=2, name="pirate"
-        )
+        create_character_contact_label(character=self.character_1001, label_id=1)
+        create_character_contact_label(character=self.character_1001, label_id=2)
 
         self.character_1001.update_contacts()
 
@@ -336,13 +331,9 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_2(self, mock_esi):
         """can remove obsolete contacts"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="friend"
-        )
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=2, name="pirate"
-        )
-        CharacterContact.objects.create(
+        create_character_contact_label(character=self.character_1001, label_id=1)
+        create_character_contact_label(character=self.character_1001, label_id=2)
+        create_character_contact(
             character=self.character_1001,
             eve_entity=EveEntity.objects.get(id=3101),
             standing=-5,
@@ -357,13 +348,11 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_3(self, mock_esi):
         """can update existing contacts"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=2, name="pirate"
+        create_character_contact_label(character=self.character_1001, label_id=2)
+        my_label = create_character_contact_label(
+            character=self.character_1001, label_id=1
         )
-        my_label = CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="Dummy"
-        )
-        my_contact = CharacterContact.objects.create(
+        my_contact = create_character_contact(
             character=self.character_1001,
             eve_entity=EveEntity.objects.get(id=1101),
             is_blocked=True,
@@ -384,12 +373,8 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_4(self, mock_esi):
         """when ESI data has not changed, then skip update"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="friend"
-        )
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=2, name="pirate"
-        )
+        create_character_contact_label(character=self.character_1001, label_id=1)
+        create_character_contact_label(character=self.character_1001, label_id=2)
 
         self.character_1001.update_contacts()
         obj = self.character_1001.contacts.get(eve_entity_id=1101)
@@ -404,12 +389,8 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_5(self, mock_esi):
         """when ESI data has not changed and update is forced, then update"""
         mock_esi.client = esi_client_stub
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=1, name="friend"
-        )
-        CharacterContactLabel.objects.create(
-            character=self.character_1001, label_id=2, name="pirate"
-        )
+        create_character_contact_label(character=self.character_1001, label_id=1)
+        create_character_contact_label(character=self.character_1001, label_id=2)
 
         self.character_1001.update_contacts()
         obj = self.character_1001.contacts.get(eve_entity_id=1101)
@@ -463,21 +444,16 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_should_keep_old_contracts_when_updating(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterContract.objects.create(
+        create_character_contract(
             character=self.character_1001,
             contract_id=190000001,
-            availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_COURIER,
             assignee=EveEntity.objects.get(id=1002),
-            date_issued=now() - dt.timedelta(days=60),
-            date_expired=now() - dt.timedelta(days=30),
-            for_corporation=False,
             issuer=EveEntity.objects.get(id=1001),
             issuer_corporation=EveEntity.objects.get(id=2001),
             status=CharacterContract.STATUS_IN_PROGRESS,
             start_location=self.jita_44,
             end_location=self.structure_1,
-            title="Old contract",
         )
         # when
         CharacterContract.objects.update_or_create_esi(self.character_1001)
@@ -488,7 +464,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_should_update_existing_contracts(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterContract.objects.create(
+        create_character_contract(
             character=self.character_1001,
             contract_id=100000001,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -585,9 +561,9 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_when_retention_limit_is_set_then_remove_outdated_contracts(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterContract.objects.create(
+        create_character_contract(
             character=self.character_1001,
-            contract_id=100000004,
+            contract_id=100_000_004,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_COURIER,
             assignee=EveEntity.objects.get(id=2101),
@@ -676,7 +652,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_can_add_new_bids_to_auction_contract(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character_1001,
             contract_id=100000003,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -694,7 +670,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
             price=20_000_000,
             volume=400,
         )
-        CharacterContractBid.objects.create(
+        create_character_contract_bid(
             contract=contract,
             bid_id=2,
             amount=21_000_000,
