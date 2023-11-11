@@ -221,7 +221,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         verbose_name_plural = _("characters")
 
     def __str__(self) -> str:
-        return f"{self.eve_character.character_name} (PK:{self.pk})"
+        try:
+            return f"{self.eve_character.character_name} (PK:{self.pk})"
+        except EveCharacter.DoesNotExist:
+            return self.pk
 
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
