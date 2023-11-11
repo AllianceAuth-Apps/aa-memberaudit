@@ -19,16 +19,12 @@ from app_utils.testing import (
 )
 
 from memberaudit import tasks
-from memberaudit.models import (
-    Character,
-    CharacterAsset,
-    CharacterUpdateStatus,
-    Location,
-)
+from memberaudit.models import Character, CharacterUpdateStatus, Location
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
+    create_character_asset,
     create_character_from_user,
     create_character_update_status,
     create_compliance_group_designation,
@@ -171,18 +167,14 @@ class TestUpdateCharacterAssets(TestCase):
 
     def test_update_assets_2(self, mock_esi):
         """can remove obsolete assets"""
+        # given
         mock_esi.client = esi_client_stub
-        CharacterAsset.objects.create(
-            character=self.character_1001,
-            item_id=1100000000666,
-            location=self.jita_44,
-            eve_type=EveType.objects.get(id=20185),
-            is_singleton=False,
-            name="Trucker",
-            quantity=1,
+        create_character_asset(
+            character=self.character_1001, item_id=1100000000666, location=self.jita_44
         )
-
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+        # then
         self.assertSetEqual(
             set(self.character_1001.assets.values_list("item_id", flat=True)),
             {
@@ -200,7 +192,7 @@ class TestUpdateCharacterAssets(TestCase):
     def test_update_assets_3(self, mock_esi):
         """can update existing assets"""
         mock_esi.client = esi_client_stub
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character_1001,
             item_id=1100000000001,
             location=self.jita_44,
@@ -235,22 +227,17 @@ class TestUpdateCharacterAssets(TestCase):
     def test_update_assets_4(self, mock_esi):
         """assets moved to different locations are kept"""
         mock_esi.client = esi_client_stub
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character_1001,
             item_id=1100000000666,
             location=self.jita_44,
             eve_type=EveType.objects.get(id=20185),
-            is_singleton=True,
-            name="Obsolete Container",
-            quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character_1001,
             item_id=1100000000002,
             parent=parent_asset,
             eve_type=EveType.objects.get(id=19540),
-            is_singleton=True,
-            is_blueprint_copy=False,
             quantity=1,
         )
 

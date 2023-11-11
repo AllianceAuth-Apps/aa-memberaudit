@@ -69,21 +69,20 @@ def create_character_from_user(user: User, **kwargs):
     return create_character(**kwargs)
 
 
-def create_character_asset(
-    character: Character, eve_type: EveType, **kwargs
-) -> CharacterAsset:
-    item_id = kwargs.get("item_id", next_number("asset_item_id"))
+def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
+    item_id = kwargs.get("item_id") or next_number("asset_item_id")
     params = {
         "character": character,
         "item_id": item_id,
-        "eve_type": eve_type,
-        "is_singleton": True,
+        "is_singleton": False,
         "quantity": 1,
         "location_flag": "Hangar",
-        "name": "",
     }
+    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
+        params["eve_type_id"] = 1230  # Veldspar
+
     params.update(kwargs)
-    if params["is_singleton"] and not params["name"]:
+    if params["is_singleton"] and not params.get("name"):
         params["name"] = (f"Generated asset #{item_id}",)
     return CharacterAsset.objects.create(**params)
 
