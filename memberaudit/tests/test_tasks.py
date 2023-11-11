@@ -104,13 +104,16 @@ class TestUpdateCharacterAssets(TestCase):
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1000000000001)
 
-    def test_update_assets_1(self, mock_esi):
-        """can create assets from scratch"""
+    def test_should_create_assets_from_scratch(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
                 1100000000001,
                 1100000000002,
@@ -165,18 +168,19 @@ class TestUpdateCharacterAssets(TestCase):
         asset = self.character_1001.assets.get(item_id=1100000000008)
         self.assertEqual(asset.location_id, 1000000000001)
 
-    def test_update_assets_2(self, mock_esi):
-        """can remove obsolete assets"""
+    def test_should_remove_obsolete_assets(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         create_character_asset(
             character=self.character_1001, item_id=1100000000666, location=self.jita_44
         )
+
         # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
         # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
                 1100000000001,
                 1100000000002,
@@ -189,8 +193,8 @@ class TestUpdateCharacterAssets(TestCase):
             },
         )
 
-    def test_update_assets_3(self, mock_esi):
-        """can update existing assets"""
+    def test_should_update_existing_assets(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_asset(
             character=self.character_1001,
@@ -202,9 +206,12 @@ class TestUpdateCharacterAssets(TestCase):
             quantity=10,
         )
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
                 1100000000001,
                 1100000000002,
@@ -224,8 +231,8 @@ class TestUpdateCharacterAssets(TestCase):
         self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
         self.assertEqual(asset.name, "Parent Item 1")
 
-    def test_update_assets_4(self, mock_esi):
-        """assets moved to different locations are kept"""
+    def test_should_keep_assets_which_are_moved_to_different_locations(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         parent_asset = create_character_asset(
             character=self.character_1001,
@@ -241,9 +248,12 @@ class TestUpdateCharacterAssets(TestCase):
             quantity=1,
         )
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
                 1100000000001,
                 1100000000002,
@@ -256,28 +266,31 @@ class TestUpdateCharacterAssets(TestCase):
             },
         )
 
-    def test_update_assets_5(self, mock_esi):
-        """when update succeeded then report update success"""
+    def test_should_report_update_success_when_update_succeeded(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
 
-    def test_update_assets_6(self, mock_esi):
-        """when update failed then report the error"""
+    def test_should_report_the_error_when_update_failed(self, mock_esi):
         # given
         exception = build_http_error(502, "Test exception")
         mock_esi.client.Assets.get_characters_character_id_assets.side_effect = (
             exception
         )
+
         # when
         with self.assertRaises(OSError):
             tasks.update_character_assets(self.character_1001.pk, True)
+
         # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -287,10 +300,11 @@ class TestUpdateCharacterAssets(TestCase):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_7(self, mock_esi):
-        """when preload objects failed then report the error"""
+    def test_should_report_error_when_preload_objects_failed(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         with patch(
             MANAGERS_PATH + ".general.LocationManager.get_or_create_esi_async",
             spec=True,
@@ -300,6 +314,7 @@ class TestUpdateCharacterAssets(TestCase):
             with self.assertRaises(OSError):
                 tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
@@ -308,16 +323,20 @@ class TestUpdateCharacterAssets(TestCase):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_8(self, mock_esi):
-        """when building the asset tree failed then report the error"""
+    def test_should_report_the_error_when_building_the_asset_tree_failed(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         with patch(MANAGERS_PATH + ".character_sections_1.logger") as m:
             exception = build_http_error(502, "Test exception")
             m.info.side_effect = exception
             with self.assertRaises(OSError):
                 tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
@@ -326,17 +345,21 @@ class TestUpdateCharacterAssets(TestCase):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_9(self, mock_esi):
-        """when info from ESI has not change, then don't re-create asset tree"""
+    def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
         tasks.update_character_assets(self.character_1001.pk, True)
         asset = self.character_1001.assets.get(item_id=1100000000001)
         asset.name = "New Name"
         asset.save()
+
+        # when
         tasks.update_character_assets(self.character_1001.pk, False)
 
+        # then
         asset = self.character_1001.assets.get(item_id=1100000000001)
         self.assertEqual(asset.name, "New Name")
 
@@ -345,17 +368,21 @@ class TestUpdateCharacterAssets(TestCase):
         )
         self.assertTrue(status.is_success)
 
-    def test_update_assets_10(self, mock_esi):
-        """when info from ESI has not change and update is forced, then re-create asset tree"""
+    def test_should_recreate_asset_tree_when_info_from_ESI_is_unchanged_and_is_forced(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
         tasks.update_character_assets(self.character_1001.pk, True)
         asset = self.character_1001.assets.get(item_id=1100000000001)
         asset.name = "New Name"
         asset.save()
+
+        # when
         tasks.update_character_assets(self.character_1001.pk, force_update=True)
 
+        # then
         asset = self.character_1001.assets.get(item_id=1100000000001)
         self.assertEqual(asset.name, "Parent Item 1")
 

@@ -34,6 +34,10 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterAssetQuerySet(models.QuerySet):
+    def item_ids(self) -> Set[int]:
+        """Return item IDs for objects in this queryset."""
+        return set(self.values_list("item_id", flat=True))
+
     def annotate_pricing(self) -> models.QuerySet:
         """Return qs with annotated price and total columns."""
         return (
