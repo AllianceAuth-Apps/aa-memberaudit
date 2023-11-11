@@ -16,7 +16,6 @@ from memberaudit.errors import TokenDoesNotExist
 from memberaudit.models import (
     Character,
     CharacterContract,
-    CharacterShip,
     CharacterSkill,
     CharacterSkillqueueEntry,
     CharacterUpdateStatus,
@@ -32,6 +31,7 @@ from ..testdata.factories import (
     create_character_contract,
     create_character_contract_item,
     create_character_from_user,
+    create_character_ship,
     create_character_update_status,
 )
 from ..testdata.load_entities import load_entities
@@ -491,7 +491,7 @@ class TestCharacterShip(NoSocketsTestCase):
 
     def test_str(self):
         # given
-        CharacterShip.objects.create(
+        create_character_ship(
             character=self.character_1001, eve_type=EveType.objects.get(id=603)
         )
         # when

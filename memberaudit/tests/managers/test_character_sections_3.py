@@ -35,6 +35,7 @@ from ..testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
+    create_character_ship,
     create_character_skill,
     create_character_skill_set_check,
     create_character_standing,
@@ -294,6 +295,7 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
         # then
+        self.assertEqual(self.character_1001.ship.item_id, 1000000016991)
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
@@ -305,8 +307,11 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
             error_500
         )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        create_character_ship(
+            character=self.character_1001,
+            eve_type_id=603,
+            item_id=1000000016991,
+            name="Shooter Boy",
         )
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
@@ -314,15 +319,14 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+        self.assertEqual(self.character_1001.ship.item_id, 1000000016991)
 
     def test_should_remove_ship_when_esi_returns_empty_response(self, mock_esi):
         # given
         mock_esi.client.Location.get_characters_character_id_ship.return_value = (
             BravadoOperationStub(data={})
         )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
-        )
+        create_character_ship(character=self.character_1001)
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
         # then

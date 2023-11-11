@@ -32,6 +32,7 @@ from memberaudit.models import (
     CharacterOnlineStatus,
     CharacterPlanet,
     CharacterRole,
+    CharacterShip,
     CharacterSkill,
     CharacterSkillSetCheck,
     CharacterStanding,
@@ -280,6 +281,16 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     }
     params.update(kwargs)
     return CharacterRole.objects.create(**params)
+
+
+def create_character_ship(character: Character, **kwargs) -> CharacterShip:
+    item_id = kwargs.get("item_id", next_number("asset_item_id"))
+    params = {"character": character, "item_id": item_id, "name": "My sweet ride"}
+    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
+        params["eve_type_id"] = 603
+
+    params.update(kwargs)
+    return CharacterShip.objects.create(**params)
 
 
 def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
