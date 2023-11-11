@@ -80,20 +80,18 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 403)
 
-    """
-    TODO: create test case with CharacterDetails
-    def test_can_specify_list_for_select_related(self):
-        @fetch_character_if_allowed("skills")
-        def dummy(request, character_pk, character):
-            self.assertEqual(character, self.character)
-            self.assertIn("skills", character._state.fields_cache)
-            return HttpResponse("ok")
+    # TODO: create test case with CharacterDetails
+    # def test_can_specify_list_for_select_related(self):
+    #     @fetch_character_if_allowed("skills")
+    #     def dummy(request, character_pk, character):
+    #         self.assertEqual(character, self.character)
+    #         self.assertIn("skills", character._state.fields_cache)
+    #         return HttpResponse("ok")
 
-        OwnerSkills.objects.create(character=self.character, total_sp=10000000)
-        request = self.factory.get(DUMMY_URL)
-        request.user = self.user
-        dummy(request, self.character.pk)
-    """
+    #     OwnerSkills.objects.create(character=self.character, total_sp=10000000)
+    #     request = self.factory.get(DUMMY_URL)
+    #     request.user = self.user
+    #     dummy(request, self.character.pk)
 
 
 class TestFetchToken(TestCase):

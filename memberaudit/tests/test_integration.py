@@ -1,10 +1,8 @@
-import datetime as dt
 from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.dateparse import parse_datetime
-from django.utils.timezone import now
 from django_webtest import WebTest
 from eveuniverse.models import EveEntity, EveType
 
@@ -16,18 +14,22 @@ from app_utils.testing import NoSocketsTestCase
 from memberaudit import tasks
 from memberaudit.models import (
     Character,
-    CharacterAsset,
     CharacterContract,
-    CharacterContractItem,
-    CharacterMail,
-    CharacterMailLabel,
     Location,
     MailEntity,
     SkillSet,
 )
 
 from .testdata.esi_client_stub import esi_client_stub, esi_stub
-from .testdata.factories import create_skill_set
+from .testdata.factories import (
+    create_character_asset,
+    create_character_contract,
+    create_character_contract_item,
+    create_character_mail,
+    create_character_mail_label,
+    create_mailing_list,
+    create_skill_set,
+)
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -198,23 +200,15 @@ class TestUICharacterViewer(WebTest):
         then the contents of that asset container are shown
         """
         # setup data
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character,
-            item_id=1,
             location=self.jita_44,
-            eve_type=EveType.objects.get(id=20185),
-            is_singleton=True,
-            name="Trucker",
-            quantity=1,
+            eve_type=EveType.objects.get(name="Charon"),
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character,
-            item_id=2,
             parent=parent_asset,
-            eve_type=EveType.objects.get(id=603),
-            is_singleton=True,
-            name="My Precious",
-            quantity=1,
+            eve_type=EveType.objects.get(name="Merlin"),
         )
 
         # open character viewer
@@ -241,32 +235,15 @@ class TestUICharacterViewer(WebTest):
         then the items of that contact are shown
         """
         # setup data
-        date_now = now()
-        date_issued = date_now - dt.timedelta(days=1)
-        date_expired = date_now + dt.timedelta(days=2, hours=3)
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
-            contract_id=42,
-            availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_ITEM_EXCHANGE,
-            assignee=EveEntity.objects.get(id=1002),
-            date_issued=date_issued,
-            date_expired=date_expired,
-            for_corporation=False,
-            issuer=EveEntity.objects.get(id=1001),
-            issuer_corporation=EveEntity.objects.get(id=2001),
-            status=CharacterContract.STATUS_IN_PROGRESS,
             start_location=self.jita_44,
             end_location=self.jita_44,
-            title="Dummy info",
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
-            record_id=1,
-            is_included=True,
-            is_singleton=False,
-            quantity=1,
-            eve_type=EveType.objects.get(id=19540),
+            eve_type=EveType.objects.get(name="High-grade Snake Alpha"),
         )
 
         # open character viewer
@@ -293,18 +270,11 @@ class TestUICharacterViewer(WebTest):
         then the mail body is shown
         """
         # setup data
-        body_text = "Mail with normal entity and mailing list as recipient"
-        label = CharacterMailLabel.objects.create(
-            character=self.character, label_id=42, name="Dummy"
-        )
+        body_text = "My text body"
+        label = create_character_mail_label(character=self.character)
         sender_1002, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
-        mail = CharacterMail.objects.create(
-            character=self.character,
-            mail_id=7001,
-            sender=sender_1002,
-            subject="Dummy 1",
-            body=body_text,
-            timestamp=now(),
+        mail = create_character_mail(
+            character=self.character, sender=sender_1002, body=body_text
         )
         recipient_1001, _ = MailEntity.objects.update_or_create_from_eve_entity_id(
             id=1001
@@ -502,29 +472,28 @@ class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
     @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
     @patch(MANAGERS_PATH + ".character_sections_2.EveEntity.objects.get_or_create_esi")
-    def test_update_mail_headers_2(
+    def test_should_update_existing_mail_headers(
         self,
         mock_eve_entity,
         mock_esi_character,
         mock_esi_sections,
     ):
-        """can update existing mail"""
+        # given
         mock_esi_character.client = esi_client_stub
         mock_esi_sections.client = esi_client_stub
         mock_eve_entity.side_effect = self.stub_eve_entity_get_or_create_esi
         sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=1,
             sender=sender,
             subject="Mail 1",
+            body="My body text",
             timestamp=parse_datetime("2015-09-05T16:07:00Z"),
             is_read=False,  # to be updated
         )
         recipient_1, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1001)
-        recipient_2 = MailEntity.objects.create(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
-        )
+        recipient_2 = create_mailing_list()
         mail.recipients.set([recipient_1, recipient_2])
 
         self.character_1001.update_mailing_lists()
@@ -533,7 +502,10 @@ class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         label = self.character_1001.mail_labels.get(label_id=17)
         mail.labels.add(label)  # to be updated
 
+        # when
         self.character_1001.update_mail_headers()
+
+        # then
         self.assertSetEqual(
             set(self.character_1001.mails.values_list("mail_id", flat=True)),
             {1, 2, 3},
@@ -544,7 +516,8 @@ class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.assertTrue(obj.is_read)
         self.assertEqual(obj.subject, "Mail 1")
         self.assertEqual(obj.timestamp, parse_datetime("2015-09-05T16:07:00Z"))
-        self.assertFalse(obj.body)
-        self.assertTrue(obj.recipients.filter(id=1001).exists())
-        self.assertTrue(obj.recipients.filter(id=9001).exists())
-        self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
+        self.assertEqual(obj.body, "My body text")
+        recipient_ids = set(obj.recipients.values_list("id", flat=True))
+        self.assertSetEqual(recipient_ids, {recipient_1.id, recipient_2.id})
+        label_ids = set(obj.labels.values_list("label_id", flat=True))
+        self.assertSetEqual(label_ids, {3})

@@ -188,7 +188,7 @@ def create_character_mail(
     labels: Iterable[CharacterMailLabel] = None,
     **kwargs,
 ) -> CharacterMail:
-    timestamp = now() if "timestamp" not in kwargs else kwargs["timestamp"]
+    timestamp = kwargs.get("timestamp") or now()
     params = {
         "character": character,
         "subject": "Test Mail",
@@ -426,7 +426,7 @@ def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
 
 
 def create_mailing_list(**kwargs) -> MailEntity:
-    my_id = next_number("mailing_list_id")
+    my_id = kwargs.get("id") or next_number("mailing_list_id")
     params = {
         "id": my_id,
         "name": f"Mailing List #{my_id}",

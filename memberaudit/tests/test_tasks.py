@@ -544,8 +544,7 @@ class TestCharacterUpdateFull(TestCase):
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
-    # TODO: Find solution
-    @tag("breaks_with_tox")
+    @tag("breaks_with_tox")  # TODO: Find solution
     def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
@@ -553,7 +552,7 @@ class TestCharacterUpdateFull(TestCase):
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    @tag("breaks_with_tox")
+    @tag("breaks_with_tox")  # TODO: Find solution
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given
