@@ -23,6 +23,9 @@ from memberaudit.models import (
 
 from ..testdata.esi_client_stub import esi_client_stub, esi_stub
 from ..testdata.factories import (
+    create_character_details,
+    create_character_fw_stats,
+    create_character_mail,
     create_character_mail_label,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
@@ -140,7 +143,7 @@ class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         # given
         mock_esi.client = esi_client_stub
         mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        CharacterDetails.objects.create(
+        create_character_details(
             character=self.character_1001,
             birthday=now(),
             corporation=self.corporation_2002,
@@ -326,7 +329,7 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
     def test_should_update_existing_entries(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        CharacterFwStats.objects.create(
+        create_character_fw_stats(
             character=self.character_1001,
             kills_last_week=0,
             kills_total=0,
@@ -711,7 +714,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         """when data retention limit is set, then remove old data beyond that limit"""
         mock_esi.client = esi_client_stub
         sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
-        CharacterMail.objects.create(
+        create_character_mail(
             character=self.character_1001,
             mail_id=99,
             sender=sender,
@@ -735,7 +738,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=1,
             sender=sender,
@@ -761,7 +764,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         mock_esi.client = esi_client_stub
         mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=2,
             sender=sender,
@@ -784,7 +787,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
             build_http_error(404, "Test")
         )
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=1,
             sender=sender,
@@ -820,12 +823,8 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi", esi_stub)
 class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
     def test_normal(self):
-        label_1 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=1, name="Alpha"
-        )
-        label_2 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=2, name="Bravo"
-        )
+        label_1 = create_character_mail_label(character=self.character_1001, label_id=1)
+        label_2 = create_character_mail_label(character=self.character_1001, label_id=2)
         labels = CharacterMailLabel.objects.get_all_labels()
         self.assertDictEqual(
             labels, {label_1.label_id: label_1, label_2.label_id: label_2}
@@ -857,7 +856,7 @@ class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
 
     def test_update_mail_labels_2(self):
         """will remove obsolete labels"""
-        CharacterMailLabel.objects.create(
+        create_character_mail_label(
             character=self.character_1001, label_id=666, name="Obsolete"
         )
 
@@ -870,7 +869,7 @@ class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
 
     def test_update_mail_labels_3(self):
         """will update existing labels"""
-        CharacterMailLabel.objects.create(
+        create_character_mail_label(
             character=self.character_1001,
             label_id=3,
             name="Update me",

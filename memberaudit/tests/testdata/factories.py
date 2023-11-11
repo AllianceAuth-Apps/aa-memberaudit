@@ -27,6 +27,7 @@ from memberaudit.models import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
+    CharacterDetails,
     CharacterFwStats,
     CharacterMail,
     CharacterMailLabel,
@@ -181,6 +182,24 @@ def create_character_contract_bid(
     }
     params.update(kwargs)
     return CharacterContractBid.objects.create(**params)
+
+
+def create_character_details(character: Character, **kwargs) -> CharacterDetails:
+    params = {
+        "character": character,
+        "birthday": now() - dt.timedelta(weeks=200),
+        "name": character.eve_character.character_name,
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(
+        params,
+        alliance_id=character.eve_character.alliance_id,
+        corporation_id=character.eve_character.corporation_id,
+        eve_bloodline_id=1,
+        eve_race_id=1,
+    )
+
+    return CharacterDetails.objects.create(**params)
 
 
 def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStats:
@@ -529,3 +548,11 @@ def next_number(key=None) -> int:
         pass
     next_number._counter[key] = count(start=1)
     return next_number._counter[key].__next__()
+
+
+def _set_missing_foreign_keys(params: dict, **kwargs):
+    """Set foreign keys in dict when they and their variant are not present."""
+    for key_id, value in kwargs.items():
+        key = key_id.replace("_id", "")
+        if key not in params and key_id not in params:
+            params[key_id] = value
