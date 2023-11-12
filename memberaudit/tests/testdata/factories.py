@@ -29,6 +29,7 @@ from memberaudit.models import (
     CharacterContractItem,
     CharacterDetails,
     CharacterFwStats,
+    CharacterLocation,
     CharacterMail,
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
@@ -43,11 +44,14 @@ from memberaudit.models import (
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
+    Location,
     MailEntity,
     SkillSet,
     SkillSetGroup,
     SkillSetSkill,
 )
+
+from .constants import EveSolarSystemId, EveTypeId
 
 
 def create_character(eve_character: EveCharacter, **kwargs) -> Character:
@@ -73,7 +77,7 @@ def create_character_from_user(user: User, **kwargs):
 
 
 def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
-    item_id = kwargs.get("item_id") or next_number("asset_item_id")
+    item_id = kwargs.get("item_id") or next_number("asset_item_id") + 1_200_000_000_000
     params = {
         "character": character,
         "item_id": item_id,
@@ -81,10 +85,8 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
         "quantity": 1,
         "location_flag": "Hangar",
     }
-    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
-        params["eve_type_id"] = 1230  # Veldspar
-
     params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.VELDSPAR)
     if params["is_singleton"] and not params.get("name"):
         params["name"] = (f"Generated asset #{item_id}",)
     return CharacterAsset.objects.create(**params)
@@ -146,8 +148,7 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
         "title": f"Test Contract #{contract_id}",
     }
     params.update(kwargs)
-    if "assignee_id" not in params and "assignee" not in kwargs:
-        params["assignee_id"] = 1002
+    _set_missing_foreign_keys(params, assignee_id=1002)
     if "issuer_id" not in params and "issuer" not in kwargs:
         params["issuer_id"] = 1001
         params["issuer_corporation_id"] = 2001
@@ -164,9 +165,8 @@ def create_character_contract_item(
         "is_singleton": False,
         "quantity": 1,
     }
-    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
-        params["eve_type_id"] = 603
     params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.MERLIN)
     return CharacterContractItem.objects.create(**params)
 
 
@@ -232,6 +232,13 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
     return CharacterFwStats.objects.create(**params)
 
 
+def create_character_location(character: Character, **kwargs) -> CharacterLocation:
+    params = {"character": character}
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_solar_system_id=EveSolarSystemId.AMAMAKE)
+    return CharacterLocation.objects.create(**params)
+
+
 def create_character_mail(
     character: Character,
     recipients: Iterable[MailEntity] = None,
@@ -239,14 +246,14 @@ def create_character_mail(
     **kwargs,
 ) -> CharacterMail:
     timestamp = kwargs.get("timestamp") or now()
+    mail_id = kwargs.get("mail_id") or next_number("mail_id")
     params = {
         "character": character,
-        "subject": "Test Mail",
-        "body": "Test Body",
+        "mail_id": mail_id,
+        "subject": f"Test Subject #{mail_id}",
+        "body": f"Test Body #{mail_id}",
         "timestamp": timestamp,
     }
-    if "mail_id" not in kwargs:
-        params["mail_id"] = next_number("mail_id")
     if "sender" not in kwargs and "sender_id" not in kwargs:
         params["sender"] = create_mail_entity_from_eve_entity(id=1002)
     params.update(kwargs)
@@ -337,7 +344,7 @@ def create_character_ship(character: Character, **kwargs) -> CharacterShip:
     item_id = kwargs.get("item_id", next_number("asset_item_id"))
     params = {"character": character, "item_id": item_id, "name": "My sweet ride"}
     if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
-        params["eve_type_id"] = 603
+        params["eve_type_id"] = EveTypeId.MERLIN
 
     params.update(kwargs)
     return CharacterShip.objects.create(**params)
@@ -468,6 +475,20 @@ def create_fitting_text(file_name: str) -> str:
     fitting_file = testdata_folder / file_name
     with fitting_file.open("r") as file:
         return file.read()
+
+
+def create_location(**kwargs) -> Location:
+    location_id = kwargs.get("id") or next_number("location_id") + 1_700_000_000_000
+    params = {
+        "name": f"Test Location #{location_id}",
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(
+        params,
+        eve_solar_system_id=EveSolarSystemId.AMAMAKE,
+        eve_type_id=EveTypeId.ASTRAHUS,
+    )
+    return Location.objects.create(**params)
 
 
 def create_mail_entity_from_eve_entity(id: int) -> MailEntity:

@@ -33,6 +33,7 @@ class EveFactionId(IntEnum):
 class EveGroupId(IntEnum):
     """Eve Online named group IDs"""
 
+    CAPSULE = 29
     CYBERIMPLANT = 300
     BOOSTER = 303
 

@@ -25,6 +25,7 @@ from ..testdata.esi_client_stub import esi_client_stub, esi_stub
 from ..testdata.factories import (
     create_character_details,
     create_character_fw_stats,
+    create_character_location,
     create_character_mail,
     create_character_mail_label,
     create_mail_entity_from_eve_entity,
@@ -519,25 +520,40 @@ class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTest
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
 class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_location_1(self, mock_esi):
+    def test_should_create_location_from_scratch_for_station(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
         CharacterLocation.objects.update_or_create_esi(self.character_1001)
         # then
+        self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
         self.assertEqual(self.character_1001.location.location, self.jita_44)
 
-    def test_update_location_2(self, mock_esi):
+    def test_should_create_location_from_scratch_for_structure(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
         CharacterLocation.objects.update_or_create_esi(self.character_1002)
         # then
+        self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
         self.assertEqual(self.character_1002.location.location, self.structure_1)
 
-    # TODO: Add tests for no change and forced update
+    def test_should_update_location(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_character_location(
+            character=self.character_1001,
+            eve_solar_system=self.amamake,
+            location=self.structure_1,
+        )
+        # when
+        CharacterLocation.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
+        self.assertEqual(self.character_1001.location.location, self.jita_44)
 
 
 @patch(MODULE_PATH + ".esi")

@@ -26,6 +26,8 @@ from .testdata.factories import (
     create_character,
     create_character_asset,
     create_character_from_user,
+    create_character_location,
+    create_character_ship,
     create_character_update_status,
     create_compliance_group_designation,
 )
@@ -390,6 +392,57 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
+
+    def test_should_return_asset_tree(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        item_ids = {obj["item_id"] for obj in result}
+        self.assertSetEqual(
+            item_ids,
+            {
+                1100000000001,
+                1100000000002,
+                1100000000003,
+                1100000000004,
+                1100000000005,
+                1100000000006,
+                1100000000007,
+                1100000000008,
+            },
+        )
+
+    def test_should_include_current_ship_in_asset_tree(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_999,
+            eve_type_id=603,  # Merlin
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character_1001, eve_solar_system=self.jita
+        )
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        data = {obj["item_id"]: obj for obj in result}
+        self.assertIn(1_100_000_000_999, data.keys())
+        obj = data[1_100_000_000_999]
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        # self.assertEqual(obj["location_id"], self.jita.id)
+        # self.assertEqual(obj["location_flag"], "Hangar")
+        # self.assertEqual(obj["location_type"], "solar_system")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], 603)
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)

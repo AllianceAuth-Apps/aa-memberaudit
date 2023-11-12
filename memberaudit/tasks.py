@@ -3,7 +3,7 @@
 
 import inspect
 import random
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, List, Optional
 
 from celery import chain, shared_task
 
@@ -31,6 +31,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
+from memberaudit.constants import EveGroupId, EveTypeId
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
@@ -38,7 +39,9 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,
+    CharacterLocation,
     CharacterMail,
+    CharacterShip,
     CharacterUpdateStatus,
     ComplianceGroupDesignation,
     General,
@@ -342,7 +345,81 @@ def assets_build_list_from_esi(character_pk: int, force_update: bool = False) ->
         method=character.assets_build_list_from_esi,
         force_update=force_update,
     )
+    _add_undocked_ship_to_asset_list(character, asset_list)
     return asset_list
+
+
+def _add_undocked_ship_to_asset_list(character: Character, asset_list: List[dict]):
+    try:
+        ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(
+            character_id=character.id
+        )  # TODO: Refactor CharacterShip, solar system already part of Location object
+    except CharacterShip.DoesNotExist:
+        return
+
+    try:
+        character_location: CharacterLocation = (
+            CharacterLocation.objects.select_related(
+                "eve_solar_system",
+                "location",
+                "location__eve_solar_system",
+                "location__eve_type",
+            ).get(character_id=character.id)
+        )
+    except CharacterLocation.DoesNotExist:
+        return  # TODO: Check if we can still proceed here with a fake location
+
+    if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
+        return  # we don't add capsules
+
+    try:
+        character_location_id = character_location.location.id
+        character_location_type_id = character_location.location.eve_type.id
+        if character_location.location.is_stations:
+            character_location_type = "station"
+        elif character_location.location.is_solar_system:
+            character_location_type = "solar_system"
+        else:
+            character_location_type = "other"
+
+    except AttributeError:
+        character_location_id = character_location.eve_solar_system.id
+        character_location_type_id = EveTypeId.SOLAR_SYSTEM
+        character_location_type = "solar_system"
+
+    assets = {obj["item_id"]: obj for obj in asset_list}
+    if ship.item_id in assets.keys():
+        return
+
+    for item_id, asset in assets.items():
+        if asset["location_id"] == character_location_id:
+            parent_item_id = item_id
+            break
+    else:
+        parent_item_id = max(assets.keys()) + 500_000_000_000
+        parent_obj = {
+            "is_blueprint_copy": False,
+            "is_singleton": True,
+            "item_id": parent_item_id,
+            "location_flag": "???",
+            "location_id": character_location.eve_solar_system.id,
+            "location_type": character_location_type,
+            "quantity": 1,
+            "type_id": character_location_type_id,
+        }
+        asset_list.append(parent_obj)
+
+    leaf_obj = {
+        "is_blueprint_copy": False,
+        "is_singleton": True,
+        "item_id": ship.item_id,
+        "location_flag": "Hangar",
+        "location_id": parent_item_id,
+        "location_type": "other",
+        "quantity": 1,
+        "type_id": ship.eve_type.id,
+    }
+    asset_list.append(leaf_obj)
 
 
 @shared_task(**TASK_DEFAULTS)
@@ -390,12 +467,12 @@ def assets_create_parents(
         if cycle == 1:
             character.assets.all().delete()
 
-        location_ids = set(Location.objects.values_list("id", flat=True))
+        known_location_ids = set(Location.objects.values_list("id", flat=True))
         parent_asset_ids = {
             item_id
             for item_id, asset_info in assets_flat.items()
             if asset_info.get("location_id")
-            and asset_info["location_id"] in location_ids
+            and asset_info["location_id"] in known_location_ids
         }
         for item_id in parent_asset_ids:
             item = assets_flat[item_id]
