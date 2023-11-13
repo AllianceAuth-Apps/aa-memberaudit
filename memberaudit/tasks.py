@@ -335,8 +335,12 @@ def update_character_assets(
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def assets_build_list_from_esi(character_pk: int, force_update: bool = False) -> dict:
-    """Build the asset list for a character from ESI."""
+def assets_build_list_from_esi(
+    character_pk: int, force_update: bool = False
+) -> Optional[dict]:
+    """Retrieve asset list for a character from ESI and return it
+    or return None if asset list is unchanged.
+    """
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
@@ -407,6 +411,7 @@ def _add_undocked_ship_to_asset_list(character: Character, asset_list: List[dict
         "location_flag": "Hangar",
         "location_id": parent_item_id,
         "location_type": "other",
+        "name": ship.name,
         "quantity": 1,
         "type_id": ship.eve_type.id,
     }
@@ -417,7 +422,7 @@ def _add_undocked_ship_to_asset_list(character: Character, asset_list: List[dict
 def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict]:
     """Preload asset objects for a character from ESI."""
     if asset_list is None:
-        return None
+        return None  # Exit when assets are unchanged
 
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT

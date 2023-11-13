@@ -39,6 +39,7 @@ from .utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
+    reset_celery_once_locks,
 )
 
 MANAGERS_PATH = "memberaudit.managers"
@@ -55,6 +56,7 @@ class TestUILauncher(WebTest):
         load_eveuniverse()
         load_entities()
         load_locations()
+        reset_celery_once_locks()
 
     def setUp(self) -> None:
         self.user, _ = create_user_from_evecharacter_with_access(1002)
@@ -319,6 +321,7 @@ class TestAdminSite(TestCase):
         load_eveuniverse()
         load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
+        reset_celery_once_locks()
 
     def test_should_delete_selected_characters(self):
         # given 2 characters
@@ -447,6 +450,7 @@ class TestTasksIntegration(TestCase):
         load_eveuniverse()
         load_entities()
         load_locations()
+        reset_celery_once_locks()
 
     def test_should_update_all_characters(self):
         # given

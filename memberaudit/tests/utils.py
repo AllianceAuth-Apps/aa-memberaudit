@@ -1,6 +1,7 @@
 """Shared utils for tests."""
 
 import json
+import logging
 from typing import Tuple
 
 from django.contrib.auth.models import Permission, User
@@ -13,6 +14,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.allianceauth import get_redis_client
 from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
 from memberaudit.models import Character, Location
@@ -21,6 +23,8 @@ from .testdata.factories import create_character
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
+
+logger = logging.getLogger(__name__)
 
 
 class CharacterUpdateTestDataMixin:
@@ -156,3 +160,14 @@ def permissions_for_model(model_class) -> QuerySet:
     return Permission.objects.filter(
         content_type__app_label=app_label, content_type__model=model_name
     )
+
+
+def reset_celery_once_locks():
+    """Reset celery once locks for given tasks."""
+    r = get_redis_client()
+    app_label = "memberaudit"
+    if keys := r.keys(f":?:qo_{app_label}.*"):
+        deleted_count = r.delete(*keys)
+        logger.info("Removed %d stuck celery once keys", deleted_count)
+    else:
+        deleted_count = 0

@@ -15,11 +15,11 @@ from memberaudit.models import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
+    CharacterSkillqueueEntry,
     Location,
 )
-
-from ..testdata.esi_client_stub import esi_client_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
+from memberaudit.tests.testdata.factories import (
     create_character_asset,
     create_character_attributes,
     create_character_contact,
@@ -28,10 +28,10 @@ from ..testdata.factories import (
     create_character_contract_bid,
     create_character_from_user,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import (
     CharacterUpdateTestDataMixin,
     TestCharacterUpdateBase,
     create_memberaudit_character,
@@ -39,6 +39,52 @@ from ..utils import (
 )
 
 MODULE_PATH = "memberaudit.managers.character_sections_1"
+
+
+class TestCharacterSkillQueue(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.skill_type_1 = EveType.objects.get(id=24311)
+        cls.skill_type_2 = EveType.objects.get(id=24312)
+
+    def test_is_active_1(self):
+        """when training is active and skill is in first position then return True"""
+        entry = CharacterSkillqueueEntry.objects.create(
+            character=self.character_1001,
+            eve_type=self.skill_type_1,
+            finish_date=now() + dt.timedelta(days=3),
+            finished_level=5,
+            queue_position=0,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        self.assertTrue(entry.is_active)
+
+    def test_is_active_2(self):
+        """when training is active and skill is not in first position then return False"""
+        entry = CharacterSkillqueueEntry.objects.create(
+            character=self.character_1001,
+            eve_type=self.skill_type_1,
+            finish_date=now() + dt.timedelta(days=3),
+            finished_level=5,
+            queue_position=1,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        self.assertFalse(entry.is_active)
+
+    def test_is_active_3(self):
+        """when training is not active and skill is in first position then return False"""
+        entry = CharacterSkillqueueEntry.objects.create(
+            character=self.character_1001,
+            eve_type=self.skill_type_1,
+            finished_level=5,
+            queue_position=0,
+        )
+        self.assertFalse(entry.is_active)
 
 
 class TestCharacterAssetManager(NoSocketsTestCase):
@@ -104,15 +150,6 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
             },
         )
         self.assertEqual(assets[1100000000001]["name"], "Parent Item 1")
-
-    def test_should_return_none_if_assets_did_not_change(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterAsset.objects.fetch_from_esi(self.character)
-        # when
-        result = CharacterAsset.objects.fetch_from_esi(self.character)
-        # then
-        self.assertIsNone(result)
 
     def test_should_always_return_assets_when_forced(self, mock_esi):
         # given

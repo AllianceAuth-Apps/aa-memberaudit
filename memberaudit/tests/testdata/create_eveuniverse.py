@@ -29,6 +29,7 @@ class CreateEveUniverseTestData(TestCase):
                     23,
                     60,
                     603,
+                    670,
                     1376,
                     16159,
                     20185,
