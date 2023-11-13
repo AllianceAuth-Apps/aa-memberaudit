@@ -479,6 +479,7 @@ def create_fitting_text(file_name: str) -> str:
 def create_location(**kwargs) -> Location:
     location_id = kwargs.get("id") or next_number("location_id") + 1_700_000_000_000
     params = {
+        "id": location_id,
         "name": f"Test Location #{location_id}",
     }
     params.update(kwargs)

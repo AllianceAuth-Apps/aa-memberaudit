@@ -374,43 +374,27 @@ def _add_undocked_ship_to_asset_list(character: Character, assets_data: dict):
     if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
         return  # we don't add capsules
 
-    character_location_id = character_location.location.id
-    character_location_type_id = character_location.location.eve_type.id
-    if character_location.location.is_station:
+    location = character_location.location
+
+    if location.is_station:
         character_location_type = "station"
-    elif character_location.location.is_solar_system:
+    elif location.is_solar_system:
         character_location_type = "solar_system"
+    elif location.is_structure:
+        character_location_type = "item"
     else:
         character_location_type = "other"
 
     if ship.item_id in assets_data.keys():
         return
 
-    for item_id, asset in assets_data.items():
-        if asset["location_id"] == character_location_id:
-            parent_item_id = item_id
-            break
-    else:
-        parent_item_id = max(assets_data.keys()) + 500_000_000_000
-        parent_obj = {
-            "is_blueprint_copy": False,
-            "is_singleton": True,
-            "item_id": parent_item_id,
-            "location_flag": "???",
-            "location_id": character_location.eve_solar_system.id,
-            "location_type": character_location_type,
-            "quantity": 1,
-            "type_id": character_location_type_id,
-        }
-        assets_data[parent_item_id] = parent_obj
-
     leaf_obj = {
         "is_blueprint_copy": False,
         "is_singleton": True,
         "item_id": ship.item_id,
         "location_flag": "Hangar",
-        "location_id": parent_item_id,
-        "location_type": "other",
+        "location_id": location.id,
+        "location_type": character_location_type,
         "name": ship.name,
         "quantity": 1,
         "type_id": ship.eve_type.id,
