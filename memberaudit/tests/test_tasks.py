@@ -22,7 +22,7 @@ from app_utils.testing import (
 from memberaudit import tasks
 from memberaudit.models import Character, CharacterUpdateStatus, Location
 
-from .testdata.constants import EveTypeId
+from .testdata.constants import EveSolarSystemId, EveTypeId
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
@@ -223,6 +223,31 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         self.assertEqual(obj["quantity"], 1)
         self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
 
+    def test_should_add_current_ship_when_no_location(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        self.assertIn(1_100_000_000_999, result.keys())
+        obj = result[1_100_000_000_999]
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], EveSolarSystemId.POLARIS)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "solar_system")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
     def test_should_not_add_current_ship_when_no_location_and_no_ship(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
@@ -248,26 +273,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         item_ids = set(result.keys())
         self.assertSetEqual(item_ids, {1_100_000_000_001})
 
-    def test_should_not_add_current_ship_when_no_location(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
-        create_character_ship(
-            character=self.character_1001,
-            item_id=1_100_000_000_999,
-            eve_type_id=EveTypeId.MERLIN,
-            name="Joy Ride",
-        )
-
-        # when
-        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
-
-        # then
-        item_ids = set(result.keys())
-        self.assertSetEqual(item_ids, {1_100_000_000_001})
-
-    def test_should_not_include_current_ship_in_asset_tree_when_it_already_exists(
-        self, mock_esi
-    ):
+    def test_should_not_add_current_ship_when_already_in_assets(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
         create_character_ship(

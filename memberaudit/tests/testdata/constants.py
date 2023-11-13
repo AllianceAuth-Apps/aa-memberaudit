@@ -17,3 +17,4 @@ class EveSolarSystemId(IntEnum):
     AMAMAKE = 30002537
     HED_GP = 30001161
     JITA = 30000142
+    POLARIS = 30000380

@@ -31,7 +31,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
-from memberaudit.constants import EveGroupId
+from memberaudit.constants import EveGroupId, EveSolarSystemId
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
@@ -369,12 +369,14 @@ def _add_undocked_ship_to_asset_list(character: Character, assets_data: dict):
             ).get(character_id=character.id)
         )
     except CharacterLocation.DoesNotExist:
-        return  # TODO: Check if we can still proceed here with a fake location
+        location, _ = Location.objects.get_or_create_esi(
+            id=EveSolarSystemId.POLARIS, token=None
+        )  # show current in Polaris as workaround
+    else:
+        location = character_location.location
 
     if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
         return  # we don't add capsules
-
-    location = character_location.location
 
     if location.is_station:
         character_location_type = "station"

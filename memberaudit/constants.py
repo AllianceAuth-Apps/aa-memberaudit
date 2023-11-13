@@ -38,6 +38,12 @@ class EveGroupId(IntEnum):
     BOOSTER = 303
 
 
+class EveSolarSystemId(IntEnum):
+    """Eve Online solar system IDs."""
+
+    POLARIS = 30000380
+
+
 class EveTypeId(IntEnum):
     """Eve Online named type IDs"""
 
