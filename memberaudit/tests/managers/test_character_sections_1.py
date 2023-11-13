@@ -135,9 +135,8 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         # when
         result = CharacterAsset.objects.fetch_from_esi(self.character)
         # then
-        assets = {item["item_id"]: item for item in result}
         self.assertSetEqual(
-            set(assets.keys()),
+            set(result.keys()),
             {
                 1100000000001,
                 1100000000002,
@@ -149,7 +148,7 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
                 1100000000008,
             },
         )
-        self.assertEqual(assets[1100000000001]["name"], "Parent Item 1")
+        self.assertEqual(result[1100000000001]["name"], "Parent Item 1")
 
     def test_should_always_return_assets_when_forced(self, mock_esi):
         # given
@@ -178,9 +177,9 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     ):
         # given
         character = create_character_from_user(self.user)
-        asset_list = []
+        assets_data = {}
         # when
-        character.assets_preload_objects(asset_list)
+        character.assets_preload_objects(assets_data)
         # then
         self.assertFalse(mock_eve_entity_create.called)
         self.assertFalse(mock_preload_locations.called)
@@ -190,12 +189,12 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     ):
         # given
         character = create_character_from_user(self.user)
-        asset_list = [
-            {"item_id": 1, "type_id": 3, "location_id": 420},
-            {"item_id": 2, "type_id": 4, "location_id": 421},
-        ]
+        assets_data = {
+            1: {"item_id": 1, "type_id": 3, "location_id": 420},
+            2: {"item_id": 2, "type_id": 4, "location_id": 421},
+        }
         # when
-        character.assets_preload_objects(asset_list)
+        character.assets_preload_objects(assets_data)
         # then
         self.assertTrue(mock_eve_entity_create.called)
         _, kwargs = mock_eve_entity_create.call_args

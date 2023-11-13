@@ -122,7 +122,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        item_ids = {obj["item_id"] for obj in result}
+        item_ids = set(result.keys())
         self.assertSetEqual(item_ids, self.item_ids)
 
     def test_should_return_asset_tree_only_when_location_only(self, mock_esi):
@@ -136,7 +136,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        item_ids = {obj["item_id"] for obj in result}
+        item_ids = set(result.keys())
         self.assertSetEqual(item_ids, self.item_ids)
 
     def test_should_return_asset_tree_only_when_ship_only(self, mock_esi):
@@ -153,7 +153,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        item_ids = {obj["item_id"] for obj in result}
+        item_ids = set(result.keys())
         self.assertSetEqual(item_ids, self.item_ids)
 
     def test_should_include_current_ship_in_asset_tree_when_it_does_not_exist(
@@ -175,9 +175,8 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        data = {obj["item_id"]: obj for obj in result}
-        self.assertIn(1_100_000_000_999, data.keys())
-        obj = data[1_100_000_000_999]
+        self.assertIn(1_100_000_000_999, result.keys())
+        obj = result[1_100_000_000_999]
         self.assertEqual(obj["name"], "Joy Ride")
         self.assertEqual(obj["item_id"], 1_100_000_000_999)
         self.assertEqual(obj["is_singleton"], True)
@@ -206,8 +205,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        data = {obj["item_id"]: obj for obj in result}
-        obj = data[1_100_000_000_008]
+        obj = result[1_100_000_000_008]
         self.assertNotEqual(obj["name"], "Joy Ride")
 
     def test_should_include_current_ship_in_asset_tree_when_it_is_a_capsule(
@@ -229,12 +227,31 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # then
-        data = {obj["item_id"]: obj for obj in result}
-        self.assertNotIn(1_100_000_000_999, data.keys())
+        self.assertNotIn(1_100_000_000_999, result.keys())
 
-    def test_should_return_none_when_asset_list_is_unchanged(self, mock_esi):
+    def test_should_return_none_when_asset_list_is_unchanged_wo_ship(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
+        tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_return_none_when_asset_list_is_unchanged_w_ship(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character_1001, location=self.location_jita
+        )
         tasks.assets_build_list_from_esi(self.character_1001.pk)
 
         # when
