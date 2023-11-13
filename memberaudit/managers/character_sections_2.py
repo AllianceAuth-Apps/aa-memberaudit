@@ -2,7 +2,7 @@
 # pylint: disable=missing-class-docstring
 
 import ast
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set
 
 from bravado.exception import HTTPNotFound
 
@@ -646,7 +646,7 @@ class CharacterMailManager(models.Manager):
 
 
 class CharacterMailLabelManager(models.Manager):
-    def get_all_labels(self) -> Dict[int, models.Model]:
+    def get_all_labels(self) -> Dict[int, Any]:
         """Return all label objects as dict by label_id."""
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}

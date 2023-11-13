@@ -3,7 +3,7 @@
 
 
 import datetime as dt
-from typing import Iterable, List, Optional, Set, Tuple
+from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
@@ -136,7 +136,7 @@ class LocationManager(models.Manager):
 
     _UPDATE_EMPTY_GRACE_MINUTES = 5
 
-    def get_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def get_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Gets or create location object with data fetched from ESI.
 
         Stale locations will always be updated.
@@ -144,15 +144,13 @@ class LocationManager(models.Manager):
         """
         return self._get_or_create_esi(id=id, token=token, update_async=False)
 
-    def get_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def get_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Gets or create location object with data fetched from ESI asynchronous."""
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
         self, id: int, token: Token, update_async: bool
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         empty_threshold = now() - dt.timedelta(minutes=self._UPDATE_EMPTY_GRACE_MINUTES)
         stale_threshold = now() - dt.timedelta(hours=MEMBERAUDIT_LOCATION_STALE_HOURS)
@@ -168,13 +166,11 @@ class LocationManager(models.Manager):
                 return self.update_or_create_esi_async(id=id, token=token)
             return self.update_or_create_esi(id=id, token=token)
 
-    def update_or_create_esi_async(
-        self, id: int, token: Token
-    ) -> Tuple[models.Model, bool]:
+    def update_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Updates or create a location object with data fetched from ESI asynchronous."""
         return self._update_or_create_esi(id=id, token=token, update_async=True)
 
-    def update_or_create_esi(self, id: int, token: Token) -> Tuple[models.Model, bool]:
+    def update_or_create_esi(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Updates or create a location object with data fetched from ESI synchronous.
 
         The preferred method to use is: `update_or_create_esi_async()`,
@@ -185,7 +181,7 @@ class LocationManager(models.Manager):
 
     def _update_or_create_esi(
         self, id: int, token: Token, update_async: bool
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         if self.model.is_asset_safety_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(
@@ -227,7 +223,7 @@ class LocationManager(models.Manager):
 
     def _station_update_or_create_dict(
         self, id: int, station: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         if system_id := station.get("system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=system_id)
         else:
@@ -287,7 +283,7 @@ class LocationManager(models.Manager):
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Creates a new object from a structure dict."""
         if solar_system_id := structure.get("solar_system_id"):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
@@ -345,19 +341,19 @@ class LocationManager(models.Manager):
 class MailEntityManager(models.Manager):
     def get_or_create_esi(
         self, id: int, category: Optional[str] = None
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Get or create objects from ESI."""
         return self._get_or_create_esi(id=id, category=category, update_async=False)
 
     def get_or_create_esi_async(
         self, id: int, category: Optional[str] = None
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Get or create objects from ESI with celery tasks."""
         return self._get_or_create_esi(id=id, category=category, update_async=True)
 
     def _get_or_create_esi(
         self, id: int, category: Optional[str], update_async: bool
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         id = int(id)
         try:
             return self.get(id=id), False
@@ -368,7 +364,7 @@ class MailEntityManager(models.Manager):
 
     def update_or_create_esi(
         self, id: int, category: Optional[str] = None
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Update or create new object from ESI.
 
         Mailing lists can not be resolved from ESI
@@ -409,7 +405,7 @@ class MailEntityManager(models.Manager):
 
     def update_or_create_esi_async(
         self, id: int, category: Optional[str] = None
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Same as update_or_create_esi, but will create and return an empty object
         and delegate the ID resolution to a task (if needed),
         which will automatically retry on many common error conditions.
@@ -429,7 +425,7 @@ class MailEntityManager(models.Manager):
             return self.update_or_create_esi(id=id, category=category)
         return self._update_or_create_esi_async(id=id)
 
-    def _update_or_create_esi_async(self, id: int) -> Tuple[models.Model, bool]:
+    def _update_or_create_esi_async(self, id: int) -> Tuple[Any, bool]:
         from memberaudit.tasks import (
             update_mail_entity_esi as task_update_mail_entity_esi,
         )
@@ -448,7 +444,7 @@ class MailEntityManager(models.Manager):
 
     def update_or_create_from_eve_entity(
         self, eve_entity: EveEntity
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Update or create object from an entity object."""
         category_map = {
             EveEntity.CATEGORY_ALLIANCE: self.model.Category.ALLIANCE,
@@ -463,14 +459,12 @@ class MailEntityManager(models.Manager):
             },
         )
 
-    def update_or_create_from_eve_entity_id(self, id: int) -> Tuple[models.Model, bool]:
+    def update_or_create_from_eve_entity_id(self, id: int) -> Tuple[Any, bool]:
         """Update or create from an eve entity by ID."""
         eve_entity, _ = EveEntity.objects.get_or_create_esi(id=int(id))
         return self.update_or_create_from_eve_entity(eve_entity)
 
-    def bulk_update_names(
-        self, objs: Iterable[models.Model], keep_names: bool = False
-    ) -> None:
+    def bulk_update_names(self, objs: Iterable[Any], keep_names: bool = False) -> None:
         """Update names for given objects with categories
         that can be resolved by EveEntity (e.g. Character).
 
@@ -567,7 +561,7 @@ class SkillSetManager(models.Manager):
         user: Optional[User] = None,
         skill_set_group=None,
         skill_set_name=None,
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Update or create a skill set from a fitting."""
         if not skill_set_name:
             skill_set_name = fitting.name
@@ -582,7 +576,7 @@ class SkillSetManager(models.Manager):
 
     def update_or_create_from_skill_plan(
         self, skill_plan: SkillPlan, user: Optional[User] = None, skill_set_group=None
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Update or create a skill set from a fitting."""
         return self.update_or_create_from_skills(
             name=skill_plan.name,
@@ -600,7 +594,7 @@ class SkillSetManager(models.Manager):
         user: Optional[User] = None,
         skill_set_group=None,
         ship_type: Optional[EveType] = None,
-    ) -> Tuple[models.Model, bool]:
+    ) -> Tuple[Any, bool]:
         """Update or create a skill set from skills."""
         from memberaudit.models import SkillSetSkill
 

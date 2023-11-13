@@ -87,7 +87,9 @@ class TestUILauncher(WebTest):
     @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
     @patch(MANAGERS_PATH + ".general.esi", esi_stub)
     @override_settings(
-        CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+        CELERY_ALWAYS_EAGER=True,
+        CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+        APP_UTILS_OBJECT_CACHE_DISABLED=True,
     )
     def test_add_character(self):
         """
@@ -311,7 +313,11 @@ class TestUICharacterViewer(WebTest):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestAdminSite(TestCase):
     fixtures = ["disable_analytics.json"]
 
@@ -440,7 +446,11 @@ class TestAdminSite(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestTasksIntegration(TestCase):
     fixtures = ["disable_analytics.json"]
 

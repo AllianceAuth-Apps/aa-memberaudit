@@ -347,7 +347,9 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
 
 
 @override_settings(
-    CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )  # need to ignore exceptions
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets(TestCase):
@@ -656,7 +658,11 @@ class TestUpdateCharacterAssets(TestCase):
         self.assertTrue(status.is_success)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContacts(TestCase):
@@ -702,7 +708,11 @@ class TestUpdateCharacterContacts(TestCase):
         )
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContracts(TestCase):
@@ -749,7 +759,11 @@ class TestUpdateCharacterContracts(TestCase):
         )
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
@@ -807,7 +821,11 @@ class TestUpdateCharacterMails(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestCharacterUpdateFull(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -948,7 +966,11 @@ class TestCharacterUpdateFull(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestCharacterUpdateErrorReporting(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -1047,7 +1069,11 @@ class TestUpdateMailEntityEsi(TestCase):
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestUpdateCharactersDoctrines(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -1086,7 +1112,11 @@ class TestDeleteCharacters(TestCase):
             tasks.delete_objects("MyUnknownMOdel", [1])
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 class TestExportData(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
