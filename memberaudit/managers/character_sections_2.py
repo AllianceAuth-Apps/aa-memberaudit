@@ -14,7 +14,6 @@ from eveuniverse.models import (
     EveEntity,
     EveFaction,
     EveRace,
-    EveSolarSystem,
     EveType,
 )
 
@@ -350,28 +349,19 @@ class CharacterLocationManager(models.Manager):
     def _update_or_create_objs(self, character, token: Token, location_info):
         from memberaudit.models.general import Location
 
-        eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-            id=location_info.get("solar_system_id")
-        )
-        if location_info.get("station_id"):
+        if station_id := location_info.get("station_id"):
+            location, _ = Location.objects.get_or_create_esi(id=station_id, token=token)
+        elif structure_id := location_info.get("structure_id"):
             location, _ = Location.objects.get_or_create_esi_async(
-                id=location_info.get("station_id"), token=token
-            )
-        elif location_info.get("structure_id"):
-            location, _ = Location.objects.get_or_create_esi_async(
-                id=location_info.get("structure_id"), token=token
+                id=structure_id, token=token
             )
         else:
-            location = None
-
-        if eve_solar_system:
-            self.update_or_create(
-                character=character,
-                defaults={
-                    "eve_solar_system": eve_solar_system,
-                    "location": location,
-                },
+            solar_system_id = location_info["solar_system_id"]
+            location, _ = Location.objects.get_or_create_esi_async(
+                id=solar_system_id, token=token
             )
+
+        self.update_or_create(character=character, defaults={"location": location})
 
 
 class CharacterLoyaltyEntryManager(models.Manager):

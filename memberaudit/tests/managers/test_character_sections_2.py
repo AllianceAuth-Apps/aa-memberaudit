@@ -21,6 +21,7 @@ from memberaudit.models import (
     MailEntity,
 )
 
+from ..testdata.constants import EveTypeId
 from ..testdata.esi_client_stub import esi_client_stub, esi_stub
 from ..testdata.factories import (
     create_character_details,
@@ -526,8 +527,6 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # when
         CharacterLocation.objects.update_or_create_esi(self.character_1001)
         # then
-        self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
         self.assertEqual(self.character_1001.location.location, self.jita_44)
 
     def test_should_create_location_from_scratch_for_structure(self, mock_esi):
@@ -536,23 +535,33 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # when
         CharacterLocation.objects.update_or_create_esi(self.character_1002)
         # then
-        self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
         self.assertEqual(self.character_1002.location.location, self.structure_1)
+
+    def test_should_create_location_from_scratch_for_solar_system(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        character_1003 = create_memberaudit_character(1003)
+        # when
+        CharacterLocation.objects.update_or_create_esi(character_1003)
+        # then
+        character_location: CharacterLocation = character_1003.location
+        self.assertEqual(character_location.location.id, self.amamake.id)
+        self.assertEqual(character_location.location.eve_solar_system, self.amamake)
+        self.assertEqual(
+            character_location.location.eve_type.id, EveTypeId.SOLAR_SYSTEM
+        )
+        self.assertIsNone(character_location.location.owner)
 
     def test_should_update_location(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         create_character_location(
-            character=self.character_1001,
-            eve_solar_system=self.amamake,
-            location=self.structure_1,
+            character=self.character_1001, location=self.structure_1
         )
         # when
         CharacterLocation.objects.update_or_create_esi(self.character_1001)
         # then
         self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
         self.assertEqual(self.character_1001.location.location, self.jita_44)
 
 

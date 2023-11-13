@@ -403,8 +403,7 @@ class TestAdminSite(TestCase):
         )
 
         # then character is updated
-        character_1001.refresh_from_db()
-        self.assertEqual(character_1001.location.eve_solar_system.name, "Jita")
+        self.assertEqual(character_1001.location.location.eve_solar_system.name, "Jita")
 
     def test_should_update_assets_for_characters(self):
         # given 2 characters

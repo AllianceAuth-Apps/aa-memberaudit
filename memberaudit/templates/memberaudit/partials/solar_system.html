@@ -1,17 +1,17 @@
 {% load i18n %}
 {% load evelinks %}
 
-{% if character.location.eve_solar_system %}
-    <a href="{{ character.location.eve_solar_system.name|dotlan_solar_system_url }}" target="_blank">
-        {{ character.location.eve_solar_system.name }}
-    </a>
-    {% with system=character.location.eve_solar_system %}
-        <span class="{% if system.is_high_sec %}text-high-sec{% elif system.is_low_sec %}text-low-sec{% else %}text-null-sec{% endif%}">
-            {{ system.security_status|floatformat:1 }}
+{% if character.location %}
+    {% with solar_system=character.location.location.eve_solar_system %}
+        <a href="{{ solar_system.name|dotlan_solar_system_url }}" target="_blank">
+            {{ solar_system.name }}
+        </a>
+        <span class="{% if solar_system.is_high_sec %}text-high-sec{% elif solar_system.is_low_sec %}text-low-sec{% else %}text-null-sec{% endif%}">
+            {{ solar_system.security_status|floatformat:1 }}
         </span>
+        /
+        {{ solar_system.eve_constellation.eve_region.name }}
     {% endwith %}
-    /
-    {{ character.location.eve_solar_system.eve_constellation.eve_region.name }}
 {% else %}
     <span class="text-muted">{% translate "(no data yet)" %}</span>
 {% endif %}

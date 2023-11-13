@@ -222,9 +222,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def __str__(self) -> str:
         try:
-            return f"{self.eve_character.character_name} (PK:{self.pk})"
+            return f"{self.eve_character.character_name} (ID:{self.id})"
         except EveCharacter.DoesNotExist:
-            return self.pk
+            return f"Character ID {self.id}"
 
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"

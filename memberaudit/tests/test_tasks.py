@@ -30,6 +30,7 @@ from .testdata.factories import (
     create_character_ship,
     create_character_update_status,
     create_compliance_group_designation,
+    create_location_eve_solar_system,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
@@ -425,9 +426,8 @@ class TestUpdateCharacterAssets(TestCase):
             eve_type_id=603,  # Merlin
             name="Joy Ride",
         )
-        create_character_location(
-            character=self.character_1001, eve_solar_system=self.jita
-        )
+        location = create_location_eve_solar_system(id=self.jita.id)
+        create_character_location(character=self.character_1001, location=location)
 
         # when
         result = tasks.assets_build_list_from_esi(self.character_1001.pk)

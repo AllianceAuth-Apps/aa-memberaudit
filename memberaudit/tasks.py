@@ -31,7 +31,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
-from memberaudit.constants import EveGroupId, EveTypeId
+from memberaudit.constants import EveGroupId
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
@@ -360,10 +360,7 @@ def _add_undocked_ship_to_asset_list(character: Character, asset_list: List[dict
     try:
         character_location: CharacterLocation = (
             CharacterLocation.objects.select_related(
-                "eve_solar_system",
-                "location",
-                "location__eve_solar_system",
-                "location__eve_type",
+                "location", "location__eve_solar_system", "location__eve_type"
             ).get(character_id=character.id)
         )
     except CharacterLocation.DoesNotExist:
@@ -372,20 +369,14 @@ def _add_undocked_ship_to_asset_list(character: Character, asset_list: List[dict
     if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
         return  # we don't add capsules
 
-    try:
-        character_location_id = character_location.location.id
-        character_location_type_id = character_location.location.eve_type.id
-        if character_location.location.is_stations:
-            character_location_type = "station"
-        elif character_location.location.is_solar_system:
-            character_location_type = "solar_system"
-        else:
-            character_location_type = "other"
-
-    except AttributeError:
-        character_location_id = character_location.eve_solar_system.id
-        character_location_type_id = EveTypeId.SOLAR_SYSTEM
+    character_location_id = character_location.location.id
+    character_location_type_id = character_location.location.eve_type.id
+    if character_location.location.is_station:
+        character_location_type = "station"
+    elif character_location.location.is_solar_system:
         character_location_type = "solar_system"
+    else:
+        character_location_type = "other"
 
     assets = {obj["item_id"]: obj for obj in asset_list}
     if ship.item_id in assets.keys():

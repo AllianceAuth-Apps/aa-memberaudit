@@ -41,12 +41,11 @@ compilemessages:
 		-l zh_Hans
 
 coverage:
-	# coverage run ../myauth/manage.py test $(package).tests --keepdb --failfast --timing && coverage html && coverage xml && coverage report -m
 	coverage run --concurrency=multiprocessing ../myauth/manage.py test $(package).tests --keepdb --failfast --timing --parallel && coverage combine && coverage html && coverage report -m
 
 test:
 	# runs a full test incl. re-creating of the test DB
-	python ../myauth/manage.py test $(package) --failfast --debug-mode -v 2
+	python ../myauth/manage.py test $(package).tests --failfast --timing --parallel -v 2
 
 pylint:
 	pylint --load-plugins pylint_django $(package)

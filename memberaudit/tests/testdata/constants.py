@@ -6,6 +6,7 @@ class EveTypeId(IntEnum):
 
     ASTRAHUS = 35832
     MERLIN = 603
+    SOLAR_SYSTEM = 5
     VELDSPAR = 1230
 
 

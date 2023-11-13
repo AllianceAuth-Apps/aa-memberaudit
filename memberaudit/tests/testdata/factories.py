@@ -235,7 +235,6 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
-    _set_missing_foreign_keys(params, eve_solar_system_id=EveSolarSystemId.AMAMAKE)
     return CharacterLocation.objects.create(**params)
 
 
@@ -489,6 +488,14 @@ def create_location(**kwargs) -> Location:
         eve_type_id=EveTypeId.ASTRAHUS,
     )
     return Location.objects.create(**params)
+
+
+def create_location_eve_solar_system(**kwargs) -> Location:
+    solar_system_id = kwargs.get("id") or EveSolarSystemId.AMAMAKE
+    eve_solar_system = EveSolarSystem.objects.get(id=solar_system_id)
+    params = {"name": eve_solar_system.name, "eve_type_id": EveTypeId.SOLAR_SYSTEM}
+    params.update(kwargs)
+    return create_location(**params)
 
 
 def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
