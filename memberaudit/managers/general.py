@@ -151,7 +151,7 @@ class LocationManager(models.Manager):
         return self._get_or_create_esi(id=id, token=token, update_async=True)
 
     def _get_or_create_esi(
-        self, id: int, token: Token, update_async: bool = True
+        self, id: int, token: Token, update_async: bool
     ) -> Tuple[models.Model, bool]:
         id = int(id)
         empty_threshold = now() - dt.timedelta(minutes=self._UPDATE_EMPTY_GRACE_MINUTES)
@@ -184,7 +184,7 @@ class LocationManager(models.Manager):
         return self._update_or_create_esi(id=id, token=token, update_async=False)
 
     def _update_or_create_esi(
-        self, id: int, token: Token, update_async: bool = True
+        self, id: int, token: Token, update_async: bool
     ) -> Tuple[models.Model, bool]:
         id = int(id)
         if self.model.is_asset_safety_id(id):

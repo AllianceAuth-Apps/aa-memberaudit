@@ -357,7 +357,7 @@ class CharacterLocationManager(models.Manager):
             )
         else:
             solar_system_id = location_info["solar_system_id"]
-            location, _ = Location.objects.get_or_create_esi_async(
+            location, _ = Location.objects.get_or_create_esi(
                 id=solar_system_id, token=token
             )
 
