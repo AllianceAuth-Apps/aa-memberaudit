@@ -1,8 +1,8 @@
 /* Common styles for all pages of this app */
 @media all {
-    .icon-plus-name {
-        padding-left: 2em;
-        text-indent: -2em;
+    .icon-plus-text {
+        margin-left: 0.25em;
+        margin-right: 0.25em;
     }
 
     .text-high-sec {
@@ -17,7 +17,7 @@
         color: rgb(255, 0, 0);
     }
 
-    .boolean-icon-false{
+    .boolean-icon-false {
         color: rgb(255, 0, 0);
     }
 
@@ -42,16 +42,16 @@
 /* DataTables
 ------------------------------------------------------------------------------------- */
 @media all {
-    .dataTables_wrapper > .form-inline {
+    .dataTables_wrapper>.form-inline {
         margin-bottom: 1rem;
     }
 
-    .dataTables_wrapper > .form-inline select {
+    .dataTables_wrapper>.form-inline select {
         margin-right: 1rem;
         margin-bottom: 1rem;
     }
 
-    .dataTables_wrapper > .form-inline select:last-child {
+    .dataTables_wrapper>.form-inline select:last-child {
         margin-right: 0;
     }
 
@@ -61,7 +61,7 @@
 }
 
 @media (min-width: 768px) {
-    .dataTables_wrapper > .form-inline select:first-child {
+    .dataTables_wrapper>.form-inline select:first-child {
         margin-left: 1rem;
     }
 }

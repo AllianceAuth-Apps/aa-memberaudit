@@ -24,6 +24,8 @@ from typing import Any, Tuple
 import requests
 from tqdm import tqdm
 
+from django.contrib.auth.models import User
+
 from allianceauth.authentication.models import State
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
@@ -32,7 +34,8 @@ from memberaudit.models import Character, SkillSet
 from memberaudit.tests.testdata.factories import create_character_skill_set_check
 from memberaudit.tests.utils import create_memberaudit_character
 
-CHARACTER_COUNT = 100  # max number of character to generate
+PURGE_STALE_CHARACTER = True  # whether to first purge all stale characters
+CHARACTER_COUNT = 1000  # max number of characters to generate
 CORPORATION_IDS = [
     98615046,  # KarmaFleet University
     98627389,  # Alpha Academic
@@ -43,30 +46,41 @@ CORPORATION_IDS = [
 
 def main():
     my_state = _get_or_create_state_for_test_users()
-    _delete_previous_test_characters(my_state)
+    if PURGE_STALE_CHARACTER:
+        _delete_previous_test_characters(my_state)
 
-    created_count = 0
-    character_ids = _fetching_random_character_ids()[:CHARACTER_COUNT]
-    for character_id in tqdm(
-        character_ids, desc="Creating test characters", unit="objects"
-    ):
-        try:
-            eve_character, created = get_or_create_eve_character(character_id)
-        except OSError:
-            continue
-        if created:
-            created_count += 1
-            my_state.member_characters.add(eve_character)
-            character = create_memberaudit_character(character_id, is_disabled=True)
-            set_character_skill_set_checks(character)
+    if CHARACTER_COUNT:
+        created_count = 0
+        character_ids = _fetching_random_character_ids()[:CHARACTER_COUNT]
+        for character_id in tqdm(
+            character_ids, desc="Creating test characters", unit="objects"
+        ):
+            try:
+                eve_character, created = get_or_create_eve_character(character_id)
+            except OSError:
+                continue
+            if created:
+                created_count += 1
+                my_state.member_characters.add(eve_character)
+                character = create_memberaudit_character(character_id, is_disabled=True)
+                set_character_skill_set_checks(character)
 
 
 def _delete_previous_test_characters(my_state):
-    num, _ = EveCharacter.objects.filter(
-        character_ownership__user__profile__state=my_state
-    ).delete()
-    if num > 0:
-        print(f"Deleted stale test characters.")
+    eve_character_pks = set(
+        EveCharacter.objects.filter(
+            character_ownership__user__profile__state=my_state
+        ).values_list("pk", flat=True)
+    )
+    users = User.objects.filter(profile__state=my_state)
+    user_count = users.count()
+    users.delete()
+    EveCharacter.objects.filter(pk__in=eve_character_pks).delete()
+    if user_count > 0 or eve_character_pks:
+        print(
+            f"Deleted {user_count} test users "
+            f"and {len(eve_character_pks)} test characters."
+        )
 
 
 def _get_or_create_state_for_test_users():

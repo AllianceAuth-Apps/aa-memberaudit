@@ -6,6 +6,7 @@ from typing import List, Optional
 
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.widgets import FilteredSelectMultiple
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db.models import Max, Prefetch
@@ -435,6 +436,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def _last_update_at(self, obj: Character):
         return obj.last_update_at
 
+    @admin.display
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
         enabled_sections = Character.UpdateSection.enabled_sections()
@@ -568,6 +570,13 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
             )
         )
 
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "skill_sets":
+            kwargs["queryset"] = SkillSet.objects.order_by("name")
+
+        return super().formfield_for_manytomany(db_field, request, **kwargs)
+
+    @admin.display
     def _skill_sets(self, obj):
         return format_html(
             "<br>".join([skill_set.name for skill_set in obj.skill_sets_ordered])
@@ -577,6 +586,22 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
         obj.last_modified_by = request.user
         obj.last_modified_at = now()
         super().save_model(request, obj, form, change)
+
+
+# class SkillSetGroupAdminInline(admin.TabularInline):
+#     model = SkillSetGroup.skill_sets.through
+
+#     def get_formset(self, request, obj=None, **kwargs):
+#         """
+#         Override the formset function in order to remove the add and change buttons beside the foreign key pull-down
+#         menus in the inline.
+#         """
+#         formset = super().get_formset(request, obj, **kwargs)
+#         form = formset.form
+#         widget = form.base_fields["skillsetgroup"].widget
+#         widget.can_add_related = False
+#         widget.can_change_related = False
+#         return formset
 
 
 class SkillSetSkillAdminFormSet(BaseInlineFormSet):
@@ -642,8 +667,46 @@ class SkillSetSkillAdminInline(admin.TabularInline):
 #         return SkillSet.objects.all()
 
 
+class SkillSetAdminForm(forms.ModelForm):
+    skill_set_groups = forms.ModelMultipleChoiceField(
+        queryset=SkillSetGroup.objects.all(),
+        required=False,
+        widget=FilteredSelectMultiple(verbose_name=__("Groups"), is_stacked=False),
+    )
+
+    class Meta:
+        model = SkillSet
+        fields = ["name", "description", "ship_type", "is_visible"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if self.instance and self.instance.pk:
+            self.fields["skill_set_groups"].initial = self.instance.groups.all()
+
+    def save(self, commit=True):
+        obj = super().save(commit=False)
+
+        if commit:
+            obj.save()
+
+        if obj.pk:
+            obj.groups.set(self.cleaned_data["skill_set_groups"])
+            self.save_m2m()
+
+        return obj
+
+
 @admin.register(SkillSet)
 class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
+    class Media:
+        css = {
+            "all": (
+                "allianceauth/authentication/css/admin.css",
+                "memberaudit/css/admin.css",
+            ),
+        }
+
     autocomplete_fields = ("ship_type",)
     list_display = (
         "name",
@@ -661,14 +724,8 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
     search_fields = ["name"]
     actions = ["delete_objects", "clone_skill_sets"]
 
-    fields = [
-        "name",
-        "description",
-        "ship_type",
-        "is_visible",
-        ("last_modified_at", "last_modified_by"),
-    ]
-    readonly_fields = ("last_modified_at", "last_modified_by")
+    # readonly_fields = ("last_modified_at", "last_modified_by")
+    form = SkillSetAdminForm
     inlines = (SkillSetSkillAdminInline,)
 
     def get_queryset(self, request):
@@ -687,21 +744,6 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
                 to_attr="groups_ordered",
             ),
         )
-
-    def _skills(self, obj):
-        skills = []
-        for skill in obj.skills_ordered:
-            skill_name = skill.eve_type.name
-            required_level = skill.required_level if skill.required_level else ""
-            recommended_level = (
-                f"[{skill.recommended_level}]" if skill.recommended_level else ""
-            )
-            skills.append(f"{skill_name} {required_level} {recommended_level}")
-        return skills
-
-    def _groups(self, obj) -> Optional[List[str]]:
-        groups = [f"{group.name}" for group in obj.groups_ordered]
-        return groups if groups else None
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "ship_type":
@@ -727,6 +769,23 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
         tasks.update_characters_skill_checks.apply_async(
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
         )  # type: ignore
+
+    @admin.display
+    def _skills(self, obj):
+        skills = []
+        for skill in obj.skills_ordered:
+            skill_name = skill.eve_type.name
+            required_level = skill.required_level if skill.required_level else ""
+            recommended_level = (
+                f" [{skill.recommended_level}]" if skill.recommended_level else ""
+            )
+            skills.append(f"{skill_name} {required_level}{recommended_level}")
+        return skills
+
+    @admin.display
+    def _groups(self, obj) -> Optional[List[str]]:
+        groups = [f"{group.name}" for group in obj.groups_ordered]
+        return groups if groups else None
 
     @admin.action(description=__("Clone selected skill sets"))
     def clone_skill_sets(self, request, queryset):

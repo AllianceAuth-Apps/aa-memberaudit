@@ -273,7 +273,7 @@ SITE_URL = "http://127.0.0.1:8000"
 DEBUG = False
 
 # Add any additional apps to this list.
-INSTALLED_APPS += ["eveuniverse", "memberaudit"]
+INSTALLED_APPS += ["eveuniverse", "memberaudit", "htmx_datatables"]
 
 # Enter credentials to use MySQL/MariaDB. Comment out to use sqlite3
 # DATABASES["default"] = {

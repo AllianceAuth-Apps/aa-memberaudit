@@ -3,6 +3,7 @@
 {% load i18n %}
 {% load humanize %}
 {% load static %}
+{% load htmx_datatables %}
 
 {% block details %}
     <div>
@@ -14,7 +15,7 @@
                 <div class="tab-content">
                     {% include 'memberaudit/partials/reports/tabs/user_compliance.html' %}
                     {% include 'memberaudit/partials/reports/tabs/corporation_compliance.html' %}
-                    {% include 'memberaudit/partials/reports/tabs/skill_sets.html' %}
+                    {% include 'memberaudit/partials/reports/tabs/skill_sets_2.html' %}
                 </div>
             </div>
 
@@ -23,13 +24,35 @@
 {% endblock details %}
 
 {% block extra_javascript %}
+    {% enable_htmx_js %}
     {% include 'bundles/datatables-js.html' %}
 
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/dataTables.rowGroup.min.js' %}"></script>
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/filterDropDown.min.js' %}"></script>
+    <script type="application/javascript" src="{% static 'memberaudit/js/global.js' %}"></script>
 
     <script>
+        const COOKIE_LAST_TAB_ID = "memberaudit_reports_last_tab_id"
+        const COOKIE_LAST_TAB_HOURS = 2
         $(document).ready(function() {
+            /* show last selected tab or default */
+            let tabId = "{{show_tab}}"
+            if (tabId != "") {
+                setCookie(COOKIE_LAST_TAB_ID, tabId, 1)
+            }
+            else {
+                tabId = getCookie(COOKIE_LAST_TAB_ID)
+                if (tabId == "") tabId = "mail"
+            }
+            $('a[href="#' + tabId + '"]').tab("show")
+
+            /* remember last selected tab */
+            $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+                const selectedTabId = $(e.target).attr("href").substr(1)
+                setCookie(COOKIE_LAST_TAB_ID, selectedTabId, COOKIE_LAST_TAB_HOURS)
+            });
+
+
             $('#tab_user_compliance').DataTable({
                 ajax: {
                     url: '{% url 'memberaudit:user_compliance_report_data' %}',
@@ -165,78 +188,6 @@
                     else {
                         $(row).addClass('danger');
                     }
-                }
-            });
-
-            $('#tab_skill_sets').DataTable({
-                ajax: {
-                    url: "{% url 'memberaudit:skill_sets_report_data' %}",
-                    dataSrc: 'data',
-                    cache: false
-                },
-                columns: [
-                    { data: 'group' },
-                    { data: 'main_html' },
-                    { data: 'state' },
-                    { data: 'organization_html' },
-                    { data: 'character_html' },
-                    { data: 'has_required' },
-
-                    /* hidden columns */
-                    { data: 'alliance' },
-                    { data: 'corporation' },
-                    { data: 'has_required_str' },
-                    { data: 'is_doctrine_str' },
-                    { data: 'is_main_str' },
-                ],
-                order: [[0, "asc"], [1, "asc"], [4, "asc"]],
-                rowGroup: {
-                    dataSrc: 'group',
-                    className: 'table-group'
-                },
-                columnDefs: [
-                    { "visible": false, "targets": [0, 6, 7, 8, 9, 10] }
-                ],
-                filterDropDown: {
-                    columns: [
-                        {
-                            idx: 0,
-                            title: "{% translate 'Groups' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 2,
-                            title: "{% translate 'State' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 6,
-                            title: "{% translate 'Alliance' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 7,
-                            title: "{% translate 'Corporation' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 8,
-                            title: "{% translate 'Required Skills?' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 9,
-                            title: "{% translate 'Doctrine?' %}",
-                            maxWidth: "12em"
-                        },
-                        {
-                            idx: 10,
-                            title: "{% translate 'Main?' %}",
-                            maxWidth: "12em"
-                        }
-                    ],
-                    autoSize: false,
-                    bootstrap: true
                 }
             });
 

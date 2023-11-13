@@ -1,0 +1,9 @@
+{% extends "admin/change_form.html" %}
+{% load humanize %}
+
+{% block after_related_objects %}
+    <p>
+        This object was last modified <em>{{ original.last_modified_at|naturaltime|default:"?" }}</em>
+        by <em>{{ original.last_modified_by|default:"?" }}</em>.
+    </p>
+{% endblock %}

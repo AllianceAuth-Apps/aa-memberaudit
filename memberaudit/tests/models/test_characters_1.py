@@ -106,6 +106,22 @@ class TestCharacter(TestCase):
         # when/then
         self.assertIsNone(character.main_character)
 
+    def test_should_return_true_when_it_has_a_main(self):
+        # given
+        user = self.character_1001.eve_character.character_ownership.user
+        character_1101 = add_memberaudit_character_to_user(user, 1101)
+        # when/then
+        self.assertTrue(character_1101.has_main)
+
+    def test_should_return_false_when_it_has_no_main(self):
+        # given
+        character_1002 = create_memberaudit_character(1002)
+        user = character_1002.eve_character.character_ownership.user
+        user.profile.main_character = None
+        user.profile.save()
+        # when/then
+        self.assertFalse(character_1002.has_main)
+
     def test_should_identify_main(self):
         # when/then
         self.assertTrue(self.character_1001.is_main)
