@@ -14,7 +14,7 @@ from allianceauth.authentication.models import State
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_authgroup
 
-from memberaudit.constants import EveCategoryId
+from memberaudit.constants import EveCategoryId, EveFactionId
 from memberaudit.core.fittings import Fitting, Item, Module
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
@@ -158,9 +158,10 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
 def create_character_contract_item(
     contract: CharacterContract, **kwargs
 ) -> CharacterContractItem:
+    record_id = kwargs.get("record_id") or next_number("contract_item_record_id")
     params = {
         "contract": contract,
-        "record_id": next_number("contract_item_record_id"),
+        "record_id": record_id,
         "is_included": True,
         "is_singleton": False,
         "quantity": 1,
@@ -173,9 +174,10 @@ def create_character_contract_item(
 def create_character_contract_bid(
     contract: CharacterContract, bidder: EveEntity, **kwargs
 ) -> CharacterContractBid:
+    bid_id = kwargs.get("bid_id") or next_number("contract_item_bid_id")
     params = {
         "contract": contract,
-        "bid_id": next_number("contract_item_bid_id"),
+        "bid_id": bid_id,
         "amount": random.randint(1_000_000, 10_000_000_000),
         "bidder": bidder,
         "date_bid": now(),
@@ -226,9 +228,8 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
         "victory_points_total": victory_points_total,
         "victory_points_yesterday": victory_points_yesterday,
     }
-    if "faction" not in kwargs and "faction_id" not in kwargs:
-        params["faction_id"] = 500001
     params.update(kwargs)
+    _set_missing_foreign_keys(params, faction_id=EveFactionId.CALDARI_STATE)
     return CharacterFwStats.objects.create(**params)
 
 
@@ -267,7 +268,7 @@ def create_character_mail(
 
 
 def create_character_mail_label(character: Character, **kwargs) -> CharacterMailLabel:
-    label_id = next_number("mail_label_id")
+    label_id = kwargs.get("label_id") or next_number("mail_label_id")
     params = {
         "character": character,
         "label_id": label_id,
@@ -340,12 +341,10 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
 
 
 def create_character_ship(character: Character, **kwargs) -> CharacterShip:
-    item_id = kwargs.get("item_id", next_number("asset_item_id"))
+    item_id = kwargs.get("item_id") or next_number("asset_item_id")
     params = {"character": character, "item_id": item_id, "name": "My sweet ride"}
-    if "eve_type" not in kwargs and "eve_type_id" not in kwargs:
-        params["eve_type_id"] = EveTypeId.MERLIN
-
     params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.MERLIN)
     return CharacterShip.objects.create(**params)
 
 
@@ -381,9 +380,7 @@ def create_character_standing(
 
 
 def create_character_title(character: Character, **kwargs) -> CharacterRole:
-    title_id = (
-        next_number("title_id") if "title_id" not in kwargs else kwargs["title_id"]
-    )
+    title_id = kwargs.get("title_id") or next_number("title_id")
     params = {
         "character": character,
         "name": f"Dummy title #{title_id}",
