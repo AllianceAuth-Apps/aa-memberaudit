@@ -39,7 +39,6 @@ from memberaudit.tests.testdata.factories import (
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.utils import (
-    LoadTestDataMixin,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -1004,7 +1003,13 @@ class TestLocationManagerAsync(TestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterMailingLists(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailingLists(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_update_mailing_lists_1(self, mock_esi):
         """can create new mailing lists from scratch"""
         mock_esi.client = esi_client_stub
