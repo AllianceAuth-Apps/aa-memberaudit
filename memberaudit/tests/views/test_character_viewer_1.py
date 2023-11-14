@@ -6,7 +6,7 @@ import pytz
 from django.test import TestCase
 from django.urls import reverse
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveMarketPrice, EveType
+from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import (
@@ -15,15 +15,24 @@ from app_utils.testing import (
     response_text,
 )
 
-from memberaudit.models import (
-    CharacterAsset,
-    CharacterAttributes,
-    CharacterContact,
-    CharacterContract,
-    CharacterContractItem,
-    CharacterCorporationHistory,
-    CharacterImplant,
-    CharacterLoyaltyEntry,
+from memberaudit.models import CharacterAsset, CharacterContract
+from memberaudit.tests.testdata.factories import (
+    create_character,
+    create_character_asset,
+    create_character_attributes,
+    create_character_contact,
+    create_character_contract,
+    create_character_contract_item,
+    create_character_corporation_history,
+    create_character_fw_stats,
+    create_character_implant,
+    create_character_loyalty_entry,
+    create_eve_market_price,
+)
+from memberaudit.tests.utils import (
+    LoadTestDataMixin,
+    json_response_to_dict_2,
+    json_response_to_python_2,
 )
 from memberaudit.views.character_viewer_1 import (
     character_asset_container,
@@ -40,17 +49,6 @@ from memberaudit.views.character_viewer_1 import (
     character_implants_data,
     character_loyalty_data,
     character_viewer,
-)
-
-from ..testdata.factories import (
-    create_character,
-    create_character_asset,
-    create_character_fw_stats,
-)
-from ..utils import (
-    LoadTestDataMixin,
-    json_response_to_dict_2,
-    json_response_to_python_2,
 )
 
 MODULE_PATH = "memberaudit.views.character_viewer_1"
@@ -89,7 +87,7 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_character_attribute_data(self):
-        CharacterAttributes.objects.create(
+        create_character_attributes(
             character=self.character,
             last_remap_date="2020-10-24T09:00:00Z",
             bonus_remaps=3,
@@ -101,10 +99,7 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
         )
 
         request = self.factory.get(
-            reverse(
-                "memberaudit:character_attribute_data",
-                args=[self.character.pk],
-            )
+            reverse("memberaudit:character_attribute_data", args=[self.character.pk])
         )
 
         request.user = self.user
@@ -230,8 +225,8 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
             name="",
             quantity=3,
         )
-        EveMarketPrice.objects.create(eve_type=obj1, average_price=11111)
-        EveMarketPrice.objects.create(eve_type=obj2, average_price=555555555)
+        create_eve_market_price(eve_type=obj1, average_price=11111)
+        create_eve_market_price(eve_type=obj2, average_price=555555555)
         request = self.factory.get(
             reverse("memberaudit:character_assets_data", args=[self.character.pk])
         )
@@ -368,13 +363,13 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
 
 class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
     def test_character_contacts_data(self):
-        CharacterContact.objects.create(
+        create_character_contact(
             character=self.character,
             eve_entity=EveEntity.objects.get(id=1101),
             standing=-10,
             is_blocked=True,
         )
-        CharacterContact.objects.create(
+        create_character_contact(
             character=self.character,
             eve_entity=EveEntity.objects.get(id=2001),
             standing=10,
@@ -407,7 +402,7 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         self.assertEqual(row["group_name"], "Excellent Standing")
 
     def test_character_loyalty_data(self):
-        CharacterLoyaltyEntry.objects.create(
+        create_character_loyalty_entry(
             character=self.character,
             corporation=EveEntity.objects.get(id=2101),
             loyalty_points=99,
@@ -431,14 +426,14 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         then both corporation names can be found in the view data
         """
         date_1 = now() - dt.timedelta(days=60)
-        CharacterCorporationHistory.objects.create(
+        create_character_corporation_history(
             character=self.character,
             record_id=1,
             corporation=EveEntity.objects.get(id=2101),
             start_date=date_1,
         )
         date_2 = now() - dt.timedelta(days=20)
-        CharacterCorporationHistory.objects.create(
+        create_character_corporation_history(
             character=self.character,
             record_id=2,
             corporation=EveEntity.objects.get(id=2001),
@@ -460,14 +455,17 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         self.assertIn("(Closed)", text)
 
     def test_character_character_implants_data(self):
-        implant_1 = CharacterImplant.objects.create(
-            character=self.character, eve_type=EveType.objects.get(id=19553)
+        implant_1 = create_character_implant(
+            character=self.character,
+            eve_type=EveType.objects.get(name="High-grade Snake Gamma"),
         )
-        implant_2 = CharacterImplant.objects.create(
-            character=self.character, eve_type=EveType.objects.get(id=19540)
+        implant_2 = create_character_implant(
+            character=self.character,
+            eve_type=EveType.objects.get(name="High-grade Snake Alpha"),
         )
-        implant_3 = CharacterImplant.objects.create(
-            character=self.character, eve_type=EveType.objects.get(id=19551)
+        implant_3 = create_character_implant(
+            character=self.character,
+            eve_type=EveType.objects.get(name="High-grade Snake Beta"),
         )
         request = self.factory.get(
             reverse("memberaudit:character_implants_data", args=[self.character.pk])
@@ -495,7 +493,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -511,13 +509,8 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             end_location=self.jita_44,
             title="Dummy info",
         )
-        CharacterContractItem.objects.create(
-            contract=contract,
-            record_id=1,
-            is_included=True,
-            is_singleton=False,
-            quantity=1,
-            eve_type=self.high_grade_snake_alpha_type,
+        create_character_contract_item(
+            contract=contract, quantity=1, eve_type=self.high_grade_snake_alpha_type
         )
 
         # main view
@@ -558,7 +551,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             availability=CharacterContract.AVAILABILITY_PUBLIC,
             contract_id=42,
@@ -574,20 +567,14 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             start_location=self.jita_44,
             end_location=self.jita_44,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=1,
-            is_included=True,
-            is_singleton=False,
-            quantity=1,
             eve_type=self.high_grade_snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=2,
-            is_included=True,
-            is_singleton=False,
-            quantity=1,
             eve_type=self.high_grade_snake_bravo_type,
         )
         request = self.factory.get(
@@ -623,7 +610,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -689,7 +676,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -705,7 +692,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             end_location=self.jita_44,
             title="Dummy info",
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=1,
             is_included=True,
@@ -713,7 +700,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             quantity=3,
             eve_type=self.high_grade_snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=2,
             is_included=False,
@@ -721,7 +708,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             quantity=3,
             eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(
+        create_eve_market_price(
             eve_type=self.high_grade_snake_alpha_type, average_price=5000000
         )
         request = self.factory.get(
@@ -754,7 +741,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -770,7 +757,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             end_location=self.jita_44,
             title="Dummy info",
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=1,
             is_included=True,
@@ -779,7 +766,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             raw_quantity=-2,
             eve_type=self.high_grade_snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=2,
             is_included=True,
@@ -787,7 +774,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             quantity=3,
             eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(
+        create_eve_market_price(
             eve_type=self.high_grade_snake_alpha_type, average_price=5000000
         )
         request = self.factory.get(
@@ -820,7 +807,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
         date_now = date_issued + dt.timedelta(days=1)
         date_expired = date_now + dt.timedelta(days=2, hours=3)
         mock_now.return_value = date_now
-        contract = CharacterContract.objects.create(
+        contract = create_character_contract(
             character=self.character,
             contract_id=42,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
@@ -836,7 +823,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             end_location=self.jita_44,
             title="Dummy info",
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=1,
             is_included=False,
@@ -844,7 +831,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             quantity=3,
             eve_type=self.high_grade_snake_alpha_type,
         )
-        CharacterContractItem.objects.create(
+        create_character_contract_item(
             contract=contract,
             record_id=2,
             is_included=True,
@@ -852,7 +839,7 @@ class TestCharacterContracts(LoadTestDataMixin, TestCase):
             quantity=3,
             eve_type=self.high_grade_snake_bravo_type,
         )
-        EveMarketPrice.objects.create(
+        create_eve_market_price(
             eve_type=self.high_grade_snake_alpha_type, average_price=5000000
         )
         request = self.factory.get(

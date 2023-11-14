@@ -8,7 +8,13 @@ from typing import Iterable
 
 from django.contrib.auth.models import Group, User
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
+from eveuniverse.models import (
+    EveEntity,
+    EveMarketPrice,
+    EvePlanet,
+    EveSolarSystem,
+    EveType,
+)
 
 from allianceauth.authentication.models import State
 from allianceauth.eveonline.models import EveCharacter
@@ -27,9 +33,12 @@ from memberaudit.models import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
+    CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
+    CharacterImplant,
     CharacterLocation,
+    CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
     CharacterMiningLedgerEntry,
@@ -187,6 +196,22 @@ def create_character_contract_bid(
     return CharacterContractBid.objects.create(**params)
 
 
+def create_character_corporation_history(
+    character: Character, **kwargs
+) -> CharacterCorporationHistory:
+    record_id = kwargs.get("record_id") or next_number(
+        "create_character_details_record_id"
+    )
+    weeks = max(0, 1000 - record_id * 20)
+    params = {
+        "character": character,
+        "record_id": record_id,
+        "start_date": now() - dt.timedelta(weeks=weeks),
+    }
+    params.update(kwargs)
+    return CharacterCorporationHistory.objects.create(**params)
+
+
 def create_character_details(character: Character, **kwargs) -> CharacterDetails:
     params = {
         "character": character,
@@ -201,7 +226,6 @@ def create_character_details(character: Character, **kwargs) -> CharacterDetails
         eve_bloodline_id=1,
         eve_race_id=1,
     )
-
     return CharacterDetails.objects.create(**params)
 
 
@@ -234,10 +258,28 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
     return CharacterFwStats.objects.create(**params)
 
 
+def create_character_implant(character: Character, **kwargs) -> CharacterImplant:
+    params = {"character": character}
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.HIGH_GRADE_SNAKE_ALPHA)
+    return CharacterImplant.objects.create(**params)
+
+
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
     return CharacterLocation.objects.create(**params)
+
+
+def create_character_loyalty_entry(
+    character: Character, **kwargs
+) -> CharacterLoyaltyEntry:
+    params = {
+        "character": character,
+        "loyalty_points": random.randint(100, 1_000_000),
+    }
+    params.update(kwargs)
+    return CharacterLoyaltyEntry.objects.create(**params)
 
 
 def create_character_mail(
@@ -588,6 +630,21 @@ def create_skill_set_skill(skill_set, **kwargs) -> SkillSetSkill:
     params.update(kwargs)
     _set_missing_foreign_keys(params, eve_type_id=EveTypeId.AMARR_CARRIER)
     return SkillSetSkill.objects.create(**params)
+
+
+def create_eve_market_price(**kwargs) -> EveMarketPrice:
+    average_price = (
+        kwargs.get("average_price")
+        or float(random.randint(10_000, 100_000_000)) + random.random()
+    )
+    adjusted_price = kwargs.get("adjusted_price") or average_price
+    params = {
+        "average_price": average_price,
+        "adjusted_price": adjusted_price,
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.VELDSPAR)
+    return EveMarketPrice.objects.create(**params)
 
 
 def next_number(key=None) -> int:
