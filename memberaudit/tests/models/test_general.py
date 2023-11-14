@@ -24,6 +24,8 @@ from memberaudit.tests.testdata.constants import EveSolarSystemId
 from memberaudit.tests.testdata.factories import (
     create_compliance_group_designation,
     create_location_eve_solar_system,
+    create_mail_entity_from_eve_entity,
+    create_mailing_list,
     create_skill_set,
     create_skill_set_skill,
 )
@@ -49,17 +51,17 @@ class TestMailEntity(NoSocketsTestCase):
         load_entities()
 
     def test_str(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(str(obj), "Bruce Wayne")
 
     def test_repr(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(
             repr(obj), "MailEntity(id=1001, category=CH, name='Bruce Wayne')"
         )
 
     def test_eve_entity_categories(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertSetEqual(
             obj.eve_entity_categories,
             {
@@ -70,7 +72,7 @@ class TestMailEntity(NoSocketsTestCase):
         )
 
     def test_name_plus_1(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(obj.name_plus, "Bruce Wayne")
 
     def test_name_plus_2(self):
@@ -82,21 +84,19 @@ class TestMailEntity(NoSocketsTestCase):
             MailEntity.objects.create(id=1)
 
     def test_url_1(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(3001)
+        obj = create_mail_entity_from_eve_entity(3001)
         self.assertIn("dotlan", obj.external_url())
 
     def test_url_2(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(2001)
+        obj = create_mail_entity_from_eve_entity(2001)
         self.assertIn("dotlan", obj.external_url())
 
     def test_url_3(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertIn("evewho", obj.external_url())
 
     def test_url_4(self):
-        obj = MailEntity.objects.create(
-            id=42, category=MailEntity.Category.MAILING_LIST, name="Dummy"
-        )
+        obj = create_mailing_list()
         self.assertEqual(obj.external_url(), "")
 
     def test_url_5(self):

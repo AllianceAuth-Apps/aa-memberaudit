@@ -611,20 +611,31 @@ def create_location_eve_solar_system(**kwargs) -> Location:
     return create_location(**params)
 
 
+def create_mail_entity(**kwargs) -> MailEntity:
+    my_id = kwargs.get("id") or next_number("create_mail_entity_id") + 10_000_000
+    params = {
+        "id": my_id,
+        "name": "",
+        "category": MailEntity.Category.UNKNOWN,
+    }
+    params.update(kwargs)
+    return MailEntity.objects.create(**params)
+
+
 def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
     obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=id)
     return obj
 
 
 def create_mailing_list(**kwargs) -> MailEntity:
-    my_id = kwargs.get("id") or next_number("mailing_list_id")
+    my_id = kwargs.get("id") or next_number("create_mail_entity_id") + 20_000_000
     params = {
         "id": my_id,
         "name": f"Mailing List #{my_id}",
         "category": MailEntity.Category.MAILING_LIST,
     }
     params.update(kwargs)
-    return MailEntity.objects.create(**params)
+    return create_mail_entity(**params)
 
 
 def create_skill(**kwargs) -> Skill:

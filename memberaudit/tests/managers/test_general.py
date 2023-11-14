@@ -31,6 +31,7 @@ from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     create_compliance_group,
     create_fitting,
+    create_mail_entity,
     create_skill,
     create_skill_plan,
     create_skill_set_group,
@@ -224,12 +225,13 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_get_or_create_esi_1(self):
         """When entity already exists, return it"""
-        MailEntity.objects.create(
+        # given
+        create_mail_entity(
             id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
-
+        # when
         obj, created = MailEntity.objects.get_or_create_esi(id=1234)
-
+        # then
         self.assertFalse(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "John Doe")
@@ -260,7 +262,7 @@ class TestMailEntityManager(NoSocketsTestCase):
         """When entity already exist and is not a mailing list,
         then update it from ESI / existing EveEntity
         """
-        MailEntity.objects.create(
+        create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
         obj, created = MailEntity.objects.update_or_create_esi(id=1001)
@@ -271,7 +273,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_update_or_create_esi_3(self):
         """When entity already exist and is a mailing list, then do nothing"""
-        MailEntity.objects.create(
+        create_mail_entity(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
         )
         obj, created = MailEntity.objects.update_or_create_esi(id=9001)
@@ -307,7 +309,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_update_or_create_from_eve_entity_2(self):
         """When entity already exist, update it from given EveEntity"""
-        MailEntity.objects.create(
+        create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -331,7 +333,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_update_or_create_from_eve_entity_id_2(self):
         """When entity already exist, update it from given EveEntity"""
-        MailEntity.objects.create(
+        create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -346,15 +348,9 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_bulk_resolve_1(self):
         """Can resolve all 3 categories known by EveEntity"""
-        obj_1001 = MailEntity.objects.create(
-            id=1001, category=MailEntity.Category.CHARACTER
-        )
-        obj_2001 = MailEntity.objects.create(
-            id=2001, category=MailEntity.Category.CORPORATION
-        )
-        obj_3001 = MailEntity.objects.create(
-            id=3001, category=MailEntity.Category.ALLIANCE
-        )
+        obj_1001 = create_mail_entity(id=1001, category=MailEntity.Category.CHARACTER)
+        obj_2001 = create_mail_entity(id=2001, category=MailEntity.Category.CORPORATION)
+        obj_3001 = create_mail_entity(id=3001, category=MailEntity.Category.ALLIANCE)
 
         MailEntity.objects.bulk_update_names([obj_1001, obj_2001, obj_3001])
 
@@ -365,15 +361,11 @@ class TestMailEntityManager(NoSocketsTestCase):
     def test_bulk_resolve_2(self):
         """Will ignore categories not known to EveEntity"""
 
-        obj_1001 = MailEntity.objects.create(
-            id=1001, category=MailEntity.Category.CHARACTER
-        )
-        obj_9001 = MailEntity.objects.create(
+        obj_1001 = create_mail_entity(id=1001, category=MailEntity.Category.CHARACTER)
+        obj_9001 = create_mail_entity(
             id=9001, category=MailEntity.Category.MAILING_LIST
         )
-        obj_9002 = MailEntity.objects.create(
-            id=9002, category=MailEntity.Category.UNKNOWN
-        )
+        obj_9002 = create_mail_entity(id=9002, category=MailEntity.Category.UNKNOWN)
 
         MailEntity.objects.bulk_update_names([obj_1001, obj_9001, obj_9002])
 
@@ -391,7 +383,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 
     def test_bulk_resolve_4(self):
         """When object already has a name, then update it"""
-        obj_1001 = MailEntity.objects.create(
+        obj_1001 = create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -403,7 +395,7 @@ class TestMailEntityManager(NoSocketsTestCase):
         """When object already has a name and respective option is chosen
         then ignore it
         """
-        obj_1001 = MailEntity.objects.create(
+        obj_1001 = create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -424,7 +416,7 @@ class TestMailEntityManagerAsync(TestCase):
         """When entity already exists, return it"""
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
 
-        MailEntity.objects.create(
+        create_mail_entity(
             id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -486,7 +478,7 @@ class TestMailEntityManagerAsync(TestCase):
     def test_update_or_create_esi_async_2(self, mock_fetch_esi_status):
         """When entity exists and not a mailing list, then update synchronously"""
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-        MailEntity.objects.create(
+        create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -501,7 +493,7 @@ class TestMailEntityManagerAsync(TestCase):
     def test_update_or_create_esi_async_3(self, mock_fetch_esi_status):
         """When entity exists and is a mailing list, then do nothing"""
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-        MailEntity.objects.create(
+        create_mail_entity(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
         )
 
@@ -1036,7 +1028,7 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_update_mailing_lists_2(self, mock_esi):
         """does not remove obsolete mailing lists"""
         mock_esi.client = esi_client_stub
-        MailEntity.objects.create(
+        create_mail_entity(
             id=5, category=MailEntity.Category.MAILING_LIST, name="Obsolete"
         )
 
@@ -1053,7 +1045,7 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_update_mailing_lists_3(self, mock_esi):
         """updates existing mailing lists"""
         mock_esi.client = esi_client_stub
-        MailEntity.objects.create(
+        create_mail_entity(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Update me"
         )
 
