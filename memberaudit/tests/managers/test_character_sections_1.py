@@ -33,7 +33,6 @@ from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
-    LoadTestDataMixin,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -47,7 +46,6 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        load_locations()
         cls.character = create_memberaudit_character(1001)
         cls.skill_type_1 = EveType.objects.get(id=24311)
         cls.skill_type_2 = EveType.objects.get(id=24312)
@@ -204,7 +202,13 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterAttributesManager(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterAttributesManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -260,7 +264,13 @@ class TestCharacterAttributesManager(LoadTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContactLabelManager(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterContactLabelManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_should_do_nothing(self, mock_esi):
         # when
         CharacterContactLabel.objects._update_or_create_objs(
@@ -338,7 +348,13 @@ class TestCharacterContactLabelManager(LoadTestDataMixin, NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContactsManager(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterContactsManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_update_contacts_1(self, mock_esi):
         """can create contacts"""
         mock_esi.client = esi_client_stub
@@ -437,7 +453,17 @@ class TestCharacterContactsManager(LoadTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContractsUpdate(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterContractsUpdate(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_courier_contract(self, mock_esi):
         # given
@@ -722,7 +748,13 @@ class TestCharacterContractsUpdate(LoadTestDataMixin, NoSocketsTestCase):
         self.assertEqual(float(bid.amount), 21_000_000)
 
 
-class TestCharacterContractBidManager(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterContractBidManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_should_do_nothing_when_there_are_no_bids(self):
         # given
         contract = create_character_contract(

@@ -34,7 +34,6 @@ from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
 from .utils import (
-    LoadTestDataMixin,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -473,7 +472,12 @@ class TestTasksIntegration(TestCase):
 
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
-class TestCharacterMailUpdate(LoadTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailUpdate(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     @staticmethod
     def stub_eve_entity_get_or_create_esi(id, *args, **kwargs):
         """will return EveEntity if it exists else None, False"""
