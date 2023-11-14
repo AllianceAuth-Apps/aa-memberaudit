@@ -7,24 +7,29 @@ from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveType
+from eveuniverse.models import EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.models import Character, CharacterUpdateStatus, Location
+from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
+    create_character_location,
+    create_character_ship,
     create_character_skill,
     create_character_update_status,
+    create_location_eve_solar_system,
     create_skill_set,
     create_skill_set_group,
     create_skill_set_skill,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -733,3 +738,147 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_required_skills.all()},
             {skill_1.pk, skill_2.pk},
         )
+
+
+class TestCharacterGenerateShipAsset(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.jita = EveSolarSystem.objects.get(name="Jita")
+        cls.location_jita_44 = Location.objects.get(id=60003760)
+        cls.amamake = EveSolarSystem.objects.get(name="Amamake")
+        cls.location_structure_1 = Location.objects.get(id=1_000_000_000_001)
+        cls.location_jita = create_location_eve_solar_system(id=cls.jita.id)
+
+    def test_should_generate_asset_when_in_station(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character, location=self.location_jita_44
+        )
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], self.location_jita_44.id)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "station")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
+    def test_should_generate_asset_when_in_structure(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character, location=self.location_structure_1
+        )
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], self.location_structure_1.id)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "item")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
+    def test_should_generate_asset_when_in_space(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(character=self.character, location=self.location_jita)
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], self.location_jita.id)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "solar_system")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
+    def test_should_generate_asset_when_no_location(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], Location.LOCATION_UNKNOWN_ID)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "solar_system")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
+    def test_should_not_generate_asset_when_no_location_and_no_ship(self):
+        # given
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertIsNone(obj)
+
+    def test_should_not_generate_asset_when_no_ship(self):
+        # given
+        create_character_location(character=self.character, location=self.location_jita)
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertIsNone(obj)
+
+    def test_should_not_generate_asset_when_it_is_a_capsule(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.CAPSULE,
+            name="Bruce Wayne's Capsule",
+        )
+        create_character_location(character=self.character, location=self.location_jita)
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertIsNone(obj)

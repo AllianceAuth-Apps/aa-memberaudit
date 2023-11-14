@@ -274,7 +274,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
-        self.assertFalse(Location.is_asset_safety_id(location.id))
+        self.assertTrue(Location.is_asset_safety_id(location.id))
         self.assertFalse(location.is_empty)
 
     def test_checks_with_empty_location(self):
