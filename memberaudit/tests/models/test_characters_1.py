@@ -13,24 +13,19 @@ from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.models import (
-    Character,
-    CharacterSkill,
-    CharacterUpdateStatus,
-    SkillSet,
-    SkillSetGroup,
-    SkillSetSkill,
-)
-
-from ..testdata.factories import (
+from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
+    create_character_skill,
     create_character_update_status,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
@@ -278,34 +273,33 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        load_locations()
         cls.character = create_memberaudit_character(1001)
         cls.skill_type_1 = EveType.objects.get(id=24311)
         cls.skill_type_2 = EveType.objects.get(id=24312)
 
     def test_has_all_skills(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=5,
             skillpoints_in_skill=10,
             trained_skill_level=5,
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_2,
             active_skill_level=5,
             skillpoints_in_skill=10,
             trained_skill_level=5,
         )
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
         )
-        SkillSetSkill.objects.create(
+        create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
         )
-        skill_set_group = SkillSetGroup.objects.create(name="Dummy")
+        skill_set_group = create_skill_set_group()
         skill_set_group.skill_sets.add(skill_set)
 
         self.character.update_skill_sets()
@@ -316,28 +310,28 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         self.assertEqual(first.failed_required_skills.count(), 0)
 
     def test_one_skill_below(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=5,
             skillpoints_in_skill=10,
             trained_skill_level=5,
         )
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_2,
             active_skill_level=2,
             skillpoints_in_skill=10,
             trained_skill_level=5,
         )
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
         )
-        skill_2 = SkillSetSkill.objects.create(
+        skill_2 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
         )
-        skill_set_group = SkillSetGroup.objects.create(name="Dummy")
+        skill_set_group = create_skill_set_group()
         skill_set_group.skill_sets.add(skill_set)
 
         self.character.update_skill_sets()
@@ -350,21 +344,21 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
     def test_misses_one_skill(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=5,
             skillpoints_in_skill=10,
             trained_skill_level=5,
         )
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
         )
-        skill_2 = SkillSetSkill.objects.create(
+        skill_2 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
         )
-        skill_set_group = SkillSetGroup.objects.create(name="Dummy")
+        skill_set_group = create_skill_set_group()
         skill_set_group.skill_sets.add(skill_set)
 
         self.character.update_skill_sets()
@@ -377,15 +371,15 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
     def test_passed_required_and_misses_recommended_skill(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        skill_1 = SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
             skill_set=skill_set,
             eve_type=self.skill_type_1,
             required_level=3,
@@ -402,15 +396,15 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
     def test_misses_recommended_skill_only(self):
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character,
             eve_type=self.skill_type_1,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        skill_1 = SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
             skill_set=skill_set,
             eve_type=self.skill_type_1,
             recommended_level=5,
@@ -426,14 +420,14 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
     def test_misses_all_skills(self):
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        skill_1 = SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
         )
-        skill_2 = SkillSetSkill.objects.create(
+        skill_2 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
         )
-        skill_set_group = SkillSetGroup.objects.create(name="Dummy")
+        skill_set_group = create_skill_set_group()
         skill_set_group.skill_sets.add(skill_set)
 
         self.character.update_skill_sets()
@@ -447,11 +441,11 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
         )
 
     def test_does_not_require_doctrine_definition(self):
-        skill_set = SkillSet.objects.create(name="Ship 1")
-        skill_1 = SkillSetSkill.objects.create(
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
         )
-        skill_2 = SkillSetSkill.objects.create(
+        skill_2 = create_skill_set_skill(
             skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
         )
 

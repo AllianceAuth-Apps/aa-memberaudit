@@ -561,27 +561,32 @@ def create_skill_plan(**kwargs) -> SkillPlan:
 
 def create_skill_set(**kwargs) -> SkillSet:
     my_id = next_number("skill_set_id")
-    params = {"name": f"Test Set {my_id}", "description": "Generated skill set"}
+    params = {
+        "name": f"Merlin #{my_id}",
+        "description": "Generated skill set",
+    }
     params.update(kwargs)
+    _set_missing_foreign_keys(params, ship_type_id=EveTypeId.MERLIN)
     return SkillSet.objects.create(**params)
 
 
 def create_skill_set_group(**kwargs) -> SkillSetGroup:
     my_id = next_number("skill_set_group_id")
-    params = {"name": f"Test Group {my_id}", "description": "Generated skill set group"}
+    params = {
+        "name": f"Test Group #{my_id}",
+        "description": "Generated skill set group",
+    }
     params.update(kwargs)
     return SkillSetGroup.objects.create(**params)
 
 
-def create_skill_set_skill(
-    skill_set, eve_type, required_level=1, **kwargs
-) -> SkillSetSkill:
+def create_skill_set_skill(skill_set, **kwargs) -> SkillSetSkill:
     params = {
         "skill_set": skill_set,
-        "eve_type": eve_type,
-        "required_level": required_level,
+        "required_level": 1,
     }
     params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.AMARR_CARRIER)
     return SkillSetSkill.objects.create(**params)
 
 
