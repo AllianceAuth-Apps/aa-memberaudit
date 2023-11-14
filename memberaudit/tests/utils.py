@@ -113,8 +113,8 @@ def scope_names_set(token: Token) -> set:
 
 class LoadTestDataMixin:
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
