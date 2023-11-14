@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 import pytz
 
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
@@ -15,7 +15,7 @@ from app_utils.testing import (
     response_text,
 )
 
-from memberaudit.models import CharacterAsset, CharacterContract
+from memberaudit.models import CharacterAsset, CharacterContract, Location
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_asset,
@@ -29,8 +29,11 @@ from memberaudit.tests.testdata.factories import (
     create_character_loyalty_entry,
     create_eve_market_price,
 )
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
-    LoadTestDataMixin,
+    create_memberaudit_character,
     json_response_to_dict_2,
     json_response_to_python_2,
 )
@@ -54,7 +57,14 @@ from memberaudit.views.character_viewer_1 import (
 MODULE_PATH = "memberaudit.views.character_viewer_1"
 
 
-class TestCharacterViewer(LoadTestDataMixin, TestCase):
+class TestCharacterViewer(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+
     def test_can_open_character_main_view_for_normal_character(self):
         # given
         request = self.factory.get(
@@ -107,7 +117,15 @@ class TestCharacterViewer(LoadTestDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class TestCharacterFwStats(LoadTestDataMixin, TestCase):
+class TestCharacterFwStats(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+
     def test_should_load_with_stats(self):
         # given
         create_character_fw_stats(character=self.character).save()
@@ -132,7 +150,18 @@ class TestCharacterFwStats(LoadTestDataMixin, TestCase):
         self.assertEqual(response.status_code, 200)
 
 
-class TestCharacterAssets(LoadTestDataMixin, TestCase):
+class TestCharacterAssets(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_character_assets_data_1(self):
         container = create_character_asset(
             character=self.character,
@@ -361,7 +390,15 @@ class TestCharacterAssets(LoadTestDataMixin, TestCase):
         self.assertEqual(row["volume"], 1.0)
 
 
-class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
+class TestCharacterDataViewsOther(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+
     def test_character_contacts_data(self):
         create_character_contact(
             character=self.character,
@@ -485,7 +522,20 @@ class TestCharacterDataViewsOther(LoadTestDataMixin, TestCase):
         self.assertEqual(data[implant_1.pk]["implant"]["sort"], 3)
 
 
-class TestCharacterContracts(LoadTestDataMixin, TestCase):
+class TestCharacterContracts(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+        cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
+        cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
+
     @patch(MODULE_PATH + ".now")
     def test_character_contracts_data_1(self, mock_now):
         """items exchange single item"""
