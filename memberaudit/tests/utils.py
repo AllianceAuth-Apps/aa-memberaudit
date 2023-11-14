@@ -31,8 +31,8 @@ class CharacterUpdateTestDataMixin:
     """Mixin for TestCase class defining a complete character and setting up fixtures."""
 
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
         load_eveuniverse()
         load_entities()
         load_locations()
