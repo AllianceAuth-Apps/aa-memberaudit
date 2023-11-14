@@ -31,8 +31,7 @@ MODULE_PATH = "memberaudit.views.characters"
 
 class TestCharacterViews(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
         cls.user, _ = create_user_from_evecharacter(
@@ -71,8 +70,7 @@ class TestCharacterViews(TestCase):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestAddCharacter(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
         create_compliance_group()
@@ -130,8 +128,7 @@ class TestAddCharacter(TestCase):
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestRemoveCharacter(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
         create_compliance_group()
@@ -244,8 +241,7 @@ class TestRemoveCharacter(TestCase):
 
 class TestShareCharacter(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
 
@@ -325,8 +321,7 @@ class TestShareCharacter(TestCase):
 
 class TestUnshareCharacter(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
 

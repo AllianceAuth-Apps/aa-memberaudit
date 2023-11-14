@@ -26,8 +26,7 @@ MANAGERS_PATH = "memberaudit.managers.general"
 @patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromFitting(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         cls.superuser = User.objects.create_superuser("Superman")
@@ -137,8 +136,7 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
 @patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         cls.superuser = User.objects.create_superuser("Superman")

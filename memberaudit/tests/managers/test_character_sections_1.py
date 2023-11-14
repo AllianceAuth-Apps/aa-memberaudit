@@ -42,8 +42,7 @@ MODULE_PATH = "memberaudit.managers.character_sections_1"
 
 class TestCharacterSkillQueue(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -86,8 +85,7 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
 
 class TestCharacterAssetManager(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -120,8 +118,7 @@ class TestCharacterAssetManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -163,8 +160,7 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
 @patch(MODULE_PATH + ".EveType.objects.bulk_get_or_create_esi", spec=True)
 class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -455,8 +451,7 @@ class TestCharacterContactsManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterContractsUpdate(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()

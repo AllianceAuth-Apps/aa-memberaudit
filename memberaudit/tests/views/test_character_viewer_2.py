@@ -131,8 +131,7 @@ class TestJumpClones(TestCase):
 
 class TestCharacterMiningLedgerData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -159,8 +158,7 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
 
 class TestCharacterPlanetData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -185,8 +183,7 @@ class TestCharacterPlanetData(NoSocketsTestCase):
 
 class TestCharacterRolesData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -232,8 +229,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
 
 class TestMailData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -504,8 +500,7 @@ class TestSkillSetsData(TestCase):
 
 class TestSkillSetsDetails(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -734,8 +729,7 @@ class TestStandings(TestCase):
 
 class TestCharacterTitlesData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()

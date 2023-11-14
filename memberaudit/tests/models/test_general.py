@@ -46,8 +46,7 @@ TASKS_PATH = "memberaudit.tasks"
 
 class TestMailEntity(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_str(self):
@@ -112,8 +111,7 @@ class TestMailEntity(NoSocketsTestCase):
 
 class TestGeneralOther(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_return_compliant_users_only(self):
@@ -157,8 +155,7 @@ class TestGeneralOther(NoSocketsTestCase):
 
 class TestGeneralUserHasAccess(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         character_1002 = create_memberaudit_character(1002)
@@ -225,8 +222,7 @@ class TestGeneralUserHasAccess(NoSocketsTestCase):
 
 class TestLocation(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -316,8 +312,7 @@ class TestLocation(NoSocketsTestCase):
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_ensure_new_compliance_groups_are_internal(self):
@@ -332,8 +327,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
 class TestSkillSet(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         cls.user = AuthUtils.create_user("Bruce Wayne")
 

@@ -31,8 +31,7 @@ from memberaudit.tests.utils import create_memberaudit_character
 
 class TestCharacterShip(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -52,8 +51,7 @@ class TestCharacterShip(NoSocketsTestCase):
 
 class TestCharacterContract(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -221,8 +219,7 @@ class TestCharacterFwStatsRankNameGeneric(TestCase):
 
 class TestCharacterFwStatsRankNameObject(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1121)
@@ -242,8 +239,7 @@ class TestCharacterFwStatsRankNameObject(TestCase):
 
 class TestCharacterStanding(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -269,8 +265,7 @@ class TestCharacterStanding(TestCase):
 
 class TestCharacterTitle(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -286,8 +281,7 @@ class TestCharacterTitle(TestCase):
 
 class TestCharacterWalletJournals(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)

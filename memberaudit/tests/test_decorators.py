@@ -27,8 +27,7 @@ DUMMY_URL = "http://www.example.com"
 
 class TestFetchOwnerIfAllowed(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -96,8 +95,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
 
 class TestFetchToken(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 

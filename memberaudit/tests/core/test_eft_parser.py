@@ -27,8 +27,7 @@ MODULE_PATH = "memberaudit.core.eft_parser"
 
 class TestEftParser(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_create_fitting(self):
@@ -203,8 +202,7 @@ def section_to_eft(items) -> list:
 
 class TestEveTypes(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_create_from_names(self):
@@ -375,8 +373,7 @@ class TestEftTextSection(NoSocketsTestCase):
 
 class TestEftItem(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_create_from_text_item_1(self):
@@ -531,8 +528,7 @@ class TestEftItem(NoSocketsTestCase):
 
 class TestEftSection(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_be_boosters(self):
@@ -642,8 +638,7 @@ class TestEftSection(NoSocketsTestCase):
 
 class TestCreateFittingFromEft(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_eft_parser_roundtrip_archon_normal(self):

@@ -42,8 +42,7 @@ from memberaudit.views.reports import (
 
 class TestReports(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
 
@@ -62,8 +61,7 @@ class TestReports(TestCase):
 
 class TestUserComplianceReportTestData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -158,8 +156,7 @@ class TestUserComplianceReportTestData(TestCase):
 
 class TestCorporationComplianceReportTestData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -245,8 +242,7 @@ class TestCorporationComplianceReportTestData(TestCase):
 
 class TestSkillSetReportData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()

@@ -5,10 +5,6 @@ from memberaudit.core.standings import Standing, calc_effective_standing
 
 
 class TestCharacterContactStandingLevel(TestCase):
-    @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
-
     class MyTestCase(NamedTuple):
         standing: float
         expected_result: str

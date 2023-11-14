@@ -42,8 +42,7 @@ class TestDataRetentionCutoff(TestCase):
 
 class TestImplantSlotNum(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_return_slot_num(self):
@@ -75,8 +74,7 @@ class TestDetermineTaskPriority(TestCase):
 
 class TestEveEntityIdsFromObjs(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)

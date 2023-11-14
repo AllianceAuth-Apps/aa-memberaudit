@@ -565,8 +565,7 @@ class TestCharacterSkillQueueManager(NoSocketsTestCase):
 
 class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)

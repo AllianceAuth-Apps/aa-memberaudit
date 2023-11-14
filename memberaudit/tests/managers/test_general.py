@@ -54,8 +54,7 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(MANAGERS_PATH + ".notify", spec=True)
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_add_group_to_compliant_user_and_notify(self, mock_notify):
@@ -218,8 +217,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
 class TestMailEntityManager(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_get_or_create_esi_1(self):
@@ -407,8 +405,7 @@ class TestMailEntityManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
 class TestMailEntityManagerAsync(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_get_or_create_esi_async_1(self, mock_fetch_esi_status):
@@ -524,8 +521,7 @@ class TestMailEntityManagerAsync(TestCase):
 @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestMailEntityManagerAsync2(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     @patch(TASKS_PATH + ".update_mail_entity_esi", spec=True)
@@ -559,8 +555,7 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
 class TestLocationManagerStructures(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.jita = EveSolarSystem.objects.get(id=30000142)
@@ -798,8 +793,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestLocationManagerOther(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.jita = EveSolarSystem.objects.get(id=30000142)
@@ -892,8 +886,7 @@ class TestLocationManagerOther(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".LocationManager.get_or_create_esi_async")
 class TestLocationManagerPreload(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.token = MagicMock(spec=Token)
@@ -939,8 +932,7 @@ class TestLocationManagerPreload(NoSocketsTestCase):
 
 class TestLocationManagerAsync(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.jita = EveSolarSystem.objects.get(id=30000142)
@@ -1099,8 +1091,7 @@ class TestCharacterMailingLists(NoSocketsTestCase):
 
 class TestSkillSetManager(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.fitting = create_fitting(name="My fitting")

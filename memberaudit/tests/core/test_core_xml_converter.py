@@ -10,8 +10,7 @@ MODULE_PATH = "memberaudit.core.xml_converter"
 
 class TestXMLConversion(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
