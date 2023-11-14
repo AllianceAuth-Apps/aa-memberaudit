@@ -2,7 +2,7 @@ import datetime as dt
 
 from django.test import TestCase
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveMarketPrice, EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from app_utils.testing import NoSocketsTestCase
 
@@ -21,6 +21,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_standing,
     create_character_title,
     create_character_wallet_journal_entry,
+    create_eve_market_price,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -176,9 +177,7 @@ class TestCharacterContract(NoSocketsTestCase):
             quantity=2,
             eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(
-            eve_type=self.snake_alpha_type, average_price=5000000
-        )
+        create_eve_market_price(eve_type=self.snake_alpha_type, average_price=5000000)
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertEqual(item_1.price, 5000000)
@@ -195,9 +194,7 @@ class TestCharacterContract(NoSocketsTestCase):
             raw_quantity=-2,
             eve_type=self.snake_alpha_type,
         ),
-        EveMarketPrice.objects.create(
-            eve_type=self.snake_alpha_type, average_price=5000000
-        )
+        create_eve_market_price(eve_type=self.snake_alpha_type, average_price=5000000)
         qs = self.contract.items.annotate_pricing()
         item_1 = qs.get(record_id=1)
         self.assertIsNone(item_1.price)

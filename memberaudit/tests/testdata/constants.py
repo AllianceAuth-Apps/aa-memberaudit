@@ -1,6 +1,23 @@
 from enum import IntEnum
 
 
+class EveCategoryId(IntEnum):
+    """Eve Online named category IDs"""
+
+    ASTEROID = 25
+    BLUEPRINT = 9
+    CHARGE = 8
+    DRONE = 18
+    FIGHTER = 87
+    IMPLANT = 20
+    MODULE = 7
+    SKILL = 16
+    SUBSYSTEM = 32
+    STATION = 3
+    SHIP = 6
+    STRUCTURE = 65
+
+
 class EveFactionId(IntEnum):
     CALDARI_STATE = 500_001
 
@@ -16,6 +33,8 @@ class EveSolarSystemId(IntEnum):
 
 class EveStationId(IntEnum):
     """Eve Online named station IDs"""
+
+    JITA_44 = 60003760
 
 
 class EveTypeId(IntEnum):

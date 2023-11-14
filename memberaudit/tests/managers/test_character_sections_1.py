@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.test import override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveMarketPrice, EveType
+from eveuniverse.models import EveEntity, EveType
 
 from app_utils.testing import NoSocketsTestCase
 
@@ -27,6 +27,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_contract_bid,
     create_character_from_user,
     create_character_skillqueue_entry,
+    create_eve_market_price,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -101,7 +102,7 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         create_character_asset(
             character=self.character, eve_type=self.merlin, quantity=5
         )
-        EveMarketPrice.objects.create(eve_type=self.merlin, average_price=500000)
+        create_eve_market_price(eve_type=self.merlin, average_price=500000)
         asset = CharacterAsset.objects.annotate_pricing().first()
         self.assertEqual(asset.price, 500000)
         self.assertEqual(asset.total, 2500000)
@@ -113,7 +114,7 @@ class TestCharacterAssetManager(NoSocketsTestCase):
             is_blueprint_copy=True,
             quantity=1,
         )
-        EveMarketPrice.objects.create(eve_type=self.merlin, average_price=500000)
+        create_eve_market_price(eve_type=self.merlin, average_price=500000)
         asset = CharacterAsset.objects.annotate_pricing().first()
         self.assertIsNone(asset.price)
         self.assertIsNone(asset.total)

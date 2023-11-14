@@ -20,7 +20,6 @@ from allianceauth.authentication.models import State
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_authgroup
 
-from memberaudit.constants import EveCategoryId, EveFactionId
 from memberaudit.core.fittings import Fitting, Item, Module
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
@@ -37,6 +36,8 @@ from memberaudit.models import (
     CharacterDetails,
     CharacterFwStats,
     CharacterImplant,
+    CharacterJumpClone,
+    CharacterJumpCloneImplant,
     CharacterLocation,
     CharacterLoyaltyEntry,
     CharacterMail,
@@ -53,6 +54,7 @@ from memberaudit.models import (
     CharacterTitle,
     CharacterUpdateStatus,
     CharacterWalletJournalEntry,
+    CharacterWalletTransaction,
     ComplianceGroupDesignation,
     Location,
     MailEntity,
@@ -61,7 +63,13 @@ from memberaudit.models import (
     SkillSetSkill,
 )
 
-from .constants import EveSolarSystemId, EveTypeId
+from .constants import (
+    EveCategoryId,
+    EveFactionId,
+    EveSolarSystemId,
+    EveStationId,
+    EveTypeId,
+)
 
 
 def create_character(eve_character: EveCharacter, **kwargs) -> Character:
@@ -263,6 +271,25 @@ def create_character_implant(character: Character, **kwargs) -> CharacterImplant
     params.update(kwargs)
     _set_missing_foreign_keys(params, eve_type_id=EveTypeId.HIGH_GRADE_SNAKE_ALPHA)
     return CharacterImplant.objects.create(**params)
+
+
+def create_character_jump_clone(character: Character, **kwargs) -> CharacterJumpClone:
+    jump_clone_id = kwargs.get("jump_clone_id") or next_number(
+        "create_character_implant_jump_clone_id"
+    )
+    params = {"character": character, "jump_clone_id": jump_clone_id}
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, location_id=EveStationId.JITA_44)
+    return CharacterJumpClone.objects.create(**params)
+
+
+def create_character_jump_clone_implant(
+    jump_clone: CharacterJumpClone, **kwargs
+) -> CharacterJumpCloneImplant:
+    params = {"jump_clone": jump_clone}
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.HIGH_GRADE_SNAKE_ALPHA)
+    return CharacterJumpCloneImplant.objects.create(**params)
 
 
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
@@ -480,12 +507,36 @@ def create_character_wallet_journal_entry(
         "context_id_type": CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
         "date": now(),
         "description": "test description",
-        "first_party_id": 1001,
-        "second_party_id": 1002,
         "reason": "test reason",
     }
     params.update(kwargs)
+    _set_missing_foreign_keys(params, first_party_id=1001, second_party_id=1002)
     return CharacterWalletJournalEntry.objects.create(**params)
+
+
+def create_character_wallet_transaction(
+    character: Character, **kwargs
+) -> CharacterWalletTransaction:
+    transaction_id = kwargs.get("transaction_id") or next_number(
+        "create_character_wallet_transaction_transaction_id"
+    )
+    params = {
+        "character": character,
+        "transaction_id": transaction_id,
+        "date": now(),
+        "is_buy": True,
+        "is_personal": True,
+        "quantity": 1,
+        "unit_price": float(random.randint(10_000, 100_000_000)) + random.random(),
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(
+        params,
+        client_id=1002,
+        location_id=EveStationId.JITA_44,
+        eve_type_id=EveTypeId.MERLIN,
+    )
+    return CharacterWalletTransaction.objects.create(**params)
 
 
 def create_compliance_group(states: Iterable[State] = None, **kwargs) -> Group:

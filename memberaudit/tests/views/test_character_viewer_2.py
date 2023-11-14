@@ -17,24 +17,26 @@ from app_utils.testing import (
 )
 
 from memberaudit.models import (
-    CharacterJumpClone,
-    CharacterJumpCloneImplant,
     CharacterMail,
     CharacterRole,
-    CharacterSkillqueueEntry,
     CharacterWalletJournalEntry,
-    CharacterWalletTransaction,
     Location,
 )
 from memberaudit.tests.testdata.factories import (
+    create_character_jump_clone,
+    create_character_jump_clone_implant,
     create_character_mail,
     create_character_mail_label,
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
     create_character_skill,
+    create_character_skillqueue_entry,
     create_character_standing,
     create_character_title,
+    create_character_wallet_journal_entry,
+    create_character_wallet_transaction,
+    create_location,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
     create_skill_set,
@@ -72,19 +74,21 @@ MODULE_PATH = "memberaudit.views.character_viewer_2"
 
 class TestJumpClones(LoadTestDataMixin, TestCase):
     def test_character_jump_clones_data(self):
-        clone_1 = jump_clone = CharacterJumpClone.objects.create(
-            character=self.character, location=self.jita_44, jump_clone_id=1
+        clone_1 = jump_clone = create_character_jump_clone(
+            character=self.character, location=self.jita_44
         )
-        CharacterJumpCloneImplant.objects.create(
-            jump_clone=jump_clone, eve_type=EveType.objects.get(id=19540)
+        create_character_jump_clone_implant(
+            jump_clone=jump_clone,
+            eve_type=EveType.objects.get(name="High-grade Snake Alpha"),
         )
-        CharacterJumpCloneImplant.objects.create(
-            jump_clone=jump_clone, eve_type=EveType.objects.get(id=19551)
+        create_character_jump_clone_implant(
+            jump_clone=jump_clone,
+            eve_type=EveType.objects.get(name="High-grade Snake Beta"),
         )
 
-        location_2 = Location.objects.create(id=123457890)
-        clone_2 = jump_clone = CharacterJumpClone.objects.create(
-            character=self.character, location=location_2, jump_clone_id=2
+        location_2 = create_location(id=123457890, eve_type=None, eve_solar_system=None)
+        clone_2 = jump_clone = create_character_jump_clone(
+            character=self.character, location=location_2
         )
         request = self.factory.get(
             reverse("memberaudit:character_jump_clones_data", args=[self.character.pk])
@@ -606,7 +610,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
     def test_character_skillqueue_data_1(self):
         """Char has skills in training"""
         finish_date_1 = now() + dt.timedelta(days=3)
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
             finish_date=finish_date_1,
@@ -615,7 +619,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
             start_date=now() - dt.timedelta(days=1),
         )
         finish_date_2 = now() + dt.timedelta(days=10)
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.caldari_carrier_skill_type,
             finish_date=finish_date_2,
@@ -644,7 +648,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
 
     def test_character_skillqueue_data_2(self):
         """Char has no skills in training"""
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
             finished_level=5,
@@ -729,7 +733,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
 class TestWallet(LoadTestDataMixin, TestCase):
     def test_character_wallet_journal_data(self):
         # given
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character,
             entry_id=1,
             amount=1000000,
@@ -758,13 +762,10 @@ class TestWallet(LoadTestDataMixin, TestCase):
 
     def test_character_wallet_transaction_data(self):
         my_date = now()
-        CharacterWalletTransaction.objects.create(
+        create_character_wallet_transaction(
             character=self.character,
-            transaction_id=42,
             client=EveEntity.objects.get(id=1002),
             date=my_date,
-            is_buy=True,
-            is_personal=True,
             location=Location.objects.get(id=60003760),
             quantity=3,
             eve_type=EveType.objects.get(id=603),
