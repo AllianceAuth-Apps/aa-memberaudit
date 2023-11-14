@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.4.0] - TBD
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+### Changed
+
+- Undocked ships are now automatically included in a character's assets. This means that the asset filter should not longer fail, when a corresponding ship is undocked. (#150)
+
 ## [3.3.3] - 2023-10-14
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
