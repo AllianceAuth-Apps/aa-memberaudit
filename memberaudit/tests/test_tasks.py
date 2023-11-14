@@ -224,7 +224,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     CELERY_ALWAYS_EAGER=True,
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)  # need to ignore exceptions
+)
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets(TestCase):
     @classmethod

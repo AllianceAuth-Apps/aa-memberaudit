@@ -61,7 +61,8 @@ class TestReports(TestCase):
 
 class TestUserComplianceReportTestData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls) -> None:
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -166,7 +167,8 @@ class TestUserComplianceReportTestData(TestCase):
 
 class TestCorporationComplianceReportTestData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -266,7 +268,8 @@ class TestCorporationComplianceReportTestData(TestCase):
 
 class TestSkillSetReportData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls) -> None:
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
