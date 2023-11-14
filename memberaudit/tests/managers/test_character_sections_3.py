@@ -40,6 +40,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_skill_set_check,
     create_character_standing,
     create_character_title,
+    create_character_wallet_journal_entry,
     create_skill_set,
     create_skill_set_skill,
 )
@@ -831,7 +832,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_2(self, mock_esi):
         """can add entry to existing wallet journal"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=1,
             amount=1_000_000,
@@ -865,7 +866,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_3(self, mock_esi):
         """does not update existing entries"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=89,
             amount=1_000_000,
@@ -912,7 +913,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_5(self, mock_esi):
         """When wallet existing entry is older than retention limit, then delete it"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=55,
             amount=1_000_000,
@@ -972,7 +973,7 @@ class TestCharacterWalletTransactionManager(
     ):
         # given
         mock_esi.client = esi_client_stub
-        journal_entry = CharacterWalletJournalEntry.objects.create(
+        journal_entry = create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=67890,
             amount=450000.99,

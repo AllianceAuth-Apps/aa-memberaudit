@@ -428,9 +428,10 @@ def create_character_update_status(
 def create_character_wallet_journal_entry(
     character: Character, **kwargs
 ) -> CharacterWalletJournalEntry:
+    entry_id = kwargs.get("entry_id") or next_number("wallet_journal_entry_id")
     params = {
         "character": character,
-        "entry_id": next_number("wallet_journal_entry_id"),
+        "entry_id": entry_id,
         "amount": 1000000.0,
         "balance": 20000000.0,
         "ref_type": "player_donation",
