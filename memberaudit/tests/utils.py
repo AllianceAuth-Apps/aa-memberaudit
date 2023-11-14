@@ -27,7 +27,7 @@ from .testdata.load_locations import load_locations
 logger = logging.getLogger(__name__)
 
 
-class LoadTestDataBaseMixin:
+class LoadTestDataMixin:
     """Mixin for a TestCase class defining a complete character and setting up fixtures."""
 
     @classmethod
@@ -50,23 +50,8 @@ class LoadTestDataBaseMixin:
         cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
         cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
         cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
-
-
-class LoadTestDataMixin(LoadTestDataBaseMixin):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        super().setUpTestData()
         cls.character = create_memberaudit_character(1001)
         cls.user = cls.character.user
-
-
-class LoadTestDataMixin2(LoadTestDataBaseMixin):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        super().setUpTestData()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.token = cls.character_1001.user.token_set.first()
 
 
 def create_user_from_evecharacter_with_access(
