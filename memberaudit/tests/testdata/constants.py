@@ -18,3 +18,7 @@ class EveSolarSystemId(IntEnum):
     HED_GP = 30001161
     JITA = 30000142
     POLARIS = 30000380
+
+
+class EveStationId(IntEnum):
+    """Eve Online named station IDs"""

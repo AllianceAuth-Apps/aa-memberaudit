@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.models import EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import (
@@ -20,16 +20,17 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.constants import EveSolarSystemId
+from memberaudit.tests.testdata.factories import (
     create_compliance_group_designation,
+    create_location_eve_solar_system,
     create_skill_set,
     create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -229,44 +230,88 @@ class TestLocation(NoSocketsTestCase):
         load_eveuniverse()
         load_entities()
         load_locations()
+        cls.location_jita = create_location_eve_solar_system(id=EveSolarSystemId.JITA)
+        cls.location_asset_safety: Location = Location.objects.get_or_create_esi(
+            id=2004, token=None
+        )[0]
+        cls.location_jita_44: Location = Location.objects.get(id=60003760)
+        cls.location_structure_1: Location = Location.objects.get(id=1_000_000_000_001)
+        cls.location_empty = Location(id=666)
 
     def test_str(self):
-        location = Location.objects.get(id=1000000000001)
-        self.assertEqual(str(location), "Amamake - Test Structure Alpha")
+        self.assertEqual(
+            str(self.location_structure_1), "Amamake - Test Structure Alpha"
+        )
 
     def test_repr(self):
-        location = Location.objects.get(id=1000000000001)
         self.assertEqual(
-            repr(location),
+            repr(self.location_structure_1),
             "Location(id=1000000000001, name='Amamake - Test Structure Alpha')",
         )
 
-    def test_is_solar_system(self):
-        location = Location.objects.create(
-            id=30000142, eve_solar_system=EveSolarSystem.objects.get(id=30000142)
-        )
+    def test_checks_with_solar_system(self):
+        location = self.location_jita
         self.assertTrue(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
+        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(location.is_empty)
 
-    def test_is_station(self):
-        location = Location.objects.get(id=60003760)
+    def test_checks_with_station(self):
+        location = self.location_jita_44
         self.assertFalse(location.is_solar_system)
         self.assertTrue(location.is_station)
         self.assertFalse(location.is_structure)
+        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(location.is_empty)
 
-    def test_is_structure(self):
-        location = Location.objects.get(id=1000000000001)
+    def test_checks_with_structure(self):
+        location = self.location_structure_1
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertTrue(location.is_structure)
+        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(location.is_empty)
+
+    def test_checks_with_asset_safety(self):
+        location = self.location_asset_safety
+        self.assertFalse(location.is_solar_system)
+        self.assertFalse(location.is_station)
+        self.assertFalse(location.is_structure)
+        self.assertTrue(location.is_asset_safety)
+        self.assertFalse(location.is_empty)
+
+    def test_checks_with_empty_location(self):
+        location = self.location_empty
+        self.assertFalse(location.is_solar_system)
+        self.assertFalse(location.is_station)
+        self.assertFalse(location.is_structure)
+        self.assertFalse(location.is_asset_safety)
+        self.assertTrue(location.is_empty)
 
     def test_solar_system_url(self):
-        obj_1 = Location.objects.get(id=1000000000001)
-        obj_2 = Location.objects.create(id=1000000000999)
+        obj_1 = self.location_structure_1
+        obj_2 = Location.objects.create(id=1_000_000_000_999)
 
         self.assertIn("Amamake", obj_1.solar_system_url)
         self.assertEqual("", obj_2.solar_system_url)
+
+    def test_name_plus_for_structure(self):
+        self.assertEqual(
+            self.location_structure_1.name_plus, "Amamake - Test Structure Alpha"
+        )
+
+    def test_name_plus_for_station(self):
+        self.assertEqual(
+            self.location_jita_44.name_plus,
+            "Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+        )
+
+    def test_name_plus_for_solar_system(self):
+        self.assertEqual(self.location_jita.name_plus, "Jita")
+
+    def test_name_plus_for_asset_safety(self):
+        self.assertEqual(self.location_asset_safety.name_plus, "ASSET SAFETY")
 
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):

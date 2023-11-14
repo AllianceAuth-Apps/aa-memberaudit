@@ -235,6 +235,11 @@ class Location(models.Model):
         """Return True if this location is a structure, else False."""
         return self.is_structure_id(self.id)
 
+    @property
+    def is_asset_safety(self) -> bool:
+        """Return True if this location is an asset safety, else False."""
+        return self.is_asset_safety_id(self.id)
+
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
         """Return True if this location ID is a solar system, else False."""
