@@ -357,6 +357,7 @@ def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
         "trained_skill_level": 3,
     }
     params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.AMARR_CARRIER)
     return CharacterSkill.objects.create(**params)
 
 

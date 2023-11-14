@@ -29,9 +29,9 @@ from memberaudit.models import (
     CharacterWalletTransaction,
     Location,
 )
-
-from ..testdata.esi_client_stub import esi_client_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.constants import EveTypeId
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
+from memberaudit.tests.testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
@@ -43,9 +43,12 @@ from ..testdata.factories import (
     create_skill_set,
     create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
+    CharacterUpdateTestDataMixin,
+    create_memberaudit_character,
+)
 
 MODELS_PATH = "memberaudit.models.characters"
 MANAGERS_PATH = "memberaudit.managers.character_sections_3"
@@ -347,14 +350,14 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         self.assertEqual(self.character_1001.skillpoints.unallocated, 1_000)
         self.assertSetEqual(
             set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
+            {EveTypeId.AMARR_CARRIER, EveTypeId.CALDARI_CARRIER},
         )
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
         self.assertEqual(skill.skillpoints_in_skill, 20_000)
         self.assertEqual(skill.trained_skill_level, 4)
 
-        skill = self.character_1001.skills.get(eve_type_id=24312)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.CALDARI_CARRIER)
         self.assertEqual(skill.active_skill_level, 1)
         self.assertEqual(skill.skillpoints_in_skill, 10_000)
         self.assertEqual(skill.trained_skill_level, 1)
@@ -362,9 +365,9 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_caen_update_existing_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character_1001,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             active_skill_level=1,
             skillpoints_in_skill=1,
             trained_skill_level=1,
@@ -373,7 +376,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         CharacterSkill.objects.update_or_create_esi(character=self.character_1001)
         # then
         self.assertEqual(self.character_1001.skills.count(), 2)
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
         self.assertEqual(skill.skillpoints_in_skill, 20_000)
         self.assertEqual(skill.trained_skill_level, 4)
@@ -381,9 +384,9 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_can_delete_obsolete_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character_1001,
-            eve_type=EveType.objects.get(id=20185),
+            eve_type=EveType.objects.get(id=EveTypeId.MERLIN),
             active_skill_level=1,
             skillpoints_in_skill=1,
             trained_skill_level=1,
@@ -393,7 +396,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         # then
         self.assertSetEqual(
             set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
+            {EveTypeId.AMARR_CARRIER, EveTypeId.CALDARI_CARRIER},
         )
 
     def test_update_skills_4(self, mock_esi):
@@ -402,7 +405,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         mock_esi.client = esi_client_stub
         self.character_1001.reset_update_section(Character.UpdateSection.SKILLS)
         self.character_1001.update_skills()
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         skill.active_skill_level = 4
         skill.save()
         # when
@@ -419,11 +422,11 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         # when
         CharacterSkill.objects.update_or_create_esi(character=self.character_1001)
         # then
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         skill.active_skill_level = 4
         skill.save()
         self.character_1001.update_skills(force_update=True)
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
 
 
@@ -438,13 +441,17 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
 
         entry = self.character_1001.skillqueue.get(queue_position=1)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
         self.assertEqual(entry.finished_level, 4)
         self.assertEqual(entry.level_end_sp, 1000)
@@ -453,7 +460,9 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(entry.training_start_sp, 50)
 
         entry = self.character_1001.skillqueue.get(queue_position=2)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
+        )
         self.assertEqual(entry.finished_level, 5)
 
     def test_can_update_existing_queue(self, mock_esi):
@@ -461,7 +470,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         mock_esi.client = esi_client_stub
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
@@ -472,7 +481,9 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
@@ -519,7 +530,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
