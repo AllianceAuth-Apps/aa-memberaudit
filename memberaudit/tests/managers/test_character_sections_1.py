@@ -33,7 +33,6 @@ from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
-    CharacterUpdateTestDataMixin,
     LoadTestDataMixin,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
@@ -49,14 +48,14 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
         load_eveuniverse()
         load_entities()
         load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character = create_memberaudit_character(1001)
         cls.skill_type_1 = EveType.objects.get(id=24311)
         cls.skill_type_2 = EveType.objects.get(id=24312)
 
     def test_is_active_1(self):
         """when training is active and skill is in first position then return True"""
         entry = create_character_skillqueue_entry(
-            character=self.character_1001,
+            character=self.character,
             eve_type=self.skill_type_1,
             finish_date=now() + dt.timedelta(days=3),
             queue_position=0,
@@ -67,7 +66,7 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
     def test_is_active_2(self):
         """when training is active and skill is not in first position then return False"""
         entry = create_character_skillqueue_entry(
-            character=self.character_1001,
+            character=self.character,
             eve_type=self.skill_type_1,
             finish_date=now() + dt.timedelta(days=3),
             finished_level=5,
@@ -79,7 +78,7 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
     def test_is_active_3(self):
         """when training is not active and skill is in first position then return False"""
         entry = create_character_skillqueue_entry(
-            character=self.character_1001,
+            character=self.character,
             eve_type=self.skill_type_1,
             finished_level=5,
             queue_position=0,
@@ -205,33 +204,33 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterAttributesManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterAttributesManager(LoadTestDataMixin, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
-        CharacterAttributes.objects.update_or_create_esi(self.character_1001)
+        CharacterAttributes.objects.update_or_create_esi(self.character)
         # then
         self.assertEqual(
-            self.character_1001.attributes.accrued_remap_cooldown_date,
+            self.character.attributes.accrued_remap_cooldown_date,
             parse_datetime("2016-10-24T09:00:00Z"),
         )
         self.assertEqual(
-            self.character_1001.attributes.last_remap_date,
+            self.character.attributes.last_remap_date,
             parse_datetime("2016-10-24T09:00:00Z"),
         )
-        self.assertEqual(self.character_1001.attributes.charisma, 16)
-        self.assertEqual(self.character_1001.attributes.intelligence, 17)
-        self.assertEqual(self.character_1001.attributes.memory, 18)
-        self.assertEqual(self.character_1001.attributes.perception, 19)
-        self.assertEqual(self.character_1001.attributes.willpower, 20)
+        self.assertEqual(self.character.attributes.charisma, 16)
+        self.assertEqual(self.character.attributes.intelligence, 17)
+        self.assertEqual(self.character.attributes.memory, 18)
+        self.assertEqual(self.character.attributes.perception, 19)
+        self.assertEqual(self.character.attributes.willpower, 20)
 
     def test_can_update_existing_attributes(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
 
         create_character_attributes(
-            character=self.character_1001,
+            character=self.character,
             accrued_remap_cooldown_date=None,
             last_remap_date=None,
             bonus_remaps=4,
@@ -242,30 +241,30 @@ class TestCharacterAttributesManager(CharacterUpdateTestDataMixin, NoSocketsTest
             willpower=106,
         )
         # when
-        CharacterAttributes.objects.update_or_create_esi(self.character_1001)
+        CharacterAttributes.objects.update_or_create_esi(self.character)
         # then
-        self.character_1001.attributes.refresh_from_db()
+        self.character.attributes.refresh_from_db()
         self.assertEqual(
-            self.character_1001.attributes.accrued_remap_cooldown_date,
+            self.character.attributes.accrued_remap_cooldown_date,
             parse_datetime("2016-10-24T09:00:00Z"),
         )
         self.assertEqual(
-            self.character_1001.attributes.last_remap_date,
+            self.character.attributes.last_remap_date,
             parse_datetime("2016-10-24T09:00:00Z"),
         )
-        self.assertEqual(self.character_1001.attributes.charisma, 16)
-        self.assertEqual(self.character_1001.attributes.intelligence, 17)
-        self.assertEqual(self.character_1001.attributes.memory, 18)
-        self.assertEqual(self.character_1001.attributes.perception, 19)
-        self.assertEqual(self.character_1001.attributes.willpower, 20)
+        self.assertEqual(self.character.attributes.charisma, 16)
+        self.assertEqual(self.character.attributes.intelligence, 17)
+        self.assertEqual(self.character.attributes.memory, 18)
+        self.assertEqual(self.character.attributes.perception, 19)
+        self.assertEqual(self.character.attributes.willpower, 20)
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContactLabelManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterContactLabelManager(LoadTestDataMixin, NoSocketsTestCase):
     def test_should_do_nothing(self, mock_esi):
         # when
         CharacterContactLabel.objects._update_or_create_objs(
-            character=self.character_1001, labels=[]
+            character=self.character, labels=[]
         )
         # then
         self.assertEqual(CharacterContactLabel.objects.count(), 0)
@@ -274,90 +273,90 @@ class TestCharacterContactLabelManager(CharacterUpdateTestDataMixin, NoSocketsTe
         """can create new contact labels from scratch"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_contact_labels()
-        self.assertEqual(self.character_1001.contact_labels.count(), 2)
+        self.character.update_contact_labels()
+        self.assertEqual(self.character.contact_labels.count(), 2)
 
-        label = self.character_1001.contact_labels.get(label_id=1)
+        label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
 
-        label = self.character_1001.contact_labels.get(label_id=2)
+        label = self.character.contact_labels.get(label_id=2)
         self.assertEqual(label.name, "pirate")
 
     def test_update_contact_labels_2(self, mock_esi):
         """can remove obsolete labels"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=99)
+        create_character_contact_label(character=self.character, label_id=99)
 
-        self.character_1001.update_contact_labels()
+        self.character.update_contact_labels()
         self.assertEqual(
-            {x.label_id for x in self.character_1001.contact_labels.all()}, {1, 2}
+            {x.label_id for x in self.character.contact_labels.all()}, {1, 2}
         )
 
     def test_update_contact_labels_3(self, mock_esi):
         """can update existing labels"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=1)
+        create_character_contact_label(character=self.character, label_id=1)
 
-        self.character_1001.update_contact_labels()
+        self.character.update_contact_labels()
         self.assertEqual(
-            {x.label_id for x in self.character_1001.contact_labels.all()}, {1, 2}
+            {x.label_id for x in self.character.contact_labels.all()}, {1, 2}
         )
 
-        label = self.character_1001.contact_labels.get(label_id=1)
+        label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
 
     def test_update_contact_labels_4(self, mock_esi):
         """when data from ESI has not changed, then skip update"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_contact_labels()
-        label = self.character_1001.contact_labels.get(label_id=1)
+        self.character.update_contact_labels()
+        label = self.character.contact_labels.get(label_id=1)
         label.name = "foe"
         label.save()
 
-        self.character_1001.update_contact_labels()
+        self.character.update_contact_labels()
 
-        self.assertEqual(self.character_1001.contact_labels.count(), 2)
-        label = self.character_1001.contact_labels.get(label_id=1)
+        self.assertEqual(self.character.contact_labels.count(), 2)
+        label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "foe")
 
     def test_update_contact_labels_5(self, mock_esi):
         """when data from ESI has not changed and update is forced, then do update"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_contact_labels()
-        label = self.character_1001.contact_labels.get(label_id=1)
+        self.character.update_contact_labels()
+        label = self.character.contact_labels.get(label_id=1)
         label.name = "foe"
         label.save()
 
-        self.character_1001.update_contact_labels(force_update=True)
+        self.character.update_contact_labels(force_update=True)
 
-        self.assertEqual(self.character_1001.contact_labels.count(), 2)
-        label = self.character_1001.contact_labels.get(label_id=1)
+        self.assertEqual(self.character.contact_labels.count(), 2)
+        label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterContactsManager(LoadTestDataMixin, NoSocketsTestCase):
     def test_update_contacts_1(self, mock_esi):
         """can create contacts"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=1)
-        create_character_contact_label(character=self.character_1001, label_id=2)
+        create_character_contact_label(character=self.character, label_id=1)
+        create_character_contact_label(character=self.character, label_id=2)
 
-        self.character_1001.update_contacts()
+        self.character.update_contacts()
 
-        self.assertEqual(self.character_1001.contacts.count(), 2)
+        self.assertEqual(self.character.contacts.count(), 2)
 
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
         self.assertFalse(obj.is_blocked)
         self.assertTrue(obj.is_watched)
         self.assertEqual(obj.standing, -10)
         self.assertEqual({x.label_id for x in obj.labels.all()}, {2})
 
-        obj = self.character_1001.contacts.get(eve_entity_id=2002)
+        obj = self.character.contacts.get(eve_entity_id=2002)
         self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CORPORATION)
         self.assertFalse(obj.is_blocked)
         self.assertFalse(obj.is_watched)
@@ -367,29 +366,27 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_2(self, mock_esi):
         """can remove obsolete contacts"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=1)
-        create_character_contact_label(character=self.character_1001, label_id=2)
+        create_character_contact_label(character=self.character, label_id=1)
+        create_character_contact_label(character=self.character, label_id=2)
         create_character_contact(
-            character=self.character_1001,
+            character=self.character,
             eve_entity=EveEntity.objects.get(id=3101),
             standing=-5,
         )
 
-        self.character_1001.update_contacts()
+        self.character.update_contacts()
 
         self.assertEqual(
-            {x.eve_entity_id for x in self.character_1001.contacts.all()}, {1101, 2002}
+            {x.eve_entity_id for x in self.character.contacts.all()}, {1101, 2002}
         )
 
     def test_update_contacts_3(self, mock_esi):
         """can update existing contacts"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=2)
-        my_label = create_character_contact_label(
-            character=self.character_1001, label_id=1
-        )
+        create_character_contact_label(character=self.character, label_id=2)
+        my_label = create_character_contact_label(character=self.character, label_id=1)
         my_contact = create_character_contact(
-            character=self.character_1001,
+            character=self.character,
             eve_entity=EveEntity.objects.get(id=1101),
             is_blocked=True,
             is_watched=False,
@@ -397,9 +394,9 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         )
         my_contact.labels.add(my_label)
 
-        self.character_1001.update_contacts()
+        self.character.update_contacts()
 
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
         self.assertFalse(obj.is_blocked)
         self.assertTrue(obj.is_watched)
@@ -409,51 +406,51 @@ class TestCharacterContactsManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_update_contacts_4(self, mock_esi):
         """when ESI data has not changed, then skip update"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=1)
-        create_character_contact_label(character=self.character_1001, label_id=2)
+        create_character_contact_label(character=self.character, label_id=1)
+        create_character_contact_label(character=self.character, label_id=2)
 
-        self.character_1001.update_contacts()
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        self.character.update_contacts()
+        obj = self.character.contacts.get(eve_entity_id=1101)
         obj.is_watched = False
         obj.save()
 
-        self.character_1001.update_contacts()
+        self.character.update_contacts()
 
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertFalse(obj.is_watched)
 
     def test_update_contacts_5(self, mock_esi):
         """when ESI data has not changed and update is forced, then update"""
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character_1001, label_id=1)
-        create_character_contact_label(character=self.character_1001, label_id=2)
+        create_character_contact_label(character=self.character, label_id=1)
+        create_character_contact_label(character=self.character, label_id=2)
 
-        self.character_1001.update_contacts()
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        self.character.update_contacts()
+        obj = self.character.contacts.get(eve_entity_id=1101)
         obj.is_watched = False
         obj.save()
 
-        self.character_1001.update_contacts(force_update=True)
+        self.character.update_contacts(force_update=True)
 
-        obj = self.character_1001.contacts.get(eve_entity_id=1101)
+        obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertTrue(obj.is_watched)
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterContractsUpdate(LoadTestDataMixin, NoSocketsTestCase):
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_courier_contract(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
         self.assertSetEqual(
-            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            set(self.character.contracts.values_list("contract_id", flat=True)),
             {100000001, 100000002, 100000003},
         )
 
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj = self.character.contracts.get(contract_id=100000001)
         self.assertEqual(obj.contract_type, CharacterContract.TYPE_COURIER)
         self.assertEqual(obj.acceptor, EveEntity.objects.get(id=1101))
         self.assertEqual(obj.assignee, EveEntity.objects.get(id=2101))
@@ -481,7 +478,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # given
         mock_esi.client = esi_client_stub
         create_character_contract(
-            character=self.character_1001,
+            character=self.character,
             contract_id=190000001,
             contract_type=CharacterContract.TYPE_COURIER,
             assignee=EveEntity.objects.get(id=1002),
@@ -492,16 +489,16 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
             end_location=self.structure_1,
         )
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
-        self.assertEqual(self.character_1001.contracts.count(), 4)
+        self.assertEqual(self.character.contracts.count(), 4)
 
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_should_update_existing_contracts(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         create_character_contract(
-            character=self.character_1001,
+            character=self.character,
             contract_id=100000001,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_COURIER,
@@ -521,9 +518,9 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
             days_to_complete=3,
         )
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj = self.character.contracts.get(contract_id=100000001)
         self.assertEqual(obj.contract_type, CharacterContract.TYPE_COURIER)
         self.assertEqual(obj.acceptor, EveEntity.objects.get(id=1101))
         self.assertEqual(obj.assignee, EveEntity.objects.get(id=2101))
@@ -549,30 +546,30 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_should_skip_updates_when_there_is_no_change(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        self.character_1001.update_contract_headers()
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.character.update_contract_headers()
+        obj = self.character.contracts.get(contract_id=100000001)
         obj.status = CharacterContract.STATUS_FINISHED
         obj.save()
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj = self.character.contracts.get(contract_id=100000001)
         self.assertEqual(obj.status, CharacterContract.STATUS_FINISHED)
 
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_always_update_when_forced(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        self.character_1001.update_contract_headers()
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        self.character.update_contract_headers()
+        obj = self.character.contracts.get(contract_id=100000001)
         obj.status = CharacterContract.STATUS_FINISHED
         obj.save()
         # when
         CharacterContract.objects.update_or_create_esi(
-            self.character_1001, force_update=True
+            self.character, force_update=True
         )
         # then
-        obj = self.character_1001.contracts.get(contract_id=100000001)
+        obj = self.character.contracts.get(contract_id=100000001)
         self.assertEqual(obj.status, CharacterContract.STATUS_IN_PROGRESS)
 
     @patch(
@@ -583,10 +580,10 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # given
         mock_esi.client = esi_client_stub
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
         self.assertSetEqual(
-            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            set(self.character.contracts.values_list("contract_id", flat=True)),
             {100000002, 100000003},
         )
 
@@ -598,7 +595,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # given
         mock_esi.client = esi_client_stub
         create_character_contract(
-            character=self.character_1001,
+            character=self.character,
             contract_id=100_000_004,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_COURIER,
@@ -618,10 +615,10 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
             days_to_complete=3,
         )
         # when
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
+        CharacterContract.objects.update_or_create_esi(self.character)
         # then
         self.assertSetEqual(
-            set(self.character_1001.contracts.values_list("contract_id", flat=True)),
+            set(self.character.contracts.values_list("contract_id", flat=True)),
             {100000001, 100000002, 100000003},
         )
 
@@ -629,16 +626,14 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_can_create_new_item_exchange_contract(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
-        contract = self.character_1001.contracts.get(contract_id=100000002)
+        CharacterContract.objects.update_or_create_esi(self.character)
+        contract = self.character.contracts.get(contract_id=100000002)
         self.assertEqual(contract.contract_type, CharacterContract.TYPE_ITEM_EXCHANGE)
         self.assertEqual(float(contract.price), 270000000.0)
         self.assertEqual(contract.volume, 486000.0)
         self.assertEqual(contract.status, CharacterContract.STATUS_FINISHED)
         # when
-        CharacterContractItem.objects.update_or_create_esi(
-            self.character_1001, contract
-        )
+        CharacterContractItem.objects.update_or_create_esi(self.character, contract)
         # then
         self.assertEqual(contract.items.count(), 2)
 
@@ -659,16 +654,14 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
     def test_can_create_auction_contract(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterContract.objects.update_or_create_esi(self.character_1001)
-        contract = self.character_1001.contracts.get(contract_id=100000003)
+        CharacterContract.objects.update_or_create_esi(self.character)
+        contract = self.character.contracts.get(contract_id=100000003)
         self.assertEqual(contract.contract_type, CharacterContract.TYPE_AUCTION)
         self.assertEqual(float(contract.buyout), 200_000_000.0)
         self.assertEqual(float(contract.price), 20_000_000.0)
         self.assertEqual(contract.volume, 400.0)
         self.assertEqual(contract.status, CharacterContract.STATUS_OUTSTANDING)
-        CharacterContractItem.objects.update_or_create_esi(
-            self.character_1001, contract
-        )
+        CharacterContractItem.objects.update_or_create_esi(self.character, contract)
         self.assertEqual(contract.items.count(), 1)
         item = contract.items.get(record_id=1)
         self.assertTrue(item.is_included)
@@ -676,7 +669,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(item.quantity, 3)
         self.assertEqual(item.eve_type, EveType.objects.get(id=19540))
         # when
-        CharacterContractBid.objects.update_or_create_esi(self.character_1001, contract)
+        CharacterContractBid.objects.update_or_create_esi(self.character, contract)
         # then
         self.assertEqual(contract.bids.count(), 1)
         bid = contract.bids.get(bid_id=1)
@@ -689,7 +682,7 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         # given
         mock_esi.client = esi_client_stub
         contract = create_character_contract(
-            character=self.character_1001,
+            character=self.character,
             contract_id=100000003,
             availability=CharacterContract.AVAILABILITY_PERSONAL,
             contract_type=CharacterContract.TYPE_AUCTION,
@@ -713,9 +706,9 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
             bidder=EveEntity.objects.get(id=1003),
             date_bid=now(),
         )
-        self.character_1001.update_contract_headers()
+        self.character.update_contract_headers()
         # when
-        self.character_1001.update_contract_bids(contract=contract)
+        self.character.update_contract_bids(contract=contract)
         # then
         contract.refresh_from_db()
         self.assertEqual(contract.bids.count(), 2)
