@@ -198,10 +198,14 @@ class TestCorporationComplianceReportTestData(TestCase):
             1003, disconnect_signals=False
         )
         add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user, 1101
+            cls.character_1003.eve_character.character_ownership.user,
+            1101,
+            disconnect_signals=False,
         )
         add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user, 1102
+            cls.character_1003.eve_character.character_ownership.user,
+            1102,
+            disconnect_signals=False,
         )
         cls.user_1103 = create_user_from_evecharacter_with_access(
             1103, disconnect_signals=False
