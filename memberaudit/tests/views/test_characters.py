@@ -8,6 +8,15 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
 
 from memberaudit.models import Character
+from memberaudit.tests.testdata.factories import (
+    create_character_from_user,
+    create_compliance_group,
+)
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.utils import (
+    create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
+)
 from memberaudit.views.characters import (
     add_character,
     index,
@@ -15,13 +24,6 @@ from memberaudit.views.characters import (
     remove_character,
     share_character,
     unshare_character,
-)
-
-from ..testdata.factories import create_character_from_user, create_compliance_group
-from ..testdata.load_entities import load_entities
-from ..utils import (
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
 )
 
 MODULE_PATH = "memberaudit.views.characters"

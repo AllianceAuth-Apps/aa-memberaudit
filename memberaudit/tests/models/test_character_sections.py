@@ -16,19 +16,16 @@ from memberaudit.models import (
 from memberaudit.tests.testdata.factories import (
     create_character_contract,
     create_character_contract_item,
+    create_character_fw_stats,
     create_character_ship,
+    create_character_standing,
+    create_character_title,
+    create_character_wallet_journal_entry,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import create_memberaudit_character
-
-from ..testdata.factories import (
-    create_character_fw_stats,
-    create_character_standing,
-    create_character_title,
-    create_character_wallet_journal_entry,
-)
 
 
 class TestCharacterShip(NoSocketsTestCase):

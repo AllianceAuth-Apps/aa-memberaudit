@@ -20,10 +20,9 @@ from memberaudit.models import (
     CharacterMailLabel,
     MailEntity,
 )
-
-from ..testdata.constants import EveTypeId
-from ..testdata.esi_client_stub import esi_client_stub, esi_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.constants import EveTypeId
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
+from memberaudit.tests.testdata.factories import (
     create_character_details,
     create_character_fw_stats,
     create_character_location,
@@ -32,9 +31,12 @@ from ..testdata.factories import (
     create_mail_entity_from_eve_entity,
     create_mailing_list,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
+    CharacterUpdateTestDataMixin,
+    create_memberaudit_character,
+)
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 

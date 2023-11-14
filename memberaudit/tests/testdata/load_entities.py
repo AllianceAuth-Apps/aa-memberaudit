@@ -17,11 +17,11 @@ from allianceauth.eveonline.models import (
     EveCorporationInfo,
 )
 
-_currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+_current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 
 def _load_entities_data():
-    with open(_currentdir + "/entities.json", "r", encoding="utf-8") as f:
+    with open(_current_dir + "/entities.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 

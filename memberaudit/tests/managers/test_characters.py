@@ -8,14 +8,13 @@ from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
 from memberaudit.models import Character, CharacterUpdateStatus
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
     create_character_update_status,
 )
-from ..testdata.load_entities import load_entities
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,

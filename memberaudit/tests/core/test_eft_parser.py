@@ -19,9 +19,8 @@ from memberaudit.core.eft_parser import (
     _EveTypes,
     create_fitting_from_eft,
 )
-
-from ..testdata.factories import create_fitting_text
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.factories import create_fitting_text
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 
 MODULE_PATH = "memberaudit.core.eft_parser"
 

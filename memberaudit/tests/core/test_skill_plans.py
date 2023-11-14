@@ -4,8 +4,7 @@ from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.skill_plans import NoSkillsIdentified, SkillPlan
 from memberaudit.core.skills import Skill
-
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 
 
 class TestSkillPlan(NoSocketsTestCase):

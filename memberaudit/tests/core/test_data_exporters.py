@@ -23,16 +23,15 @@ from memberaudit.core.data_exporters import (
     topics_and_export_files,
 )
 from memberaudit.models import CharacterWalletJournalEntry
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_contract,
     create_character_contract_item,
     create_character_wallet_journal_entry,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.core.data_exporters"
 

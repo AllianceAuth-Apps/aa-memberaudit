@@ -342,7 +342,7 @@ class TestSkillSet(NoSocketsTestCase):
         obj_1 = create_skill_set()
         gunnery_skill = EveType.objects.get(name="Gunnery")
         skill_1 = create_skill_set_skill(
-            obj_1, gunnery_skill, required_level=3, recommended_level=5
+            obj_1, eve_type=gunnery_skill, required_level=3, recommended_level=5
         )
         # when
         obj_2 = obj_1.clone(user=self.user)

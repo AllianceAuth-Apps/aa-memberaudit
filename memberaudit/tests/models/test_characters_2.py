@@ -11,14 +11,13 @@ from app_utils.esi_testing import build_http_error
 from app_utils.testing import create_user_from_evecharacter
 
 from memberaudit.models import Character, CharacterUpdateStatus
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
     create_character_update_status,
 )
-from ..testdata.load_entities import load_entities
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,

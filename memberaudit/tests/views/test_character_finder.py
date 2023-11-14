@@ -5,21 +5,20 @@ from django.urls import reverse
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import create_user_from_evecharacter, json_response_to_python
 
-from memberaudit.views.character_finder import (
-    CharacterFinderListJson,
-    character_finder,
-    character_finder_list_fdd_data,
-)
-
-from ..testdata.factories import create_character
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
-from ..utils import (
+from memberaudit.tests.testdata.factories import create_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     json_response_to_python_2,
+)
+from memberaudit.views.character_finder import (
+    CharacterFinderListJson,
+    character_finder,
+    character_finder_list_fdd_data,
 )
 
 MODULE_PATH = "memberaudit.views.character_finder"

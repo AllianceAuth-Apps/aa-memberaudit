@@ -10,14 +10,13 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import SkillSet
-from memberaudit.views import admin
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_fitting_text,
     create_skill_set,
     create_skill_set_group,
 )
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.views import admin
 
 VIEWS_PATH = "memberaudit.views.admin"
 MANAGERS_PATH = "memberaudit.managers.general"

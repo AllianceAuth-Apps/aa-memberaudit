@@ -8,13 +8,12 @@ from django.urls import reverse
 
 from app_utils.testing import create_user_from_evecharacter
 
+from memberaudit.tests.utils import LoadTestDataMixin
 from memberaudit.views.data_export import (
     data_export,
     data_export_run_update,
     download_export_file,
 )
-
-from ..utils import LoadTestDataMixin
 
 MODULE_PATH = "memberaudit.views.data_export"
 

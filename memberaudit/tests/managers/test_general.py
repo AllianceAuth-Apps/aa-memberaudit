@@ -27,18 +27,17 @@ from memberaudit.models import (
     MailEntity,
     SkillSet,
 )
-
-from ..testdata.esi_client_stub import esi_client_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
+from memberaudit.tests.testdata.factories import (
     create_compliance_group,
     create_fitting,
     create_skill,
     create_skill_plan,
     create_skill_set_group,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
     CharacterUpdateTestDataMixin,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,

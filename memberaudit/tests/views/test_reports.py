@@ -17,27 +17,26 @@ from app_utils.testing import (
 )
 
 from memberaudit.models import Character, CharacterSkill, SkillSetGroup
-from memberaudit.views.reports import (
-    corporation_compliance_report_data,
-    reports,
-    skill_sets_report_data,
-    user_compliance_report_data,
-)
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_skill_set,
     create_skill_set_group,
     create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
     json_response_to_dict_2,
+)
+from memberaudit.views.reports import (
+    corporation_compliance_report_data,
+    reports,
+    skill_sets_report_data,
+    user_compliance_report_data,
 )
 
 

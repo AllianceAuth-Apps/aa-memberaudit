@@ -5,9 +5,8 @@ from eveuniverse.models import EveType
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.fittings import Fitting, Module, _BaseFittingItem
-
-from ..testdata.factories import create_fitting
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.factories import create_fitting
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 
 
 class TestBaseFittingItem(NoSocketsTestCase):

@@ -26,6 +26,29 @@ from memberaudit.models import (
     CharacterWalletTransaction,
     Location,
 )
+from memberaudit.tests.testdata.factories import (
+    create_character_mail,
+    create_character_mail_label,
+    create_character_mining_ledger_entry,
+    create_character_planet,
+    create_character_role,
+    create_character_skill,
+    create_character_standing,
+    create_character_title,
+    create_mail_entity_from_eve_entity,
+    create_mailing_list,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
+)
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
+    LoadTestDataMixin,
+    create_memberaudit_character,
+    json_response_to_dict_2,
+    json_response_to_python_2,
+)
 from memberaudit.views.character_viewer_2 import (
     character_jump_clones_data,
     character_mail,
@@ -42,30 +65,6 @@ from memberaudit.views.character_viewer_2 import (
     character_titles_data,
     character_wallet_journal_data,
     character_wallet_transactions_data,
-)
-
-from ..testdata.factories import (
-    create_character_mail,
-    create_character_mail_label,
-    create_character_mining_ledger_entry,
-    create_character_planet,
-    create_character_role,
-    create_character_skill,
-    create_character_standing,
-    create_character_title,
-    create_mail_entity_from_eve_entity,
-    create_mailing_list,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
-)
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
-    LoadTestDataMixin,
-    create_memberaudit_character,
-    json_response_to_dict_2,
-    json_response_to_python_2,
 )
 
 MODULE_PATH = "memberaudit.views.character_viewer_2"
