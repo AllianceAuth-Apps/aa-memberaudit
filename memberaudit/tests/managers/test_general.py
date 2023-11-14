@@ -4,7 +4,6 @@ from unittest.mock import MagicMock, patch
 from bravado.exception import HTTPForbidden, HTTPNotFound, HTTPUnauthorized
 from celery_once import AlreadyQueued
 
-from django.core.cache import cache
 from django.test import TestCase, override_settings
 from django.utils.timezone import now
 from esi.models import Token
@@ -552,7 +551,7 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
+@patch(MANAGERS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 class TestLocationManagerStructures(NoSocketsTestCase):
     @classmethod
     def setUpTestData(cls) -> None:
@@ -570,8 +569,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
 
-    def test_can_create_structure(self, mock_fetch_esi_status, mock_esi):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_can_create_structure(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         obj, created = Location.objects.update_or_create_esi(
@@ -584,9 +582,9 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
 
-    def test_can_handle_incomplete_data_from_esi(self, mock_fetch_esi_status, mock_esi):
+    def test_can_handle_incomplete_data_from_esi(self, mock_esi):
         # given
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+
         mock_esi.client.Universe.get_universe_structures_structure_id.return_value = (
             BravadoOperationStub(
                 {
@@ -608,8 +606,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertIsNone(obj.eve_type)
         self.assertIsNone(obj.owner)
 
-    def test_can_update_structure(self, mock_fetch_esi_status, mock_esi):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_can_update_structure(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         obj, _ = Location.objects.update_or_create_esi(
@@ -630,10 +627,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
 
-    def test_does_not_update_existing_location_during_grace_period(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_does_not_update_existing_location_during_grace_period(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         obj_existing = Location.objects.create(
@@ -650,9 +644,8 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj, obj_existing)
 
     def test_always_update_existing_empty_locations_after_grace_period_1(
-        self, mock_fetch_esi_status, mock_esi
+        self, mock_esi
     ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
 
         Location.objects.create(id=1000000000001)
@@ -660,9 +653,8 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertIsNone(obj.eve_solar_system)
 
     def test_always_update_existing_empty_locations_after_grace_period_2(
-        self, mock_fetch_esi_status, mock_esi
+        self, mock_esi
     ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(minutes=6)
@@ -676,10 +668,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
     @patch(MANAGERS_PATH + ".MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
-    def test_always_update_existing_locations_which_are_stale(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_always_update_existing_locations_which_are_stale(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         mocked_update_at = now() - dt.timedelta(hours=25)
@@ -699,19 +688,13 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertFalse(created)
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
-    def test_propagates_http_error_on_structure_create(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_propagates_http_error_on_structure_create(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         with self.assertRaises(HTTPNotFound):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    def test_always_creates_empty_location_for_invalid_ids(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_always_creates_empty_location_for_invalid_ids(self, mock_esi):
         mock_esi.client = esi_client_stub
 
         obj, created = Location.objects.update_or_create_esi(
@@ -720,10 +703,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertTrue(created)
         self.assertTrue(obj.is_empty)
 
-    def test_propagates_exceptions_on_structure_create(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_propagates_exceptions_on_structure_create(self, mock_esi):
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
             RuntimeError
         )
@@ -731,10 +711,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         with self.assertRaises(RuntimeError):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    def test_can_create_empty_location_on_access_error_1(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_can_create_empty_location_on_access_error_1(self, mock_esi):
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
             HTTPForbidden(response=BravadoResponseStub(403, "Test exception"))
         )
@@ -745,10 +722,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000099)
 
-    def test_can_create_empty_location_on_access_error_2(
-        self, mock_fetch_esi_status, mock_esi
-    ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_can_create_empty_location_on_access_error_2(self, mock_esi):
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
             HTTPUnauthorized(response=BravadoResponseStub(401, "Test exception"))
         )
@@ -760,17 +734,15 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.id, 1000000000099)
 
     def test_does_not_creates_empty_location_on_access_errors_if_requested(
-        self, mock_fetch_esi_status, mock_esi
+        self, mock_esi
     ):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
             RuntimeError
         )
         with self.assertRaises(RuntimeError):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
-    def test_records_esi_error_on_access_error(self, mock_fetch_esi_status, mock_esi):
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+    def test_records_esi_error_on_access_error(self, mock_esi):
         mock_esi.client.Universe.get_universe_structures_structure_id.side_effect = (
             HTTPForbidden(
                 response=BravadoResponseStub(
@@ -788,25 +760,6 @@ class TestLocationManagerStructures(NoSocketsTestCase):
             id=1000000000099, token=self.token
         )
         self.assertTrue(created)
-
-
-@patch(MANAGERS_PATH + ".esi")
-class TestLocationManagerOther(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_eveuniverse()
-        load_entities()
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.astrahus = EveType.objects.get(id=35832)
-        cls.athanor = EveType.objects.get(id=35835)
-        cls.jita_trade_hub = EveType.objects.get(id=52678)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-        cls.character = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character.eve_character.character_ownership.user.token_set.first()
-        )
 
     # stations
 
@@ -930,6 +883,7 @@ class TestLocationManagerPreload(NoSocketsTestCase):
         self.assertSetEqual(result, set())
 
 
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestLocationManagerAsync(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
@@ -947,12 +901,6 @@ class TestLocationManagerAsync(TestCase):
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
 
-    def setUp(self) -> None:
-        cache.clear()
-
-    @override_settings(
-        CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True
-    )
     @patch(MANAGERS_PATH + ".esi")
     @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
     def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
