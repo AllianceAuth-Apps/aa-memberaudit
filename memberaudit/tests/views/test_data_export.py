@@ -3,12 +3,12 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from django.http import Http404
-from django.test import TestCase
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from app_utils.testing import create_user_from_evecharacter
 
-from memberaudit.tests.utils import LoadTestDataMixin
+from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.views.data_export import (
     data_export,
     data_export_run_update,
@@ -18,7 +18,12 @@ from memberaudit.views.data_export import (
 MODULE_PATH = "memberaudit.views.data_export"
 
 
-class TestDataExport(LoadTestDataMixin, TestCase):
+class TestDataExport(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_entities()
+
     def test_should_open_exports_page_with_permission(self):
         # given
         user, _ = create_user_from_evecharacter(
@@ -45,12 +50,12 @@ class TestDataExport(LoadTestDataMixin, TestCase):
 
     @patch(MODULE_PATH + ".data_exporters.default_destination")
     def test_should_return_export_file(self, mock_default_destination):
-        with TemporaryDirectory() as tmpdirname:
+        with TemporaryDirectory() as tmp_dir_name:
             # given
-            contract_item_file = Path(tmpdirname) / "memberaudit_contract-item.zip"
+            contract_item_file = Path(tmp_dir_name) / "memberaudit_contract-item.zip"
             with contract_item_file.open(mode="w") as _:
                 pass
-            mock_default_destination.return_value = Path(tmpdirname)
+            mock_default_destination.return_value = Path(tmp_dir_name)
             user, _ = create_user_from_evecharacter(
                 1122,
                 permissions=["memberaudit.basic_access", "memberaudit.exports_access"],

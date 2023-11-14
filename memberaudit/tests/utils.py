@@ -7,9 +7,8 @@ from typing import Tuple
 from django.contrib.auth.models import Permission, User
 from django.db.models import QuerySet
 from django.http import JsonResponse
-from django.test import RequestFactory, TestCase
+from django.test import TestCase
 from esi.models import Token
-from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
@@ -17,41 +16,11 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.allianceauth import get_redis_client
 from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
-from memberaudit.models import Character, Location
+from memberaudit.models import Character
 
 from .testdata.factories import create_character
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
 
 logger = logging.getLogger(__name__)
-
-
-class LoadTestDataMixin:
-    """Mixin for a TestCase class defining a complete character and setting up fixtures."""
-
-    @classmethod
-    def setUpTestData(cls) -> None:
-        super().setUpTestData()
-        cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-        cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.jita_trade_hub = EveType.objects.get(id=52678)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
-        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
-        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
-        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
-        cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
-        cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.user
 
 
 def create_user_from_evecharacter_with_access(

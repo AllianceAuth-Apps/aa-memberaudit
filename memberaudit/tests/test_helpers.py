@@ -12,8 +12,9 @@ from memberaudit.helpers import (
 )
 
 from .testdata.factories import create_character_wallet_journal_entry
+from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
-from .utils import create_memberaudit_character, load_entities
+from .utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.helpers"
 

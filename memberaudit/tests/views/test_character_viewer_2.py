@@ -45,8 +45,8 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
-    LoadTestDataMixin,
     create_memberaudit_character,
     json_response_to_dict_2,
     json_response_to_python_2,
@@ -72,7 +72,18 @@ from memberaudit.views.character_viewer_2 import (
 MODULE_PATH = "memberaudit.views.character_viewer_2"
 
 
-class TestJumpClones(LoadTestDataMixin, TestCase):
+class TestJumpClones(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_character_jump_clones_data(self):
         clone_1 = jump_clone = create_character_jump_clone(
             character=self.character, location=self.jita_44
@@ -361,7 +372,19 @@ class TestMailData(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class TestSkillSetsData(LoadTestDataMixin, TestCase):
+class TestSkillSetsData(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+
     def test_skill_sets_data(self):
         self.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.view_skill_sets", self.user
@@ -585,7 +608,19 @@ class TestSkillSetsDetails(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
-class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
+class TestSkillAndSkillqueue(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_character_skills_data(self):
         create_character_skill(
             character=self.character,
@@ -668,7 +703,14 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         self.assertFalse(row["is_active"])
 
 
-class TestStandings(LoadTestDataMixin, TestCase):
+class TestStandings(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_should_produce_character_standings_data(self):
         # given
         npc_corp = EveEntity.objects.get(id=2901)
@@ -730,7 +772,16 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         self.assertEqual(data, [])
 
 
-class TestWallet(LoadTestDataMixin, TestCase):
+class TestWallet(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_character_wallet_journal_data(self):
         # given
         create_character_wallet_journal_entry(
