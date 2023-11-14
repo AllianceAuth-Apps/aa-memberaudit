@@ -770,8 +770,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self,
             )
 
-    def generate_asset_from_current_ship_and_location(self) -> dict:
-        """Return asset item record generated from current ship and location."""
+    def generate_asset_from_current_ship_and_location(self) -> Optional[dict]:
+        """Return generated asset item record from current ship and location
+        or None it can not be generated.
+        """
         from .character_sections_2 import CharacterLocation
         from .character_sections_3 import CharacterShip
         from .general import Location
@@ -781,7 +783,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 character_id=self.id
             )
         except CharacterShip.DoesNotExist:
-            return
+            return None
 
         try:
             character_location: CharacterLocation = (
@@ -792,12 +794,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except CharacterLocation.DoesNotExist:
             location, _ = Location.objects.get_or_create_esi(
                 id=Location.LOCATION_UNKNOWN_ID, token=None
-            )  # show current in Polaris as workaround
+            )
         else:
             location = character_location.location
 
         if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
-            return  # we don't add capsules
+            return None  # we don't add capsules
 
         if location.is_station:
             character_location_type = "station"
