@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
+from eveuniverse.models import EveEntity, EveSolarSystem
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import NoSocketsTestCase
@@ -18,6 +19,7 @@ from memberaudit.models import (
     CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
+    Location,
     MailEntity,
 )
 from memberaudit.tests.testdata.constants import EveTypeId
@@ -33,13 +35,23 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import LoadTestDataMixin2, create_memberaudit_character
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterCorporationHistoryManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -113,7 +125,17 @@ class TestCharacterCorporationHistoryManager(LoadTestDataMixin2, NoSocketsTestCa
 
 @patch(MODULE_PATH + ".eve_xml_to_html")
 @patch(MODULE_PATH + ".esi")
-class TestCharacterDetailManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterDetailManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi, mock_eve_xml_to_html):
         # given
         mock_esi.client = esi_client_stub
@@ -416,7 +438,15 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterImplantManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterImplantManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+
     def test_update_implants_1(self, mock_esi):
         """can create implants from scratch"""
         mock_esi.client = esi_client_stub
@@ -460,7 +490,18 @@ class TestCharacterImplantManager(LoadTestDataMixin2, NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterJumpClonesManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterJumpClonesManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_can_update_with_implants(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -517,7 +558,20 @@ class TestCharacterJumpClonesManager(LoadTestDataMixin2, NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLocationManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterLocationManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.amamake = EveSolarSystem.objects.get(id=30002537)
+        cls.jita = EveSolarSystem.objects.get(id=30000142)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_should_create_location_from_scratch_for_station(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -563,7 +617,17 @@ class TestCharacterLocationManager(LoadTestDataMixin2, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLoyaltyManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterLoyaltyManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -636,7 +700,18 @@ class TestCharacterLoyaltyManager(LoadTestDataMixin2, NoSocketsTestCase):
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterMailManager(LoadTestDataMixin2, NoSocketsTestCase):
+class TestCharacterMailManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_mail_from_scratch(self, mock_esi):
         # given
@@ -843,7 +918,13 @@ class TestCharacterMailManager(LoadTestDataMixin2, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi", esi_stub)
-class TestCharacterMailLabelManager(LoadTestDataMixin2, TestCase):
+class TestCharacterMailLabelManager(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_normal(self):
         label_1 = create_character_mail_label(character=self.character_1001, label_id=1)
         label_2 = create_character_mail_label(character=self.character_1001, label_id=2)
