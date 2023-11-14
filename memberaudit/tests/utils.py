@@ -27,6 +27,31 @@ from .testdata.load_locations import load_locations
 logger = logging.getLogger(__name__)
 
 
+class LoadTestDataMixin:
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+        cls.amamake = EveSolarSystem.objects.get(id=30002537)
+        cls.jita = EveSolarSystem.objects.get(id=30000142)
+        cls.jita_trade_hub = EveType.objects.get(id=52678)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+        cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
+        cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
+
+
 class CharacterUpdateTestDataMixin:
     """Mixin for TestCase class defining a complete character and setting up fixtures."""
 
@@ -87,29 +112,6 @@ def add_memberaudit_character_to_user(
 
 def scope_names_set(token: Token) -> set:
     return set(token.scopes.values_list("name", flat=True))
-
-
-class LoadTestDataMixin:
-    @classmethod
-    def setUpTestData(cls) -> None:
-        super().setUpTestData()
-        cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.user
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.jita_trade_hub = EveType.objects.get(id=52678)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
-        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
-        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
-        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
-        cls.high_grade_snake_alpha_type = EveType.objects.get(id=19540)
-        cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
 
 
 def json_response_to_python_2(response: JsonResponse, data_key="data") -> object:

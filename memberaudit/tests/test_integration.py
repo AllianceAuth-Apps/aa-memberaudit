@@ -34,7 +34,7 @@ from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
 from .utils import (
-    CharacterUpdateTestDataMixin,
+    LoadTestDataMixin,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -473,7 +473,7 @@ class TestTasksIntegration(TestCase):
 
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
-class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailUpdate(LoadTestDataMixin, NoSocketsTestCase):
     @staticmethod
     def stub_eve_entity_get_or_create_esi(id, *args, **kwargs):
         """will return EveEntity if it exists else None, False"""
@@ -497,7 +497,7 @@ class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         mock_eve_entity.side_effect = self.stub_eve_entity_get_or_create_esi
         sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
         mail = create_character_mail(
-            character=self.character_1001,
+            character=self.character,
             mail_id=1,
             sender=sender,
             subject="Mail 1",
@@ -509,22 +509,22 @@ class TestCharacterMailUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         recipient_2 = create_mailing_list()
         mail.recipients.set([recipient_1, recipient_2])
 
-        self.character_1001.update_mailing_lists()
-        self.character_1001.update_mail_labels()
+        self.character.update_mailing_lists()
+        self.character.update_mail_labels()
 
-        label = self.character_1001.mail_labels.get(label_id=17)
+        label = self.character.mail_labels.get(label_id=17)
         mail.labels.add(label)  # to be updated
 
         # when
-        self.character_1001.update_mail_headers()
+        self.character.update_mail_headers()
 
         # then
         self.assertSetEqual(
-            set(self.character_1001.mails.values_list("mail_id", flat=True)),
+            set(self.character.mails.values_list("mail_id", flat=True)),
             {1, 2, 3},
         )
 
-        obj = self.character_1001.mails.get(mail_id=1)
+        obj = self.character.mails.get(mail_id=1)
         self.assertEqual(obj.sender_id, 1002)
         self.assertTrue(obj.is_read)
         self.assertEqual(obj.subject, "Mail 1")

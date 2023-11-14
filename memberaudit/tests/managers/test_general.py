@@ -39,7 +39,7 @@ from memberaudit.tests.testdata.factories import (
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.utils import (
-    CharacterUpdateTestDataMixin,
+    LoadTestDataMixin,
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -1004,18 +1004,18 @@ class TestLocationManagerAsync(TestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailingLists(LoadTestDataMixin, NoSocketsTestCase):
     def test_update_mailing_lists_1(self, mock_esi):
         """can create new mailing lists from scratch"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
 
         self.assertSetEqual(
             set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
         )
         self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            set(self.character.mailing_lists.values_list("id", flat=True)),
             {9001, 9002},
         )
 
@@ -1032,13 +1032,13 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
             id=5, category=MailEntity.Category.MAILING_LIST, name="Obsolete"
         )
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
 
         self.assertSetEqual(
             set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002, 5}
         )
         self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            set(self.character.mailing_lists.values_list("id", flat=True)),
             {9001, 9002},
         )
 
@@ -1049,13 +1049,13 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Update me"
         )
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
 
         self.assertSetEqual(
             set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
         )
         self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)),
+            set(self.character.mailing_lists.values_list("id", flat=True)),
             {9001, 9002},
         )
         obj = MailEntity.objects.get(id=9001)
@@ -1065,29 +1065,29 @@ class TestCharacterMailingLists(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         """when data from ESI has not changed, then skip update"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
         obj = MailEntity.objects.get(id=9001)
         obj.name = "Extravaganza"
         obj.save()
-        self.character_1001.mailing_lists.clear()
+        self.character.mailing_lists.clear()
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
         obj = MailEntity.objects.get(id=9001)
         self.assertEqual(obj.name, "Extravaganza")
         self.assertSetEqual(
-            set(self.character_1001.mailing_lists.values_list("id", flat=True)), set()
+            set(self.character.mailing_lists.values_list("id", flat=True)), set()
         )
 
     def test_update_mailing_lists_5(self, mock_esi):
         """when data from ESI has not changed and update is forced, then do update"""
         mock_esi.client = esi_client_stub
 
-        self.character_1001.update_mailing_lists()
+        self.character.update_mailing_lists()
         obj = MailEntity.objects.get(id=9001)
         obj.name = "Extravaganza"
         obj.save()
 
-        self.character_1001.update_mailing_lists(force_update=True)
+        self.character.update_mailing_lists(force_update=True)
         obj = MailEntity.objects.get(id=9001)
         self.assertEqual(obj.name, "Dummy 1")
 
