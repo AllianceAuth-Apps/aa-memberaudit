@@ -27,7 +27,9 @@ from .testdata.load_locations import load_locations
 logger = logging.getLogger(__name__)
 
 
-class LoadTestDataMixin:
+class LoadTestDataBaseMixin:
+    """Mixin for a TestCase class defining a complete character and setting up fixtures."""
+
     @classmethod
     def setUpTestData(cls) -> None:
         super().setUpTestData()
@@ -35,8 +37,6 @@ class LoadTestDataMixin:
         load_eveuniverse()
         load_entities()
         load_locations()
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.user
         cls.corporation_2001 = EveEntity.objects.get(id=2001)
         cls.corporation_2002 = EveEntity.objects.get(id=2002)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
@@ -52,24 +52,21 @@ class LoadTestDataMixin:
         cls.high_grade_snake_bravo_type = EveType.objects.get(id=19551)
 
 
-class CharacterUpdateTestDataMixin:
-    """Mixin for TestCase class defining a complete character and setting up fixtures."""
-
+class LoadTestDataMixin(LoadTestDataBaseMixin):
     @classmethod
     def setUpTestData(cls) -> None:
         super().setUpTestData()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+
+
+class LoadTestDataMixin2(LoadTestDataBaseMixin):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
         cls.token = cls.character_1001.user.token_set.first()
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
 
 
 def create_user_from_evecharacter_with_access(

@@ -33,18 +33,13 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import (
-    CharacterUpdateTestDataMixin,
-    create_memberaudit_character,
-)
+from memberaudit.tests.utils import LoadTestDataMixin2, create_memberaudit_character
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterCorporationHistoryManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterCorporationHistoryManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -118,7 +113,7 @@ class TestCharacterCorporationHistoryManager(
 
 @patch(MODULE_PATH + ".eve_xml_to_html")
 @patch(MODULE_PATH + ".esi")
-class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterDetailManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi, mock_eve_xml_to_html):
         # given
         mock_esi.client = esi_client_stub
@@ -421,7 +416,7 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterImplantManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterImplantManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_update_implants_1(self, mock_esi):
         """can create implants from scratch"""
         mock_esi.client = esi_client_stub
@@ -465,7 +460,7 @@ class TestCharacterImplantManager(CharacterUpdateTestDataMixin, NoSocketsTestCas
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterJumpClonesManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_update_with_implants(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -522,7 +517,7 @@ class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTest
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterLocationManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_should_create_location_from_scratch_for_station(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -568,7 +563,7 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterLoyaltyManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -641,7 +636,7 @@ class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCas
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailManager(LoadTestDataMixin2, NoSocketsTestCase):
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_mail_from_scratch(self, mock_esi):
         # given
@@ -848,7 +843,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi", esi_stub)
-class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
+class TestCharacterMailLabelManager(LoadTestDataMixin2, TestCase):
     def test_normal(self):
         label_1 = create_character_mail_label(character=self.character_1001, label_id=1)
         label_2 = create_character_mail_label(character=self.character_1001, label_id=2)

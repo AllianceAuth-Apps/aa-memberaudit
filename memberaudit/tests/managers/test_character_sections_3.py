@@ -46,10 +46,7 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import (
-    CharacterUpdateTestDataMixin,
-    create_memberaudit_character,
-)
+from memberaudit.tests.utils import LoadTestDataMixin2, create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models.characters"
 MANAGERS_PATH = "memberaudit.managers.character_sections_3"
@@ -127,7 +124,7 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterOnlineStatusManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_update_online_status(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -292,7 +289,7 @@ class TestCharacterRolesManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterShipManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_should_update_all_fields(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -340,7 +337,7 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterSkillManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_new_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -432,7 +429,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterSkillQueueManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -643,7 +640,7 @@ class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterStandingManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -783,9 +780,7 @@ class TestCharacterTitleManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletBalanceManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletBalanceManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_update_wallet_balance(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -797,9 +792,7 @@ class TestCharacterWalletBalanceManager(
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletJournalManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletJournalManager(LoadTestDataMixin2, NoSocketsTestCase):
     @patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_1(self, mock_esi):
         """can create wallet journal entry from scratch"""
@@ -939,9 +932,7 @@ class TestCharacterWalletJournalManager(
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletTransactionManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletTransactionManager(LoadTestDataMixin2, NoSocketsTestCase):
     def test_should_add_wallet_transactions_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
