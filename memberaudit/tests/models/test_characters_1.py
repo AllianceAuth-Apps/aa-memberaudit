@@ -265,6 +265,284 @@ class TestCharacterFetchToken(TestCase):
         self.assertFalse(mock_notify_danger.called)
 
 
+class TestCharacterStatus(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_none_when_not_all_sections_exist(self):
+        # when/then
+        self.assertIsNone(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_false_when_a_section_has_errors(self):
+        # given
+        create_character_update_status(character=self.character, is_success=False)
+        # when/then
+        self.assertFalse(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_ignore_error_in_disabled_sections(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+        # when/then
+        self.assertIsNone(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_true_when_all_sections_exist_and_have_no_error(self):
+        # given
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character, is_success=True, section=section.value
+            )
+        # when/then
+        self.assertTrue(self.character.is_update_status_ok())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_true_when_all_enabled_sections_exist_and_have_no_error(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(
+                character=self.character, is_success=True, section=section.value
+            )
+        create_character_update_status(
+            character=self.character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
+        )
+
+        # when/then
+        self.assertTrue(self.character.is_update_status_ok())
+
+    def test_should_log_success_for_section(self):
+        # given
+        section = Character.UpdateSection.LOCATION
+        # when
+        self.character.update_section_log_success(section=section)
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.has_token_error)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
+
+
+class TestCharacterUpdateSection(NoSocketsTestCase):
+    def test_method_name(self):
+        # given
+        section = Character.UpdateSection.CORPORATION_HISTORY
+        # when/then
+        self.assertEqual(section.method_name, "update_corporation_history")
+
+
+class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_all_sections(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection)
+        self.assertSetEqual(result, expected)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_all_sections_except_roles(self):
+        # when
+        result = Character.UpdateSection.enabled_sections()
+        # then
+        expected = set(Character.UpdateSection) - {Character.UpdateSection.ROLES}
+        self.assertSetEqual(result, expected)
+
+
+class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.section = Character.UpdateSection.ASSETS
+        cls.content = {"alpha": 1, "bravo": 2}
+
+    def test_reset_1(self):
+        """when section exists, reset it"""
+        create_character_update_status(
+            character=self.character_1001,
+            section=self.section,
+            is_success=False,
+            last_error_message="abc",
+        )
+
+        section = self.character_1001.reset_update_section(self.section)
+
+        self.assertIsNone(section.is_success)
+        self.assertEqual(section.last_error_message, "")
+
+    def test_reset_2(self):
+        """when section does not exist, then create it"""
+        section = self.character_1001.reset_update_section(self.section)
+
+        self.assertIsNone(section.is_success)
+        self.assertEqual(section.last_error_message, "")
+
+    def test_has_changed_1a(self):
+        """When section exists, then return result from has_changed"""
+        section = create_character_update_status(
+            character=self.character_1001,
+            section=self.section,
+            is_success=True,
+            content_hash_1=hashlib.md5(
+                json.dumps(self.content).encode("utf-8")
+            ).hexdigest(),
+        )
+        self.assertEqual(
+            self.character_1001.has_section_changed(
+                section=self.section, content=self.content
+            ),
+            section.has_changed(self.content),
+        )
+
+    def test_has_changed_1b(self):
+        """When section exists, then return result from has_changed"""
+        section = create_character_update_status(
+            character=self.character_1001,
+            section=self.section,
+            is_success=True,
+            content_hash_2=hashlib.md5(
+                json.dumps(self.content).encode("utf-8")
+            ).hexdigest(),
+        )
+        self.assertEqual(
+            self.character_1001.has_section_changed(
+                section=self.section, content=self.content, hash_num=2
+            ),
+            section.has_changed(self.content, hash_num=2),
+        )
+
+    def test_has_changed_1c(self):
+        """When section exists, then return result from has_changed"""
+        section = create_character_update_status(
+            character=self.character_1001,
+            section=self.section,
+            is_success=True,
+            content_hash_3=hashlib.md5(
+                json.dumps(self.content).encode("utf-8")
+            ).hexdigest(),
+        )
+        self.assertEqual(
+            self.character_1001.has_section_changed(
+                section=self.section, content=self.content, hash_num=3
+            ),
+            section.has_changed(self.content, hash_num=3),
+        )
+
+    def test_has_changed_2(self):
+        """When section does not exist, then return True"""
+        self.assertTrue(
+            self.character_1001.has_section_changed(
+                section=self.section, content=self.content
+            )
+        )
+
+    def test_should_return_existing_status_for_section(self):
+        # given
+        status = create_character_update_status(
+            character=self.character_1001, section=self.section
+        )
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertEqual(result, status)
+
+    def test_should_return_none_when_status_does_not_exist_for_section(self):
+        # when
+        result = self.character_1001.update_status_for_section(self.section)
+        # then
+        self.assertIsNone(result)
+
+    def test_should_raise_error_when_called_with_invalid_section(self):
+        # when/then
+        with self.assertRaises(ValueError):
+            self.character_1001.update_status_for_section("invalid")
+
+
+@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
+class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_entities()
+        cls.section = Character.UpdateSection.ASSETS
+        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+
+    def setUp(self) -> None:
+        self.character = create_character_from_user(self.user)
+
+    def test_should_report_false_when_section_not_stale(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=now() - dt.timedelta(seconds=30),
+            finished_at=now(),
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_true_when_section_has_error(self):
+        # given
+        create_character_update_status(
+            character=self.character, section=self.section, is_success=False
+        )
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_true_when_section_is_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=started_at,
+        )
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_return_true_when_section_does_not_exist(self):
+        # when/then
+        self.assertTrue(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            started_at=started_at,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
+        # given
+        create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+
 class TestCharacterUpdateSkillSets(NoSocketsTestCase):
     @classmethod
     def setUpTestData(cls) -> None:
@@ -455,391 +733,3 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
             {obj.pk for obj in first.failed_required_skills.all()},
             {skill_1.pk, skill_2.pk},
         )
-
-
-class TestCharacterStatus(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_none_when_not_all_sections_exist(self):
-        # when/then
-        self.assertIsNone(self.character.is_update_status_ok())
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_false_when_a_section_has_errors(self):
-        # given
-        create_character_update_status(character=self.character, is_success=False)
-        # when/then
-        self.assertFalse(self.character.is_update_status_ok())
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    def test_should_ignore_error_in_disabled_sections(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            is_success=False,
-            section=Character.UpdateSection.ROLES,
-        )
-        # when/then
-        self.assertIsNone(self.character.is_update_status_ok())
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_true_when_all_sections_exist_and_have_no_error(self):
-        # given
-        for section in Character.UpdateSection:
-            create_character_update_status(
-                character=self.character, is_success=True, section=section.value
-            )
-        # when/then
-        self.assertTrue(self.character.is_update_status_ok())
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    def test_should_return_true_when_all_enabled_sections_exist_and_have_no_error(self):
-        # given
-        for section in Character.UpdateSection.enabled_sections():
-            create_character_update_status(
-                character=self.character, is_success=True, section=section.value
-            )
-        create_character_update_status(
-            character=self.character,
-            is_success=False,
-            section=Character.UpdateSection.ROLES,
-        )
-
-        # when/then
-        self.assertTrue(self.character.is_update_status_ok())
-
-    def test_should_log_success_for_section(self):
-        # given
-        section = Character.UpdateSection.LOCATION
-        # when
-        self.character.update_section_log_success(section=section)
-        # then
-        status: CharacterUpdateStatus = self.character.update_status_set.get(
-            section=section
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.has_token_error)
-        self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
-
-
-class TestCharacterUpdateSection(NoSocketsTestCase):
-    def test_method_name(self):
-        # given
-        section = Character.UpdateSection.CORPORATION_HISTORY
-        # when/then
-        self.assertEqual(section.method_name, "update_corporation_history")
-
-
-class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_all_sections(self):
-        # when
-        result = Character.UpdateSection.enabled_sections()
-        # then
-        expected = set(Character.UpdateSection)
-        self.assertSetEqual(result, expected)
-
-    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    def test_should_return_all_sections_except_roles(self):
-        # when
-        result = Character.UpdateSection.enabled_sections()
-        # then
-        expected = set(Character.UpdateSection) - {Character.UpdateSection.ROLES}
-        self.assertSetEqual(result, expected)
-
-
-class TestCharacterUpdateStatus(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.content = {"alpha": 1, "bravo": 2}
-
-    def test_str(self):
-        # given
-        status = create_character_update_status(
-            character=self.character_1001, section=Character.UpdateSection.ASSETS
-        )
-        # when/then
-        self.assertEqual(str(status), f"{self.character_1001}-assets")
-
-    def test_reset_1(self):
-        # given
-        status = create_character_update_status(
-            character=self.character_1001,
-            is_success=True,
-            last_error_message="abc",
-            root_task_id="a",
-            parent_task_id="b",
-        )
-        # when
-        status.reset()
-        # then
-        status.refresh_from_db()
-        self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
-        self.assertEqual(status.root_task_id, "")
-        self.assertEqual(status.parent_task_id, "")
-
-    def test_reset_2(self):
-        # given
-        status = create_character_update_status(
-            character=self.character_1001,
-            is_success=True,
-            last_error_message="abc",
-            root_task_id="a",
-            parent_task_id="b",
-        )
-        # when
-        status.reset(root_task_id="1", parent_task_id="2")
-        # then
-        status.refresh_from_db()
-        self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
-        self.assertEqual(status.root_task_id, "1")
-        self.assertEqual(status.parent_task_id, "2")
-
-    def test_has_changed_1(self):
-        """When hash is different, then return True"""
-        status = create_character_update_status(
-            character=self.character_1001, content_hash_1="abc"
-        )
-        self.assertTrue(status.has_changed(self.content))
-
-    def test_has_changed_2(self):
-        """When no hash exists, then return True"""
-        status = create_character_update_status(
-            character=self.character_1001, content_hash_1=""
-        )
-        self.assertTrue(status.has_changed(self.content))
-
-    def test_has_changed_3a(self):
-        """When hash is equal, then return False"""
-        status = create_character_update_status(
-            character=self.character_1001,
-            content_hash_1=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertFalse(status.has_changed(self.content))
-
-    def test_has_changed_3b(self):
-        """When hash is equal, then return False"""
-        status = create_character_update_status(
-            character=self.character_1001,
-            content_hash_2=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertFalse(status.has_changed(content=self.content, hash_num=2))
-
-    def test_has_changed_3c(self):
-        """When hash is equal, then return False"""
-        status = create_character_update_status(
-            character=self.character_1001,
-            content_hash_3=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertFalse(status.has_changed(content=self.content, hash_num=3))
-
-    def test_is_updating_1(self):
-        """When started_at exist and finished_at does not exist, return True"""
-        status = create_character_update_status(
-            character=self.character_1001, started_at=now(), finished_at=None
-        )
-        self.assertTrue(status.is_updating)
-
-    def test_is_updating_2(self):
-        """When started_at and finished_at does not exist, return False"""
-        status = create_character_update_status(
-            character=self.character_1001, started_at=None, finished_at=None
-        )
-        self.assertFalse(status.is_updating)
-
-
-class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.section = Character.UpdateSection.ASSETS
-        cls.content = {"alpha": 1, "bravo": 2}
-
-    def test_reset_1(self):
-        """when section exists, reset it"""
-        create_character_update_status(
-            character=self.character_1001,
-            section=self.section,
-            is_success=False,
-            last_error_message="abc",
-        )
-
-        section = self.character_1001.reset_update_section(self.section)
-
-        self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
-
-    def test_reset_2(self):
-        """when section does not exist, then create it"""
-        section = self.character_1001.reset_update_section(self.section)
-
-        self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
-
-    def test_has_changed_1a(self):
-        """When section exists, then return result from has_changed"""
-        section = create_character_update_status(
-            character=self.character_1001,
-            section=self.section,
-            is_success=True,
-            content_hash_1=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertEqual(
-            self.character_1001.has_section_changed(
-                section=self.section, content=self.content
-            ),
-            section.has_changed(self.content),
-        )
-
-    def test_has_changed_1b(self):
-        """When section exists, then return result from has_changed"""
-        section = create_character_update_status(
-            character=self.character_1001,
-            section=self.section,
-            is_success=True,
-            content_hash_2=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertEqual(
-            self.character_1001.has_section_changed(
-                section=self.section, content=self.content, hash_num=2
-            ),
-            section.has_changed(self.content, hash_num=2),
-        )
-
-    def test_has_changed_1c(self):
-        """When section exists, then return result from has_changed"""
-        section = create_character_update_status(
-            character=self.character_1001,
-            section=self.section,
-            is_success=True,
-            content_hash_3=hashlib.md5(
-                json.dumps(self.content).encode("utf-8")
-            ).hexdigest(),
-        )
-        self.assertEqual(
-            self.character_1001.has_section_changed(
-                section=self.section, content=self.content, hash_num=3
-            ),
-            section.has_changed(self.content, hash_num=3),
-        )
-
-    def test_has_changed_2(self):
-        """When section does not exist, then return True"""
-        self.assertTrue(
-            self.character_1001.has_section_changed(
-                section=self.section, content=self.content
-            )
-        )
-
-    def test_should_return_existing_status_for_section(self):
-        # given
-        status = create_character_update_status(
-            character=self.character_1001, section=self.section
-        )
-        # when
-        result = self.character_1001.update_status_for_section(self.section)
-        # then
-        self.assertEqual(result, status)
-
-    def test_should_return_none_when_status_does_not_exist_for_section(self):
-        # when
-        result = self.character_1001.update_status_for_section(self.section)
-        # then
-        self.assertIsNone(result)
-
-    def test_should_raise_error_when_called_with_invalid_section(self):
-        # when/then
-        with self.assertRaises(ValueError):
-            self.character_1001.update_status_for_section("invalid")
-
-
-@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
-class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.section = Character.UpdateSection.ASSETS
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def setUp(self) -> None:
-        self.character = create_character_from_user(self.user)
-
-    def test_should_report_false_when_section_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_has_error(self):
-        # given
-        create_character_update_status(
-            character=self.character, section=self.section, is_success=False
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_is_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=started_at,
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_return_true_when_section_does_not_exist(self):
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            started_at=started_at,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
