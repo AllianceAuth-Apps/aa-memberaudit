@@ -22,7 +22,7 @@ from app_utils.testing import (
 from memberaudit import tasks
 from memberaudit.models import Character, CharacterUpdateStatus, Location
 
-from .testdata.constants import EveSolarSystemId, EveTypeId
+from .testdata.constants import EveTypeId
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
@@ -241,7 +241,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
         self.assertEqual(obj["name"], "Joy Ride")
         self.assertEqual(obj["item_id"], 1_100_000_000_999)
         self.assertEqual(obj["is_singleton"], True)
-        self.assertEqual(obj["location_id"], EveSolarSystemId.POLARIS)
+        self.assertEqual(obj["location_id"], Location.LOCATION_UNKNOWN_ID)
         self.assertEqual(obj["location_flag"], "Hangar")
         self.assertEqual(obj["location_type"], "solar_system")
         self.assertEqual(obj["quantity"], 1)

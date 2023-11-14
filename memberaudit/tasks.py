@@ -31,7 +31,6 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
     MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
-from memberaudit.constants import EveGroupId, EveSolarSystemId
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
@@ -39,9 +38,7 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,
-    CharacterLocation,
     CharacterMail,
-    CharacterShip,
     CharacterUpdateStatus,
     ComplianceGroupDesignation,
     General,
@@ -350,58 +347,13 @@ def assets_build_list_from_esi(
         force_update=force_update,
     )
     if assets_data is not None:
-        _add_undocked_ship_to_asset_list(character, assets_data)
+        ship_asset_record = character.generate_asset_from_current_ship_and_location()
+        if ship_asset_record:
+            ship_item_id = ship_asset_record["item_id"]
+            if ship_item_id not in assets_data:
+                assets_data[ship_item_id] = ship_asset_record
+
     return assets_data
-
-
-def _add_undocked_ship_to_asset_list(character: Character, assets_data: dict):
-    try:
-        ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(
-            character_id=character.id
-        )
-    except CharacterShip.DoesNotExist:
-        return
-
-    try:
-        character_location: CharacterLocation = (
-            CharacterLocation.objects.select_related(
-                "location", "location__eve_solar_system", "location__eve_type"
-            ).get(character_id=character.id)
-        )
-    except CharacterLocation.DoesNotExist:
-        location, _ = Location.objects.get_or_create_esi(
-            id=EveSolarSystemId.POLARIS, token=None
-        )  # show current in Polaris as workaround
-    else:
-        location = character_location.location
-
-    if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
-        return  # we don't add capsules
-
-    if location.is_station:
-        character_location_type = "station"
-    elif location.is_solar_system:
-        character_location_type = "solar_system"
-    elif location.is_structure:
-        character_location_type = "item"
-    else:
-        character_location_type = "other"
-
-    if ship.item_id in assets_data.keys():
-        return
-
-    leaf_obj = {
-        "is_blueprint_copy": False,
-        "is_singleton": True,
-        "item_id": ship.item_id,
-        "location_flag": "Hangar",
-        "location_id": location.id,
-        "location_type": character_location_type,
-        "name": ship.name,
-        "quantity": 1,
-        "type_id": ship.eve_type.id,
-    }
-    assets_data[ship.item_id] = leaf_obj
 
 
 @shared_task(**TASK_DEFAULTS)

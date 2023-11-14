@@ -35,6 +35,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
 from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.characters import (
@@ -768,6 +769,57 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 "because it's owner no longer has the permission to share characters.",
                 self,
             )
+
+    def generate_asset_from_current_ship_and_location(self) -> dict:
+        """Return asset item record generated from current ship and location."""
+        from .character_sections_2 import CharacterLocation
+        from .character_sections_3 import CharacterShip
+        from .general import Location
+
+        try:
+            ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(
+                character_id=self.id
+            )
+        except CharacterShip.DoesNotExist:
+            return
+
+        try:
+            character_location: CharacterLocation = (
+                CharacterLocation.objects.select_related(
+                    "location", "location__eve_solar_system", "location__eve_type"
+                ).get(character_id=self.id)
+            )
+        except CharacterLocation.DoesNotExist:
+            location, _ = Location.objects.get_or_create_esi(
+                id=Location.LOCATION_UNKNOWN_ID, token=None
+            )  # show current in Polaris as workaround
+        else:
+            location = character_location.location
+
+        if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
+            return  # we don't add capsules
+
+        if location.is_station:
+            character_location_type = "station"
+        elif location.is_solar_system or location.is_unknown_location:
+            character_location_type = "solar_system"
+        elif location.is_structure:
+            character_location_type = "item"
+        else:
+            character_location_type = "other"
+
+        ship_asset_record = {
+            "is_blueprint_copy": False,
+            "is_singleton": True,
+            "item_id": ship.item_id,
+            "location_flag": "Hangar",
+            "location_id": location.id,
+            "location_type": character_location_type,
+            "name": ship.name,
+            "quantity": 1,
+            "type_id": ship.eve_type.id,
+        }
+        return ship_asset_record
 
     def clear_cache(self) -> None:
         """Remove this character from cache."""

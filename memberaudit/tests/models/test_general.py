@@ -250,7 +250,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertTrue(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
-        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertFalse(location.is_empty)
 
     def test_checks_with_station(self):
@@ -258,7 +258,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_solar_system)
         self.assertTrue(location.is_station)
         self.assertFalse(location.is_structure)
-        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertFalse(location.is_empty)
 
     def test_checks_with_structure(self):
@@ -266,7 +266,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertTrue(location.is_structure)
-        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertFalse(location.is_empty)
 
     def test_checks_with_asset_safety(self):
@@ -274,7 +274,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
-        self.assertTrue(location.is_asset_safety)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertFalse(location.is_empty)
 
     def test_checks_with_empty_location(self):
@@ -282,7 +282,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
-        self.assertFalse(location.is_asset_safety)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertTrue(location.is_empty)
 
     def test_solar_system_url(self):

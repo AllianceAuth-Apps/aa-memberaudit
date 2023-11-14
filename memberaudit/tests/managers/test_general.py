@@ -26,6 +26,7 @@ from memberaudit.models import (
     MailEntity,
     SkillSet,
 )
+from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     create_compliance_group,
@@ -552,7 +553,8 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
 
 @patch(MANAGERS_PATH + ".esi")
 @patch(MANAGERS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-class TestLocationManagerStructures(NoSocketsTestCase):
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestLocationManager(NoSocketsTestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         load_eveuniverse()
@@ -816,7 +818,7 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.id, 30002537)
         self.assertEqual(obj.name, "Amamake")
         self.assertEqual(obj.eve_solar_system, self.amamake)
-        self.assertEqual(obj.eve_type, EveType.objects.get(id=5))
+        self.assertEqual(obj.eve_type, EveType.objects.get(id=EveTypeId.SOLAR_SYSTEM))
         self.assertIsNone(obj.owner)
 
     # Asset Safety
@@ -832,7 +834,24 @@ class TestLocationManagerStructures(NoSocketsTestCase):
         self.assertEqual(obj.name, "ASSET SAFETY")
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.owner)
-        self.assertEqual(obj.eve_type, EveType.objects.get(id=60))
+        self.assertEqual(
+            obj.eve_type, EveType.objects.get(id=EveTypeId.ASSET_SAFETY_WRAP)
+        )
+
+    # Unknown placeholder
+
+    def test_can_create_location_unknown(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        # when
+        obj, created = Location.objects.update_or_create_esi(id=888, token=self.token)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, 888)
+        self.assertEqual(obj.name, "Location unknown")
+        self.assertIsNone(obj.eve_solar_system)
+        self.assertIsNone(obj.owner)
+        self.assertEqual(obj.eve_type_id, EveTypeId.SOLAR_SYSTEM)
 
 
 @patch(MANAGERS_PATH + ".esi")

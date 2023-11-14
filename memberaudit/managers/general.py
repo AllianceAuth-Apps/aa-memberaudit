@@ -183,6 +183,13 @@ class LocationManager(models.Manager):
         self, id: int, token: Token, update_async: bool
     ) -> Tuple[Any, bool]:
         id = int(id)
+        if self.model.is_location_unknown_id(id):
+            eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
+            return self.update_or_create(
+                id=id,
+                defaults={"name": "Location unknown", "eve_type": eve_type},
+            )
+
         if self.model.is_asset_safety_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(
                 id=EveTypeId.ASSET_SAFETY_WRAP

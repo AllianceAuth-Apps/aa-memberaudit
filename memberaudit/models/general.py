@@ -141,6 +141,7 @@ class ComplianceGroupDesignation(models.Model):
 class Location(models.Model):
     """An Eve Online location: Station or Upwell Structure or Solar System."""
 
+    LOCATION_UNKNOWN_ID = 888  # custom ID to signify a location that is not known
     _ASSET_SAFETY_ID = 2004
     _SOLAR_SYSTEM_ID_START = 30_000_000
     _SOLAR_SYSTEM_ID_END = 33_000_000
@@ -236,9 +237,9 @@ class Location(models.Model):
         return self.is_structure_id(self.id)
 
     @property
-    def is_asset_safety(self) -> bool:
-        """Return True if this location is an asset safety, else False."""
-        return self.is_asset_safety_id(self.id)
+    def is_unknown_location(self) -> bool:
+        """Return True if this is the unknown location placeholder, else False."""
+        return self.is_location_unknown_id(self.id)
 
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
@@ -259,6 +260,11 @@ class Location(models.Model):
     def is_asset_safety_id(cls, location_id: int) -> bool:
         """Return True, if this location ID is asset safety."""
         return location_id == cls._ASSET_SAFETY_ID
+
+    @classmethod
+    def is_location_unknown_id(cls, location_id: int) -> bool:
+        """Return True, if this is the location unknown ID."""
+        return location_id == cls.LOCATION_UNKNOWN_ID
 
 
 class EveShipType(EveType):
