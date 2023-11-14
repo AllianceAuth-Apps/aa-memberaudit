@@ -38,6 +38,7 @@ from memberaudit.models import (
     CharacterRole,
     CharacterShip,
     CharacterSkill,
+    CharacterSkillqueueEntry,
     CharacterSkillSetCheck,
     CharacterStanding,
     CharacterTitle,
@@ -357,6 +358,25 @@ def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
     }
     params.update(kwargs)
     return CharacterSkill.objects.create(**params)
+
+
+def create_character_skillqueue_entry(
+    character: Character, **kwargs
+) -> CharacterSkillqueueEntry:
+    queue_position = kwargs.get("queue_position") or next_number(
+        "skillqueue_queue_position"
+    )
+    params = {
+        "character": character,
+        "finished_level": 3,
+        "queue_position": queue_position,
+        "level_end_sp": 512,
+        "level_start_sp": 128,
+        "start_date": now(),
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, eve_type_id=EveTypeId.AMARR_CARRIER)
+    return CharacterSkillqueueEntry.objects.create(**params)
 
 
 def create_character_skill_set_check(

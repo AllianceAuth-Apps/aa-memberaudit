@@ -15,7 +15,6 @@ from memberaudit.models import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
-    CharacterSkillqueueEntry,
     Location,
 )
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
@@ -27,6 +26,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_contract,
     create_character_contract_bid,
     create_character_from_user,
+    create_character_skillqueue_entry,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -54,11 +54,10 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
 
     def test_is_active_1(self):
         """when training is active and skill is in first position then return True"""
-        entry = CharacterSkillqueueEntry.objects.create(
+        entry = create_character_skillqueue_entry(
             character=self.character_1001,
             eve_type=self.skill_type_1,
             finish_date=now() + dt.timedelta(days=3),
-            finished_level=5,
             queue_position=0,
             start_date=now() - dt.timedelta(days=1),
         )
@@ -66,7 +65,7 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
 
     def test_is_active_2(self):
         """when training is active and skill is not in first position then return False"""
-        entry = CharacterSkillqueueEntry.objects.create(
+        entry = create_character_skillqueue_entry(
             character=self.character_1001,
             eve_type=self.skill_type_1,
             finish_date=now() + dt.timedelta(days=3),
@@ -78,7 +77,7 @@ class TestCharacterSkillQueue(NoSocketsTestCase):
 
     def test_is_active_3(self):
         """when training is not active and skill is in first position then return False"""
-        entry = CharacterSkillqueueEntry.objects.create(
+        entry = create_character_skillqueue_entry(
             character=self.character_1001,
             eve_type=self.skill_type_1,
             finished_level=5,

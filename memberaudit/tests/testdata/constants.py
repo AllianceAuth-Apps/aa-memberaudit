@@ -21,6 +21,7 @@ class EveStationId(IntEnum):
 class EveTypeId(IntEnum):
     """Eve Online named type IDs"""
 
+    AMARR_CARRIER = 24311  # skill
     ASTRAHUS = 35832
     CAPSULE = 670
     MERLIN = 603
