@@ -34,7 +34,7 @@ from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     CharacterUpdateTestDataMixin,
-    TestCharacterUpdateBase,
+    LoadTestDataMixin,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -729,11 +729,11 @@ class TestCharacterContractsUpdate(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(float(bid.amount), 21_000_000)
 
 
-class TestCharacterContractBidManager(TestCharacterUpdateBase):
+class TestCharacterContractBidManager(LoadTestDataMixin, NoSocketsTestCase):
     def test_should_do_nothing_when_there_are_no_bids(self):
         # given
         contract = create_character_contract(
-            character=self.character_1001, contract_type=CharacterContract.TYPE_AUCTION
+            character=self.character, contract_type=CharacterContract.TYPE_AUCTION
         )
         # when
         CharacterContractBid.objects._update_or_create_objs(
@@ -745,7 +745,7 @@ class TestCharacterContractBidManager(TestCharacterUpdateBase):
     def test_should_do_nothing_when_there_are_no_new_bids(self):
         # given
         contract = create_character_contract(
-            character=self.character_1001, contract_type=CharacterContract.TYPE_AUCTION
+            character=self.character, contract_type=CharacterContract.TYPE_AUCTION
         )
         bidder = EveEntity.objects.get(id=1002)
         bid = create_character_contract_bid(contract=contract, bidder=bidder)
