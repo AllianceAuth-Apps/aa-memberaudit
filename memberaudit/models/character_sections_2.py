@@ -290,6 +290,16 @@ class CharacterLocation(models.Model):
     def __str__(self) -> str:
         return str(f"{self.character}-{self.eve_solar_system}")
 
+    def location_safe(self) -> Location:
+        """Return location safely for current object."""
+        if self.location:
+            return self.location
+
+        location, _ = Location.objects.get_or_create_esi(
+            id=self.eve_solar_system.id, token=None
+        )
+        return location
+
 
 class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
     """Loyalty entry for a character"""

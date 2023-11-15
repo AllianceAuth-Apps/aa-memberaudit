@@ -797,18 +797,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     "location__eve_type",
                 ).get(character_id=self.id)
             )
+            location = character_location.location_safe()
         except CharacterLocation.DoesNotExist:
             location, _ = Location.objects.get_or_create_esi(
                 id=Location.LOCATION_UNKNOWN_ID, token=None
             )
-
-        else:
-            if character_location.location:
-                location = character_location.location
-            else:
-                location, _ = Location.objects.get_or_create_esi(
-                    id=character_location.eve_solar_system.id, token=None
-                )
 
         ship_asset_record = {
             "is_blueprint_copy": False,

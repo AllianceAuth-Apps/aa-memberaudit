@@ -232,7 +232,8 @@ class TestLocation(NoSocketsTestCase):
         )[0]
         cls.location_jita_44: Location = Location.objects.get(id=60003760)
         cls.location_structure_1: Location = Location.objects.get(id=1_000_000_000_001)
-        cls.location_empty = Location(id=666)
+        cls.location_empty = Location(id=1)
+        cls.location_unknown = Location(id=Location.LOCATION_UNKNOWN_ID)
 
     def test_str(self):
         self.assertEqual(
@@ -308,6 +309,18 @@ class TestLocation(NoSocketsTestCase):
 
     def test_name_plus_for_asset_safety(self):
         self.assertEqual(self.location_asset_safety.name_plus, "ASSET SAFETY")
+
+    def test_should_return_correct_asset_location_type(self):
+        cases = [
+            ("station", self.location_jita_44, "station"),
+            ("structure", self.location_structure_1, "item"),
+            ("solar system", self.location_jita, "solar_system"),
+            ("unknown placeholder", self.location_unknown, "solar_system"),
+            ("empty_location", self.location_empty, "other"),
+        ]
+        for name, location, expected in cases:
+            with self.subTest(name=name):
+                self.assertEqual(location.asset_location_type(), expected)
 
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
