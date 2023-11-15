@@ -295,6 +295,11 @@ def create_character_jump_clone_implant(
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
+    location = kwargs.get("location")
+    if location and location.eve_solar_system:
+        params["eve_solar_system"] = location.eve_solar_system
+    else:
+        _set_missing_foreign_keys(params, eve_solar_system_id=EveSolarSystemId.AMAMAKE)
     return CharacterLocation.objects.create(**params)
 
 

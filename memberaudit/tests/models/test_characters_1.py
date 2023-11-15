@@ -826,6 +826,31 @@ class TestCharacterGenerateShipAsset(TestCase):
         self.assertEqual(obj["quantity"], 1)
         self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
 
+    def test_should_generate_asset_when_partial_location_only(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character, eve_solar_system=self.jita, location=None
+        )
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertEqual(obj["name"], "Joy Ride")
+        self.assertEqual(obj["item_id"], 1_100_000_000_999)
+        self.assertEqual(obj["is_singleton"], True)
+        self.assertEqual(obj["location_id"], self.jita.id)
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_type"], "solar_system")
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.MERLIN)
+
     def test_should_generate_asset_when_no_location(self):
         # given
         create_character_ship(

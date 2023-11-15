@@ -785,30 +785,39 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except CharacterShip.DoesNotExist:
             return None
 
+        if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
+            return None  # we don't add capsules
+
         try:
             character_location: CharacterLocation = (
                 CharacterLocation.objects.select_related(
-                    "location", "location__eve_solar_system", "location__eve_type"
+                    "eve_solar_system",
+                    "location",
+                    "location__eve_solar_system",
+                    "location__eve_type",
                 ).get(character_id=self.id)
             )
         except CharacterLocation.DoesNotExist:
             location, _ = Location.objects.get_or_create_esi(
                 id=Location.LOCATION_UNKNOWN_ID, token=None
             )
-        else:
-            location = character_location.location
 
-        if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
-            return None  # we don't add capsules
+        else:
+            if character_location.location:
+                location = character_location.location
+            else:
+                location, _ = Location.objects.get_or_create_esi(
+                    id=character_location.eve_solar_system.id, token=None
+                )
 
         if location.is_station:
-            character_location_type = "station"
+            asset_location_type = "station"
         elif location.is_solar_system or location.is_unknown_location:
-            character_location_type = "solar_system"
+            asset_location_type = "solar_system"
         elif location.is_structure:
-            character_location_type = "item"
+            asset_location_type = "item"
         else:
-            character_location_type = "other"
+            asset_location_type = "other"
 
         ship_asset_record = {
             "is_blueprint_copy": False,
@@ -816,7 +825,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "item_id": ship.item_id,
             "location_flag": "Hangar",
             "location_id": location.id,
-            "location_type": character_location_type,
+            "location_type": asset_location_type,
             "name": ship.name,
             "quantity": 1,
             "type_id": ship.eve_type.id,

@@ -10,6 +10,7 @@ from eveuniverse.models import (
     EveEntity,
     EveFaction,
     EveRace,
+    EveSolarSystem,
     EveType,
 )
 
@@ -271,9 +272,15 @@ class CharacterLocation(models.Model):
     """The location of a character."""
 
     character = models.OneToOneField(
-        Character, on_delete=models.CASCADE, related_name="location"
+        Character, on_delete=models.CASCADE, primary_key=True, related_name="location"
     )
-    location = models.ForeignKey(Location, on_delete=models.CASCADE)
+
+    eve_solar_system = models.ForeignKey(
+        EveSolarSystem, on_delete=models.CASCADE, related_name="+"
+    )
+    location = models.ForeignKey(
+        Location, on_delete=models.SET_DEFAULT, default=None, null=True
+    )
 
     objects = CharacterLocationManager()
 
@@ -281,7 +288,7 @@ class CharacterLocation(models.Model):
         default_permissions = ()
 
     def __str__(self) -> str:
-        return str(f"{self.character}-{self.location}")
+        return str(f"{self.character}-{self.eve_solar_system}")
 
 
 class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
