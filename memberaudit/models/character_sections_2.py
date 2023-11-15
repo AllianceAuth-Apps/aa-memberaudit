@@ -295,8 +295,8 @@ class CharacterLocation(models.Model):
         if self.location:
             return self.location
 
-        location, _ = Location.objects.get_or_create_esi(
-            id=self.eve_solar_system.id, token=None
+        location, _ = Location.objects.get_or_create_from_eve_solar_system(
+            self.eve_solar_system
         )
         return location
 

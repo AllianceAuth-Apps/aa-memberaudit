@@ -2,12 +2,18 @@ import hashlib
 import json
 
 from django.utils.timezone import now
+from eveuniverse.models import EveSolarSystem
 
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.models import Character
-from memberaudit.tests.testdata.factories import create_character_update_status
+from memberaudit.models import Character, Location
+from memberaudit.tests.testdata.factories import (
+    create_character_location,
+    create_character_update_status,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import create_memberaudit_character
 
 
@@ -119,3 +125,33 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
             character=self.character_1001, started_at=None, finished_at=None
         )
         self.assertFalse(status.is_updating)
+
+
+class TestCharacterLocation(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_return_location_when_it_exists(self):
+        # given
+        location: Location = Location.objects.get(id=60003760)
+        obj = create_character_location(self.character, location=location)
+        # when
+        result = obj.location_safe()
+        # then
+        self.assertEqual(result, location)
+
+    def test_should_return_return_solar_system_when_location_does_not_exist(self):
+        # given
+        eve_solar_system = EveSolarSystem.objects.get(name="Amamake")
+        obj = create_character_location(
+            self.character, eve_solar_system=eve_solar_system, location=None
+        )
+        # when
+        result = obj.location_safe()
+        # then
+        self.assertEqual(result.id, eve_solar_system.id)
+        self.assertTrue(result.is_solar_system)

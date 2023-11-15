@@ -319,7 +319,7 @@ class LocationManager(models.Manager):
             },
         )
 
-    def create_missing_esi(self, location_ids: Iterable, token: Token) -> Set[int]:
+    def create_missing_esi(self, location_ids: Iterable[int], token: Token) -> Set[int]:
         """Create missing locations from ESI based on given location IDs.
         And return all existing location IDs.
 
@@ -343,6 +343,20 @@ class LocationManager(models.Manager):
                 else:
                     existing_ids.add(location_id)
         return existing_ids
+
+    def get_or_create_from_eve_solar_system(
+        self, eve_solar_system: EveSolarSystem
+    ) -> Tuple[Any, bool]:
+        """Get or create a Location object from a solar system."""
+        eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
+        return self.get_or_create(
+            id=eve_solar_system.id,
+            defaults={
+                "eve_solar_system": eve_solar_system,
+                "name": eve_solar_system.name,
+                "eve_type": eve_type,
+            },
+        )
 
 
 class MailEntityManager(models.Manager):

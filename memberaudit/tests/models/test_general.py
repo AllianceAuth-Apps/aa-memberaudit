@@ -233,17 +233,13 @@ class TestLocation(NoSocketsTestCase):
         cls.location_jita_44: Location = Location.objects.get(id=60003760)
         cls.location_structure_1: Location = Location.objects.get(id=1_000_000_000_001)
         cls.location_empty = Location(id=1)
-        cls.location_unknown = Location(id=Location.LOCATION_UNKNOWN_ID)
+        cls.location_unknown, _ = Location.objects.get_or_create_esi(
+            id=Location.LOCATION_UNKNOWN_ID, token=None
+        )
 
     def test_str(self):
         self.assertEqual(
             str(self.location_structure_1), "Amamake - Test Structure Alpha"
-        )
-
-    def test_repr(self):
-        self.assertEqual(
-            repr(self.location_structure_1),
-            "Location(id=1000000000001, name='Amamake - Test Structure Alpha')",
         )
 
     def test_checks_with_solar_system(self):

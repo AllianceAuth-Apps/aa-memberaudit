@@ -31,6 +31,7 @@ from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     create_compliance_group,
     create_fitting,
+    create_location,
     create_mail_entity,
     create_skill,
     create_skill_plan,
@@ -851,6 +852,33 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.name, "Location unknown")
         self.assertIsNone(obj.eve_solar_system)
         self.assertIsNone(obj.owner)
+        self.assertEqual(obj.eve_type_id, EveTypeId.SOLAR_SYSTEM)
+
+    def test_should_create_obj_from_solar_system(self, mock_esi):
+        # when
+        obj, created = Location.objects.get_or_create_from_eve_solar_system(self.jita)
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj.id, self.jita.id)
+        self.assertEqual(obj.name, self.jita.name)
+        self.assertEqual(obj.eve_solar_system, self.jita)
+        self.assertEqual(obj.eve_type_id, EveTypeId.SOLAR_SYSTEM)
+
+    def test_should_get_existing_obj_from_solar_system(self, mock_esi):
+        # given
+        create_location(
+            id=self.jita.id,
+            eve_solar_system=self.jita,
+            name=self.jita.name,
+            eve_type_id=EveTypeId.SOLAR_SYSTEM,
+        )
+        # when
+        obj, created = Location.objects.get_or_create_from_eve_solar_system(self.jita)
+        # then
+        self.assertFalse(created)
+        self.assertEqual(obj.id, self.jita.id)
+        self.assertEqual(obj.name, self.jita.name)
+        self.assertEqual(obj.eve_solar_system, self.jita)
         self.assertEqual(obj.eve_type_id, EveTypeId.SOLAR_SYSTEM)
 
 
