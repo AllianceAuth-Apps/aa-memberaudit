@@ -48,17 +48,24 @@ from memberaudit.models import (
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-# default params for all tasks
-TASK_DEFAULTS = {"time_limit": MEMBERAUDIT_TASKS_TIME_LIMIT, "max_retries": 3}
+MAX_RETRIES_DEFAULT = 3
+MAX_RETRIES_STRUCTURES = 5
+MAX_RETRIES_MAIL_ENTITIES = 5
 
-# default params for tasks that need access to self
+TASK_DEFAULTS = {
+    "time_limit": MEMBERAUDIT_TASKS_TIME_LIMIT,
+    "max_retries": MAX_RETRIES_DEFAULT,
+}
+"""Default params for all tasks."""
+
 TASK_DEFAULTS_BIND = {**TASK_DEFAULTS, **{"bind": True}}
+"""Default params for tasks that need access to self."""
 
-# default params for tasks that need run once only
 TASK_DEFAULTS_ONCE = {**TASK_DEFAULTS, **{"base": QueueOnce}}
+"""Default params for tasks that need run once only."""
 
-# default params for tasks that need access to self and run once only
 TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
+"""Default params for tasks that need access to self and run once only."""
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -868,7 +875,10 @@ def update_market_prices():
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+        **{
+            "once": {"keys": ["id"], "graceful": True},
+            "max_retries": MAX_RETRIES_STRUCTURES,
+        },
     }
 )
 def update_structure_esi(self, id: int, token_pk: int):
@@ -877,30 +887,39 @@ def update_structure_esi(self, id: int, token_pk: int):
     If the ESI error limit has already been reached retry later.
     """
     token = Token.objects.get(pk=token_pk)
+
     try:
         Location.objects.structure_update_or_create_esi(id, token)
+
     except EsiOffline as ex:
-        countdown = (30 + int(random.uniform(1, 20))) * 60
+        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
+        countdown = (15 + backoff_jitter) * 60
         logger.warning(
-            "Location #%s: ESI appears to be offline. Trying again in %d minutes.",
+            "Location #%s: ESI appears to be offline. Trying again in %d seconds.",
             id,
             countdown,
         )
         raise self.retry(countdown=countdown) from ex
+
     except EsiErrorLimitExceeded as ex:
+        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
+        countdown = ex.retry_in + backoff_jitter
         logger.warning(
             "Location #%s: ESI error limit threshold reached. "
             "Trying again in %s seconds",
             id,
-            ex.retry_in,
+            countdown,
         )
-        raise self.retry(countdown=ex.retry_in) from ex
+        raise self.retry(countdown=countdown) from ex
 
 
 @shared_task(
     **{
         **TASK_DEFAULTS_ONCE,
-        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+        **{
+            "once": {"keys": ["id"], "graceful": True},
+            "max_retries": MAX_RETRIES_MAIL_ENTITIES,
+        },
     }
 )
 def update_mail_entity_esi(id: int, category: Optional[str] = None):

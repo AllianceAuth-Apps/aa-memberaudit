@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Undocked ships are now automatically included in a character's assets. This means that the asset filter should not longer fail, when a corresponding ship is undocked. (#150)
+- Limit retries and add exponential backoff with jitter to updating structures and mail entities
+- Modernization and refactoring of tests
 
 ## [3.3.3] - 2023-10-14
 
