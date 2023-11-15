@@ -41,6 +41,7 @@ def launcher(request) -> HttpResponse:
         .select_related(
             "memberaudit_character",
             "memberaudit_character__location",
+            "memberaudit_character__location__eve_solar_system",
             "memberaudit_character__location__location__eve_solar_system",
             "memberaudit_character__location__location__eve_solar_system__eve_constellation__eve_region",
             "memberaudit_character__skillpoints",
