@@ -241,6 +241,19 @@ class Location(models.Model):
         """Return True if this is the unknown location placeholder, else False."""
         return self.is_location_unknown_id(self.id)
 
+    def asset_location_type(self) -> str:
+        """Return asset location type for this Location."""
+        if self.is_station:
+            return "station"
+
+        if self.is_solar_system or self.is_unknown_location:
+            return "solar_system"
+
+        if self.is_structure:
+            return "item"
+
+        return "other"
+
     @classmethod
     def is_solar_system_id(cls, location_id: int) -> bool:
         """Return True if this location ID is a solar system, else False."""

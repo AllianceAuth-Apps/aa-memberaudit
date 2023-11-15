@@ -810,22 +810,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     id=character_location.eve_solar_system.id, token=None
                 )
 
-        if location.is_station:
-            asset_location_type = "station"
-        elif location.is_solar_system or location.is_unknown_location:
-            asset_location_type = "solar_system"
-        elif location.is_structure:
-            asset_location_type = "item"
-        else:
-            asset_location_type = "other"
-
         ship_asset_record = {
             "is_blueprint_copy": False,
             "is_singleton": True,
             "item_id": ship.item_id,
             "location_flag": "Hangar",
             "location_id": location.id,
-            "location_type": asset_location_type,
+            "location_type": location.asset_location_type(),
             "name": ship.name,
             "quantity": 1,
             "type_id": ship.eve_type.id,
