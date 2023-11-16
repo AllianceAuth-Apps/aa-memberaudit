@@ -35,6 +35,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_UPDATE_STALE_RING_2,
     MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
+from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
 from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.managers.characters import (
@@ -221,7 +222,10 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         verbose_name_plural = _("characters")
 
     def __str__(self) -> str:
-        return f"{self.eve_character.character_name} (PK:{self.pk})"
+        try:
+            return f"{self.eve_character.character_name} (ID:{self.id})"
+        except EveCharacter.DoesNotExist:
+            return f"Character ID {self.id}"
 
     def __repr__(self) -> str:
         return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
@@ -613,9 +617,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """
         return self.assets.fetch_from_esi(self, force_update)
 
-    def assets_preload_objects(self, asset_list: list) -> None:
+    def assets_preload_objects(self, assets_data: dict) -> None:
         """Preload objects needed to build the character's asset tree from ESI."""
-        self.assets.preload_objects_from_esi(self, asset_list)
+        self.assets.preload_objects_from_esi(self, assets_data)
 
     def update_attributes(self, force_update: bool = False):
         """Update the character's learning attributes from ESI."""
@@ -765,6 +769,55 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 "because it's owner no longer has the permission to share characters.",
                 self,
             )
+
+    def generate_asset_from_current_ship_and_location(self) -> Optional[dict]:
+        """Return generated asset item record from current ship and location
+        or None it can not be generated.
+        """
+        from .character_sections_2 import CharacterLocation
+        from .character_sections_3 import CharacterShip
+        from .general import Location
+
+        try:
+            ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(
+                character_id=self.id
+            )
+        except CharacterShip.DoesNotExist:
+            return None
+
+        if not ship.item_id:
+            return None  # item ID is 0 from the migration
+
+        if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
+            return None  # we don't add capsules
+
+        try:
+            character_location: CharacterLocation = (
+                CharacterLocation.objects.select_related(
+                    "eve_solar_system",
+                    "location",
+                    "location__eve_solar_system",
+                    "location__eve_type",
+                ).get(character_id=self.id)
+            )
+            location = character_location.location_safe()
+        except CharacterLocation.DoesNotExist:
+            location, _ = Location.objects.get_or_create_esi(
+                id=Location.LOCATION_UNKNOWN_ID, token=None
+            )
+
+        ship_asset_record = {
+            "is_blueprint_copy": False,
+            "is_singleton": True,
+            "item_id": ship.item_id,
+            "location_flag": "Hangar",
+            "location_id": location.id,
+            "location_type": location.asset_location_type(),
+            "name": ship.name,
+            "quantity": 1,
+            "type_id": ship.eve_type.id,
+        }
+        return ship_asset_record
 
     def clear_cache(self) -> None:
         """Remove this character from cache."""

@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
-from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.models import EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import (
@@ -20,16 +20,19 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.constants import EveSolarSystemId
+from memberaudit.tests.testdata.factories import (
     create_compliance_group_designation,
+    create_location_eve_solar_system,
+    create_mail_entity_from_eve_entity,
+    create_mailing_list,
     create_skill_set,
     create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -43,22 +46,21 @@ TASKS_PATH = "memberaudit.tasks"
 
 class TestMailEntity(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_str(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(str(obj), "Bruce Wayne")
 
     def test_repr(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(
             repr(obj), "MailEntity(id=1001, category=CH, name='Bruce Wayne')"
         )
 
     def test_eve_entity_categories(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertSetEqual(
             obj.eve_entity_categories,
             {
@@ -69,7 +71,7 @@ class TestMailEntity(NoSocketsTestCase):
         )
 
     def test_name_plus_1(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertEqual(obj.name_plus, "Bruce Wayne")
 
     def test_name_plus_2(self):
@@ -81,21 +83,19 @@ class TestMailEntity(NoSocketsTestCase):
             MailEntity.objects.create(id=1)
 
     def test_url_1(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(3001)
+        obj = create_mail_entity_from_eve_entity(3001)
         self.assertIn("dotlan", obj.external_url())
 
     def test_url_2(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(2001)
+        obj = create_mail_entity_from_eve_entity(2001)
         self.assertIn("dotlan", obj.external_url())
 
     def test_url_3(self):
-        obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(1001)
+        obj = create_mail_entity_from_eve_entity(1001)
         self.assertIn("evewho", obj.external_url())
 
     def test_url_4(self):
-        obj = MailEntity.objects.create(
-            id=42, category=MailEntity.Category.MAILING_LIST, name="Dummy"
-        )
+        obj = create_mailing_list()
         self.assertEqual(obj.external_url(), "")
 
     def test_url_5(self):
@@ -111,8 +111,7 @@ class TestMailEntity(NoSocketsTestCase):
 
 class TestGeneralOther(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_return_compliant_users_only(self):
@@ -156,8 +155,7 @@ class TestGeneralOther(NoSocketsTestCase):
 
 class TestGeneralUserHasAccess(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         character_1002 = create_memberaudit_character(1002)
@@ -224,55 +222,106 @@ class TestGeneralUserHasAccess(NoSocketsTestCase):
 
 class TestLocation(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
+        cls.location_jita = create_location_eve_solar_system(id=EveSolarSystemId.JITA)
+        cls.location_asset_safety: Location = Location.objects.get_or_create_esi(
+            id=2004, token=None
+        )[0]
+        cls.location_jita_44: Location = Location.objects.get(id=60003760)
+        cls.location_structure_1: Location = Location.objects.get(id=1_000_000_000_001)
+        cls.location_empty = Location(id=1)
+        cls.location_unknown, _ = Location.objects.get_or_create_esi(
+            id=Location.LOCATION_UNKNOWN_ID, token=None
+        )
 
     def test_str(self):
-        location = Location.objects.get(id=1000000000001)
-        self.assertEqual(str(location), "Amamake - Test Structure Alpha")
-
-    def test_repr(self):
-        location = Location.objects.get(id=1000000000001)
         self.assertEqual(
-            repr(location),
-            "Location(id=1000000000001, name='Amamake - Test Structure Alpha')",
+            str(self.location_structure_1), "Amamake - Test Structure Alpha"
         )
 
-    def test_is_solar_system(self):
-        location = Location.objects.create(
-            id=30000142, eve_solar_system=EveSolarSystem.objects.get(id=30000142)
-        )
+    def test_checks_with_solar_system(self):
+        location = self.location_jita
         self.assertTrue(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
+        self.assertFalse(location.is_empty)
 
-    def test_is_station(self):
-        location = Location.objects.get(id=60003760)
+    def test_checks_with_station(self):
+        location = self.location_jita_44
         self.assertFalse(location.is_solar_system)
         self.assertTrue(location.is_station)
         self.assertFalse(location.is_structure)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
+        self.assertFalse(location.is_empty)
 
-    def test_is_structure(self):
-        location = Location.objects.get(id=1000000000001)
+    def test_checks_with_structure(self):
+        location = self.location_structure_1
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertTrue(location.is_structure)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
+        self.assertFalse(location.is_empty)
+
+    def test_checks_with_asset_safety(self):
+        location = self.location_asset_safety
+        self.assertFalse(location.is_solar_system)
+        self.assertFalse(location.is_station)
+        self.assertFalse(location.is_structure)
+        self.assertTrue(Location.is_asset_safety_id(location.id))
+        self.assertFalse(location.is_empty)
+
+    def test_checks_with_empty_location(self):
+        location = self.location_empty
+        self.assertFalse(location.is_solar_system)
+        self.assertFalse(location.is_station)
+        self.assertFalse(location.is_structure)
+        self.assertFalse(Location.is_asset_safety_id(location.id))
+        self.assertTrue(location.is_empty)
 
     def test_solar_system_url(self):
-        obj_1 = Location.objects.get(id=1000000000001)
-        obj_2 = Location.objects.create(id=1000000000999)
+        obj_1 = self.location_structure_1
+        obj_2 = Location.objects.create(id=1_000_000_000_999)
 
         self.assertIn("Amamake", obj_1.solar_system_url)
         self.assertEqual("", obj_2.solar_system_url)
 
+    def test_name_plus_for_structure(self):
+        self.assertEqual(
+            self.location_structure_1.name_plus, "Amamake - Test Structure Alpha"
+        )
+
+    def test_name_plus_for_station(self):
+        self.assertEqual(
+            self.location_jita_44.name_plus,
+            "Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+        )
+
+    def test_name_plus_for_solar_system(self):
+        self.assertEqual(self.location_jita.name_plus, "Jita")
+
+    def test_name_plus_for_asset_safety(self):
+        self.assertEqual(self.location_asset_safety.name_plus, "ASSET SAFETY")
+
+    def test_should_return_correct_asset_location_type(self):
+        cases = [
+            ("station", self.location_jita_44, "station"),
+            ("structure", self.location_structure_1, "item"),
+            ("solar system", self.location_jita, "solar_system"),
+            ("unknown placeholder", self.location_unknown, "solar_system"),
+            ("empty_location", self.location_empty, "other"),
+        ]
+        for name, location, expected in cases:
+            with self.subTest(name=name):
+                self.assertEqual(location.asset_location_type(), expected)
+
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_ensure_new_compliance_groups_are_internal(self):
@@ -287,8 +336,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
 class TestSkillSet(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         cls.user = AuthUtils.create_user("Bruce Wayne")
 
@@ -297,7 +345,7 @@ class TestSkillSet(NoSocketsTestCase):
         obj_1 = create_skill_set()
         gunnery_skill = EveType.objects.get(name="Gunnery")
         skill_1 = create_skill_set_skill(
-            obj_1, gunnery_skill, required_level=3, recommended_level=5
+            obj_1, eve_type=gunnery_skill, required_level=3, recommended_level=5
         )
         # when
         obj_2 = obj_1.clone(user=self.user)

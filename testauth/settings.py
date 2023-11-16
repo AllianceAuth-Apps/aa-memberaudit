@@ -315,3 +315,4 @@ DEFAULT_FROM_EMAIL = ""
 #######################################
 
 STATICFILES_DIRS = []  # needed to suppress a warning
+ANALYTICS_DISABLED = True

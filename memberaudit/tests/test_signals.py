@@ -6,8 +6,7 @@ from .testdata.load_entities import load_entities
 
 class TestSignals(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_prevent_making_compliance_group_non_internal(self):

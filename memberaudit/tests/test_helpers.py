@@ -12,8 +12,9 @@ from memberaudit.helpers import (
 )
 
 from .testdata.factories import create_character_wallet_journal_entry
+from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
-from .utils import create_memberaudit_character, load_entities
+from .utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.helpers"
 
@@ -41,8 +42,7 @@ class TestDataRetentionCutoff(TestCase):
 
 class TestImplantSlotNum(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_return_slot_num(self):
@@ -74,8 +74,7 @@ class TestDetermineTaskPriority(TestCase):
 
 class TestEveEntityIdsFromObjs(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)

@@ -1,18 +1,16 @@
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.xml_converter import DEFAULT_FONT_SIZE, eve_xml_to_html
-
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..testdata.load_locations import load_locations
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
 
 MODULE_PATH = "memberaudit.core.xml_converter"
 
 
 class TestXMLConversion(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()

@@ -315,8 +315,10 @@ class CharacterShip(models.Model):
     character = models.OneToOneField(
         Character, on_delete=models.CASCADE, related_name="ship"
     )
-    name = models.CharField(max_length=255)
+
     eve_type = models.ForeignKey(EveType, on_delete=models.CASCADE, related_name="+")
+    item_id = models.PositiveBigIntegerField()
+    name = models.CharField(max_length=255)
 
     objects = CharacterShipManager()
 

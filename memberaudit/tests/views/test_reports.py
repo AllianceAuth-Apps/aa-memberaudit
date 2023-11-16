@@ -17,6 +17,21 @@ from app_utils.testing import (
 )
 
 from memberaudit.models import Character, CharacterSkill, SkillSetGroup
+from memberaudit.tests.testdata.factories import (
+    create_character,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
+)
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
+    add_auth_character_to_user,
+    add_memberaudit_character_to_user,
+    create_memberaudit_character,
+    create_user_from_evecharacter_with_access,
+    json_response_to_dict_2,
+)
 from memberaudit.views.reports import (
     corporation_compliance_report_data,
     reports,
@@ -24,27 +39,10 @@ from memberaudit.views.reports import (
     user_compliance_report_data,
 )
 
-from ..testdata.factories import (
-    create_character,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
-)
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
-    add_auth_character_to_user,
-    add_memberaudit_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-    json_response_to_dict_2,
-)
-
 
 class TestReports(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
 
@@ -74,11 +72,21 @@ class TestUserComplianceReportTestData(TestCase):
         state.member_alliances.add(state_alliance)
         state_corporation = EveCorporationInfo.objects.get(corporation_id=2103)
         state.member_corporations.add(state_corporation)
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.character_1003 = create_memberaudit_character(1003)
-        cls.character_1101 = create_memberaudit_character(1101)
-        cls.user_1103 = create_user_from_evecharacter_with_access(1103)[0]
+        cls.character_1001 = create_memberaudit_character(
+            1001, disconnect_signals=False
+        )
+        cls.character_1002 = create_memberaudit_character(
+            1002, disconnect_signals=False
+        )
+        cls.character_1003 = create_memberaudit_character(
+            1003, disconnect_signals=False
+        )
+        cls.character_1101 = create_memberaudit_character(
+            1101, disconnect_signals=False
+        )
+        cls.user_1103 = create_user_from_evecharacter_with_access(
+            1103, disconnect_signals=False
+        )[0]
         cls.user = cls.character_1001.eve_character.character_ownership.user
         cls.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.reports_access", cls.user
@@ -143,7 +151,7 @@ class TestUserComplianceReportTestData(TestCase):
             "memberaudit.view_everything", self.user
         )
         user = self.character_1002.eve_character.character_ownership.user
-        add_auth_character_to_user(user, 1103)
+        add_auth_character_to_user(user, 1103, disconnect_signals=False)
         group, _ = Group.objects.get_or_create(name="Test Group")
         AuthUtils.add_permissions_to_groups(
             [AuthUtils.get_permission_by_name("memberaudit.basic_access")], [group]
@@ -159,7 +167,7 @@ class TestUserComplianceReportTestData(TestCase):
 
 class TestCorporationComplianceReportTestData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
+    def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
@@ -170,11 +178,15 @@ class TestCorporationComplianceReportTestData(TestCase):
         member_state.member_corporations.add(
             EveCorporationInfo.objects.get(corporation_id=2110)
         )
-        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1001 = create_memberaudit_character(
+            1001, disconnect_signals=False
+        )
         add_auth_character_to_user(
             cls.character_1001.eve_character.character_ownership.user, 1107
         )
-        cls.character_1002 = create_memberaudit_character(1002)
+        cls.character_1002 = create_memberaudit_character(
+            1002, disconnect_signals=False
+        )
         add_memberaudit_character_to_user(
             cls.character_1002.eve_character.character_ownership.user, 1104
         )
@@ -184,19 +196,29 @@ class TestCorporationComplianceReportTestData(TestCase):
         add_auth_character_to_user(
             cls.character_1002.eve_character.character_ownership.user, 1106
         )
-        cls.character_1003 = create_memberaudit_character(1003)
-        add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user, 1101
+        cls.character_1003 = create_memberaudit_character(
+            1003, disconnect_signals=False
         )
         add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user, 1102
+            cls.character_1003.eve_character.character_ownership.user,
+            1101,
+            disconnect_signals=False,
         )
-        cls.user_1103 = create_user_from_evecharacter_with_access(1103)[0]
+        add_memberaudit_character_to_user(
+            cls.character_1003.eve_character.character_ownership.user,
+            1102,
+            disconnect_signals=False,
+        )
+        cls.user_1103 = create_user_from_evecharacter_with_access(
+            1103, disconnect_signals=False
+        )[0]
         cls.user = cls.character_1001.eve_character.character_ownership.user
         cls.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.reports_access", cls.user
         )
-        cls.character_1110 = create_memberaudit_character(1110)
+        cls.character_1110 = create_memberaudit_character(
+            1110, disconnect_signals=False
+        )
 
     def _corporation_compliance_report_data(self, user) -> dict:
         request = self.factory.get(
@@ -255,7 +277,9 @@ class TestSkillSetReportData(TestCase):
         state.member_alliances.add(EveAllianceInfo.objects.get(alliance_id=3001))
 
         # user 1 is manager requesting the report
-        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1001 = create_memberaudit_character(
+            1001, disconnect_signals=False
+        )
         cls.user = cls.character_1001.eve_character.character_ownership.user
         cls.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.reports_access", cls.user
@@ -265,9 +289,13 @@ class TestSkillSetReportData(TestCase):
         )
 
         # user 2 is normal user and has two characters
-        cls.character_1002 = create_memberaudit_character(1002)
+        cls.character_1002 = create_memberaudit_character(
+            1002, disconnect_signals=False
+        )
         cls.character_1101 = add_memberaudit_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1101
+            cls.character_1002.eve_character.character_ownership.user,
+            1101,
+            disconnect_signals=False,
         )
         # cls.character_1003 = create_memberaudit_character(1003)
 
@@ -275,7 +303,9 @@ class TestSkillSetReportData(TestCase):
         cls.skill_type_2 = EveType.objects.get(id=24312)
 
         AuthUtils.create_user("John Doe")  # this user should not show up in view
-        cls.character_1103 = create_memberaudit_character(1103)
+        cls.character_1103 = create_memberaudit_character(
+            1103, disconnect_signals=False
+        )
 
         # orphaned character, i.e. without a user
         create_character(EveCharacter.objects.get(character_id=1121))

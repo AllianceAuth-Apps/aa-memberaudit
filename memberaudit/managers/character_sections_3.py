@@ -344,6 +344,7 @@ class CharacterShipManager(models.Manager):
         self.update_or_create(
             character=character,
             defaults={
+                "item_id": ship_info["ship_item_id"],
                 "eve_type": eve_type,
                 "name": ship_info["ship_name"],
             },

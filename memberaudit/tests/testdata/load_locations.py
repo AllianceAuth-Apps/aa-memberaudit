@@ -4,14 +4,14 @@ import os
 
 from eveuniverse.models import EveEntity
 
-from ...constants import EveCategoryId
-from ...models import Location
+from memberaudit.constants import EveCategoryId
+from memberaudit.models import Location
 
-_currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+_current_dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
 
 
 def _load_data():
-    with open(_currentdir + "/esi_testdata.json", "r", encoding="utf-8") as f:
+    with open(_current_dir + "/esi_testdata.json", "r", encoding="utf-8") as f:
         return json.load(f)
 
 

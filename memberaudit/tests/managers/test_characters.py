@@ -8,14 +8,13 @@ from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
 from memberaudit.models import Character, CharacterUpdateStatus
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
     create_character_update_status,
 )
-from ..testdata.load_entities import load_entities
-from ..utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
@@ -27,8 +26,7 @@ MODELS_PATH = "memberaudit.models.characters"
 
 class TestCharacterQuerySet(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     def test_should_return_set_of_eve_character_ids(self):
@@ -67,8 +65,7 @@ class TestCharacterQuerySet(TestCase):
 # Includes testing of Character.calc_total_update_status() to ensure they are in sync
 class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -236,8 +233,7 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
 
 class TestCharacterUserHasScope(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         # main character with alts
         cls.character_1001 = create_memberaudit_character(1001)  # main
@@ -336,8 +332,7 @@ class TestCharacterUserHasScope(TestCase):
 
 class TestCharacterUserHasAccess(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         # main character with alts
         cls.character_1001 = create_memberaudit_character(1001)  # main
@@ -519,8 +514,7 @@ class TestCharacterUserHasAccess(TestCase):
 
 class TestCharacterUpdateStatusManager(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -575,8 +569,7 @@ class TestCharacterUpdateStatusManager(TestCase):
 
 class TestCharacterUnregisteredCharacterCount(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         # main character with alts
         cls.character_1001 = create_memberaudit_character(1001)
@@ -665,8 +658,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
 
 class TestCharacterDisableCharacterWithoutOwner(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -722,8 +714,7 @@ class TestCharacterDisableCharacterWithoutOwner(TestCase):
 
 class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 

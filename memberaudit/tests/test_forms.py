@@ -16,8 +16,7 @@ from .testdata.load_eveuniverse import load_eveuniverse
 
 class TestImportFittingForm(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         cls.fitting_text = create_fitting_text("fitting_tristan.txt")
 
@@ -55,8 +54,7 @@ class TestImportFittingForm(NoSocketsTestCase):
 
 class TestImportSkillPlanForm(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
 
     def test_should_raise_no_errors(self):

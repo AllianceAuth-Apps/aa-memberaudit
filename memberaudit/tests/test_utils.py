@@ -27,8 +27,7 @@ def querysets_pks(qs1: models.QuerySet, qs2: models.QuerySet) -> tuple:
 
 class TestHelpers(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
         cls.my_state = create_state(

@@ -10,14 +10,13 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import SkillSet
-from memberaudit.views import admin
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_fitting_text,
     create_skill_set,
     create_skill_set_group,
 )
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.views import admin
 
 VIEWS_PATH = "memberaudit.views.admin"
 MANAGERS_PATH = "memberaudit.managers.general"
@@ -27,8 +26,7 @@ MANAGERS_PATH = "memberaudit.managers.general"
 @patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromFitting(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         cls.superuser = User.objects.create_superuser("Superman")
@@ -138,8 +136,7 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
 @patch(VIEWS_PATH + ".tasks", spec=True)
 class TestCreateSkillSetFromSkillPlan(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         cls.superuser = User.objects.create_superuser("Superman")

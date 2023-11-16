@@ -4,6 +4,7 @@ from unittest.mock import patch
 from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
+from eveuniverse.models import EveEntity, EveSolarSystem
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import NoSocketsTestCase
@@ -18,26 +19,38 @@ from memberaudit.models import (
     CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
+    Location,
     MailEntity,
 )
-
-from ..testdata.esi_client_stub import esi_client_stub, esi_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
+from memberaudit.tests.testdata.factories import (
+    create_character_details,
+    create_character_fw_stats,
+    create_character_location,
+    create_character_mail,
     create_character_mail_label,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterCorporationHistoryManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -111,7 +124,17 @@ class TestCharacterCorporationHistoryManager(
 
 @patch(MODULE_PATH + ".eve_xml_to_html")
 @patch(MODULE_PATH + ".esi")
-class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterDetailManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi, mock_eve_xml_to_html):
         # given
         mock_esi.client = esi_client_stub
@@ -140,7 +163,7 @@ class TestCharacterDetailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase
         # given
         mock_esi.client = esi_client_stub
         mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        CharacterDetails.objects.create(
+        create_character_details(
             character=self.character_1001,
             birthday=now(),
             corporation=self.corporation_2002,
@@ -326,7 +349,7 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
     def test_should_update_existing_entries(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        CharacterFwStats.objects.create(
+        create_character_fw_stats(
             character=self.character_1001,
             kills_last_week=0,
             kills_total=0,
@@ -414,7 +437,15 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterImplantManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterImplantManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+
     def test_update_implants_1(self, mock_esi):
         """can create implants from scratch"""
         mock_esi.client = esi_client_stub
@@ -458,7 +489,18 @@ class TestCharacterImplantManager(CharacterUpdateTestDataMixin, NoSocketsTestCas
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterJumpClonesManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_can_update_with_implants(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -515,8 +557,21 @@ class TestCharacterJumpClonesManager(CharacterUpdateTestDataMixin, NoSocketsTest
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
-    def test_update_location_1(self, mock_esi):
+class TestCharacterLocationManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.amamake = EveSolarSystem.objects.get(id=30002537)
+        cls.jita = EveSolarSystem.objects.get(id=30000142)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
+    def test_should_create_location_from_scratch_for_station(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
@@ -525,7 +580,7 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
         self.assertEqual(self.character_1001.location.location, self.jita_44)
 
-    def test_update_location_2(self, mock_esi):
+    def test_should_create_location_from_scratch_for_structure(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
@@ -534,11 +589,46 @@ class TestCharacterLocationManager(CharacterUpdateTestDataMixin, NoSocketsTestCa
         self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
         self.assertEqual(self.character_1002.location.location, self.structure_1)
 
-    # TODO: Add tests for no change and forced update
+    def test_should_create_location_from_scratch_for_solar_system(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        character_1003 = create_memberaudit_character(1003)
+        # when
+        CharacterLocation.objects.update_or_create_esi(character_1003)
+        # then
+        self.assertEqual(character_1003.location.eve_solar_system, self.amamake)
+        self.assertEqual(
+            character_1003.location.location.eve_solar_system, self.amamake
+        )
+
+    def test_should_update_location(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_character_location(
+            character=self.character_1001,
+            eve_solar_system=self.amamake,
+            location=self.structure_1,
+        )
+        # when
+        CharacterLocation.objects.update_or_create_esi(self.character_1001)
+        # then
+        self.character_1001.refresh_from_db()
+        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
+        self.assertEqual(self.character_1001.location.location, self.jita_44)
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterLoyaltyManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -611,7 +701,18 @@ class TestCharacterLoyaltyManager(CharacterUpdateTestDataMixin, NoSocketsTestCas
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MODULE_PATH + ".esi")
-class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterMailManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+        cls.corporation_2001 = EveEntity.objects.get(id=2001)
+        cls.corporation_2002 = EveEntity.objects.get(id=2002)
+
     @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
     def test_can_create_new_mail_from_scratch(self, mock_esi):
         # given
@@ -711,7 +812,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         """when data retention limit is set, then remove old data beyond that limit"""
         mock_esi.client = esi_client_stub
         sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
-        CharacterMail.objects.create(
+        create_character_mail(
             character=self.character_1001,
             mail_id=99,
             sender=sender,
@@ -735,7 +836,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=1,
             sender=sender,
@@ -761,7 +862,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         mock_esi.client = esi_client_stub
         mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=2,
             sender=sender,
@@ -784,7 +885,7 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
             build_http_error(404, "Test")
         )
         sender = create_mail_entity_from_eve_entity(1002)
-        mail = CharacterMail.objects.create(
+        mail = create_character_mail(
             character=self.character_1001,
             mail_id=1,
             sender=sender,
@@ -818,14 +919,16 @@ class TestCharacterMailManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi", esi_stub)
-class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
+class TestCharacterMailLabelManager(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        super().setUpTestData()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_normal(self):
-        label_1 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=1, name="Alpha"
-        )
-        label_2 = CharacterMailLabel.objects.create(
-            character=self.character_1001, label_id=2, name="Bravo"
-        )
+        label_1 = create_character_mail_label(character=self.character_1001, label_id=1)
+        label_2 = create_character_mail_label(character=self.character_1001, label_id=2)
         labels = CharacterMailLabel.objects.get_all_labels()
         self.assertDictEqual(
             labels, {label_1.label_id: label_1, label_2.label_id: label_2}
@@ -857,7 +960,7 @@ class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
 
     def test_update_mail_labels_2(self):
         """will remove obsolete labels"""
-        CharacterMailLabel.objects.create(
+        create_character_mail_label(
             character=self.character_1001, label_id=666, name="Obsolete"
         )
 
@@ -870,7 +973,7 @@ class TestCharacterMailLabelManager(CharacterUpdateTestDataMixin, TestCase):
 
     def test_update_mail_labels_3(self):
         """will update existing labels"""
-        CharacterMailLabel.objects.create(
+        create_character_mail_label(
             character=self.character_1001,
             label_id=3,
             name="Update me",

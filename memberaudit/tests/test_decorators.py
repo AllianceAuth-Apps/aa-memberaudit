@@ -27,8 +27,7 @@ DUMMY_URL = "http://www.example.com"
 
 class TestFetchOwnerIfAllowed(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -80,26 +79,23 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 403)
 
-    """
-    TODO: create test case with CharacterDetails
-    def test_can_specify_list_for_select_related(self):
-        @fetch_character_if_allowed("skills")
-        def dummy(request, character_pk, character):
-            self.assertEqual(character, self.character)
-            self.assertIn("skills", character._state.fields_cache)
-            return HttpResponse("ok")
+    # TODO: create test case with CharacterDetails
+    # def test_can_specify_list_for_select_related(self):
+    #     @fetch_character_if_allowed("skills")
+    #     def dummy(request, character_pk, character):
+    #         self.assertEqual(character, self.character)
+    #         self.assertIn("skills", character._state.fields_cache)
+    #         return HttpResponse("ok")
 
-        OwnerSkills.objects.create(character=self.character, total_sp=10000000)
-        request = self.factory.get(DUMMY_URL)
-        request.user = self.user
-        dummy(request, self.character.pk)
-    """
+    #     OwnerSkills.objects.create(character=self.character, total_sp=10000000)
+    #     request = self.factory.get(DUMMY_URL)
+    #     request.user = self.user
+    #     dummy(request, self.character.pk)
 
 
 class TestFetchToken(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 

@@ -7,8 +7,7 @@ from memberaudit.core.skills import (
     compress_skills,
     required_skills_from_eve_types,
 )
-
-from ..testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 
 
 def create_skill(**kwargs):

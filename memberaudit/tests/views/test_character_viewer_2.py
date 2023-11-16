@@ -17,14 +17,39 @@ from app_utils.testing import (
 )
 
 from memberaudit.models import (
-    CharacterJumpClone,
-    CharacterJumpCloneImplant,
     CharacterMail,
     CharacterRole,
-    CharacterSkillqueueEntry,
     CharacterWalletJournalEntry,
-    CharacterWalletTransaction,
     Location,
+)
+from memberaudit.tests.testdata.factories import (
+    create_character_jump_clone,
+    create_character_jump_clone_implant,
+    create_character_mail,
+    create_character_mail_label,
+    create_character_mining_ledger_entry,
+    create_character_planet,
+    create_character_role,
+    create_character_skill,
+    create_character_skillqueue_entry,
+    create_character_standing,
+    create_character_title,
+    create_character_wallet_journal_entry,
+    create_character_wallet_transaction,
+    create_location,
+    create_mail_entity_from_eve_entity,
+    create_mailing_list,
+    create_skill_set,
+    create_skill_set_group,
+    create_skill_set_skill,
+)
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import (
+    create_memberaudit_character,
+    json_response_to_dict_2,
+    json_response_to_python_2,
 )
 from memberaudit.views.character_viewer_2 import (
     character_jump_clones_data,
@@ -44,48 +69,37 @@ from memberaudit.views.character_viewer_2 import (
     character_wallet_transactions_data,
 )
 
-from ..testdata.factories import (
-    create_character_mail,
-    create_character_mail_label,
-    create_character_mining_ledger_entry,
-    create_character_planet,
-    create_character_role,
-    create_character_skill,
-    create_character_standing,
-    create_character_title,
-    create_mail_entity_from_eve_entity,
-    create_mailing_list,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
-)
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import (
-    LoadTestDataMixin,
-    create_memberaudit_character,
-    json_response_to_dict_2,
-    json_response_to_python_2,
-)
-
 MODULE_PATH = "memberaudit.views.character_viewer_2"
 
 
-class TestJumpClones(LoadTestDataMixin, TestCase):
+class TestJumpClones(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.structure_1 = Location.objects.get(id=1000000000001)
+
     def test_character_jump_clones_data(self):
-        clone_1 = jump_clone = CharacterJumpClone.objects.create(
-            character=self.character, location=self.jita_44, jump_clone_id=1
+        clone_1 = jump_clone = create_character_jump_clone(
+            character=self.character, location=self.jita_44
         )
-        CharacterJumpCloneImplant.objects.create(
-            jump_clone=jump_clone, eve_type=EveType.objects.get(id=19540)
+        create_character_jump_clone_implant(
+            jump_clone=jump_clone,
+            eve_type=EveType.objects.get(name="High-grade Snake Alpha"),
         )
-        CharacterJumpCloneImplant.objects.create(
-            jump_clone=jump_clone, eve_type=EveType.objects.get(id=19551)
+        create_character_jump_clone_implant(
+            jump_clone=jump_clone,
+            eve_type=EveType.objects.get(name="High-grade Snake Beta"),
         )
 
-        location_2 = Location.objects.create(id=123457890)
-        clone_2 = jump_clone = CharacterJumpClone.objects.create(
-            character=self.character, location=location_2, jump_clone_id=2
+        location_2 = create_location(id=123457890, eve_type=None, eve_solar_system=None)
+        clone_2 = jump_clone = create_character_jump_clone(
+            character=self.character, location=location_2
         )
         request = self.factory.get(
             reverse("memberaudit:character_jump_clones_data", args=[self.character.pk])
@@ -117,8 +131,7 @@ class TestJumpClones(LoadTestDataMixin, TestCase):
 
 class TestCharacterMiningLedgerData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -145,8 +158,7 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
 
 class TestCharacterPlanetData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -171,8 +183,7 @@ class TestCharacterPlanetData(NoSocketsTestCase):
 
 class TestCharacterRolesData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -218,8 +229,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
 
 class TestMailData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -358,7 +368,19 @@ class TestMailData(TestCase):
         self.assertEqual(response.status_code, 404)
 
 
-class TestSkillSetsData(LoadTestDataMixin, TestCase):
+class TestSkillSetsData(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.user
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+
     def test_skill_sets_data(self):
         self.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.view_skill_sets", self.user
@@ -478,8 +500,7 @@ class TestSkillSetsData(LoadTestDataMixin, TestCase):
 
 class TestSkillSetsDetails(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -582,7 +603,19 @@ class TestSkillSetsDetails(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
-class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
+class TestSkillAndSkillqueue(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_character_skills_data(self):
         create_character_skill(
             character=self.character,
@@ -607,7 +640,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
     def test_character_skillqueue_data_1(self):
         """Char has skills in training"""
         finish_date_1 = now() + dt.timedelta(days=3)
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
             finish_date=finish_date_1,
@@ -616,7 +649,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
             start_date=now() - dt.timedelta(days=1),
         )
         finish_date_2 = now() + dt.timedelta(days=10)
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.caldari_carrier_skill_type,
             finish_date=finish_date_2,
@@ -645,7 +678,7 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
 
     def test_character_skillqueue_data_2(self):
         """Char has no skills in training"""
-        CharacterSkillqueueEntry.objects.create(
+        create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
             finished_level=5,
@@ -665,7 +698,14 @@ class TestSkillAndSkillqueue(LoadTestDataMixin, TestCase):
         self.assertFalse(row["is_active"])
 
 
-class TestStandings(LoadTestDataMixin, TestCase):
+class TestStandings(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_should_produce_character_standings_data(self):
         # given
         npc_corp = EveEntity.objects.get(id=2901)
@@ -689,8 +729,7 @@ class TestStandings(LoadTestDataMixin, TestCase):
 
 class TestCharacterTitlesData(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -727,10 +766,19 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         self.assertEqual(data, [])
 
 
-class TestWallet(LoadTestDataMixin, TestCase):
+class TestWallet(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
     def test_character_wallet_journal_data(self):
         # given
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character,
             entry_id=1,
             amount=1000000,
@@ -759,13 +807,10 @@ class TestWallet(LoadTestDataMixin, TestCase):
 
     def test_character_wallet_transaction_data(self):
         my_date = now()
-        CharacterWalletTransaction.objects.create(
+        create_character_wallet_transaction(
             character=self.character,
-            transaction_id=42,
             client=EveEntity.objects.get(id=1002),
             date=my_date,
-            is_buy=True,
-            is_personal=True,
             location=Location.objects.get(id=60003760),
             quantity=3,
             eve_type=EveType.objects.get(id=603),

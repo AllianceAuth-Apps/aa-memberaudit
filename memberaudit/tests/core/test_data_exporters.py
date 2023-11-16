@@ -23,24 +23,22 @@ from memberaudit.core.data_exporters import (
     topics_and_export_files,
 )
 from memberaudit.models import CharacterWalletJournalEntry
-
-from ..testdata.factories import (
+from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_contract,
     create_character_contract_item,
     create_character_wallet_journal_entry,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.core.data_exporters"
 
 
 class TestExportTopicToArchive(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         load_eveuniverse()
         cls.character = create_memberaudit_character(1001)
@@ -126,8 +124,7 @@ class InvalidTopicExporter(NotTopicExporter):
 
 class TestDataExporter(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         load_eveuniverse()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -283,8 +280,7 @@ class TestDataExporter(TestCase):
 
 class TestTopicsAndExportFiles(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         load_eveuniverse()
         cls.character = create_memberaudit_character(1001)

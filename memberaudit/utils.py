@@ -1,6 +1,6 @@
 """Generic helpers."""
 
-from typing import Optional
+from typing import Any, Optional
 
 import unidecode
 
@@ -18,7 +18,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 def get_or_create_esi_or_none(
     prop_name: str, dct: dict, model_class: type
-) -> Optional[models.Model]:
+) -> Optional[Any]:
     """Get or create a new eveuniverse object from a dictionary entry.
 
     Return the object on success or None.
@@ -33,7 +33,7 @@ def get_or_create_esi_or_none(
 
 def get_or_create_or_none(
     prop_name: str, dct: dict, model_class: type
-) -> Optional[models.Model]:
+) -> Optional[Any]:
     """Get or creates a Django object from a dictionary entry or returns None."""
     if dct.get(prop_name):
         obj, _ = model_class.objects.get_or_create(id=dct.get(prop_name))  # type: ignore
@@ -41,7 +41,7 @@ def get_or_create_or_none(
     return None
 
 
-def get_or_none(prop_name: str, dct: dict, model_class: type) -> Optional[models.Model]:
+def get_or_none(prop_name: str, dct: dict, model_class: type) -> Optional[Any]:
     """Get a new Django object from a dictionary entry
     or return None if it does not exist.
     """

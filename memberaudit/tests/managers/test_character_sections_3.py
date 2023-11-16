@@ -29,22 +29,25 @@ from memberaudit.models import (
     CharacterWalletTransaction,
     Location,
 )
-
-from ..testdata.esi_client_stub import esi_client_stub
-from ..testdata.factories import (
+from memberaudit.tests.testdata.constants import EveTypeId
+from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
+from memberaudit.tests.testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
+    create_character_ship,
     create_character_skill,
     create_character_skill_set_check,
     create_character_standing,
     create_character_title,
+    create_character_wallet_journal_entry,
     create_skill_set,
     create_skill_set_skill,
 )
-from ..testdata.load_entities import load_entities
-from ..testdata.load_eveuniverse import load_eveuniverse
-from ..utils import CharacterUpdateTestDataMixin, create_memberaudit_character
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.testdata.load_locations import load_locations
+from memberaudit.tests.utils import create_memberaudit_character
 
 MODELS_PATH = "memberaudit.models.characters"
 MANAGERS_PATH = "memberaudit.managers.character_sections_3"
@@ -122,22 +125,27 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterOnlineStatusManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterOnlineStatusManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
     def test_update_online_status(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
-        CharacterOnlineStatus.objects.update_or_create_esi(self.character_1001)
+        CharacterOnlineStatus.objects.update_or_create_esi(self.character)
         # then
         self.assertEqual(
-            self.character_1001.online_status.last_login,
+            self.character.online_status.last_login,
             parse_datetime("2017-01-02T03:04:05Z"),
         )
         self.assertEqual(
-            self.character_1001.online_status.last_logout,
+            self.character.online_status.last_logout,
             parse_datetime("2017-01-02T04:05:06Z"),
         )
-        self.assertEqual(self.character_1001.online_status.logins, 9001)
+        self.assertEqual(self.character.online_status.logins, 9001)
 
 
 @patch(MANAGERS_PATH + ".esi")
@@ -287,13 +295,20 @@ class TestCharacterRolesManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterShipManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_should_update_all_fields(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
         # then
+        self.assertEqual(self.character_1001.ship.item_id, 1000000016991)
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
 
@@ -305,8 +320,11 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
             error_500
         )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
+        create_character_ship(
+            character=self.character_1001,
+            eve_type_id=603,
+            item_id=1000000016991,
+            name="Shooter Boy",
         )
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
@@ -314,15 +332,14 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
         self.character_1001.refresh_from_db()
         self.assertEqual(self.character_1001.ship.eve_type_id, 603)
         self.assertEqual(self.character_1001.ship.name, "Shooter Boy")
+        self.assertEqual(self.character_1001.ship.item_id, 1000000016991)
 
     def test_should_remove_ship_when_esi_returns_empty_response(self, mock_esi):
         # given
         mock_esi.client.Location.get_characters_character_id_ship.return_value = (
             BravadoOperationStub(data={})
         )
-        CharacterShip.objects.create(
-            character=self.character_1001, eve_type_id=603, name="Shooter Boy"
-        )
+        create_character_ship(character=self.character_1001)
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
         # then
@@ -332,7 +349,13 @@ class TestCharacterShipManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterSkillManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_can_create_new_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -343,14 +366,14 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         self.assertEqual(self.character_1001.skillpoints.unallocated, 1_000)
         self.assertSetEqual(
             set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
+            {EveTypeId.AMARR_CARRIER, EveTypeId.CALDARI_CARRIER},
         )
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
         self.assertEqual(skill.skillpoints_in_skill, 20_000)
         self.assertEqual(skill.trained_skill_level, 4)
 
-        skill = self.character_1001.skills.get(eve_type_id=24312)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.CALDARI_CARRIER)
         self.assertEqual(skill.active_skill_level, 1)
         self.assertEqual(skill.skillpoints_in_skill, 10_000)
         self.assertEqual(skill.trained_skill_level, 1)
@@ -358,9 +381,9 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_caen_update_existing_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character_1001,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             active_skill_level=1,
             skillpoints_in_skill=1,
             trained_skill_level=1,
@@ -369,7 +392,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         CharacterSkill.objects.update_or_create_esi(character=self.character_1001)
         # then
         self.assertEqual(self.character_1001.skills.count(), 2)
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
         self.assertEqual(skill.skillpoints_in_skill, 20_000)
         self.assertEqual(skill.trained_skill_level, 4)
@@ -377,9 +400,9 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
     def test_can_delete_obsolete_skills(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        CharacterSkill.objects.create(
+        create_character_skill(
             character=self.character_1001,
-            eve_type=EveType.objects.get(id=20185),
+            eve_type=EveType.objects.get(id=EveTypeId.MERLIN),
             active_skill_level=1,
             skillpoints_in_skill=1,
             trained_skill_level=1,
@@ -389,7 +412,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         # then
         self.assertSetEqual(
             set(self.character_1001.skills.values_list("eve_type_id", flat=True)),
-            {24311, 24312},
+            {EveTypeId.AMARR_CARRIER, EveTypeId.CALDARI_CARRIER},
         )
 
     def test_update_skills_4(self, mock_esi):
@@ -398,7 +421,7 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         mock_esi.client = esi_client_stub
         self.character_1001.reset_update_section(Character.UpdateSection.SKILLS)
         self.character_1001.update_skills()
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         skill.active_skill_level = 4
         skill.save()
         # when
@@ -415,16 +438,22 @@ class TestCharacterSkillManager(CharacterUpdateTestDataMixin, NoSocketsTestCase)
         # when
         CharacterSkill.objects.update_or_create_esi(character=self.character_1001)
         # then
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         skill.active_skill_level = 4
         skill.save()
         self.character_1001.update_skills(force_update=True)
-        skill = self.character_1001.skills.get(eve_type_id=24311)
+        skill = self.character_1001.skills.get(eve_type_id=EveTypeId.AMARR_CARRIER)
         self.assertEqual(skill.active_skill_level, 3)
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterSkillQueueManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -434,13 +463,17 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
 
         entry = self.character_1001.skillqueue.get(queue_position=1)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
         self.assertEqual(entry.finished_level, 4)
         self.assertEqual(entry.level_end_sp, 1000)
@@ -449,7 +482,9 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(entry.training_start_sp, 50)
 
         entry = self.character_1001.skillqueue.get(queue_position=2)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24312))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
+        )
         self.assertEqual(entry.finished_level, 5)
 
     def test_can_update_existing_queue(self, mock_esi):
@@ -457,7 +492,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         mock_esi.client = esi_client_stub
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
@@ -468,7 +503,9 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(entry.eve_type, EveType.objects.get(id=24311))
+        self.assertEqual(
+            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
+        )
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
@@ -515,7 +552,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=24311),
+            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
@@ -528,8 +565,7 @@ class TestCharacterSkillQueueManager(CharacterUpdateTestDataMixin, NoSocketsTest
 
 class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -627,7 +663,14 @@ class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterStandingManager(CharacterUpdateTestDataMixin, NoSocketsTestCase):
+class TestCharacterStandingManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.character_1002 = create_memberaudit_character(1002)
+
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -767,9 +810,12 @@ class TestCharacterTitleManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletBalanceManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletBalanceManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_update_wallet_balance(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -781,9 +827,12 @@ class TestCharacterWalletBalanceManager(
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletJournalManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletJournalManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     @patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None)
     def test_update_wallet_journal_1(self, mock_esi):
         """can create wallet journal entry from scratch"""
@@ -816,7 +865,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_2(self, mock_esi):
         """can add entry to existing wallet journal"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=1,
             amount=1_000_000,
@@ -850,7 +899,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_3(self, mock_esi):
         """does not update existing entries"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=89,
             amount=1_000_000,
@@ -897,7 +946,7 @@ class TestCharacterWalletJournalManager(
     def test_update_wallet_journal_5(self, mock_esi):
         """When wallet existing entry is older than retention limit, then delete it"""
         mock_esi.client = esi_client_stub
-        CharacterWalletJournalEntry.objects.create(
+        create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=55,
             amount=1_000_000,
@@ -923,9 +972,14 @@ class TestCharacterWalletJournalManager(
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterWalletTransactionManager(
-    CharacterUpdateTestDataMixin, NoSocketsTestCase
-):
+class TestCharacterWalletTransactionManager(NoSocketsTestCase):
+    @classmethod
+    def setUpTestData(cls):
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+
     def test_should_add_wallet_transactions_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -933,14 +987,12 @@ class TestCharacterWalletTransactionManager(
         with patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None):
             CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
         # then
-        self.assertSetEqual(
-            set(
-                self.character_1001.wallet_transactions.values_list(
-                    "transaction_id", flat=True
-                )
-            ),
-            {42},
+        expected = set(
+            self.character_1001.wallet_transactions.values_list(
+                "transaction_id", flat=True
+            )
         )
+        self.assertSetEqual(expected, {42})
         obj = self.character_1001.wallet_transactions.get(transaction_id=42)
         self.assertEqual(obj.client, EveEntity.objects.get(id=1003))
         self.assertEqual(obj.date, parse_datetime("2016-10-24T09:00:00Z"))
@@ -957,7 +1009,7 @@ class TestCharacterWalletTransactionManager(
     ):
         # given
         mock_esi.client = esi_client_stub
-        journal_entry = CharacterWalletJournalEntry.objects.create(
+        journal_entry = create_character_wallet_journal_entry(
             character=self.character_1001,
             entry_id=67890,
             amount=450000.99,
@@ -972,13 +1024,12 @@ class TestCharacterWalletTransactionManager(
         with patch(MANAGERS_PATH + ".data_retention_cutoff", lambda: None):
             CharacterWalletTransaction.objects.update_or_create_esi(self.character_1001)
         # then
-        self.assertSetEqual(
-            set(
-                self.character_1001.wallet_transactions.values_list(
-                    "transaction_id", flat=True
-                )
-            ),
-            {42},
+        expected = set(
+            self.character_1001.wallet_transactions.values_list(
+                "transaction_id", flat=True
+            )
         )
+
+        self.assertSetEqual(expected, {42})
         obj = self.character_1001.wallet_transactions.get(transaction_id=42)
         self.assertEqual(obj.journal_ref, journal_entry)

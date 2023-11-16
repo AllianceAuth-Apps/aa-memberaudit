@@ -1,10 +1,10 @@
 import datetime as dt
-from unittest import skipIf
 from unittest.mock import patch
 
+from bravado.exception import HTTPError
 from celery.exceptions import Retry as CeleryRetry
 
-from django.test import override_settings
+from django.test import TestCase, override_settings, tag
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
@@ -12,36 +12,35 @@ from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
-from app_utils.esi_testing import build_http_error
+from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import (
-    NoSocketsTestCase,
     create_authgroup,
     create_user_from_evecharacter,
     generate_invalid_pk,
 )
 
 from memberaudit import tasks
-from memberaudit.models import (
-    Character,
-    CharacterAsset,
-    CharacterUpdateStatus,
-    Location,
-)
+from memberaudit.models import Character, CharacterUpdateStatus, Location
 
+from .testdata.constants import EveTypeId
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
+    create_character_asset,
     create_character_from_user,
+    create_character_location,
+    create_character_ship,
     create_character_update_status,
     create_compliance_group_designation,
+    create_location_eve_solar_system,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
 from .utils import (
-    TOX_IS_RUNNING,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
+    reset_celery_once_locks,
 )
 
 MODELS_PATH = "memberaudit.models"
@@ -49,14 +48,10 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-class TestCaseTasks(NoSocketsTestCase):
-    fixtures = ["disable_analytics.json"]
-
-
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
 @patch(TASKS_PATH + ".update_all_characters", spec=True)
 @patch(TASKS_PATH + ".update_market_prices", spec=True)
-class TestRegularUpdates(TestCaseTasks):
+class TestRegularUpdates(TestCase):
     def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
@@ -87,19 +82,153 @@ class TestRegularUpdates(TestCaseTasks):
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
 
 
-class TestOtherTasks(TestCaseTasks):
+class TestOtherTasks(TestCase):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
     def test_update_market_prices(self, mock_update_from_esi):
         tasks.update_market_prices()
         self.assertTrue(mock_update_from_esi.called)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True)  # need to ignore exceptions
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
-class TestUpdateCharacterAssets(TestCaseTasks):
+class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.jita = EveSolarSystem.objects.get(name="Jita")
+        cls.location_jita_44 = Location.objects.get(id=60003760)
+        cls.amamake = EveSolarSystem.objects.get(name="Amamake")
+        cls.location_structure_1 = Location.objects.get(id=1_000_000_000_001)
+        cls.location_jita = create_location_eve_solar_system(id=cls.jita.id)
+        cls.item_ids = {1_100_000_000_001}
+        cls.endpoints = [
+            EsiEndpoint(
+                "Assets",
+                "get_characters_character_id_assets",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "is_blueprint_copy": False,
+                            "is_singleton": True,
+                            "item_id": 1_100_000_000_001,
+                            "location_flag": "Hangar",
+                            "location_id": cls.location_jita_44.id,
+                            "location_type": "station",
+                            "quantity": 1,
+                            "type_id": EveTypeId.VELDSPAR,
+                        }
+                    ]
+                },
+            ),
+            EsiEndpoint(
+                "Assets",
+                "post_characters_character_id_assets_names",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {"item_id": 1_100_000_000_001, "name": "ESI asset"},
+                    ]
+                },
+            ),
+        ]
+        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
+
+    def test_should_add_current_ship_when_it_not_in_assets(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character_1001, location=self.location_jita_44
+        )
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        self.assertIn(1_100_000_000_999, result.keys())
+
+    def test_should_not_add_current_ship_when_not_generated(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        item_ids = set(result.keys())
+        self.assertSetEqual(item_ids, {1_100_000_000_001})
+
+    def test_should_not_add_current_ship_when_already_in_assets(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_001,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character_1001, location=self.location_jita
+        )
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        obj = result[1_100_000_000_001]
+        self.assertNotEqual(obj["name"], "Joy Ride")
+
+    def test_should_return_none_when_asset_list_is_unchanged_wo_ship(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_return_none_when_asset_list_is_unchanged_w_ship(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_ship(
+            character=self.character_1001,
+            item_id=1_100_000_000_999,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(
+            character=self.character_1001, location=self.location_jita
+        )
+        tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # when
+        result = tasks.assets_build_list_from_esi(self.character_1001.pk)
+
+        # then
+        self.assertIsNone(result)
+
+
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+@patch(MANAGERS_PATH + ".character_sections_1.esi")
+class TestUpdateCharacterAssets(TestCase):
+    @classmethod
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -111,28 +240,32 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         cls.jita = EveSolarSystem.objects.get(id=30000142)
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
+        cls.structure_1 = Location.objects.get(id=1_000_000_000_001)
+        reset_celery_once_locks()
 
-    def test_update_assets_1(self, mock_esi):
-        """can create assets from scratch"""
+    def test_should_create_assets_from_scratch(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
-                1100000000001,
-                1100000000002,
-                1100000000003,
-                1100000000004,
-                1100000000005,
-                1100000000006,
-                1100000000007,
-                1100000000008,
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+                1_100_000_000_007,
+                1_100_000_000_008,
             },
         )
 
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         self.assertTrue(asset.is_blueprint_copy)
         self.assertTrue(asset.is_singleton)
         self.assertEqual(asset.location_flag, "Hangar")
@@ -141,73 +274,70 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
         self.assertEqual(asset.name, "Parent Item 1")
 
-        asset = self.character_1001.assets.get(item_id=1100000000002)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_002)
         self.assertFalse(asset.is_blueprint_copy)
         self.assertTrue(asset.is_singleton)
         self.assertEqual(asset.location_flag, "???")
-        self.assertEqual(asset.parent.item_id, 1100000000001)
+        self.assertEqual(asset.parent.item_id, 1_100_000_000_001)
         self.assertEqual(asset.quantity, 1)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
         self.assertEqual(asset.name, "Leaf Item 2")
 
-        asset = self.character_1001.assets.get(item_id=1100000000003)
-        self.assertEqual(asset.parent.item_id, 1100000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_003)
+        self.assertEqual(asset.parent.item_id, 1_100_000_000_001)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=23))
 
-        asset = self.character_1001.assets.get(item_id=1100000000004)
-        self.assertEqual(asset.parent.item_id, 1100000000003)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_004)
+        self.assertEqual(asset.parent.item_id, 1_100_000_000_003)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=19553))
 
-        asset = self.character_1001.assets.get(item_id=1100000000005)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_005)
         self.assertEqual(asset.location, self.structure_1)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
 
-        asset = self.character_1001.assets.get(item_id=1100000000006)
-        self.assertEqual(asset.parent.item_id, 1100000000005)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_006)
+        self.assertEqual(asset.parent.item_id, 1_100_000_000_005)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
 
-        asset = self.character_1001.assets.get(item_id=1100000000007)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_007)
         self.assertEqual(asset.location_id, 30000142)
         self.assertEqual(asset.name, "")
         self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
 
-        asset = self.character_1001.assets.get(item_id=1100000000008)
-        self.assertEqual(asset.location_id, 1000000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_008)
+        self.assertEqual(asset.location_id, 1_000_000_000_001)
 
-    def test_update_assets_2(self, mock_esi):
-        """can remove obsolete assets"""
+    def test_should_remove_obsolete_assets(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-        CharacterAsset.objects.create(
-            character=self.character_1001,
-            item_id=1100000000666,
-            location=self.jita_44,
-            eve_type=EveType.objects.get(id=20185),
-            is_singleton=False,
-            name="Trucker",
-            quantity=1,
+        create_character_asset(
+            character=self.character_1001, item_id=1100000000666, location=self.jita_44
         )
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
-                1100000000001,
-                1100000000002,
-                1100000000003,
-                1100000000004,
-                1100000000005,
-                1100000000006,
-                1100000000007,
-                1100000000008,
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+                1_100_000_000_007,
+                1_100_000_000_008,
             },
         )
 
-    def test_update_assets_3(self, mock_esi):
-        """can update existing assets"""
+    def test_should_update_existing_assets(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character_1001,
-            item_id=1100000000001,
+            item_id=1_100_000_000_001,
             location=self.jita_44,
             eve_type=EveType.objects.get(id=20185),
             is_singleton=True,
@@ -215,87 +345,91 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             quantity=10,
         )
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
-                1100000000001,
-                1100000000002,
-                1100000000003,
-                1100000000004,
-                1100000000005,
-                1100000000006,
-                1100000000007,
-                1100000000008,
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+                1_100_000_000_007,
+                1_100_000_000_008,
             },
         )
 
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         self.assertTrue(asset.is_singleton)
         self.assertEqual(asset.location_id, 60003760)
         self.assertEqual(asset.quantity, 1)
         self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
         self.assertEqual(asset.name, "Parent Item 1")
 
-    def test_update_assets_4(self, mock_esi):
-        """assets moved to different locations are kept"""
+    def test_should_keep_assets_which_are_moved_to_different_locations(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-        parent_asset = CharacterAsset.objects.create(
+        parent_asset = create_character_asset(
             character=self.character_1001,
             item_id=1100000000666,
             location=self.jita_44,
             eve_type=EveType.objects.get(id=20185),
-            is_singleton=True,
-            name="Obsolete Container",
-            quantity=1,
         )
-        CharacterAsset.objects.create(
+        create_character_asset(
             character=self.character_1001,
-            item_id=1100000000002,
+            item_id=1_100_000_000_002,
             parent=parent_asset,
             eve_type=EveType.objects.get(id=19540),
-            is_singleton=True,
-            is_blueprint_copy=False,
             quantity=1,
         )
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
         self.assertSetEqual(
-            set(self.character_1001.assets.values_list("item_id", flat=True)),
+            self.character_1001.assets.item_ids(),
             {
-                1100000000001,
-                1100000000002,
-                1100000000003,
-                1100000000004,
-                1100000000005,
-                1100000000006,
-                1100000000007,
-                1100000000008,
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+                1_100_000_000_007,
+                1_100_000_000_008,
             },
         )
 
-    def test_update_assets_5(self, mock_esi):
-        """when update succeeded then report update success"""
+    def test_should_report_update_success_when_update_succeeded(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
 
-    def test_update_assets_6(self, mock_esi):
-        """when update failed then report the error"""
+    def test_should_report_the_error_when_update_failed(self, mock_esi):
         # given
         exception = build_http_error(502, "Test exception")
         mock_esi.client.Assets.get_characters_character_id_assets.side_effect = (
             exception
         )
+
         # when
-        with self.assertRaises(OSError):
+        with self.assertRaises(HTTPError):
             tasks.update_character_assets(self.character_1001.pk, True)
+
         # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
@@ -305,19 +439,21 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_7(self, mock_esi):
-        """when preload objects failed then report the error"""
+    def test_should_report_error_when_preload_objects_failed(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         with patch(
             MANAGERS_PATH + ".general.LocationManager.get_or_create_esi_async",
             spec=True,
         ) as m:
             exception = build_http_error(502, "Test exception")
             m.side_effect = exception
-            with self.assertRaises(OSError):
+            with self.assertRaises(HTTPError):
                 tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
@@ -326,16 +462,20 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_8(self, mock_esi):
-        """when building the asset tree failed then report the error"""
+    def test_should_report_the_error_when_building_the_asset_tree_failed(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         with patch(MANAGERS_PATH + ".character_sections_1.logger") as m:
             exception = build_http_error(502, "Test exception")
             m.info.side_effect = exception
-            with self.assertRaises(OSError):
+            with self.assertRaises(HTTPError):
                 tasks.update_character_assets(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
@@ -344,18 +484,22 @@ class TestUpdateCharacterAssets(TestCaseTasks):
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
 
-    def test_update_assets_9(self, mock_esi):
-        """when info from ESI has not change, then don't re-create asset tree"""
+    def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
         tasks.update_character_assets(self.character_1001.pk, True)
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         asset.name = "New Name"
         asset.save()
+
+        # when
         tasks.update_character_assets(self.character_1001.pk, False)
 
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        # then
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         self.assertEqual(asset.name, "New Name")
 
         status = self.character_1001.update_status_set.get(
@@ -363,18 +507,22 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         )
         self.assertTrue(status.is_success)
 
-    def test_update_assets_10(self, mock_esi):
-        """when info from ESI has not change and update is forced, then re-create asset tree"""
+    def test_should_recreate_asset_tree_when_info_from_ESI_is_unchanged_and_is_forced(
+        self, mock_esi
+    ):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
         tasks.update_character_assets(self.character_1001.pk, True)
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         asset.name = "New Name"
         asset.save()
+
+        # when
         tasks.update_character_assets(self.character_1001.pk, force_update=True)
 
-        asset = self.character_1001.assets.get(item_id=1100000000001)
+        # then
+        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
         self.assertEqual(asset.name, "Parent Item 1")
 
         status = self.character_1001.update_status_set.get(
@@ -383,19 +531,23 @@ class TestUpdateCharacterAssets(TestCaseTasks):
         self.assertTrue(status.is_success)
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
-class TestUpdateCharacterContacts(TestCaseTasks):
+class TestUpdateCharacterContacts(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.token = (
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
         )
+        reset_celery_once_locks()
 
     def test_update_ok(self, mock_esi):
         """when update succeeded then report update success"""
@@ -416,27 +568,28 @@ class TestUpdateCharacterContacts(TestCaseTasks):
             exception
         )
 
-        try:
+        with self.assertRaises(HTTPError):
             tasks.update_character_contacts(self.character_1001.pk, True)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.CONTACTS
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPBadGateway: 502 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
+
+        status = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.CONTACTS
+        )
+        self.assertFalse(status.is_success)
+        self.assertEqual(
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
+        )
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
-class TestUpdateCharacterContracts(TestCaseTasks):
+class TestUpdateCharacterContracts(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -444,6 +597,7 @@ class TestUpdateCharacterContracts(TestCaseTasks):
         cls.token = (
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
         )
+        reset_celery_once_locks()
 
     def test_update_ok(self, mock_esi):
         """when update succeeded then report update success"""
@@ -464,34 +618,36 @@ class TestUpdateCharacterContracts(TestCaseTasks):
             exception
         )
 
-        try:
+        with self.assertRaises(HTTPError):
             tasks.update_character_contracts(self.character_1001.pk, True)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.CONTRACTS
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPBadGateway: 502 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
+
+        status = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.CONTRACTS
+        )
+        self.assertFalse(status.is_success)
+        self.assertEqual(
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
+        )
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
-class TestUpdateCharacterMails(TestCaseTasks):
+class TestUpdateCharacterMails(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.token = (
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
         )
+        reset_celery_once_locks()
 
     def test_update_ok(self, mock_esi_character, mock_esi_sections):
         """when update succeeded then report update success"""
@@ -515,18 +671,16 @@ class TestUpdateCharacterMails(TestCaseTasks):
         mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
-        try:
+        with self.assertRaises(HTTPError):
             tasks.update_character_mails(self.character_1001.pk, True)
-        except Exception:
-            status = self.character_1001.update_status_set.get(
-                section=Character.UpdateSection.MAILS
-            )
-            self.assertFalse(status.is_success)
-            self.assertEqual(
-                status.last_error_message, "HTTPBadGateway: 502 Test exception"
-            )
-        else:
-            self.assertTrue(False)  # Hack to ensure the test fails when it gets here
+
+        status = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.MAILS
+        )
+        self.assertFalse(status.is_success)
+        self.assertEqual(
+            status.last_error_message, "HTTPBadGateway: 502 Test exception"
+        )
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
@@ -537,20 +691,23 @@ class TestUpdateCharacterMails(TestCaseTasks):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestCharacterUpdateFull(TestCaseTasks):
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestCharacterUpdateFull(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
+        reset_celery_once_locks()
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
-    # TODO: Find solution
-    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @tag("breaks_with_tox")  # TODO: Find solution
     def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
@@ -558,7 +715,7 @@ class TestCharacterUpdateFull(TestCaseTasks):
         self.assertTrue(result)
         self.assertTrue(self.character_1001.is_update_status_ok())
 
-    @skipIf(TOX_IS_RUNNING, "does not work with tox")
+    @tag("breaks_with_tox")  # TODO: Find solution
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given
@@ -678,21 +835,25 @@ class TestCharacterUpdateFull(TestCaseTasks):
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestCharacterUpdateErrorReporting(TestCaseTasks):
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestCharacterUpdateErrorReporting(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
+        reset_celery_once_locks()
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
 
     def test_should_report_errors_during_updates(self):
         # when
-        with self.assertRaises(OSError):  # raised when trying to fetch attributes
+        with self.assertRaises(HTTPError):  # raised when trying to fetch attributes
             tasks.update_character(self.character_1001.pk)
         # then
         self.assertFalse(self.character_1001.is_update_status_ok())
@@ -707,10 +868,9 @@ class TestCharacterUpdateErrorReporting(TestCaseTasks):
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
-class TestUpdateStructureEsi(TestCaseTasks):
+class TestUpdateStructureEsi(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.character = create_memberaudit_character(1001)
         cls.token = (
@@ -721,7 +881,7 @@ class TestUpdateStructureEsi(TestCaseTasks):
         """When ESI status is ok, then create MailEntity"""
         mock_structure_update_or_create_esi.return_value = None
         try:
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
         except Exception as ex:
             self.fail(f"Unexpected exception occurred: {ex}")
 
@@ -731,7 +891,7 @@ class TestUpdateStructureEsi(TestCaseTasks):
 
         with self.assertRaises(Token.DoesNotExist):
             tasks.update_structure_esi(
-                id=1000000000001, token_pk=generate_invalid_pk(Token)
+                id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
             )
 
     def test_esi_status_1(self, mock_structure_update_or_create_esi):
@@ -739,19 +899,19 @@ class TestUpdateStructureEsi(TestCaseTasks):
         mock_structure_update_or_create_esi.side_effect = EsiOffline
 
         with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
     def test_esi_status_2(self, mock_structure_update_or_create_esi):
         """When ESI error limit reached, then retry"""
         mock_structure_update_or_create_esi.side_effect = EsiErrorLimitExceeded(5)
 
         with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1000000000001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
-class TestUpdateMailEntityEsi(TestCaseTasks):
+class TestUpdateMailEntityEsi(TestCase):
     def test_normal(self, mock_update_or_create_esi):
         """When ESI status is ok, then create MailEntity"""
         mock_update_or_create_esi.return_value = None
@@ -776,12 +936,16 @@ class TestUpdateMailEntityEsi(TestCaseTasks):
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharactersDoctrines(TestCaseTasks):
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestUpdateCharactersDoctrines(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
+        reset_celery_once_locks()
 
     def setUp(self) -> None:
         self.character_1001 = create_memberaudit_character(1001)
@@ -792,10 +956,9 @@ class TestUpdateCharactersDoctrines(TestCaseTasks):
         self.assertTrue(mock_update_skill_sets.called)
 
 
-class TestDeleteCharacters(TestCaseTasks):
+class TestDeleteCharacters(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         Character.objects.all().delete()
 
@@ -814,13 +977,17 @@ class TestDeleteCharacters(TestCaseTasks):
             tasks.delete_objects("MyUnknownMOdel", [1])
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestExportData(TestCaseTasks):
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestExportData(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
         cls.character = create_memberaudit_character(1001)
+        reset_celery_once_locks()
 
     @patch(TASKS_PATH + ".data_exporters.export_topic_to_archive", spec=True)
     def test_should_export_all_topics(self, mock_export_topic_to_file):
@@ -847,10 +1014,9 @@ class TestExportData(TestCaseTasks):
         self.assertEqual(kwargs["topic"], "abc")
 
 
-class TestUpdateComplianceGroupDesignations(TestCaseTasks):
+class TestUpdateComplianceGroupDesignations(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_entities()
 
     @patch(TASKS_PATH + ".ComplianceGroupDesignation.objects.update_user", spec=True)
@@ -868,10 +1034,9 @@ class TestUpdateComplianceGroupDesignations(TestCaseTasks):
 
 
 @patch(TASKS_PATH + ".update_character", spec=True)
-class TestUpdateAllCharacters(TestCaseTasks):
+class TestUpdateAllCharacters(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -908,7 +1073,7 @@ class TestUpdateAllCharacters(TestCaseTasks):
 
 
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id", spec=True)
-class TestUpdateUnresolvedEveEntities(TestCaseTasks):
+class TestUpdateUnresolvedEveEntities(TestCase):
     def test_should_not_attempt_to_update_when_no_unresolved_entities(
         self, mock_update_from_esi_by_id
     ):
@@ -931,7 +1096,7 @@ class TestUpdateUnresolvedEveEntities(TestCaseTasks):
 
 
 @patch(TASKS_PATH + ".check_character_consistency", spec=True)
-class TestCheckCharacterConsistency(TestCaseTasks):
+class TestCheckCharacterConsistency(TestCase):
     def test_should_run_checks(self, mock_check_character_consistency):
         # given
         load_entities()
@@ -943,7 +1108,7 @@ class TestCheckCharacterConsistency(TestCaseTasks):
 
 
 @patch(TASKS_PATH + ".Character.update_location")
-class TestUpdateCharacterSection(NoSocketsTestCase):
+class TestUpdateCharacterSection(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

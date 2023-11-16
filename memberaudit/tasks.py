@@ -48,17 +48,24 @@ from memberaudit.models import (
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-# default params for all tasks
-TASK_DEFAULTS = {"time_limit": MEMBERAUDIT_TASKS_TIME_LIMIT, "max_retries": 3}
+MAX_RETRIES_DEFAULT = 3
+MAX_RETRIES_STRUCTURES = 5
+MAX_RETRIES_MAIL_ENTITIES = 5
 
-# default params for tasks that need access to self
+TASK_DEFAULTS = {
+    "time_limit": MEMBERAUDIT_TASKS_TIME_LIMIT,
+    "max_retries": MAX_RETRIES_DEFAULT,
+}
+"""Default params for all tasks."""
+
 TASK_DEFAULTS_BIND = {**TASK_DEFAULTS, **{"bind": True}}
+"""Default params for tasks that need access to self."""
 
-# default params for tasks that need run once only
 TASK_DEFAULTS_ONCE = {**TASK_DEFAULTS, **{"base": QueueOnce}}
+"""Default params for tasks that need run once only."""
 
-# default params for tasks that need access to self and run once only
 TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
+"""Default params for tasks that need access to self and run once only."""
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -332,24 +339,38 @@ def update_character_assets(
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def assets_build_list_from_esi(character_pk: int, force_update: bool = False) -> dict:
-    """Build the asset list for a character from ESI."""
+def assets_build_list_from_esi(
+    character_pk: int, force_update: bool = False
+) -> Optional[dict]:
+    """Retrieve asset list for a character from ESI and return it
+    or return None if asset list is unchanged.
+    """
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    asset_list = character.perform_update_with_error_logging(
+    assets_data: Optional[dict] = character.perform_update_with_error_logging(
         section=Character.UpdateSection.ASSETS,
         method=character.assets_build_list_from_esi,
         force_update=force_update,
     )
-    return asset_list
+    if assets_data is not None:
+        ship_asset_record = character.generate_asset_from_current_ship_and_location()
+        if ship_asset_record:
+            ship_item_id = ship_asset_record["item_id"]
+            if ship_item_id not in assets_data:
+                assets_data[ship_item_id] = ship_asset_record
+                logger.info("%s: Added current ship to assets", character)
+
+    return assets_data
 
 
 @shared_task(**TASK_DEFAULTS)
-def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict]:
+def assets_preload_objects(
+    assets_data: Optional[dict], character_pk: int
+) -> Optional[dict]:
     """Preload asset objects for a character from ESI."""
-    if asset_list is None:
-        return None
+    if assets_data is None:
+        return None  # Exit when assets are unchanged
 
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -357,14 +378,14 @@ def assets_preload_objects(asset_list: dict, character_pk: int) -> Optional[dict
     character.perform_update_with_error_logging(
         Character.UpdateSection.ASSETS,
         character.assets_preload_objects,
-        asset_list,
+        assets_data,
     )
-    return asset_list
+    return assets_data
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_parents(
-    self, asset_list: list, character_pk: int, cycle: int = 1
+    self, assets_data: Optional[dict], character_pk: int, cycle: int = 1
 ) -> None:
     """Create the parent assets from an asset list.
 
@@ -377,28 +398,27 @@ def assets_create_parents(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    if asset_list is None:
+    if assets_data is None:
         character.update_section_log_success(Character.UpdateSection.ASSETS)
         return
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
 
-    assets_flat = {int(item["item_id"]): item for item in asset_list}
     new_assets = []
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         if cycle == 1:
             character.assets.all().delete()
 
-        location_ids = set(Location.objects.values_list("id", flat=True))
+        known_location_ids = set(Location.objects.values_list("id", flat=True))
         parent_asset_ids = {
             item_id
-            for item_id, asset_info in assets_flat.items()
+            for item_id, asset_info in assets_data.items()
             if asset_info.get("location_id")
-            and asset_info["location_id"] in location_ids
+            and asset_info["location_id"] in known_location_ids
         }
         for item_id in parent_asset_ids:
-            item = assets_flat[item_id]
+            item = assets_data[item_id]
             new_assets.append(
                 CharacterAsset(
                     character=character,
@@ -412,7 +432,7 @@ def assets_create_parents(
                     quantity=item.get("quantity"),
                 )
             )
-            assets_flat.pop(item_id)
+            assets_data.pop(item_id)
             if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
                 break
 
@@ -429,7 +449,7 @@ def assets_create_parents(
         # there are more parent assets to create
         assets_create_parents.apply_async(
             kwargs={
-                "asset_list": list(assets_flat.values()),
+                "assets_data": assets_data,
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
@@ -437,12 +457,9 @@ def assets_create_parents(
         )
     else:
         # all parent assets created
-        if assets_flat:
+        if assets_data:
             assets_create_children.apply_async(
-                kwargs={
-                    "asset_list": list(assets_flat.values()),
-                    "character_pk": character.pk,
-                },
+                kwargs={"assets_data": assets_data, "character_pk": character.pk},
                 priority=priority,
             )
         else:
@@ -451,7 +468,7 @@ def assets_create_parents(
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_children(
-    self, asset_list: dict, character_pk: int, cycle: int = 1
+    self, assets_data: dict, character_pk: int, cycle: int = 1
 ) -> None:
     """Create child assets from given asset list.
 
@@ -466,20 +483,19 @@ def assets_create_children(
     logger.info("%s: Creating child assets - pass %s", character, cycle)
 
     # for debug
-    # store_list_to_disk(character, asset_list, f"child_asset_list_{cycle}")
+    # store_list_to_disk(character, assets_data, f"child_asset_list_{cycle}")
 
     new_assets = []
-    assets_flat = {int(item["item_id"]): item for item in asset_list}
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     with transaction.atomic():
         parent_asset_ids = set(character.assets.values_list("item_id", flat=True))
         child_asset_ids = {
             item_id
-            for item_id, item in assets_flat.items()
+            for item_id, item in assets_data.items()
             if item.get("location_id") and item["location_id"] in parent_asset_ids
         }
         for item_id in child_asset_ids:
-            item = assets_flat[item_id]
+            item = assets_data[item_id]
             new_assets.append(
                 CharacterAsset(
                     character=character,
@@ -493,7 +509,7 @@ def assets_create_children(
                     quantity=item.get("quantity"),
                 )
             )
-            assets_flat.pop(item_id)
+            assets_data.pop(item_id)
             if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
                 break
 
@@ -507,11 +523,11 @@ def assets_create_children(
                 ignore_conflicts=True,
             )
 
-    if new_assets and assets_flat:
+    if new_assets and assets_data:
         # there are more child assets to create
         assets_create_children.apply_async(
             kwargs={
-                "asset_list": list(assets_flat.values()),
+                "assets_data": assets_data,
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
@@ -519,12 +535,12 @@ def assets_create_children(
         )
     else:
         character.update_section_log_success(Character.UpdateSection.ASSETS)
-        if len(assets_flat) > 0:
+        if len(assets_data) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
                 character,
-                len(assets_flat),
-                assets_flat.keys(),
+                len(assets_data),
+                assets_data.keys(),
             )
 
 
@@ -860,7 +876,10 @@ def update_market_prices():
 @shared_task(
     **{
         **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+        **{
+            "once": {"keys": ["id"], "graceful": True},
+            "max_retries": MAX_RETRIES_STRUCTURES,
+        },
     }
 )
 def update_structure_esi(self, id: int, token_pk: int):
@@ -868,37 +887,40 @@ def update_structure_esi(self, id: int, token_pk: int):
 
     If the ESI error limit has already been reached retry later.
     """
-    try:
-        token = Token.objects.get(pk=token_pk)
-    except Token.DoesNotExist as ex:
-        raise Token.DoesNotExist(
-            f"Location #{id}: Requested token with pk {token_pk} does not exist"
-        ) from ex
+    token = Token.objects.get(pk=token_pk)
 
     try:
         Location.objects.structure_update_or_create_esi(id, token)
+
     except EsiOffline as ex:
-        countdown = (30 + int(random.uniform(1, 20))) * 60
+        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
+        countdown = (15 + backoff_jitter) * 60
         logger.warning(
-            "Location #%s: ESI appears to be offline. Trying again in %d minutes.",
+            "Location #%s: ESI appears to be offline. Trying again in %d seconds.",
             id,
             countdown,
         )
         raise self.retry(countdown=countdown) from ex
+
     except EsiErrorLimitExceeded as ex:
+        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
+        countdown = ex.retry_in + backoff_jitter
         logger.warning(
             "Location #%s: ESI error limit threshold reached. "
             "Trying again in %s seconds",
             id,
-            ex.retry_in,
+            countdown,
         )
-        raise self.retry(countdown=ex.retry_in) from ex
+        raise self.retry(countdown=countdown) from ex
 
 
 @shared_task(
     **{
         **TASK_DEFAULTS_ONCE,
-        **{"once": {"keys": ["id"], "graceful": True}, "max_retries": None},
+        **{
+            "once": {"keys": ["id"], "graceful": True},
+            "max_retries": MAX_RETRIES_MAIL_ENTITIES,
+        },
     }
 )
 def update_mail_entity_esi(id: int, category: Optional[str] = None):

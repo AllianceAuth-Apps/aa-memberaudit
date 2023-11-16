@@ -355,8 +355,7 @@ class TestSkillSetAdmin(TestCase):
 
 class TestSkillSetSkillAdmin(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
@@ -447,8 +446,7 @@ class TestSkillSetGroupAdmin(TestCase):
 
 class TestCharacterAdminUi(TestCase):
     @classmethod
-    def setUpClass(cls) -> None:
-        super().setUpClass()
+    def setUpTestData(cls) -> None:
         load_eveuniverse()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
         load_entities()

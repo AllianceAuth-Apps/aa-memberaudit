@@ -2,7 +2,7 @@
 # pylint: disable=missing-class-docstring
 
 import ast
-from typing import Dict, List, Set
+from typing import Any, Dict, List, Set
 
 from bravado.exception import HTTPNotFound
 
@@ -350,28 +350,28 @@ class CharacterLocationManager(models.Manager):
     def _update_or_create_objs(self, character, token: Token, location_info):
         from memberaudit.models.general import Location
 
+        solar_system_id = location_info["solar_system_id"]
         eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(
-            id=location_info.get("solar_system_id")
+            id=solar_system_id
         )
-        if location_info.get("station_id"):
-            location, _ = Location.objects.get_or_create_esi_async(
-                id=location_info.get("station_id"), token=token
-            )
-        elif location_info.get("structure_id"):
-            location, _ = Location.objects.get_or_create_esi_async(
-                id=location_info.get("structure_id"), token=token
-            )
-        else:
-            location = None
 
-        if eve_solar_system:
-            self.update_or_create(
-                character=character,
-                defaults={
-                    "eve_solar_system": eve_solar_system,
-                    "location": location,
-                },
+        if station_id := location_info.get("station_id"):
+            location, _ = Location.objects.get_or_create_esi(id=station_id, token=token)
+
+        elif structure_id := location_info.get("structure_id"):
+            location, _ = Location.objects.get_or_create_esi_async(
+                id=structure_id, token=token
             )
+
+        else:
+            location, _ = Location.objects.get_or_create_esi(
+                id=solar_system_id, token=token
+            )
+
+        self.update_or_create(
+            character=character,
+            defaults={"eve_solar_system": eve_solar_system, "location": location},
+        )
 
 
 class CharacterLoyaltyEntryManager(models.Manager):
@@ -656,7 +656,7 @@ class CharacterMailManager(models.Manager):
 
 
 class CharacterMailLabelManager(models.Manager):
-    def get_all_labels(self) -> Dict[int, models.Model]:
+    def get_all_labels(self) -> Dict[int, Any]:
         """Return all label objects as dict by label_id."""
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}

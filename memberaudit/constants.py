@@ -33,8 +33,15 @@ class EveFactionId(IntEnum):
 class EveGroupId(IntEnum):
     """Eve Online named group IDs"""
 
+    CAPSULE = 29
     CYBERIMPLANT = 300
     BOOSTER = 303
+
+
+class EveSolarSystemId(IntEnum):
+    """Eve Online solar system IDs."""
+
+    POLARIS = 30000380
 
 
 class EveTypeId(IntEnum):

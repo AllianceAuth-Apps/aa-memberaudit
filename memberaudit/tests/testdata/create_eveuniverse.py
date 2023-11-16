@@ -17,7 +17,9 @@ class CreateEveUniverseTestData(TestCase):
             ModelSpec("EveFaction", ids=[500001]),
             ModelSpec("EveRace", ids=[1]),
             ModelSpec("EvePlanet", ids=[40161463, 40161464, 40161467, 40161469]),
-            ModelSpec("EveSolarSystem", ids=[30000142, 30004984, 30001161, 30002537]),
+            ModelSpec(
+                "EveSolarSystem", ids=[30000142, 30004984, 30001161, 30002537, 30000380]
+            ),
             ModelSpec(
                 "EveCategory", ids=[EveCategoryId.ASTEROID.value], include_children=True
             ),
@@ -29,6 +31,7 @@ class CreateEveUniverseTestData(TestCase):
                     23,
                     60,
                     603,
+                    670,
                     1376,
                     16159,
                     20185,

@@ -9,7 +9,7 @@ build/
 temp/
 *.egg-info/
 coverage.xml
-.coverage
+.coverage*
 .tox
 htmlcov
 structures_notifications_archive/
