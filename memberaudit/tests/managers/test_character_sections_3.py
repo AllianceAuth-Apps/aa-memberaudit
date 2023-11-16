@@ -725,7 +725,7 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
-    def test_should_add_new_role(self, mock_esi):
+    def test_should_add_new_title_from_scratch(self, mock_esi):
         # given
         endpoints = [
             EsiEndpoint(
@@ -745,7 +745,7 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         self.assertEqual(obj.name, "Awesome Title")
         self.assertEqual(obj.title_id, 1)
 
-    def test_should_update_existing_entries(self, mock_esi):
+    def test_should_update_existing_titles(self, mock_esi):
         # given
         endpoints = [
             EsiEndpoint(
@@ -766,7 +766,7 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         obj = self.character_1001.titles.get(title_id=1)
         self.assertEqual(obj.name, "Awesome Title")
 
-    def test_should_replace_existing_entries(self, mock_esi):
+    def test_should_replace_existing_titles(self, mock_esi):
         # given
         endpoints = [
             EsiEndpoint(
@@ -788,7 +788,7 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         obj = self.character_1001.titles.get(title_id=2)
         self.assertEqual(obj.name, "Awesome Title")
 
-    def test_should_remove_existing_roles(self, mock_esi):
+    def test_should_remove_existing_titles(self, mock_esi):
         # given
         endpoints = [
             EsiEndpoint(
@@ -807,6 +807,30 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         self.character_1001.update_titles()
         # then
         self.assertEqual(self.character_1001.titles.count(), 0)
+
+    def test_should_remove_xml_from_titles_and_strip(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_titles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {"name": "<color=0xFFee82ee> Awesome Title ", "title_id": 1}
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        self.character_1001.update_titles()
+        # then
+        self.assertEqual(self.character_1001.titles.count(), 1)
+        obj = self.character_1001.titles.first()
+        self.assertEqual(obj.name, "Awesome Title")
+        self.assertEqual(obj.title_id, 1)
 
 
 @patch(MANAGERS_PATH + ".esi")
