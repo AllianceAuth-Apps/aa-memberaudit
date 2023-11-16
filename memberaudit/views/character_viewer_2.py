@@ -747,7 +747,7 @@ def character_titles_data(
     """Render data view for character titles."""
     data = [
         {"id": title.title_id, "name": title.name}
-        for title in character.titles.order_by("name")
+        for title in character.titles.order_by("title_id")
     ]
     return JsonResponse({"data": data})
 
