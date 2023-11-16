@@ -892,6 +892,22 @@ class TestCharacterGenerateShipAsset(TestCase):
         # then
         self.assertIsNone(obj)
 
+    def test_should_not_generate_asset_when_no_valid_ship_item_id(self):
+        # given
+        create_character_ship(
+            character=self.character,
+            item_id=0,
+            eve_type_id=EveTypeId.MERLIN,
+            name="Joy Ride",
+        )
+        create_character_location(character=self.character, location=self.location_jita)
+
+        # when
+        obj = self.character.generate_asset_from_current_ship_and_location()
+
+        # then
+        self.assertIsNone(obj)
+
     def test_should_not_generate_asset_when_it_is_a_capsule(self):
         # given
         create_character_ship(

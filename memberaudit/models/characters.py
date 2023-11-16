@@ -785,6 +785,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except CharacterShip.DoesNotExist:
             return None
 
+        if not ship.item_id:
+            return None  # item ID is 0 from the migration
+
         if ship.eve_type.eve_group_id == EveGroupId.CAPSULE:
             return None  # we don't add capsules
 

@@ -11,11 +11,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
 
+### Update notes
+
+For the current ship asset to be included correctly you need to force an update of ships for all characters. You can start the manual update on the admin page for Characters. Select all characters that need to be updated and then perform the action "Update ship for selected characters".
+
 ### Changed
 
 - Undocked ships are now automatically included in a character's assets. This means that the asset filter should not longer fail, when a corresponding ship is undocked. (#150)
-- Limit retries and add exponential backoff with jitter to updating structures and mail entities
 - Modernization and refactoring of tests
+
+### Fixed
+
+- Limit retries and add exponential backoff with jitter to updating structures and mail entities. This should prevent the situation where structure update tasks run into ESI errors repeatedly and build up.
 
 ## [3.3.3] - 2023-10-14
 
