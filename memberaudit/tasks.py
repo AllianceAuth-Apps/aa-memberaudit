@@ -359,6 +359,7 @@ def assets_build_list_from_esi(
             ship_item_id = ship_asset_record["item_id"]
             if ship_item_id not in assets_data:
                 assets_data[ship_item_id] = ship_asset_record
+                logger.info("%s: Added current ship to assets", character)
 
     return assets_data
 
