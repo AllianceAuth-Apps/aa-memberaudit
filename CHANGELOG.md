@@ -20,10 +20,13 @@ Please run a manual update for all titles to make sure this change is applied co
 ## Changed
 
 - Removed XML tags from titles
+- Titles are now shown in the same order as in the Eve client
 
 ## [3.4.1] - 2023-11-16
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
 
 ## Fixed
 

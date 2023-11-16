@@ -738,8 +738,8 @@ class TestCharacterTitlesData(NoSocketsTestCase):
 
     def test_should_return_correct_character_titles(self):
         # given
-        create_character_title(character=self.character, name="Bravo")
-        create_character_title(character=self.character, name="Alpha")
+        create_character_title(character=self.character, name="Bravo", title_id=2)
+        create_character_title(character=self.character, name="Alpha", title_id=1)
         request = self.factory.get(
             reverse("memberaudit:character_roles_data", args=[self.character.pk])
         )
