@@ -383,9 +383,7 @@ def assets_preload_objects(
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def assets_create_parents(
-    self, assets_data: Optional[dict], character_pk: int, cycle: int = 1
-) -> None:
+def assets_create_parents(self, assets_data: Optional[dict], character_pk: int) -> None:
     """Create the parent assets from an asset list.
 
     Parent assets are assets attached directly to a Location object (e.g. station)
@@ -401,13 +399,16 @@ def assets_create_parents(
         character.update_section_log_success(Character.UpdateSection.ASSETS)
         return
 
-    logger.info("%s: Creating parent assets - pass %s", character, cycle)
+    logger.info("%s: Creating parent assets", character)
 
     new_assets = []
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
-    if cycle == 1:
-        character.assets.all().delete()
+    # TODO: Find better solution
+    # Since we no longer have a transaction this delete might be visible to
+    # the user and an asset filter
+    # Can we do an update changes only approach here vs. delete and re-created all?
+    character.assets.all().delete()
 
     known_location_ids = set(Location.objects.values_list("id", flat=True))
     parent_asset_ids = {
@@ -432,8 +433,6 @@ def assets_create_parents(
             )
         )
         assets_data.pop(item_id)
-        if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
-            break
 
     logger.info("%s: Writing %s parent assets", character, len(new_assets))
     # TODO: `ignore_conflicts=True` needed as workaround to compensate for
@@ -444,25 +443,14 @@ def assets_create_parents(
         ignore_conflicts=True,
     )
 
-    if len(parent_asset_ids) > len(new_assets):
-        # there are more parent assets to create
-        assets_create_parents.apply_async(
-            kwargs={
-                "assets_data": assets_data,
-                "character_pk": character.pk,
-                "cycle": cycle + 1,
-            },
+    # all parent assets created
+    if assets_data:
+        assets_create_children.apply_async(
+            kwargs={"assets_data": assets_data, "character_pk": character.pk},
             priority=priority,
         )
     else:
-        # all parent assets created
-        if assets_data:
-            assets_create_children.apply_async(
-                kwargs={"assets_data": assets_data, "character_pk": character.pk},
-                priority=priority,
-            )
-        else:
-            character.update_section_log_success(Character.UpdateSection.ASSETS)
+        character.update_section_log_success(Character.UpdateSection.ASSETS)
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
@@ -532,7 +520,6 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        character.update_section_log_success(Character.UpdateSection.ASSETS)
         if len(assets_data) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
@@ -540,6 +527,8 @@ def assets_create_children(
                 len(assets_data),
                 assets_data.keys(),
             )
+        else:
+            character.update_section_log_success(Character.UpdateSection.ASSETS)
 
 
 # Special tasks for updating mail section
