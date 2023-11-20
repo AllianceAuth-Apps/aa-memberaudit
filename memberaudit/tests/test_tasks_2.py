@@ -172,6 +172,7 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
 class TestUpdateCharacterAssets2(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
+        reset_celery_once_locks()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -180,9 +181,6 @@ class TestUpdateCharacterAssets2(TestCase):
         cls.jita_44 = Location.objects.get(id=60003760)
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1_000_000_000_001)
-        reset_celery_once_locks()
-
-    def test_should_create_assets_from_scratch(self, mock_esi):
         endpoints = [
             EsiEndpoint(
                 "Assets",
@@ -194,9 +192,9 @@ class TestUpdateCharacterAssets2(TestCase):
                         {
                             "is_blueprint_copy": False,
                             "is_singleton": True,
-                            "item_id": 1100000000001,
+                            "item_id": 1_100_000_000_001,
                             "location_flag": "Hangar",
-                            "location_id": 60003760,
+                            "location_id": cls.jita_44.id,
                             "location_type": "station",
                             "quantity": 1,
                             "type_id": EveTypeId.CHARON.value,
@@ -204,9 +202,9 @@ class TestUpdateCharacterAssets2(TestCase):
                         {
                             "is_blueprint_copy": False,
                             "is_singleton": False,
-                            "item_id": 1100000000002,
+                            "item_id": 1_100_000_000_002,
                             "location_flag": "Hangar",
-                            "location_id": 60003760,
+                            "location_id": cls.jita_44.id,
                             "location_type": "station",
                             "quantity": 1,
                             "type_id": EveTypeId.VELDSPAR.value,
@@ -214,9 +212,9 @@ class TestUpdateCharacterAssets2(TestCase):
                         {
                             "is_blueprint_copy": False,
                             "is_singleton": False,
-                            "item_id": 1100000000003,
+                            "item_id": 1_100_000_000_003,
                             "location_flag": "Hangar",
-                            "location_id": 1100000000001,  # Charon
+                            "location_id": 1_100_000_000_001,  # Charon
                             "location_type": "item",
                             "quantity": 1,
                             "type_id": EveTypeId.CARGO_CONTAINER.value,
@@ -224,9 +222,9 @@ class TestUpdateCharacterAssets2(TestCase):
                         {
                             "is_blueprint_copy": False,
                             "is_singleton": False,
-                            "item_id": 1100000000004,
+                            "item_id": 1_100_000_000_004,
                             "location_flag": "???",
-                            "location_id": 1100000000003,  # Cargo container
+                            "location_id": 1_100_000_000_003,  # Cargo container
                             "location_type": "item",
                             "quantity": 1,
                             "type_id": EveTypeId.VELDSPAR.value,
@@ -234,9 +232,9 @@ class TestUpdateCharacterAssets2(TestCase):
                         {
                             "is_blueprint_copy": False,
                             "is_singleton": False,
-                            "item_id": 1100000000005,
+                            "item_id": 1_100_000_000_005,
                             "location_flag": "???",
-                            "location_id": 1000000000003,  # Cargo container
+                            "location_id": 1_100_000_000_003,  # Cargo container
                             "location_type": "item",
                             "quantity": 1,
                             "type_id": EveTypeId.LIQUID_OZONE.value,
@@ -251,12 +249,17 @@ class TestUpdateCharacterAssets2(TestCase):
                 needs_token=True,
                 data={
                     "1001": [
-                        {"item_id": 1100000000001, "name": "Freighter"},
+                        {"item_id": 1_100_000_000_001, "name": "Freighter"},
                     ]
                 },
             ),
         ]
-        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        cls.esi_client = EsiClientStub.create_from_endpoints(endpoints)
+
+    def test_should_create_assets_from_scratch(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client
+
         # when
         tasks.update_character_assets(self.character_1001.pk, True)
 
@@ -272,7 +275,145 @@ class TestUpdateCharacterAssets2(TestCase):
             },
         )
 
-    # @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
-    # def test_log_warning_when_there_are_leftovers(self, mock_logger, mock_esi):
-    #     pass
-    #   self.assertTrue(mock_logger.called)
+    @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
+    def test_log_warning_when_there_are_leftovers_1(self, mock_logger, mock_esi):
+        # given
+        asset_data = {
+            1_100_000_000_001: {
+                "is_blueprint_copy": False,
+                "is_singleton": False,
+                "item_id": 1_100_000_000_001,
+                "location_flag": "Hangar",
+                "location_id": self.jita_44.id,
+                "location_type": "station",
+                "quantity": 1,
+                "type_id": EveTypeId.VELDSPAR.value,
+            },
+            1_100_000_000_002: {
+                "is_blueprint_copy": False,
+                "is_singleton": True,
+                "item_id": 1_100_000_000_002,
+                "location_flag": "Hangar",
+                "location_id": self.jita_44.id,
+                "location_type": "station",
+                "quantity": 1,
+                "type_id": EveTypeId.CHARON.value,
+            },
+            1_100_000_000_003: {
+                "is_blueprint_copy": False,
+                "is_singleton": False,
+                "item_id": 1_100_000_000_003,
+                "location_flag": "Hangar",
+                "location_id": 1_100_000_000_009,  # Unknown location
+                "location_type": "item",
+                "quantity": 1,
+                "type_id": EveTypeId.VELDSPAR.value,
+            },
+        }
+
+        endpoints = [
+            EsiEndpoint(
+                "Assets",
+                "get_characters_character_id_assets",
+                "character_id",
+                needs_token=True,
+                data={"1001": list(asset_data.values())},
+            ),
+            EsiEndpoint(
+                "Assets",
+                "post_characters_character_id_assets_names",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {"item_id": 1_100_000_000_002, "name": "Freighter"},
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as _:
+            tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
+        self.assertSetEqual(
+            self.character_1001.assets.item_ids(),
+            {1_100_000_000_001, 1_100_000_000_002},
+        )
+        self.assertTrue(mock_logger.warning.called)
+
+    @patch(TASKS_PATH + ".MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 1)
+    @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
+    def test_log_warning_when_there_are_leftovers_2(self, mock_logger, mock_esi):
+        original_bulk_create = tasks.CharacterAsset.objects.bulk_create
+
+        def wrapper(objs, *args, **kwargs):
+            item_ids = {int(obj.item_id) for obj in objs}
+            if 1_100_000_000_002 in item_ids:
+                return []
+            return original_bulk_create(objs, *args, **kwargs)
+
+        # given
+        asset_data = {
+            1_100_000_000_001: {
+                "is_blueprint_copy": False,
+                "is_singleton": False,
+                "item_id": 1_100_000_000_001,
+                "location_flag": "Hangar",
+                "location_id": self.jita_44.id,
+                "location_type": "station",
+                "quantity": 1,
+                "type_id": EveTypeId.VELDSPAR.value,
+            },
+            1_100_000_000_002: {
+                "is_blueprint_copy": False,
+                "is_singleton": True,
+                "item_id": 1_100_000_000_002,
+                "location_flag": "Hangar",
+                "location_id": self.jita_44.id,
+                "location_type": "station",
+                "quantity": 1,
+                "type_id": EveTypeId.CHARON.value,
+            },
+            1_100_000_000_003: {
+                "is_blueprint_copy": False,
+                "is_singleton": False,
+                "item_id": 1_100_000_000_003,
+                "location_flag": "Hangar",
+                "location_id": 1_100_000_000_002,  # Charon
+                "location_type": "item",
+                "quantity": 1,
+                "type_id": EveTypeId.VELDSPAR.value,
+            },
+        }
+
+        endpoints = [
+            EsiEndpoint(
+                "Assets",
+                "get_characters_character_id_assets",
+                "character_id",
+                needs_token=True,
+                data={"1001": list(asset_data.values())},
+            ),
+            EsiEndpoint(
+                "Assets",
+                "post_characters_character_id_assets_names",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {"item_id": 1_100_000_000_002, "name": "Freighter"},
+                    ]
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+
+        # when
+        with patch(TASKS_PATH + ".CharacterAsset.objects.bulk_create", wraps=wrapper):
+            tasks.update_character_assets(self.character_1001.pk, True)
+
+        # then
+        self.assertSetEqual(self.character_1001.assets.item_ids(), {1_100_000_000_001})
+        self.assertTrue(mock_logger.warning.called)
