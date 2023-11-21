@@ -173,6 +173,26 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
     return CharacterContract.objects.create(**params)
 
 
+def create_character_contract_courier(
+    character: Character, **kwargs
+) -> CharacterContract:
+    start_location = kwargs.get("start_location") or create_location()
+    end_location = kwargs.get("end_location") or create_location()
+    params = {
+        "character": character,
+        "availability": CharacterContract.AVAILABILITY_PERSONAL,
+        "contract_type": CharacterContract.TYPE_COURIER,
+        "days_to_complete": 7,
+        "end_location": end_location,
+        "reward": 100_000_000,
+        "start_location": start_location,
+        "status": CharacterContract.STATUS_OUTSTANDING,
+        "volume": 250_000,
+    }
+    params.update(kwargs)
+    return create_character_contract(**params)
+
+
 def create_character_contract_item(
     contract: CharacterContract, **kwargs
 ) -> CharacterContractItem:
