@@ -69,30 +69,30 @@ class CharacterAssetQuerySet(models.QuerySet):
 class CharacterAssetManagerBase(models.Manager):
     def fetch_from_esi(self, character, force_update: bool = False) -> Optional[list]:
         """Fetch assets from ESI and preload related objects from ESI."""
-        assets_data, changed = character.update_section_if_changed(
+        asset_list, changed = character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
             fetch_func=self._fetch_data_from_esi,
             store_func=None,
             force_update=force_update,
         )
         if changed:
-            return assets_data
+            return asset_list
 
         return None
 
     @fetch_token_for_character("esi-assets.read_assets.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character, token: Token) -> list:
         """Fetch character assets with names from ESI and return it."""
         logger.info("%s: Fetching assets from ESI", character)
         asset_list = esi.client.Assets.get_characters_character_id_assets(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-        assets_data = {int(item["item_id"]): item for item in asset_list}
+        asset_data = {int(item["item_id"]): item for item in asset_list}
 
         logger.info("%s: Fetching asset names from ESI", character)
         names = []
-        for asset_ids_chunk in chunks(list(assets_data.keys()), 999):
+        for asset_ids_chunk in chunks(list(asset_data.keys()), 999):
             names += esi.client.Assets.post_characters_character_id_assets_names(
                 character_id=character.eve_character.character_id,
                 token=token.valid_access_token(),
@@ -104,25 +104,23 @@ class CharacterAssetManagerBase(models.Manager):
             for item in names
             if item["name"] != "None"
         }
-        for item_id in assets_data.keys():
-            assets_data[item_id]["name"] = asset_names.get(item_id, "")
+        for item_id in asset_data.keys():
+            asset_data[item_id]["name"] = asset_names.get(item_id, "")
 
-        return assets_data
+        return list(asset_data.values())
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def preload_objects_from_esi(
-        self, character, token: Token, assets_data: dict
+        self, character, token: Token, asset_list: list
     ) -> None:
         """Preloads objects needed to build the asset tree."""
         from memberaudit.models import Location
 
-        if not assets_data:
+        if not asset_list:
             return
 
         logger.info("%s: Preloading objects for asset tree", character)
-        required_ids = {
-            item["type_id"] for item in assets_data.values() if "type_id" in item
-        }
+        required_ids = {item["type_id"] for item in asset_list if "type_id" in item}
         existing_ids = set(EveType.objects.values_list("id", flat=True))
         missing_ids = required_ids.difference(existing_ids)
         if missing_ids:
@@ -131,10 +129,11 @@ class CharacterAssetManagerBase(models.Manager):
             )
             EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
 
+        asset_item_ids = {asset["item_id"] for asset in asset_list}
         incoming_location_ids = {
             item["location_id"]
-            for item in assets_data.values()
-            if "location_id" in item and item["location_id"] not in assets_data
+            for item in asset_list
+            if "location_id" in item and item["location_id"] not in asset_item_ids
         }
         Location.objects.create_missing_esi(
             location_ids=incoming_location_ids, token=token

@@ -617,9 +617,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """
         return self.assets.fetch_from_esi(self, force_update)
 
-    def assets_preload_objects(self, assets_data: dict) -> None:
+    def assets_preload_objects(self, asset_list: list) -> None:
         """Preload objects needed to build the character's asset tree from ESI."""
-        self.assets.preload_objects_from_esi(self, assets_data)
+        self.assets.preload_objects_from_esi(self, asset_list)
 
     def update_attributes(self, force_update: bool = False):
         """Update the character's learning attributes from ESI."""

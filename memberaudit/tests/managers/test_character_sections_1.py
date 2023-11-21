@@ -17,6 +17,7 @@ from memberaudit.models import (
     CharacterContractItem,
     Location,
 )
+from memberaudit.tests.testdata.constants import EveStationId, EveTypeId
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     create_character_asset,
@@ -129,8 +130,9 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         # when
         result = CharacterAsset.objects.fetch_from_esi(self.character)
         # then
+        asset_data = {asset["item_id"]: asset for asset in result}
         self.assertSetEqual(
-            set(result.keys()),
+            set(asset_data.keys()),
             {
                 1100000000001,
                 1100000000002,
@@ -142,7 +144,14 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
                 1100000000008,
             },
         )
-        self.assertEqual(result[1100000000001]["name"], "Parent Item 1")
+        obj = asset_data[1100000000001]
+        self.assertEqual(obj["name"], "Parent Item 1")
+        self.assertTrue(obj["is_blueprint_copy"])
+        self.assertTrue(obj["is_singleton"])
+        self.assertEqual(obj["location_flag"], "Hangar")
+        self.assertEqual(obj["location_id"], EveStationId.JITA_44.value)
+        self.assertEqual(obj["quantity"], 1)
+        self.assertEqual(obj["type_id"], EveTypeId.CHARON.value)
 
     def test_should_always_return_assets_when_forced(self, mock_esi):
         # given
@@ -170,9 +179,9 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     ):
         # given
         character = create_character_from_user(self.user)
-        assets_data = {}
+        asset_list = []
         # when
-        character.assets_preload_objects(assets_data)
+        character.assets_preload_objects(asset_list)
         # then
         self.assertFalse(mock_eve_entity_create.called)
         self.assertFalse(mock_preload_locations.called)
@@ -182,12 +191,12 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
     ):
         # given
         character = create_character_from_user(self.user)
-        assets_data = {
-            1: {"item_id": 1, "type_id": 3, "location_id": 420},
-            2: {"item_id": 2, "type_id": 4, "location_id": 421},
-        }
+        asset_list = [
+            {"item_id": 1, "type_id": 3, "location_id": 420},
+            {"item_id": 2, "type_id": 4, "location_id": 421},
+        ]
         # when
-        character.assets_preload_objects(assets_data)
+        character.assets_preload_objects(asset_list)
         # then
         self.assertTrue(mock_eve_entity_create.called)
         _, kwargs = mock_eve_entity_create.call_args

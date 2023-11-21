@@ -348,28 +348,29 @@ def assets_build_list_from_esi(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    assets_data: Optional[dict] = character.perform_update_with_error_logging(
+    asset_list: list = character.perform_update_with_error_logging(
         section=Character.UpdateSection.ASSETS,
         method=character.assets_build_list_from_esi,
         force_update=force_update,
     )
-    if assets_data is not None:
+    if asset_list is not None:
         ship_asset_record = character.generate_asset_from_current_ship_and_location()
         if ship_asset_record:
             ship_item_id = ship_asset_record["item_id"]
-            if ship_item_id not in assets_data:
-                assets_data[ship_item_id] = ship_asset_record
+            asset_item_ids = {item["item_id"] for item in asset_list}
+            if ship_item_id not in asset_item_ids:
+                asset_list.append(ship_asset_record)
                 logger.info("%s: Added current ship to assets", character)
 
-    return assets_data
+    return asset_list
 
 
 @shared_task(**TASK_DEFAULTS)
 def assets_preload_objects(
-    assets_data: Optional[dict], character_pk: int
-) -> Optional[dict]:
+    asset_list: Optional[list], character_pk: int
+) -> Optional[list]:
     """Preload asset objects for a character from ESI."""
-    if assets_data is None:
+    if asset_list is None:
         return None  # Exit when assets are unchanged
 
     character: Character = Character.objects.get_cached(
@@ -378,14 +379,14 @@ def assets_preload_objects(
     character.perform_update_with_error_logging(
         Character.UpdateSection.ASSETS,
         character.assets_preload_objects,
-        assets_data,
+        asset_list,
     )
-    return assets_data
+    return asset_list
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_parents(
-    self, assets_data: Optional[dict], character_pk: int, cycle: int = 1
+    self, asset_list: Optional[list], character_pk: int, cycle: int = 1
 ) -> None:
     """Create the parent assets from an asset list.
 
@@ -398,14 +399,15 @@ def assets_create_parents(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    if assets_data is None:
+    if asset_list is None:
         character.update_section_log_success(Character.UpdateSection.ASSETS)
         return
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
 
-    new_assets = []
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+    asset_data = {asset["item_id"]: asset for asset in asset_list}
+    new_assets = []
     with transaction.atomic():
         if cycle == 1:
             character.assets.all().delete()
@@ -413,12 +415,12 @@ def assets_create_parents(
         known_location_ids = set(Location.objects.values_list("id", flat=True))
         parent_asset_ids = {
             item_id
-            for item_id, asset_info in assets_data.items()
+            for item_id, asset_info in asset_data.items()
             if asset_info.get("location_id")
             and asset_info["location_id"] in known_location_ids
         }
         for item_id in parent_asset_ids:
-            item = assets_data[item_id]
+            item = asset_data[item_id]
             new_assets.append(
                 CharacterAsset(
                     character=character,
@@ -432,7 +434,7 @@ def assets_create_parents(
                     quantity=item.get("quantity"),
                 )
             )
-            assets_data.pop(item_id)
+            asset_data.pop(item_id)
             if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
                 break
 
@@ -447,19 +449,26 @@ def assets_create_parents(
 
     if len(parent_asset_ids) > len(new_assets):
         # there are more parent assets to create
+        # FIXME: Synchronization issue: This task could run later then
+        # the task trying to create it's child assets, which then would fail
+        # This issue was triggered by issue #152
         assets_create_parents.apply_async(
             kwargs={
-                "assets_data": assets_data,
+                "asset_list": list(asset_data.values()),
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
             priority=priority,
         )
+
     else:
         # all parent assets created
-        if assets_data:
+        if asset_data:
             assets_create_children.apply_async(
-                kwargs={"assets_data": assets_data, "character_pk": character.pk},
+                kwargs={
+                    "asset_list": list(asset_data.values()),
+                    "character_pk": character.pk,
+                },
                 priority=priority,
             )
         else:
@@ -468,7 +477,7 @@ def assets_create_parents(
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_children(
-    self, assets_data: dict, character_pk: int, cycle: int = 1
+    self, asset_list: list, character_pk: int, cycle: int = 1
 ) -> None:
     """Create child assets from given asset list.
 
@@ -483,19 +492,20 @@ def assets_create_children(
     logger.info("%s: Creating child assets - pass %s", character, cycle)
 
     # for debug
-    # store_list_to_disk(character, assets_data, f"child_asset_list_{cycle}")
+    # store_list_to_disk(character, asset_data, f"child_asset_list_{cycle}")
 
-    new_assets = []
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+    asset_data = {asset["item_id"]: asset for asset in asset_list}
+    new_assets = []
     with transaction.atomic():
         parent_asset_ids = set(character.assets.values_list("item_id", flat=True))
         child_asset_ids = {
             item_id
-            for item_id, item in assets_data.items()
+            for item_id, item in asset_data.items()
             if item.get("location_id") and item["location_id"] in parent_asset_ids
         }
         for item_id in child_asset_ids:
-            item = assets_data[item_id]
+            item = asset_data[item_id]
             new_assets.append(
                 CharacterAsset(
                     character=character,
@@ -509,7 +519,7 @@ def assets_create_children(
                     quantity=item.get("quantity"),
                 )
             )
-            assets_data.pop(item_id)
+            asset_data.pop(item_id)
             if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
                 break
 
@@ -523,11 +533,11 @@ def assets_create_children(
                 ignore_conflicts=True,
             )
 
-    if new_assets and assets_data:
+    if new_assets and asset_data:
         # there are more child assets to create
         assets_create_children.apply_async(
             kwargs={
-                "assets_data": assets_data,
+                "asset_list": list(asset_data.values()),
                 "character_pk": character.pk,
                 "cycle": cycle + 1,
             },
@@ -535,12 +545,12 @@ def assets_create_children(
         )
     else:
         character.update_section_log_success(Character.UpdateSection.ASSETS)
-        if len(assets_data) > 0:
+        if len(asset_data) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
                 character,
-                len(assets_data),
-                assets_data.keys(),
+                len(asset_data),
+                asset_data.keys(),
             )
 
 
