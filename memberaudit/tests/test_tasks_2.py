@@ -11,7 +11,7 @@ from eveuniverse.models import EveSolarSystem
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 
 from memberaudit import tasks
-from memberaudit.models import Location
+from memberaudit.models import CharacterAsset, Location
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -22,6 +22,7 @@ from memberaudit.tests.utils import (
 )
 
 from .testdata.factories import (
+    create_character_asset,
     create_character_location,
     create_character_ship,
     create_location_eve_solar_system,
@@ -231,13 +232,23 @@ class TestUpdateCharacterAssets2(TestCase):
                         },
                         {
                             "is_blueprint_copy": False,
-                            "is_singleton": False,
+                            "is_singleton": True,
                             "item_id": 1_100_000_000_005,
                             "location_flag": "???",
                             "location_id": 1_100_000_000_003,  # Cargo container
                             "location_type": "item",
                             "quantity": 1,
-                            "type_id": EveTypeId.LIQUID_OZONE.value,
+                            "type_id": EveTypeId.MERLIN.value,
+                        },
+                        {
+                            "is_blueprint_copy": False,
+                            "is_singleton": False,
+                            "item_id": 1_100_000_000_006,
+                            "location_flag": "???",
+                            "location_id": 1_100_000_000_005,  # Merlin
+                            "location_type": "item",
+                            "quantity": 1,
+                            "type_id": EveTypeId.VELDSPAR.value,
                         },
                     ]
                 },
@@ -250,6 +261,7 @@ class TestUpdateCharacterAssets2(TestCase):
                 data={
                     "1001": [
                         {"item_id": 1_100_000_000_001, "name": "Freighter"},
+                        {"item_id": 1_100_000_000_005, "name": "Fighter"},
                     ]
                 },
             ),
@@ -261,7 +273,7 @@ class TestUpdateCharacterAssets2(TestCase):
         mock_esi.client = self.esi_client
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         # then
         self.assertSetEqual(
@@ -272,8 +284,59 @@ class TestUpdateCharacterAssets2(TestCase):
                 1_100_000_000_003,
                 1_100_000_000_004,
                 1_100_000_000_005,
+                1_100_000_000_006,
             },
         )
+
+        obj: CharacterAsset = self.character_1001.assets.get(item_id=1_100_000_000_001)
+        self.assertFalse(obj.is_blueprint_copy)
+        self.assertTrue(obj.is_singleton)
+        self.assertEqual(obj.location_flag, "Hangar")
+        self.assertEqual(obj.location.id, self.jita_44.id)
+        self.assertEqual(obj.quantity, 1)
+        self.assertEqual(obj.eve_type.id, EveTypeId.CHARON)
+        self.assertEqual(obj.name, "Freighter")
+
+    def test_should_remove_obsolete_assets(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client
+        create_character_asset(
+            character=self.character_1001, item_id=1100000000666, location=self.jita_44
+        )
+
+        # when
+        tasks.update_character_assets.delay(self.character_1001.pk, True)
+
+        self.assertSetEqual(
+            self.character_1001.assets.item_ids(),
+            {
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+            },
+        )
+
+    def test_should_update_existing_assets(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client
+        create_character_asset(
+            character=self.character_1001,
+            item_id=1_100_000_000_002,
+            location=self.jita_44,
+            eve_type_id=EveTypeId.LIQUID_OZONE,
+            is_singleton=False,
+            quantity=10,
+        )
+
+        # when
+        tasks.update_character_assets.delay(self.character_1001.pk, True)
+
+        # then
+        obj: CharacterAsset = self.character_1001.assets.get(item_id=1_100_000_000_002)
+        self.assertEqual(obj.quantity, 1)
 
     @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
     def test_log_warning_when_there_are_leftovers_1(self, mock_logger, mock_esi):
@@ -334,7 +397,7 @@ class TestUpdateCharacterAssets2(TestCase):
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # when
         with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as _:
-            tasks.update_character_assets(self.character_1001.pk, True)
+            tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         # then
         self.assertSetEqual(
