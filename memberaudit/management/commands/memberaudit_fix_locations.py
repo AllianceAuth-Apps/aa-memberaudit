@@ -42,11 +42,11 @@ class Command(BaseCommand):
                 f"and remove {invalid_locations.count():,} invalid locations "
                 "caused by issue #154."
             )
-            user_input = get_input("Are you sure you want to proceed (y/N)?")
+            user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
             user_input = "y"
 
-        if user_input.lower() != "y":
+        if user_input.lower() == "n":
             self.stdout.write(self.style.WARNING("Aborted"))
             return
 
@@ -81,12 +81,12 @@ class Command(BaseCommand):
             )
             user_input = get_input(
                 "Otherwise the assets will be automatically "
-                "updated with the next regular character update. (y/N)?"
+                "updated with the next regular character update. (Y/n)?"
             )
         else:
             user_input = "y"
 
-        if user_input.lower() == "y":
+        if user_input.lower() != "n":
             for character_pk in characters_updateable_pks:
                 tasks.update_character_assets.apply_async(
                     kwargs={"character_pk": character_pk, "force_update": True},
