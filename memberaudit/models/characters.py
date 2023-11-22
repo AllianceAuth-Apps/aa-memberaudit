@@ -522,15 +522,21 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
         return data, True
 
-    def update_section_log_success(self, section: UpdateSection) -> None:
-        """Log success after successfully updating a character's section."""
-        logger.info("%s: %s update completed", self, section.label)
+    def update_section_log_result(
+        self,
+        section: UpdateSection,
+        is_success: bool,
+        last_error_message: str = None,
+    ) -> None:
+        """Log update result for a character's section."""
+        status = "successfully" if is_success else "with errors"
+        logger.info("%s: %s update completed %s", self, section.label, status)
         self.update_status_set.update_or_create(
             section=section,
             defaults={
-                "is_success": True,
+                "is_success": is_success,
                 "has_token_error": False,
-                "last_error_message": "",
+                "last_error_message": last_error_message if last_error_message else "",
                 "finished_at": now(),
             },
         )

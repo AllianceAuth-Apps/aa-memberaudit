@@ -284,7 +284,7 @@ def update_character_section(
     character.perform_update_with_error_logging(
         section=section, method=method, **kwargs
     )
-    character.update_section_log_success(section)
+    character.update_section_log_result(section, is_success=True)
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -400,7 +400,9 @@ def assets_create_parents(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     if asset_list is None:
-        character.update_section_log_success(Character.UpdateSection.ASSETS)
+        character.update_section_log_result(
+            Character.UpdateSection.ASSETS, is_success=True
+        )
         return
 
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
@@ -472,7 +474,9 @@ def assets_create_parents(
                 priority=priority,
             )
         else:
-            character.update_section_log_success(Character.UpdateSection.ASSETS)
+            character.update_section_log_result(
+                Character.UpdateSection.ASSETS, is_success=True
+            )
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
@@ -544,7 +548,9 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        character.update_section_log_success(Character.UpdateSection.ASSETS)
+        character.update_section_log_result(
+            Character.UpdateSection.ASSETS, is_success=True
+        )
         if len(asset_data) > 0:
             logger.warning(
                 "%s: Failed to add %s assets to the tree: %s",
@@ -672,7 +678,7 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
             )
 
     # the last task in the chain logs success (if any)
-    character.update_section_log_success(Character.UpdateSection.MAILS)
+    character.update_section_log_result(Character.UpdateSection.MAILS, is_success=True)
 
 
 # special tasks for updating contacts
@@ -739,7 +745,9 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
         method=character.update_contacts,
         force_update=force_update,
     )
-    character.update_section_log_success(Character.UpdateSection.CONTACTS)
+    character.update_section_log_result(
+        Character.UpdateSection.CONTACTS, is_success=True
+    )
 
 
 # special tasks for updating contracts
@@ -857,7 +865,9 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
-    character.update_section_log_success(Character.UpdateSection.CONTRACTS)
+    character.update_section_log_result(
+        Character.UpdateSection.CONTRACTS, is_success=True
+    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
