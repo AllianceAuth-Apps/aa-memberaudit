@@ -40,7 +40,7 @@ class Command(BaseCommand):
                 f"This command will fix {invalid_assets.count():,} corrupted assets "
                 f"across {len(character_pks):,} characters "
                 f"and remove {invalid_locations.count():,} invalid locations "
-                "caused by issue #154."
+                "caused by issue #153."
             )
             user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
@@ -68,20 +68,17 @@ class Command(BaseCommand):
             ).values_list("pk", flat=True)
         )
         self.stdout.write(
-            "The character's asset data may have been damaged by the data corruption."
+            "The character asset data may have been damaged by the data corruption."
         )
         self.stdout.write(
             "This data can be restored from ESI for "
             f"{len(characters_updateable_pks):,} affected characters."
         )
         if not options["noinput"]:
-            self.stdout.write(
-                "Do you want to start the tasks now, "
-                "to conduct an immediate asset update for these characters? "
-            )
             user_input = get_input(
-                "Otherwise the assets will be automatically "
-                "updated with the next regular character update. (Y/n)?"
+                "Do you want to start an immediate asset update "
+                "for these characters (y) "
+                "or wait for the update to happen on the regular schedule (n) (Y/n)?"
             )
         else:
             user_input = "y"
@@ -94,8 +91,10 @@ class Command(BaseCommand):
                 )
 
             self.stdout.write(
-                "Asset update has been started for "
+                "Immediate asset update has been started for "
                 f"{len(characters_updateable_pks):,} characters."
             )
+        else:
+            self.stdout.write("Immediate asset update was not started.")
 
         self.stdout.write(self.style.SUCCESS("Done"))

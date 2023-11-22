@@ -35,6 +35,7 @@ DROP TABLE IF EXISTS memberaudit_characterskill;
 DROP TABLE IF EXISTS memberaudit_characterskillpoints;
 DROP TABLE IF EXISTS memberaudit_characterskillqueueentry;
 DROP TABLE IF EXISTS memberaudit_characterstanding;
+DROP TABLE IF EXISTS memberaudit_charactertitle;
 DROP TABLE IF EXISTS memberaudit_characterupdatestatus;
 DROP TABLE IF EXISTS memberaudit_characterwalletbalance;
 DROP TABLE IF EXISTS memberaudit_characterwalletjournalentry;
