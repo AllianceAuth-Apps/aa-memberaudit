@@ -2,27 +2,35 @@ import tempfile
 from io import StringIO
 from pathlib import Path
 from unittest import skip
+from unittest.mock import patch
 
 from django.core.management import call_command
+from django.test import TestCase
 
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.models import Character
-
-from .testdata.factories import (
+from memberaudit.models import Character, Location
+from memberaudit.tests.testdata.factories import (
+    create_character_asset,
     create_character_contract,
+    create_character_contract_courier,
     create_character_contract_item,
+    create_character_jump_clone,
+    create_character_location,
+    create_character_update_status,
+    create_character_wallet_transaction,
+    create_location,
 )
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .utils import (
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import (
     add_auth_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
 
-PACKAGE_PATH = "memberaudit.management.commands"
 DATA_EXPORTERS_PATH = "memberaudit.core.data_exporters"
+PACKAGE_PATH = "memberaudit.management.commands"
 
 
 @skip("Maria DB breaks")
@@ -31,7 +39,6 @@ class TestResetCharacters(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         load_entities()
-        Character.objects.all().delete()
 
     def test_normal(self):
         """can recreate member audit characters from main and alt of matching tokens"""
@@ -105,3 +112,91 @@ class TestDataExport(NoSocketsTestCase):
                 "memberaudit_contract-item"
             ).with_suffix(".csv")
             self.assertTrue(output_file.exists())
+
+
+@patch(
+    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets", spec=True
+)
+class TestFixInvalidLocations(TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_do_nothing_when_no_invalid_locations(self, mock):
+        # given
+        asset = create_character_asset(
+            character=self.character, location=create_location()
+        )
+        contract = create_character_contract_courier(
+            character=self.character,
+            start_location=create_location(),
+            end_location=create_location(),
+        )
+        location = create_character_location(
+            character=self.character, location=create_location()
+        )
+        jump_clone = create_character_jump_clone(
+            character=self.character, location=create_location()
+        )
+        wallet = create_character_wallet_transaction(
+            character=self.character, location=create_location()
+        )
+
+        # when
+        out = StringIO()
+        call_command("memberaudit_fix_locations", "--noinput", stdout=out)
+
+        # then
+        asset.refresh_from_db()
+        self.assertTrue(asset.location)
+        contract.refresh_from_db()
+        self.assertTrue(contract.start_location)
+        self.assertTrue(contract.end_location)
+        location.refresh_from_db()
+        self.assertTrue(location.location)
+        jump_clone.refresh_from_db()
+        self.assertTrue(jump_clone.location)
+        wallet.refresh_from_db()
+        self.assertTrue(wallet.location)
+
+    def test_should_delete_invalid_locations_and_fix_related_assets(
+        self, mock_task_update_character_assets
+    ):
+        # given
+        valid_location = create_location()
+        invalid_location = create_location()
+        normal_asset = create_character_asset(
+            item_id=invalid_location.id,
+            character=self.character,
+            location=valid_location,
+        )
+        corrupted_asset = create_character_asset(
+            character=self.character, location=invalid_location
+        )
+        status = create_character_update_status(
+            character=self.character, section=Character.UpdateSection.ASSETS
+        )
+        status.update_content_hash(["some data"])
+        # when
+        out = StringIO()
+        call_command("memberaudit_fix_locations", "--noinput", stdout=out)
+
+        # then
+        location_ids = set(Location.objects.values_list("id", flat=True))
+        self.assertSetEqual(
+            location_ids, {valid_location.id, Location.LOCATION_UNKNOWN_ID}
+        )
+        normal_asset.refresh_from_db()
+        self.assertEqual(normal_asset.location, valid_location)
+        corrupted_asset.refresh_from_db()
+        self.assertEqual(corrupted_asset.location.id, Location.LOCATION_UNKNOWN_ID)
+        status.refresh_from_db()
+        self.assertFalse(status.content_hash_1)
+        self.assertTrue(mock_task_update_character_assets.apply_async.called)
+        _, kwargs = mock_task_update_character_assets.apply_async.call_args
+        params = kwargs["kwargs"]
+        self.assertEqual(params["character_pk"], self.character.pk)
+        self.assertTrue(params["force_update"])

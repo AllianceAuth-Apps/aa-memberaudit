@@ -981,3 +981,4 @@ class CharacterUpdateStatus(models.Model):
         self.root_task_id = root_task_id if root_task_id else ""
         self.parent_task_id = parent_task_id if root_task_id else ""
         self.save()
+        # TODO: Check if the hash also needs to be reset?
