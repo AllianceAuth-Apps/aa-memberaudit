@@ -513,11 +513,11 @@ class LocationCategoryListFilter(admin.SimpleListFilter):
 
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
-    list_display = ("id", "_name", "_type", "_group", "_solar_system", "_updated_at")
+    list_display = ("id", "_name", "_type", "_group", "_solar_system", "updated_at")
     list_filter = (
         LocationCategoryListFilter,
-        # ("eve_type__eve_group__eve_category", admin.RelatedOnlyFieldListFilter),
         ("eve_type__eve_group", admin.RelatedOnlyFieldListFilter),
+        "updated_at",
     )
     search_fields = [
         "id",
@@ -574,10 +574,6 @@ class LocationAdmin(admin.ModelAdmin):
     @admin.display(ordering="eve_type__eve_group__name", description=__("group"))
     def _group(self, obj):
         return obj.eve_type.eve_group.name if obj.eve_type else None
-
-    @admin.display(ordering="updated_at", description=__("updated at"))
-    def _updated_at(self, obj):
-        return obj.name_plus
 
 
 @admin.register(SkillSetGroup)
