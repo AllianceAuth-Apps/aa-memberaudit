@@ -573,11 +573,15 @@ class TestLocationManager(NoSocketsTestCase):
         )
 
     def test_can_create_structure(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         obj, created = Location.objects.update_or_create_esi(
             id=1000000000001, token=self.token
         )
+
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000001)
         self.assertEqual(obj.name, "Amamake - Test Structure Alpha")
@@ -587,7 +591,6 @@ class TestLocationManager(NoSocketsTestCase):
 
     def test_can_handle_incomplete_data_from_esi(self, mock_esi):
         # given
-
         mock_esi.client.Universe.get_universe_structures_structure_id.return_value = (
             BravadoOperationStub(
                 {
@@ -597,10 +600,12 @@ class TestLocationManager(NoSocketsTestCase):
                 }
             )
         )
+
         # when
         obj, created = Location.objects.update_or_create_esi(
             id=1000000000666, token=self.token
         )
+
         # then
         self.assertTrue(created)
         self.assertEqual(obj.id, 1000000000666)
@@ -610,11 +615,15 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertIsNone(obj.owner)
 
     def test_can_update_structure(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         obj, _ = Location.objects.update_or_create_esi(
             id=1000000000001, token=self.token
         )
+
+        # then
         obj.name = "Not my structure"
         obj.eve_solar_system = self.jita
         obj.eve_type = self.jita_trade_hub
@@ -631,8 +640,8 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.owner, self.corporation_2001)
 
     def test_does_not_update_existing_location_during_grace_period(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-
         obj_existing = Location.objects.create(
             id=1000000000001,
             name="Existing Structure",
@@ -640,27 +649,36 @@ class TestLocationManager(NoSocketsTestCase):
             eve_type=self.jita_trade_hub,
             owner=self.corporation_2002,
         )
+
+        # when
         obj, created = Location.objects.get_or_create_esi(
             id=1000000000001, token=self.token
         )
+        # then
         self.assertFalse(created)
         self.assertEqual(obj, obj_existing)
 
     def test_always_update_existing_empty_locations_after_grace_period_1(
         self, mock_esi
     ):
+        # given
         mock_esi.client = esi_client_stub
-
         Location.objects.create(id=1000000000001)
+
+        # when
         obj, _ = Location.objects.get_or_create_esi(id=1000000000001, token=self.token)
+
+        # then
         self.assertIsNone(obj.eve_solar_system)
 
     def test_always_update_existing_empty_locations_after_grace_period_2(
         self, mock_esi
     ):
+        # given
         mock_esi.client = esi_client_stub
-
         mocked_update_at = now() - dt.timedelta(minutes=6)
+
+        # when
         with patch(
             "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
         ):
@@ -668,12 +686,14 @@ class TestLocationManager(NoSocketsTestCase):
             obj, _ = Location.objects.get_or_create_esi(
                 id=1000000000001, token=self.token
             )
+
+        # then
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
     @patch(MANAGERS_PATH + ".MEMBERAUDIT_LOCATION_STALE_HOURS", 24)
     def test_always_update_existing_locations_which_are_stale(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-
         mocked_update_at = now() - dt.timedelta(hours=25)
         with patch(
             "django.utils.timezone.now", MagicMock(return_value=mocked_update_at)
@@ -685,24 +705,34 @@ class TestLocationManager(NoSocketsTestCase):
                 eve_type=self.jita_trade_hub,
                 owner=self.corporation_2002,
             )
+
+        # when
         obj, created = Location.objects.get_or_create_esi(
             id=1000000000001, token=self.token
         )
+
+        # then
         self.assertFalse(created)
         self.assertEqual(obj.eve_solar_system, self.amamake)
 
     def test_propagates_http_error_on_structure_create(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when/Then
         with self.assertRaises(HTTPNotFound):
             Location.objects.update_or_create_esi(id=1000000000099, token=self.token)
 
     def test_always_creates_empty_location_for_invalid_ids(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         obj, created = Location.objects.update_or_create_esi(
             id=80000000, token=self.token
         )
+
+        # then
         self.assertTrue(created)
         self.assertTrue(obj.is_empty)
 
@@ -759,10 +789,20 @@ class TestLocationManager(NoSocketsTestCase):
             )
         )
 
-        obj, created = Location.objects.update_or_create_esi(
+        _, created = Location.objects.update_or_create_esi(
             id=1000000000099, token=self.token
         )
         self.assertTrue(created)
+
+    def test_should_raise_value_error_when_token_is_needed_but_not_passed(
+        self, mock_esi
+    ):
+        # given
+        mock_esi.client = esi_client_stub
+
+        # when/then
+        with self.assertRaises(ValueError):
+            Location.objects.get_or_create_esi(id=1000000000099, token=None)
 
     # stations
 
@@ -839,9 +879,9 @@ class TestLocationManager(NoSocketsTestCase):
             obj.eve_type, EveType.objects.get(id=EveTypeId.ASSET_SAFETY_WRAP)
         )
 
-    # Unknown placeholder
+    # Unknown location placeholder
 
-    def test_can_create_location_unknown(self, mock_esi):
+    def test_can_create_unknown_location(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
         # when

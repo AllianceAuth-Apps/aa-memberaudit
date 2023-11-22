@@ -223,8 +223,12 @@ class LocationManager(models.Manager):
             return self._station_update_or_create_dict(id=id, station=station)
 
         if self.model.is_structure_id(id):
+            if not token:
+                raise ValueError(f"{id}: Need token to fetch this location from ESI")
+
             if update_async:
                 return self._structure_update_or_create_esi_async(id=id, token=token)
+
             return self.structure_update_or_create_esi(id=id, token=token)
 
         logger.warning(
