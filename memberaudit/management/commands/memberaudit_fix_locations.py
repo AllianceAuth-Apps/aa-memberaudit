@@ -23,22 +23,8 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        # Valid locations IDs do not have an asset item with the same ID
-        data = CharacterAsset.objects.values("item_id", "location_id")
-        asset_item_ids = {obj["item_id"] for obj in data}
-        asset_location_ids = {obj["location_id"] for obj in data}
-        valid_asset_location_ids = asset_location_ids - asset_item_ids
-
-        # Location which are references by items on other sections are also valid
-        invalid_locations = (
-            Location.objects.exclude(id__in=valid_asset_location_ids)
-            .exclude(contract_start_location__isnull=False)
-            .exclude(contract_end_location__isnull=False)
-            .exclude(characterlocation__isnull=False)
-            .exclude(characterjumpclone__isnull=False)
-            .exclude(characterwallettransaction__isnull=False)
-            .exclude(id=Location.LOCATION_UNKNOWN_ID)
-        )
+        asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
+        invalid_locations = Location.objects.filter(id__in=asset_item_ids)
 
         if not invalid_locations.exists():
             self.stdout.write(self.style.SUCCESS("No invalid locations found."))
@@ -77,8 +63,9 @@ class Command(BaseCommand):
         )
         if not options["noinput"]:
             user_input = get_input(
-                "Do you want to trigger the update tasks now? Otherwise the updates will "
-                "run with the next scheduled periodic update. (y/N)?"
+                "Do you want to start the tasks for an immediate asset update? "
+                "Otherwise the updates will run with the next "
+                "regular periodic update. (y/N)?"
             )
         else:
             user_input = "y"
