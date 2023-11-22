@@ -166,6 +166,10 @@ class LocationManager(models.Manager):
                 return self.update_or_create_esi_async(id=id, token=token)
             return self.update_or_create_esi(id=id, token=token)
 
+    def get_or_create_unknown_location(self) -> Tuple[Any, bool]:
+        """Get or creates the unknown location placeholder. Convenience method."""
+        return self.get_or_create_esi(id=self.model.LOCATION_UNKNOWN_ID, token=None)
+
     def update_or_create_esi_async(self, id: int, token: Token) -> Tuple[Any, bool]:
         """Updates or create a location object with data fetched from ESI asynchronous."""
         return self._update_or_create_esi(id=id, token=token, update_async=True)

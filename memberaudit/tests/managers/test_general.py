@@ -881,6 +881,24 @@ class TestLocationManager(NoSocketsTestCase):
         self.assertEqual(obj.eve_solar_system, self.jita)
         self.assertEqual(obj.eve_type_id, EveTypeId.SOLAR_SYSTEM)
 
+    def test_should_create_unknown_location_object_when_it_does_not_exist(
+        self, mock_esi
+    ):
+        # when
+        obj, created = Location.objects.get_or_create_unknown_location()
+        # then
+        self.assertTrue(created)
+        self.assertTrue(obj.is_unknown_location)
+
+    def test_should_return_existing_unknown_location_object(self, mock_esi):
+        # given
+        Location.objects.get_or_create_unknown_location()
+        # when
+        obj, created = Location.objects.get_or_create_unknown_location()
+        # then
+        self.assertFalse(created)
+        self.assertTrue(obj.is_unknown_location)
+
 
 @patch(MANAGERS_PATH + ".esi")
 @patch(MANAGERS_PATH + ".LocationManager.get_or_create_esi_async")

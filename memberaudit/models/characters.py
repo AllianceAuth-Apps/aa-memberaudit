@@ -802,9 +802,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             location = character_location.location_safe()
         except CharacterLocation.DoesNotExist:
-            location, _ = Location.objects.get_or_create_esi(
-                id=Location.LOCATION_UNKNOWN_ID, token=None
-            )
+            location, _ = Location.objects.get_or_create_unknown_location()
 
         ship_asset_record = {
             "is_blueprint_copy": False,

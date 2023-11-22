@@ -64,9 +64,7 @@ class Command(BaseCommand):
             return
 
         self.stdout.write("Applying changes...")
-        unknown_location, _ = Location.objects.get_or_create_esi(
-            id=Location.LOCATION_UNKNOWN_ID, token=None
-        )
+        unknown_location, _ = Location.objects.get_or_create_unknown_location()
         invalid_assets.update(location=unknown_location)
         invalid_locations.delete()
         CharacterUpdateStatus.objects.filter(
