@@ -2,14 +2,15 @@
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
 import functools
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.db.models import Max, Prefetch
+from django.db.models import Case, Max, Prefetch, QuerySet, TextChoices, Value, When
 from django.forms.models import BaseInlineFormSet
+from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -20,7 +21,7 @@ from allianceauth.authentication.models import State
 
 from memberaudit import tasks
 from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-from memberaudit.constants import EveCategoryId
+from memberaudit.constants import EveCategoryId, EveTypeId
 from memberaudit.models import (
     Character,
     CharacterUpdateStatus,
@@ -490,11 +491,31 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         return False
 
 
+class LocationCategory(TextChoices):
+    SOLAR_SYSTEM = "solar_system", "Solar System"
+    STATION = "station", "Station"
+    STRUCTURE = "structure", "Structure"
+    UNKNOWN = "unknown", "Unknown"
+
+
+class LocationCategoryListFilter(admin.SimpleListFilter):
+    title = __("category")
+    parameter_name = "category"
+
+    def lookups(self, request, model_admin):
+        return LocationCategory.choices
+
+    def queryset(self, request, queryset):
+        if value := self.value():
+            return queryset.filter(category=value)
+
+
 @admin.register(Location)
 class LocationAdmin(admin.ModelAdmin):
     list_display = ("id", "_name", "_type", "_group", "_solar_system", "_updated_at")
     list_filter = (
-        ("eve_type__eve_group__eve_category", admin.RelatedOnlyFieldListFilter),
+        LocationCategoryListFilter,
+        # ("eve_type__eve_group__eve_category", admin.RelatedOnlyFieldListFilter),
         ("eve_type__eve_group", admin.RelatedOnlyFieldListFilter),
     )
     search_fields = [
@@ -503,13 +524,39 @@ class LocationAdmin(admin.ModelAdmin):
         "eve_solar_system__eve_constellation__eve_region__name",
         "eve_type__name",
     ]
-    list_select_related = (
-        "eve_type__eve_group",
-        "eve_type",
-        "eve_solar_system__eve_constellation__eve_region",
-        "eve_solar_system",
-    )
     ordering = ["id"]
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        qs = super().get_queryset(request)
+        qs = qs.select_related(
+            "eve_type__eve_group",
+            "eve_type",
+            "eve_solar_system__eve_constellation__eve_region",
+            "eve_solar_system",
+        ).annotate(
+            category=Case(
+                When(
+                    eve_type_id=EveTypeId.SOLAR_SYSTEM,
+                    then=Value(LocationCategory.SOLAR_SYSTEM),
+                ),
+                When(
+                    eve_type__eve_group__eve_category_id=EveCategoryId.STATION,
+                    then=Value(LocationCategory.STATION),
+                ),
+                When(
+                    eve_type__eve_group__eve_category_id=EveCategoryId.STRUCTURE,
+                    then=Value(LocationCategory.STRUCTURE),
+                ),
+                default=Value(LocationCategory.UNKNOWN),
+            )
+        )
+        return qs
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
     @admin.display(ordering="name", description=__("name"))
     def _name(self, obj):
@@ -530,12 +577,6 @@ class LocationAdmin(admin.ModelAdmin):
     @admin.display(ordering="updated_at", description=__("updated at"))
     def _updated_at(self, obj):
         return obj.name_plus
-
-    def has_add_permission(self, request):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
 
 
 @admin.register(SkillSetGroup)
@@ -582,7 +623,7 @@ class SkillSetGroupAdmin(admin.ModelAdmin):
 class SkillSetSkillAdminFormSet(BaseInlineFormSet):
     def clean(self):
         super().clean()
-        for _ in self.forms:
+        for _form in self.forms:
             try:
                 data = self.cleaned_data
             except AttributeError:
