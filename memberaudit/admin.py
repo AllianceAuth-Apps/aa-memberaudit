@@ -508,6 +508,7 @@ class LocationCategoryListFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if value := self.value():
             return queryset.filter(category=value)
+        return None
 
 
 @admin.register(Location)

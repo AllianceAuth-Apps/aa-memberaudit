@@ -7,10 +7,12 @@ from unittest.mock import patch
 from django.core.management import call_command
 from django.test import TestCase
 
+from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character, Location
 from memberaudit.tests.testdata.factories import (
+    create_character,
     create_character_asset,
     create_character_contract,
     create_character_contract_courier,
@@ -91,12 +93,12 @@ class TestDataExport(NoSocketsTestCase):
         super().setUpClass()
         load_entities()
         load_eveuniverse()
-        cls.character = create_memberaudit_character(1001)
+        cls.character_1001 = create_memberaudit_character(1001)
 
     def test_should_export_contract_item(self):
         with tempfile.TemporaryDirectory() as tmpdirname:
             # given
-            contract = create_character_contract(character=self.character)
+            contract = create_character_contract(character=self.character_1001)
             create_character_contract_item(contract=contract, record_id=12)
             out = StringIO()
             # when
@@ -123,26 +125,26 @@ class TestFixInvalidLocations(TestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        cls.character = create_memberaudit_character(1001)
+        cls.character_1001 = create_memberaudit_character(1001)
 
     def test_should_do_nothing_when_no_invalid_locations(self, mock):
         # given
         asset = create_character_asset(
-            character=self.character, location=create_location()
+            character=self.character_1001, location=create_location()
         )
         contract = create_character_contract_courier(
-            character=self.character,
+            character=self.character_1001,
             start_location=create_location(),
             end_location=create_location(),
         )
         location = create_character_location(
-            character=self.character, location=create_location()
+            character=self.character_1001, location=create_location()
         )
         jump_clone = create_character_jump_clone(
-            character=self.character, location=create_location()
+            character=self.character_1001, location=create_location()
         )
         wallet = create_character_wallet_transaction(
-            character=self.character, location=create_location()
+            character=self.character_1001, location=create_location()
         )
 
         # when
@@ -168,18 +170,42 @@ class TestFixInvalidLocations(TestCase):
         # given
         valid_location = create_location()
         invalid_location = create_location()
-        normal_asset = create_character_asset(
+
+        normal_asset_1001 = create_character_asset(
             item_id=invalid_location.id,
-            character=self.character,
+            character=self.character_1001,
             location=valid_location,
         )
-        corrupted_asset = create_character_asset(
-            character=self.character, location=invalid_location
+        corrupted_asset_1001 = create_character_asset(
+            character=self.character_1001, location=invalid_location
         )
-        status = create_character_update_status(
-            character=self.character, section=Character.UpdateSection.ASSETS
+        status_1001 = create_character_update_status(
+            character=self.character_1001, section=Character.UpdateSection.ASSETS
         )
-        status.update_content_hash(["some data"])
+        status_1001.update_content_hash(["some data"])
+
+        character_1002 = create_memberaudit_character(1002)
+        character_1002.is_disabled = True
+        character_1002.save()
+        corrupted_asset_1002 = create_character_asset(
+            character=character_1002, location=invalid_location
+        )
+        status_1002 = create_character_update_status(
+            character=character_1002, section=Character.UpdateSection.ASSETS
+        )
+        status_1002.update_content_hash(["some data"])
+
+        character_1101 = create_character(
+            EveCharacter.objects.get(character_id=1101)
+        )  # orphan
+        corrupted_asset_1101 = create_character_asset(
+            character=character_1101, location=invalid_location
+        )
+        status_1101 = create_character_update_status(
+            character=character_1101, section=Character.UpdateSection.ASSETS
+        )
+        status_1101.update_content_hash(["some data"])
+
         # when
         out = StringIO()
         call_command("memberaudit_fix_locations", "--noinput", stdout=out)
@@ -189,14 +215,28 @@ class TestFixInvalidLocations(TestCase):
         self.assertSetEqual(
             location_ids, {valid_location.id, Location.LOCATION_UNKNOWN_ID}
         )
-        normal_asset.refresh_from_db()
-        self.assertEqual(normal_asset.location, valid_location)
-        corrupted_asset.refresh_from_db()
-        self.assertEqual(corrupted_asset.location.id, Location.LOCATION_UNKNOWN_ID)
-        status.refresh_from_db()
-        self.assertFalse(status.content_hash_1)
-        self.assertTrue(mock_task_update_character_assets.apply_async.called)
-        _, kwargs = mock_task_update_character_assets.apply_async.call_args
-        params = kwargs["kwargs"]
-        self.assertEqual(params["character_pk"], self.character.pk)
+        normal_asset_1001.refresh_from_db()
+        self.assertEqual(normal_asset_1001.location, valid_location)
+        corrupted_asset_1001.refresh_from_db()
+        self.assertEqual(corrupted_asset_1001.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_1001.refresh_from_db()
+        self.assertFalse(status_1001.content_hash_1)
+
+        corrupted_asset_1002.refresh_from_db()
+        self.assertEqual(corrupted_asset_1002.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_1002.refresh_from_db()
+        self.assertFalse(status_1002.content_hash_1)
+
+        corrupted_asset_1101.refresh_from_db()
+        self.assertEqual(corrupted_asset_1101.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_1101.refresh_from_db()
+        self.assertFalse(status_1101.content_hash_1)
+
+        calls = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_assets.apply_async.call_args_list
+        ]
+        self.assertEqual(len(calls), 1)  # only start tasks for 1001 character
+        params = calls[0]
+        self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])

@@ -23,6 +23,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        print("Checking for invalid locations...")
         asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
         invalid_locations = Location.objects.filter(id__in=asset_item_ids)
 
@@ -49,36 +50,52 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING("Aborted"))
             return
 
-        self.stdout.write("Applying changes...")
+        self.stdout.write("Fixing corrupted data...")
         unknown_location, _ = Location.objects.get_or_create_unknown_location()
         invalid_assets.update(location=unknown_location)
         invalid_locations.delete()
         CharacterUpdateStatus.objects.filter(
             character__pk__in=character_pks, section=Character.UpdateSection.ASSETS
         ).update(content_hash_1="")
-        self.stdout.write("Fixing complete")
+        self.stdout.write(self.style.SUCCESS("Corrupted data removed."))
+        self.stdout.write()
+
+        characters_updateable_pks = set(
+            Character.objects.filter(
+                pk__in=character_pks,
+                is_disabled=False,
+                eve_character__character_ownership__isnull=False,
+            ).values_list("pk", flat=True)
+        )
         self.stdout.write(
-            f"The assets of {len(character_pks):,} characters have "
-            "been corrupted and need to be updated from ESI."
+            "The character's asset data may have been damaged by the data corruption."
+        )
+        self.stdout.write(
+            "This data can be restored from ESI for "
+            f"{len(characters_updateable_pks):,} affected characters."
         )
         if not options["noinput"]:
+            self.stdout.write(
+                "Do you want to start the tasks now, "
+                "to conduct an immediate asset update for these characters? "
+            )
             user_input = get_input(
-                "Do you want to start the tasks for an immediate asset update? "
-                "Otherwise the updates will run with the next "
-                "regular periodic update. (y/N)?"
+                "Otherwise the assets will be automatically "
+                "updated with the next regular character update. (y/N)?"
             )
         else:
             user_input = "y"
 
         if user_input.lower() == "y":
-            for character_pk in character_pks:
+            for character_pk in characters_updateable_pks:
                 tasks.update_character_assets.apply_async(
                     kwargs={"character_pk": character_pk, "force_update": True},
                     priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
                 )
 
             self.stdout.write(
-                f"Asset update has been triggered for {len(character_pks):,} characters."
+                "Asset update has been started for "
+                f"{len(characters_updateable_pks):,} characters."
             )
 
         self.stdout.write(self.style.SUCCESS("Done"))
