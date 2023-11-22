@@ -385,9 +385,7 @@ def assets_preload_objects(
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def assets_create_parents(
-    self, asset_list: Optional[list], character_pk: int, cycle: int = 1
-) -> None:
+def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -> None:
     """Create the parent assets from an asset list.
 
     Parent assets are assets attached directly to a Location object (e.g. station)
@@ -405,10 +403,30 @@ def assets_create_parents(
         )
         return
 
-    logger.info("%s: Creating parent assets - pass %s", character, cycle)
-
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    asset_data = {asset["item_id"]: asset for asset in asset_list}
+
+    asset_data_initial = {asset["item_id"]: asset for asset in asset_list}
+    asset_data = _assets_create_parents_chunk(
+        character=character, asset_data=asset_data_initial, cycle=1
+    )
+
+    if asset_data:
+        assets_create_children.apply_async(
+            kwargs={
+                "asset_list": list(asset_data.values()),
+                "character_pk": character.pk,
+            },
+            priority=priority,
+        )
+    else:
+        character.update_section_log_result(
+            Character.UpdateSection.ASSETS, is_success=True
+        )
+
+
+def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: int):
+    """Create chunk of parent assets for a character."""
+    logger.info("%s: Creating parent assets - pass %s", character, cycle)
     new_assets = []
     with transaction.atomic():
         if cycle == 1:
@@ -451,32 +469,11 @@ def assets_create_parents(
 
     if len(parent_asset_ids) > len(new_assets):
         # there are more parent assets to create
-        # FIXME: Synchronization issue: This task could run later then
-        # the task trying to create it's child assets, which then would fail
-        # This issue was triggered by issue #152
-        assets_create_parents.apply_async(
-            kwargs={
-                "asset_list": list(asset_data.values()),
-                "character_pk": character.pk,
-                "cycle": cycle + 1,
-            },
-            priority=priority,
+        asset_data = _assets_create_parents_chunk(
+            character=character, asset_data=asset_data, cycle=cycle + 1
         )
 
-    else:
-        # all parent assets created
-        if asset_data:
-            assets_create_children.apply_async(
-                kwargs={
-                    "asset_list": list(asset_data.values()),
-                    "character_pk": character.pk,
-                },
-                priority=priority,
-            )
-        else:
-            character.update_section_log_result(
-                Character.UpdateSection.ASSETS, is_success=True
-            )
+    return asset_data
 
 
 @shared_task(**TASK_DEFAULTS_BIND)

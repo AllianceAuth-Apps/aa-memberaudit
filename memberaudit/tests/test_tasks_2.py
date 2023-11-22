@@ -419,3 +419,76 @@ class TestUpdateCharacterAssets2(TestCase):
             Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
+
+    @patch(TASKS_PATH + ".MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 1)
+    @patch(TASKS_PATH + ".assets_create_children", wraps=tasks.assets_create_children)
+    @patch(
+        TASKS_PATH + "._assets_create_parents_chunk",
+        wraps=tasks._assets_create_parents_chunk,
+    )
+    def test_should_create_parent_and_child_assets_in_chunks_when_too_many(
+        self, mock_assets_create_parents_chunk, mock_assets_create_children, mock_esi
+    ):
+        # given
+        mock_esi.client = self.esi_client
+
+        # when
+        tasks.update_character_assets.delay(self.character_1001.pk, True)
+
+        # then
+        self.assertSetEqual(
+            self.character_1001.assets.item_ids(),
+            {
+                1_100_000_000_001,
+                1_100_000_000_002,
+                1_100_000_000_003,
+                1_100_000_000_004,
+                1_100_000_000_005,
+                1_100_000_000_006,
+            },
+        )
+        self.assertEqual(len(mock_assets_create_parents_chunk.mock_calls), 2)
+        self.assertEqual(len(mock_assets_create_children.mock_calls), 4)
+
+    def test_should_create_parent_assets_only(self, mock_esi):
+        # given
+        asset_data = {
+            1_100_000_000_001: {
+                "is_blueprint_copy": False,
+                "is_singleton": False,
+                "item_id": 1_100_000_000_001,
+                "location_flag": "Hangar",
+                "location_id": self.jita_44.id,
+                "location_type": "station",
+                "quantity": 1,
+                "type_id": EveTypeId.VELDSPAR.value,
+            }
+        }
+
+        endpoints = [
+            EsiEndpoint(
+                "Assets",
+                "get_characters_character_id_assets",
+                "character_id",
+                needs_token=True,
+                data={"1001": list(asset_data.values())},
+            ),
+            EsiEndpoint(
+                "Assets",
+                "post_characters_character_id_assets_names",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as _:
+            tasks.update_character_assets.delay(self.character_1001.pk, True)
+
+        # then
+        self.assertSetEqual(self.character_1001.assets.item_ids(), {1_100_000_000_001})
+        status = self.character_1001.update_status_for_section(
+            Character.UpdateSection.ASSETS
+        )
+        self.assertTrue(status.is_success)

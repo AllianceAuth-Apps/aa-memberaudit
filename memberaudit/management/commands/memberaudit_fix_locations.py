@@ -23,7 +23,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        print("Checking for invalid locations...")
+        self.stdout.write("Looking for invalid locations...")
         asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
         invalid_locations = Location.objects.filter(id__in=asset_item_ids)
 
