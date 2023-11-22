@@ -11,7 +11,7 @@ from eveuniverse.models import EveSolarSystem
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 
 from memberaudit import tasks
-from memberaudit.models import CharacterAsset, Location
+from memberaudit.models import Character, CharacterAsset, Location
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -320,6 +320,10 @@ class TestUpdateCharacterAssets2(TestCase):
                 1_100_000_000_006,
             },
         )
+        status = self.character_1001.update_status_for_section(
+            Character.UpdateSection.ASSETS
+        )
+        self.assertTrue(status.is_success)
 
     def test_should_update_existing_assets(self, mock_esi):
         # given
@@ -339,6 +343,10 @@ class TestUpdateCharacterAssets2(TestCase):
         # then
         obj: CharacterAsset = self.character_1001.assets.get(item_id=1_100_000_000_002)
         self.assertEqual(obj.quantity, 1)
+        status = self.character_1001.update_status_for_section(
+            Character.UpdateSection.ASSETS
+        )
+        self.assertTrue(status.is_success)
 
     @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
     def test_log_warning_when_there_are_leftovers_1(self, mock_logger, mock_esi):
@@ -407,3 +415,7 @@ class TestUpdateCharacterAssets2(TestCase):
             {1_100_000_000_001, 1_100_000_000_002},
         )
         self.assertTrue(mock_logger.warning.called)
+        status = self.character_1001.update_status_for_section(
+            Character.UpdateSection.ASSETS
+        )
+        self.assertFalse(status.is_success)

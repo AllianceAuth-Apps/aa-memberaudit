@@ -548,15 +548,23 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        character.update_section_log_result(
-            Character.UpdateSection.ASSETS, is_success=True
-        )
         if len(asset_data) > 0:
+            character.update_section_log_result(
+                Character.UpdateSection.ASSETS,
+                is_success=False,
+                last_error_message=(
+                    f"{len(asset_data)} assets could not be added (leftovers)"
+                ),
+            )
             logger.warning(
-                "%s: Failed to add %s assets to the tree: %s",
+                "%s: %s assets could not be added (leftovers): %s",
                 character,
                 len(asset_data),
                 asset_data.keys(),
+            )
+        else:
+            character.update_section_log_result(
+                Character.UpdateSection.ASSETS, is_success=True
             )
 
 
