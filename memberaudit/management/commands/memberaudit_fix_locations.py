@@ -31,13 +31,16 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("No invalid locations found."))
             return
 
-        invalid_assets = CharacterAsset.objects.filter(location__in=invalid_locations)
+        invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
+        invalid_assets = CharacterAsset.objects.filter(
+            location_id__in=invalid_location_ids
+        )
         character_pks = set(
             CharacterAsset.objects.values_list("character__pk", flat=True).distinct()
         )
         if not options["noinput"]:
             self.stdout.write(
-                f"This command will fix {invalid_assets.count():,} corrupted assets "
+                f"This command will fix {len(invalid_location_ids):,} corrupted assets "
                 f"across {len(character_pks):,} characters "
                 f"and remove {invalid_locations.count():,} invalid locations "
                 "caused by issue #153."
