@@ -179,6 +179,7 @@ class TestFixInvalidLocations(TestCase):
         character_1101 = create_character(  # orphan
             EveCharacter.objects.get(character_id=1101)
         )
+        character_1003 = create_memberaudit_character(1003)  # no corruption
 
         # given locations
         valid_location = create_location()
@@ -227,7 +228,7 @@ class TestFixInvalidLocations(TestCase):
         corrupted_clone_1001 = create_character_jump_clone(
             character=self.character_1001, location=invalid_location
         )
-        status_clone_1001 = create_character_update_status(
+        status_clones_1001 = create_character_update_status(
             character=self.character_1001,
             section=Character.UpdateSection.JUMP_CLONES,
             content_hash_1="some_data",
@@ -248,6 +249,43 @@ class TestFixInvalidLocations(TestCase):
         status_clones_1101 = create_character_update_status(
             character=character_1101,
             section=Character.UpdateSection.JUMP_CLONES,
+            content_hash_1="some_data",
+        )
+
+        # given character locations
+        corrupted_location_1001 = create_character_location(
+            character=self.character_1001, location=invalid_location
+        )
+        status_location_1001 = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.LOCATION,
+            content_hash_1="some_data",
+        )
+
+        corrupted_location_1002 = create_character_location(
+            character=character_1002, location=invalid_location
+        )
+        status_location_1002 = create_character_update_status(
+            character=character_1002,
+            section=Character.UpdateSection.LOCATION,
+            content_hash_1="some_data",
+        )
+
+        normal_location_1003 = create_character_location(
+            character=character_1003, location=valid_location
+        )
+        status_location_1003 = create_character_update_status(
+            character=character_1003,
+            section=Character.UpdateSection.LOCATION,
+            content_hash_1="some_data",
+        )
+
+        corrupted_location_1101 = create_character_location(
+            character=character_1101, location=invalid_location
+        )
+        status_location_1101 = create_character_update_status(
+            character=character_1101,
+            section=Character.UpdateSection.LOCATION,
             content_hash_1="some_data",
         )
 
@@ -279,22 +317,36 @@ class TestFixInvalidLocations(TestCase):
         status_assets_1101.refresh_from_db()
         self.assertFalse(status_assets_1101.content_hash_1)
 
-        calls = [
+        asset_task_calls = [
             o[1]["kwargs"]
             for o in mock_task_update_character_assets.apply_async.call_args_list
         ]
-        self.assertEqual(len(calls), 1)  # only start tasks for 1001 character
-        params = calls[0]
+        self.assertEqual(
+            len(asset_task_calls), 1
+        )  # only start tasks for 1001 character
+        params = asset_task_calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])
+
+        # parse section task calls into dict
+        section_tasks_calls_list = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_section.apply_async.call_args_list
+        ]
+        self.assertEqual(
+            len(section_tasks_calls_list), 2
+        )  # only start tasks for 1001 character
+        section_tasks_calls = {
+            params["section"]: params for params in section_tasks_calls_list
+        }
 
         # then clones
         normal_clone_1001.refresh_from_db()
         self.assertEqual(normal_clone_1001.location, valid_location)
         corrupted_clone_1001.refresh_from_db()
         self.assertEqual(corrupted_clone_1001.location.id, Location.LOCATION_UNKNOWN_ID)
-        status_clone_1001.refresh_from_db()
-        self.assertFalse(status_clone_1001.content_hash_1)
+        status_clones_1001.refresh_from_db()
+        self.assertFalse(status_clones_1001.content_hash_1)
 
         corrupted_clone_1002.refresh_from_db()
         self.assertEqual(corrupted_clone_1002.location.id, Location.LOCATION_UNKNOWN_ID)
@@ -306,12 +358,36 @@ class TestFixInvalidLocations(TestCase):
         status_clones_1101.refresh_from_db()
         self.assertFalse(status_clones_1101.content_hash_1)
 
-        calls = [
-            o[1]["kwargs"]
-            for o in mock_task_update_character_section.apply_async.call_args_list
-        ]
-        self.assertEqual(len(calls), 1)  # only start tasks for 1001 character
-        params = calls[0]
+        params = section_tasks_calls[Character.UpdateSection.JUMP_CLONES.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertEqual(params["section"], Character.UpdateSection.JUMP_CLONES.value)
+        self.assertTrue(params["force_update"])
+
+        # then character locations
+        corrupted_location_1001.refresh_from_db()
+        self.assertEqual(
+            corrupted_location_1001.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_location_1001.refresh_from_db()
+        self.assertFalse(status_location_1001.content_hash_1)
+
+        corrupted_location_1002.refresh_from_db()
+        self.assertEqual(
+            corrupted_location_1002.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_location_1002.refresh_from_db()
+        self.assertFalse(status_location_1002.content_hash_1)
+
+        normal_location_1003.refresh_from_db()
+        self.assertEqual(normal_location_1003.location, valid_location)
+        self.assertTrue(status_location_1003.content_hash_1)
+
+        corrupted_location_1101.refresh_from_db()
+        self.assertEqual(
+            corrupted_location_1101.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_location_1101.refresh_from_db()
+        self.assertFalse(status_location_1101.content_hash_1)
+
+        params = section_tasks_calls[Character.UpdateSection.LOCATION.value]
+        self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])

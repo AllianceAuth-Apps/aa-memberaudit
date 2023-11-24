@@ -11,6 +11,7 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterJumpClone,
+    CharacterLocation,
     CharacterUpdateStatus,
     Location,
 )
@@ -20,9 +21,10 @@ from . import get_input
 # [x]: Make updates in chunks
 # [x]: Add logic for removing invalid locations also from characterasset_set
 # [x]: Add logic for removing invalid locations also from characterjumpclone_set
-# [ ]: Add logic for removing invalid locations also from characterlocation_set
+# [x]: Add logic for removing invalid locations also from characterlocation_set
 # [ ]: Add logic for removing invalid locations also from characterwallettransaction_set
-# [ ]: Add logic for removing invalid locations also from contract_start_location and contract_end_location
+# [ ]: Add logic for removing invalid locations also from contract_start_location
+# [ ]: Add logic for removing invalid locations also from contract_end_location
 
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 
@@ -107,15 +109,15 @@ class Command(BaseCommand):
         ):
             self.stdout.write(f"Batch {batch_num} / {batch_count}")
 
-            character_pks_for_assets_chunk = self._fixing_assets(
-                location_ids_chunk, unknown_location
+            character_pks_all = character_pks_all.union(
+                self._fixing_assets(location_ids_chunk, unknown_location)
             )
-            character_pks_all = character_pks_all.union(character_pks_for_assets_chunk)
-
-            character_pks_for_clones_chunk = self._fixing_implants(
-                location_ids_chunk, unknown_location
+            character_pks_all = character_pks_all.union(
+                self._fixing_implants(location_ids_chunk, unknown_location)
             )
-            character_pks_all = character_pks_all.union(character_pks_for_clones_chunk)
+            character_pks_all = character_pks_all.union(
+                self._fixing_character_locations(location_ids_chunk, unknown_location)
+            )
 
             self.stdout.write(
                 f"Deleting {len(location_ids_chunk):,} invalid locations..."
@@ -177,6 +179,31 @@ class Command(BaseCommand):
         )
         return character_pks
 
+    def _fixing_character_locations(
+        self, location_ids_chunk: List[int], unknown_location: Location
+    ) -> Set[int]:
+        invalid_character_locations = CharacterLocation.objects.filter(
+            location_id__in=location_ids_chunk
+        )
+        if not invalid_character_locations.exists():
+            return set()
+
+        character_pks = set(
+            invalid_character_locations.values_list(
+                "character__pk", flat=True
+            ).distinct()
+        )
+        self.stdout.write(
+            f"Fixing {invalid_character_locations.count():,} corrupted character locations "
+            f"across {len(character_pks):,} characters...."
+        )
+        invalid_character_locations.update(location=unknown_location)
+
+        self._marking_characters_for_update(
+            character_pks, Character.UpdateSection.LOCATION
+        )
+        return character_pks
+
     def _marking_characters_for_update(
         self, character_pks: Set[int], section: Character.UpdateSection
     ):
@@ -197,14 +224,27 @@ class Command(BaseCommand):
             ).values_list("pk", flat=True)
         )
         for character_pk in characters_updateable_pks:
-            tasks.update_character_assets.apply_async(
-                kwargs={"character_pk": character_pk, "force_update": True},
+            tasks.update_character_section.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
+                    "section": Character.UpdateSection.LOCATION,
+                    "force_update": True,
+                },
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
             )  # type: ignore
+
             tasks.update_character_section.apply_async(
                 kwargs={
                     "character_pk": character_pk,
                     "section": Character.UpdateSection.JUMP_CLONES,
+                    "force_update": True,
+                },
+                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )  # type: ignore
+
+            tasks.update_character_assets.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
                     "force_update": True,
                 },
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
