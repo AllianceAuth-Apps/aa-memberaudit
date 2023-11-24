@@ -20,14 +20,6 @@ from memberaudit.models import (
 
 from . import get_input
 
-# [x]: Make updates in chunks
-# [x]: Add logic for removing invalid locations also from characterasset_set
-# [x]: Add logic for removing invalid locations also from characterjumpclone_set
-# [x]: Add logic for removing invalid locations also from characterlocation_set
-# [x]: Add logic for removing invalid locations also from characterwallettransaction_set
-# [x]: Add logic for removing invalid locations also from contract_start_location
-# [x]: Add logic for removing invalid locations also from contract_end_location
-
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 
 
@@ -99,17 +91,19 @@ class Command(BaseCommand):
     ) -> Set[int]:
         invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
         self.stdout.write(f"Found {len(invalid_location_ids):,} invalid locations.")
+        self.stdout.write("")
 
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
         batch_count = (
-            len(invalid_location_ids) / BATCH_SIZE
+            len(invalid_location_ids) // BATCH_SIZE
             + len(invalid_location_ids) % BATCH_SIZE
         )
         for batch_num, location_ids_chunk in enumerate(
             chunks(invalid_location_ids, BATCH_SIZE), start=1
         ):
-            self.stdout.write(f"Batch {batch_num} / {batch_count}")
+            if batch_count > 1:
+                self.stdout.write(f"Batch {batch_num} / {batch_count}")
 
             character_pks_all = character_pks_all.union(
                 self._fix_corrupted_character_section(
