@@ -117,6 +117,10 @@ class TestDataExport(NoSocketsTestCase):
 
 
 @patch(
+    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_section",
+    spec=True,
+)
+@patch(
     PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets",
     spec=True,
 )
@@ -128,7 +132,7 @@ class TestFixInvalidLocations(TestCase):
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
-    def test_should_do_nothing_when_no_invalid_locations(self, mock):
+    def test_should_do_nothing_when_no_invalid_locations(self, _mock_1, _mock_2):
         # given
         asset = create_character_asset(
             character=self.character_1001, location=create_location()
@@ -166,12 +170,21 @@ class TestFixInvalidLocations(TestCase):
         self.assertTrue(wallet.location)
 
     def test_should_delete_invalid_locations_and_fix_related_assets(
-        self, mock_task_update_character_assets
+        self, mock_task_update_character_assets, mock_task_update_character_section
     ):
-        # given
+        # given characters
+        character_1002 = create_memberaudit_character(1002)
+        character_1002.is_disabled = True
+        character_1002.save()
+        character_1101 = create_character(  # orphan
+            EveCharacter.objects.get(character_id=1101)
+        )
+
+        # given locations
         valid_location = create_location()
         invalid_location = create_location()
 
+        # given assets
         normal_asset_1001 = create_character_asset(
             item_id=invalid_location.id,
             character=self.character_1001,
@@ -180,58 +193,91 @@ class TestFixInvalidLocations(TestCase):
         corrupted_asset_1001 = create_character_asset(
             character=self.character_1001, location=invalid_location
         )
-        status_1001 = create_character_update_status(
-            character=self.character_1001, section=Character.UpdateSection.ASSETS
+        status_assets_1001 = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.ASSETS,
+            content_hash_1="some_data",
         )
-        status_1001.update_content_hash(["some data"])
 
-        character_1002 = create_memberaudit_character(1002)
-        character_1002.is_disabled = True
-        character_1002.save()
         corrupted_asset_1002 = create_character_asset(
             character=character_1002, location=invalid_location
         )
-        status_1002 = create_character_update_status(
-            character=character_1002, section=Character.UpdateSection.ASSETS
+        status_assets_1002 = create_character_update_status(
+            character=character_1002,
+            section=Character.UpdateSection.ASSETS,
+            content_hash_1="some_data",
         )
-        status_1002.update_content_hash(["some data"])
 
-        character_1101 = create_character(
-            EveCharacter.objects.get(character_id=1101)
-        )  # orphan
         corrupted_asset_1101 = create_character_asset(
             character=character_1101, location=invalid_location
         )
-        status_1101 = create_character_update_status(
-            character=character_1101, section=Character.UpdateSection.ASSETS
+        status_assets_1101 = create_character_update_status(
+            character=character_1101,
+            section=Character.UpdateSection.ASSETS,
+            content_hash_1="some_data",
         )
-        status_1101.update_content_hash(["some data"])
+        corrupted_asset_1101 = create_character_jump_clone(
+            character=character_1101, location=invalid_location
+        )
+
+        # given clones
+        normal_clone_1001 = create_character_jump_clone(
+            character=self.character_1001, location=valid_location
+        )
+        corrupted_clone_1001 = create_character_jump_clone(
+            character=self.character_1001, location=invalid_location
+        )
+        status_clone_1001 = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.JUMP_CLONES,
+            content_hash_1="some_data",
+        )
+
+        corrupted_clone_1002 = create_character_jump_clone(
+            character=character_1002, location=invalid_location
+        )
+        status_clones_1002 = create_character_update_status(
+            character=character_1002,
+            section=Character.UpdateSection.JUMP_CLONES,
+            content_hash_1="some_data",
+        )
+
+        corrupted_clone_1101 = create_character_jump_clone(
+            character=character_1101, location=invalid_location
+        )
+        status_clones_1101 = create_character_update_status(
+            character=character_1101,
+            section=Character.UpdateSection.JUMP_CLONES,
+            content_hash_1="some_data",
+        )
 
         # when
         out = StringIO()
         call_command("memberaudit_fix_locations", "--noinput", stdout=out)
 
-        # then
+        # then locations
         location_ids = set(Location.objects.values_list("id", flat=True))
         self.assertSetEqual(
             location_ids, {valid_location.id, Location.LOCATION_UNKNOWN_ID}
         )
+
+        # then assets
         normal_asset_1001.refresh_from_db()
         self.assertEqual(normal_asset_1001.location, valid_location)
         corrupted_asset_1001.refresh_from_db()
         self.assertEqual(corrupted_asset_1001.location.id, Location.LOCATION_UNKNOWN_ID)
-        status_1001.refresh_from_db()
-        self.assertFalse(status_1001.content_hash_1)
+        status_assets_1001.refresh_from_db()
+        self.assertFalse(status_assets_1001.content_hash_1)
 
         corrupted_asset_1002.refresh_from_db()
         self.assertEqual(corrupted_asset_1002.location.id, Location.LOCATION_UNKNOWN_ID)
-        status_1002.refresh_from_db()
-        self.assertFalse(status_1002.content_hash_1)
+        status_assets_1002.refresh_from_db()
+        self.assertFalse(status_assets_1002.content_hash_1)
 
         corrupted_asset_1101.refresh_from_db()
         self.assertEqual(corrupted_asset_1101.location.id, Location.LOCATION_UNKNOWN_ID)
-        status_1101.refresh_from_db()
-        self.assertFalse(status_1101.content_hash_1)
+        status_assets_1101.refresh_from_db()
+        self.assertFalse(status_assets_1101.content_hash_1)
 
         calls = [
             o[1]["kwargs"]
@@ -240,4 +286,32 @@ class TestFixInvalidLocations(TestCase):
         self.assertEqual(len(calls), 1)  # only start tasks for 1001 character
         params = calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
+        self.assertTrue(params["force_update"])
+
+        # then clones
+        normal_clone_1001.refresh_from_db()
+        self.assertEqual(normal_clone_1001.location, valid_location)
+        corrupted_clone_1001.refresh_from_db()
+        self.assertEqual(corrupted_clone_1001.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_clone_1001.refresh_from_db()
+        self.assertFalse(status_clone_1001.content_hash_1)
+
+        corrupted_clone_1002.refresh_from_db()
+        self.assertEqual(corrupted_clone_1002.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_clones_1002.refresh_from_db()
+        self.assertFalse(status_clones_1002.content_hash_1)
+
+        corrupted_clone_1101.refresh_from_db()
+        self.assertEqual(corrupted_clone_1101.location.id, Location.LOCATION_UNKNOWN_ID)
+        status_clones_1101.refresh_from_db()
+        self.assertFalse(status_clones_1101.content_hash_1)
+
+        calls = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_section.apply_async.call_args_list
+        ]
+        self.assertEqual(len(calls), 1)  # only start tasks for 1001 character
+        params = calls[0]
+        self.assertEqual(params["character_pk"], self.character_1001.pk)
+        self.assertEqual(params["section"], Character.UpdateSection.JUMP_CLONES.value)
         self.assertTrue(params["force_update"])
