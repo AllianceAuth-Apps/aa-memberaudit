@@ -1,6 +1,5 @@
+import math
 from typing import List, Set
-
-from tqdm import tqdm
 
 from django.core.management.base import BaseCommand
 from django.db.models import QuerySet
@@ -29,7 +28,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class Command(BaseCommand):
-    help = "Remove invalid locations caused by issue #153"
+    help = "Remove invalid locations and corrupted data caused by issue #153"
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -42,12 +41,11 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         if not options["noinput"]:
             self.stdout.write(
-                "This command will fix corrupted character assets and remove "
-                "invalid locations caused by issue #153."
+                "This command will remote invalid locations "
+                "and fix corrupted character data caused by issue #153. "
+                "This command logs to the extensions log."
             )
-            self.stdout.write(
-                "Please note that this process can take a couple of minutes to complete. "
-            )
+            self.stdout.write("This process can take a while to complete.")
             user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
             user_input = "y"
@@ -128,14 +126,16 @@ class Command(BaseCommand):
         self.stdout.write(msg)
         self.stdout.write("")
 
+        self.stdout.write("Fixing...")
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
-        for location_ids_chunk in tqdm(
-            chunks(invalid_location_ids, BATCH_SIZE),
-            desc="Fixing data",
-            leave=False,
-            unit="chunk",
-        ):
+        batch_count = math.ceil(invalid_location_count / BATCH_SIZE)
+        batch_num = 0
+        for location_ids_chunk in chunks(invalid_location_ids, BATCH_SIZE):
+            batch_num += 1
+            if batch_count > 1:
+                self.stdout.write(f"Batch {batch_num} / {batch_count}")
+
             character_pks_all = character_pks_all.union(
                 self._fix_corrupted_character_section(
                     location_ids=location_ids_chunk,
