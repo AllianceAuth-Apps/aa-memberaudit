@@ -83,7 +83,10 @@ def character_jump_clones_data(
             .prefetch_related("implants", "implants__eve_type__dogma_attributes")
             .all()
         ):
-            if not jump_clone.location.is_empty:
+            if (
+                not jump_clone.location.is_empty
+                and not jump_clone.location.is_unknown_location
+            ):
                 eve_solar_system = jump_clone.location.eve_solar_system
                 solar_system = eve_solar_system_to_html(
                     eve_solar_system, show_region=False
