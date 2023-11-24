@@ -20,7 +20,6 @@ from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.eveonline.models import EveCharacter
 
-from memberaudit.constants import EveCategoryId
 from memberaudit.models import Character, Location
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.factories import (
@@ -124,5 +123,13 @@ create_character_contract_courier(
     start_location=invalid_location_1,
     end_location=invalid_location_2,
 )
+for section in [
+    Character.UpdateSection.ASSETS,
+    Character.UpdateSection.CONTRACTS,
+    Character.UpdateSection.LOCATION,
+    Character.UpdateSection.JUMP_CLONES,
+    Character.UpdateSection.WALLET_TRANSACTIONS,
+]:
+    character.update_section_log_result(section=section, is_success=True)
 
 print("DONE!")

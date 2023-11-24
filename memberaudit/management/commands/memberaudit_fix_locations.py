@@ -210,10 +210,6 @@ class Command(BaseCommand):
         params_update = {field_name: unknown_location}
         corrupted_objs.update(**params_update)
 
-        self.stdout.write(
-            f"Marking {len(character_pks):,} characters "
-            f"for needing an {section.label} update."
-        )
         CharacterUpdateStatus.objects.filter(
             character__pk__in=character_pks, section=section
         ).update(content_hash_1="", content_hash_2="", content_hash_3="")
