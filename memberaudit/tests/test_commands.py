@@ -289,6 +289,37 @@ class TestFixInvalidLocations(TestCase):
             content_hash_1="some_data",
         )
 
+        # given wallet transactions
+        normal_transaction_1001 = create_character_wallet_transaction(
+            character=self.character_1001, location=valid_location
+        )
+        corrupted_transaction_1001 = create_character_wallet_transaction(
+            character=self.character_1001, location=invalid_location
+        )
+        status_transactions_1001 = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.WALLET_TRANSACTIONS,
+            content_hash_1="some_data",
+        )
+
+        corrupted_transaction_1002 = create_character_wallet_transaction(
+            character=character_1002, location=invalid_location
+        )
+        status_transactions_1002 = create_character_update_status(
+            character=character_1002,
+            section=Character.UpdateSection.WALLET_TRANSACTIONS,
+            content_hash_1="some_data",
+        )
+
+        corrupted_transaction_1101 = create_character_wallet_transaction(
+            character=character_1101, location=invalid_location
+        )
+        status_transactions_1101 = create_character_update_status(
+            character=character_1101,
+            section=Character.UpdateSection.WALLET_TRANSACTIONS,
+            content_hash_1="some_data",
+        )
+
         # when
         out = StringIO()
         call_command("memberaudit_fix_locations", "--noinput", stdout=out)
@@ -334,7 +365,7 @@ class TestFixInvalidLocations(TestCase):
             for o in mock_task_update_character_section.apply_async.call_args_list
         ]
         self.assertEqual(
-            len(section_tasks_calls_list), 2
+            len(section_tasks_calls_list), 3
         )  # only start tasks for 1001 character
         section_tasks_calls = {
             params["section"]: params for params in section_tasks_calls_list
@@ -389,5 +420,33 @@ class TestFixInvalidLocations(TestCase):
         self.assertFalse(status_location_1101.content_hash_1)
 
         params = section_tasks_calls[Character.UpdateSection.LOCATION.value]
+        self.assertEqual(params["character_pk"], self.character_1001.pk)
+        self.assertTrue(params["force_update"])
+
+        # then wallet transactions
+        normal_transaction_1001.refresh_from_db()
+        self.assertEqual(normal_transaction_1001.location, valid_location)
+        corrupted_transaction_1001.refresh_from_db()
+        self.assertEqual(
+            corrupted_transaction_1001.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_transactions_1001.refresh_from_db()
+        self.assertFalse(status_transactions_1001.content_hash_1)
+
+        corrupted_transaction_1002.refresh_from_db()
+        self.assertEqual(
+            corrupted_transaction_1002.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_transactions_1002.refresh_from_db()
+        self.assertFalse(status_transactions_1002.content_hash_1)
+
+        corrupted_transaction_1101.refresh_from_db()
+        self.assertEqual(
+            corrupted_transaction_1101.location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_transactions_1101.refresh_from_db()
+        self.assertFalse(status_transactions_1101.content_hash_1)
+
+        params = section_tasks_calls[Character.UpdateSection.WALLET_TRANSACTIONS.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])

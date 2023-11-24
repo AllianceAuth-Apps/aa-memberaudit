@@ -13,6 +13,7 @@ from memberaudit.models import (
     CharacterJumpClone,
     CharacterLocation,
     CharacterUpdateStatus,
+    CharacterWalletTransaction,
     Location,
 )
 
@@ -22,9 +23,10 @@ from . import get_input
 # [x]: Add logic for removing invalid locations also from characterasset_set
 # [x]: Add logic for removing invalid locations also from characterjumpclone_set
 # [x]: Add logic for removing invalid locations also from characterlocation_set
-# [ ]: Add logic for removing invalid locations also from characterwallettransaction_set
+# [x]: Add logic for removing invalid locations also from characterwallettransaction_set
 # [ ]: Add logic for removing invalid locations also from contract_start_location
 # [ ]: Add logic for removing invalid locations also from contract_end_location
+# [ ]: Only call tasks as needed
 
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 
@@ -118,6 +120,9 @@ class Command(BaseCommand):
             character_pks_all = character_pks_all.union(
                 self._fixing_character_locations(location_ids_chunk, unknown_location)
             )
+            character_pks_all = character_pks_all.union(
+                self._fixing_wallet_transactions(location_ids_chunk, unknown_location)
+            )
 
             self.stdout.write(
                 f"Deleting {len(location_ids_chunk):,} invalid locations..."
@@ -204,6 +209,29 @@ class Command(BaseCommand):
         )
         return character_pks
 
+    def _fixing_wallet_transactions(
+        self, location_ids_chunk: List[int], unknown_location: Location
+    ) -> Set[int]:
+        invalid_transactions = CharacterWalletTransaction.objects.filter(
+            location_id__in=location_ids_chunk
+        )
+        if not invalid_transactions.exists():
+            return set()
+
+        character_pks = set(
+            invalid_transactions.values_list("character__pk", flat=True).distinct()
+        )
+        self.stdout.write(
+            f"Fixing {invalid_transactions.count():,} corrupted wallet transactions "
+            f"across {len(character_pks):,} characters...."
+        )
+        invalid_transactions.update(location=unknown_location)
+
+        self._marking_characters_for_update(
+            character_pks, Character.UpdateSection.WALLET_TRANSACTIONS
+        )
+        return character_pks
+
     def _marking_characters_for_update(
         self, character_pks: Set[int], section: Character.UpdateSection
     ):
@@ -224,23 +252,19 @@ class Command(BaseCommand):
             ).values_list("pk", flat=True)
         )
         for character_pk in characters_updateable_pks:
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "section": Character.UpdateSection.LOCATION,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
-
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "section": Character.UpdateSection.JUMP_CLONES,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
+            for section in [
+                Character.UpdateSection.LOCATION,
+                Character.UpdateSection.JUMP_CLONES,
+                Character.UpdateSection.WALLET_TRANSACTIONS,
+            ]:
+                tasks.update_character_section.apply_async(
+                    kwargs={
+                        "character_pk": character_pk,
+                        "section": section,
+                        "force_update": True,
+                    },
+                    priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                )  # type: ignore
 
             tasks.update_character_assets.apply_async(
                 kwargs={
