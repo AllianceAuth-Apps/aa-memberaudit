@@ -1,3 +1,4 @@
+import math
 from typing import List, Set
 
 from django.core.management.base import BaseCommand
@@ -63,42 +64,58 @@ class Command(BaseCommand):
             invalid_locations
         )
 
+        characters_updateable_pks = self._identify_updateable_characters(
+            character_pks_all
+        )
+
+        if not characters_updateable_pks:
+            self.stdout.write(self.style.SUCCESS("Done"))
+            return
+
         self.stdout.write(
-            f"Data for up to {len(character_pks_all):,} characters may have been "
+            f"Data for up to {len(characters_updateable_pks):,} characters may have been "
             "disrupted by invalid locations."
         )
         if not options["noinput"]:
             self.stdout.write(
-                "Do you want to start an immediate update for these characters (s)?"
+                "Do you want to (s)tart an immediate update for these characters?"
             )
             self.stdout.write(
-                "Or do you want to wait for the update to happen "
-                "with the regular schedule (w)?"
+                "Or do you want to (w)ait for the update to happen "
+                "with the regular schedule?"
             )
             user_input = get_input("(S/w)?")
         else:
             user_input = "s"
 
         if user_input.lower() != "w":
-            self._start_character_updates(character_pks_all)
+            self._start_character_updates(characters_updateable_pks)
         else:
             self.stdout.write("Character will be updated with the next regular update.")
 
         self.stdout.write(self.style.SUCCESS("Done"))
 
+    def _identify_updateable_characters(self, character_pks) -> Set[int]:
+        characters_updateable_pks = set(
+            Character.objects.filter(
+                pk__in=character_pks,
+                is_disabled=False,
+                eve_character__character_ownership__isnull=False,
+            ).values_list("pk", flat=True)
+        )
+        return characters_updateable_pks
+
     def _fix_data_corruption_and_remove_invalid_locations(
         self, invalid_locations: QuerySet[Location]
     ) -> Set[int]:
         invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
-        self.stdout.write(f"Found {len(invalid_location_ids):,} invalid locations.")
+        invalid_location_count = len(invalid_location_ids)
+        self.stdout.write(f"Found {invalid_location_count:,} invalid locations.")
         self.stdout.write("")
 
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
-        batch_count = (
-            len(invalid_location_ids) // BATCH_SIZE
-            + len(invalid_location_ids) % BATCH_SIZE
-        )
+        batch_count = math.ceil(invalid_location_count / BATCH_SIZE)
         for batch_num, location_ids_chunk in enumerate(
             chunks(invalid_location_ids, BATCH_SIZE), start=1
         ):
@@ -179,7 +196,7 @@ class Command(BaseCommand):
         field_name: str = "location",
     ) -> Set[int]:
         params_filter = {f"{field_name}__in": location_ids}
-        corrupted_objs = model_class.objects.filter(**params_filter)
+        corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
         if not corrupted_objs.exists():
             return set()
 
@@ -204,14 +221,7 @@ class Command(BaseCommand):
         return character_pks
 
     def _start_character_updates(self, character_pks: Set[int]):
-        characters_updateable_pks = list(
-            Character.objects.filter(
-                pk__in=character_pks,
-                is_disabled=False,
-                eve_character__character_ownership__isnull=False,
-            ).values_list("pk", flat=True)
-        )
-        for character_pk in characters_updateable_pks:
+        for character_pk in character_pks:
             for section in [
                 Character.UpdateSection.CONTRACTS,
                 Character.UpdateSection.LOCATION,
@@ -237,5 +247,5 @@ class Command(BaseCommand):
 
         self.stdout.write(
             "Immediate updates has been started for "
-            f"{len(characters_updateable_pks):,} characters."
+            f"{len(character_pks):,} characters."
         )
