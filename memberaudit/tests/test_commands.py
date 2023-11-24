@@ -96,7 +96,7 @@ class TestDataExport(NoSocketsTestCase):
         cls.character_1001 = create_memberaudit_character(1001)
 
     def test_should_export_contract_item(self):
-        with tempfile.TemporaryDirectory() as tmpdirname:
+        with tempfile.TemporaryDirectory() as tmp_dir_name:
             # given
             contract = create_character_contract(character=self.character_1001)
             create_character_contract_item(contract=contract, record_id=12)
@@ -106,18 +106,19 @@ class TestDataExport(NoSocketsTestCase):
                 "memberaudit_data_export",
                 "contract-item",
                 "--destination",
-                tmpdirname,
+                tmp_dir_name,
                 stdout=out,
             )
             # then
-            output_file = Path(tmpdirname) / Path(
+            output_file = Path(tmp_dir_name) / Path(
                 "memberaudit_contract-item"
             ).with_suffix(".csv")
             self.assertTrue(output_file.exists())
 
 
 @patch(
-    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets", spec=True
+    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets",
+    spec=True,
 )
 class TestFixInvalidLocations(TestCase):
     @classmethod
