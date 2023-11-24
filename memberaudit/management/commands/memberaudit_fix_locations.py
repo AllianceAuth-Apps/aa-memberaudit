@@ -1,12 +1,15 @@
-import math
 from typing import List, Set
+
+from tqdm import tqdm
 
 from django.core.management.base import BaseCommand
 from django.db.models import QuerySet
 
+from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import chunks
+from app_utils.logging import LoggerAddTag
 
-from memberaudit import tasks
+from memberaudit import __title__, tasks
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.models import (
     Character,
@@ -22,6 +25,7 @@ from memberaudit.models import (
 from . import get_input
 
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class Command(BaseCommand):
@@ -73,8 +77,8 @@ class Command(BaseCommand):
             return
 
         self.stdout.write(
-            f"Data for up to {len(characters_updateable_pks):,} characters may have been "
-            "disrupted by invalid locations."
+            f"Data for up to {len(characters_updateable_pks):,} characters may "
+            "have been disrupted by invalid locations."
         )
         if not options["noinput"]:
             self.stdout.write(
@@ -90,8 +94,17 @@ class Command(BaseCommand):
 
         if user_input.lower() != "w":
             self._start_character_updates(characters_updateable_pks)
+            msg = (
+                "Immediate updates has been started for "
+                f"{len(characters_updateable_pks):,} characters."
+            )
+            logger.info(msg)
+            self.stdout.write(msg)
+
         else:
-            self.stdout.write("Character will be updated with the next regular update.")
+            self.stdout.write(
+                "Characters will be updated with the next regular update."
+            )
 
         self.stdout.write(self.style.SUCCESS("Done"))
 
@@ -110,18 +123,19 @@ class Command(BaseCommand):
     ) -> Set[int]:
         invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
         invalid_location_count = len(invalid_location_ids)
-        self.stdout.write(f"Found {invalid_location_count:,} invalid locations.")
+        msg = f"Found {invalid_location_count:,} invalid locations"
+        logger.info(msg)
+        self.stdout.write(msg)
         self.stdout.write("")
 
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
-        batch_count = math.ceil(invalid_location_count / BATCH_SIZE)
-        for batch_num, location_ids_chunk in enumerate(
-            chunks(invalid_location_ids, BATCH_SIZE), start=1
+        for location_ids_chunk in tqdm(
+            chunks(invalid_location_ids, BATCH_SIZE),
+            desc="Fixing data",
+            leave=False,
+            unit="chunk",
         ):
-            if batch_count > 1:
-                self.stdout.write(f"Batch {batch_num} / {batch_count}")
-
             character_pks_all = character_pks_all.union(
                 self._fix_corrupted_character_section(
                     location_ids=location_ids_chunk,
@@ -173,12 +187,15 @@ class Command(BaseCommand):
                 )
             )
 
-            self.stdout.write(
-                f"Deleting {len(location_ids_chunk):,} invalid locations..."
-            )
             invalid_locations.delete()
+            logger.info("Deleted %d invalid locations", len(location_ids_chunk))
 
-        self.stdout.write(self.style.SUCCESS("Corrupted data removed."))
+        msg = (
+            f"Fixing complete: Removed {invalid_location_count:,} invalid locations "
+            "and related corrupted data"
+        )
+        logger.info(msg)
+        self.stdout.write(msg)
         self.stdout.write("")
         return character_pks_all
 
@@ -197,22 +214,24 @@ class Command(BaseCommand):
     ) -> Set[int]:
         params_filter = {f"{field_name}__in": location_ids}
         corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
-        if not corrupted_objs.exists():
+        corrupted_objs_count = corrupted_objs.count()
+        if not corrupted_objs_count:
             return set()
 
         character_pks = set(
             corrupted_objs.values_list("character__pk", flat=True).distinct()
         )
-        self.stdout.write(
-            f"Fixing {corrupted_objs.count():,} corrupted {section.label} "
-            f"across {len(character_pks):,} characters...."
-        )
         params_update = {field_name: unknown_location}
         corrupted_objs.update(**params_update)
-
         CharacterUpdateStatus.objects.filter(
             character__pk__in=character_pks, section=section
         ).update(content_hash_1="", content_hash_2="", content_hash_3="")
+        logger.info(
+            "Fixed %s corrupted %s across %d characters",
+            corrupted_objs_count,
+            section.label,
+            len(character_pks),
+        )
 
         return character_pks
 
@@ -240,8 +259,3 @@ class Command(BaseCommand):
                 },
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
             )  # type: ignore
-
-        self.stdout.write(
-            "Immediate updates has been started for "
-            f"{len(character_pks):,} characters."
-        )
