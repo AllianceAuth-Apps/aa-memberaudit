@@ -23,6 +23,7 @@ python manage.py memberaudit_fix_locations
 
 ## Changed
 
+- Now searches full names instead of just beginning in character finder
 - Improved category filter for Locations
 - Improved test suite for asset updates
 
