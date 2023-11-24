@@ -182,17 +182,19 @@ class TestFixInvalidLocations(TestCase):
         character_1003 = create_memberaudit_character(1003)  # no corruption
 
         # given locations
-        valid_location = create_location()
-        invalid_location = create_location()
+        valid_location_1 = create_location()
+        valid_location_2 = create_location()
+        invalid_location_1 = create_location()
+        invalid_location_2 = create_location()
 
         # given assets
         normal_asset_1001 = create_character_asset(
-            item_id=invalid_location.id,
+            item_id=invalid_location_1.id,
             character=self.character_1001,
-            location=valid_location,
+            location=valid_location_1,
         )
         corrupted_asset_1001 = create_character_asset(
-            character=self.character_1001, location=invalid_location
+            character=self.character_1001, location=invalid_location_1
         )
         status_assets_1001 = create_character_update_status(
             character=self.character_1001,
@@ -201,7 +203,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_asset_1002 = create_character_asset(
-            character=character_1002, location=invalid_location
+            character=character_1002, location=invalid_location_1
         )
         status_assets_1002 = create_character_update_status(
             character=character_1002,
@@ -210,7 +212,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_asset_1101 = create_character_asset(
-            character=character_1101, location=invalid_location
+            character=character_1101, location=invalid_location_1
         )
         status_assets_1101 = create_character_update_status(
             character=character_1101,
@@ -218,15 +220,21 @@ class TestFixInvalidLocations(TestCase):
             content_hash_1="some_data",
         )
         corrupted_asset_1101 = create_character_jump_clone(
-            character=character_1101, location=invalid_location
+            character=character_1101, location=invalid_location_1
+        )
+
+        normal_asset_1003 = create_character_asset(
+            item_id=invalid_location_2.id,
+            character=character_1003,
+            location=valid_location_1,
         )
 
         # given clones
         normal_clone_1001 = create_character_jump_clone(
-            character=self.character_1001, location=valid_location
+            character=self.character_1001, location=valid_location_1
         )
         corrupted_clone_1001 = create_character_jump_clone(
-            character=self.character_1001, location=invalid_location
+            character=self.character_1001, location=invalid_location_1
         )
         status_clones_1001 = create_character_update_status(
             character=self.character_1001,
@@ -235,7 +243,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_clone_1002 = create_character_jump_clone(
-            character=character_1002, location=invalid_location
+            character=character_1002, location=invalid_location_1
         )
         status_clones_1002 = create_character_update_status(
             character=character_1002,
@@ -244,7 +252,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_clone_1101 = create_character_jump_clone(
-            character=character_1101, location=invalid_location
+            character=character_1101, location=invalid_location_1
         )
         status_clones_1101 = create_character_update_status(
             character=character_1101,
@@ -254,7 +262,7 @@ class TestFixInvalidLocations(TestCase):
 
         # given character locations
         corrupted_location_1001 = create_character_location(
-            character=self.character_1001, location=invalid_location
+            character=self.character_1001, location=invalid_location_1
         )
         status_location_1001 = create_character_update_status(
             character=self.character_1001,
@@ -263,7 +271,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_location_1002 = create_character_location(
-            character=character_1002, location=invalid_location
+            character=character_1002, location=invalid_location_1
         )
         status_location_1002 = create_character_update_status(
             character=character_1002,
@@ -272,7 +280,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         normal_location_1003 = create_character_location(
-            character=character_1003, location=valid_location
+            character=character_1003, location=valid_location_1
         )
         status_location_1003 = create_character_update_status(
             character=character_1003,
@@ -281,7 +289,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_location_1101 = create_character_location(
-            character=character_1101, location=invalid_location
+            character=character_1101, location=invalid_location_1
         )
         status_location_1101 = create_character_update_status(
             character=character_1101,
@@ -291,10 +299,10 @@ class TestFixInvalidLocations(TestCase):
 
         # given wallet transactions
         normal_transaction_1001 = create_character_wallet_transaction(
-            character=self.character_1001, location=valid_location
+            character=self.character_1001, location=valid_location_1
         )
         corrupted_transaction_1001 = create_character_wallet_transaction(
-            character=self.character_1001, location=invalid_location
+            character=self.character_1001, location=invalid_location_1
         )
         status_transactions_1001 = create_character_update_status(
             character=self.character_1001,
@@ -303,7 +311,7 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_transaction_1002 = create_character_wallet_transaction(
-            character=character_1002, location=invalid_location
+            character=character_1002, location=invalid_location_1
         )
         status_transactions_1002 = create_character_update_status(
             character=character_1002,
@@ -312,11 +320,50 @@ class TestFixInvalidLocations(TestCase):
         )
 
         corrupted_transaction_1101 = create_character_wallet_transaction(
-            character=character_1101, location=invalid_location
+            character=character_1101, location=invalid_location_1
         )
         status_transactions_1101 = create_character_update_status(
             character=character_1101,
             section=Character.UpdateSection.WALLET_TRANSACTIONS,
+            content_hash_1="some_data",
+        )
+
+        # given courier contracts
+        normal_contract_1001 = create_character_contract_courier(
+            character=self.character_1001,
+            start_location=valid_location_1,
+            end_location=valid_location_2,
+        )
+        corrupted_contract_1001 = create_character_contract_courier(
+            character=self.character_1001,
+            start_location=invalid_location_1,
+            end_location=invalid_location_2,
+        )
+        status_contracts_1001 = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.CONTRACTS,
+            content_hash_1="some_data",
+        )
+
+        corrupted_contract_1002 = create_character_contract_courier(
+            character=character_1002,
+            start_location=invalid_location_1,
+            end_location=invalid_location_2,
+        )
+        status_contracts_1002 = create_character_update_status(
+            character=character_1002,
+            section=Character.UpdateSection.CONTRACTS,
+            content_hash_1="some_data",
+        )
+
+        corrupted_contract_1101 = create_character_contract_courier(
+            character=character_1101,
+            start_location=invalid_location_1,
+            end_location=invalid_location_2,
+        )
+        status_contracts_1101 = create_character_update_status(
+            character=character_1101,
+            section=Character.UpdateSection.CONTRACTS,
             content_hash_1="some_data",
         )
 
@@ -327,12 +374,13 @@ class TestFixInvalidLocations(TestCase):
         # then locations
         location_ids = set(Location.objects.values_list("id", flat=True))
         self.assertSetEqual(
-            location_ids, {valid_location.id, Location.LOCATION_UNKNOWN_ID}
+            location_ids,
+            {valid_location_1.id, valid_location_2.id, Location.LOCATION_UNKNOWN_ID},
         )
 
         # then assets
         normal_asset_1001.refresh_from_db()
-        self.assertEqual(normal_asset_1001.location, valid_location)
+        self.assertEqual(normal_asset_1001.location, valid_location_1)
         corrupted_asset_1001.refresh_from_db()
         self.assertEqual(corrupted_asset_1001.location.id, Location.LOCATION_UNKNOWN_ID)
         status_assets_1001.refresh_from_db()
@@ -347,6 +395,9 @@ class TestFixInvalidLocations(TestCase):
         self.assertEqual(corrupted_asset_1101.location.id, Location.LOCATION_UNKNOWN_ID)
         status_assets_1101.refresh_from_db()
         self.assertFalse(status_assets_1101.content_hash_1)
+
+        normal_asset_1003.refresh_from_db()
+        self.assertEqual(normal_asset_1003.location, valid_location_1)
 
         asset_task_calls = [
             o[1]["kwargs"]
@@ -365,7 +416,7 @@ class TestFixInvalidLocations(TestCase):
             for o in mock_task_update_character_section.apply_async.call_args_list
         ]
         self.assertEqual(
-            len(section_tasks_calls_list), 3
+            len(section_tasks_calls_list), 4
         )  # only start tasks for 1001 character
         section_tasks_calls = {
             params["section"]: params for params in section_tasks_calls_list
@@ -373,7 +424,7 @@ class TestFixInvalidLocations(TestCase):
 
         # then clones
         normal_clone_1001.refresh_from_db()
-        self.assertEqual(normal_clone_1001.location, valid_location)
+        self.assertEqual(normal_clone_1001.location, valid_location_1)
         corrupted_clone_1001.refresh_from_db()
         self.assertEqual(corrupted_clone_1001.location.id, Location.LOCATION_UNKNOWN_ID)
         status_clones_1001.refresh_from_db()
@@ -409,7 +460,7 @@ class TestFixInvalidLocations(TestCase):
         self.assertFalse(status_location_1002.content_hash_1)
 
         normal_location_1003.refresh_from_db()
-        self.assertEqual(normal_location_1003.location, valid_location)
+        self.assertEqual(normal_location_1003.location, valid_location_1)
         self.assertTrue(status_location_1003.content_hash_1)
 
         corrupted_location_1101.refresh_from_db()
@@ -425,7 +476,7 @@ class TestFixInvalidLocations(TestCase):
 
         # then wallet transactions
         normal_transaction_1001.refresh_from_db()
-        self.assertEqual(normal_transaction_1001.location, valid_location)
+        self.assertEqual(normal_transaction_1001.location, valid_location_1)
         corrupted_transaction_1001.refresh_from_db()
         self.assertEqual(
             corrupted_transaction_1001.location.id, Location.LOCATION_UNKNOWN_ID
@@ -448,5 +499,44 @@ class TestFixInvalidLocations(TestCase):
         self.assertFalse(status_transactions_1101.content_hash_1)
 
         params = section_tasks_calls[Character.UpdateSection.WALLET_TRANSACTIONS.value]
+        self.assertEqual(params["character_pk"], self.character_1001.pk)
+        self.assertTrue(params["force_update"])
+
+        # then contracts
+        normal_contract_1001.refresh_from_db()
+        self.assertEqual(normal_contract_1001.start_location, valid_location_1)
+        self.assertEqual(normal_contract_1001.end_location, valid_location_2)
+        corrupted_contract_1001.refresh_from_db()
+        self.assertEqual(
+            corrupted_contract_1001.start_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        self.assertEqual(
+            corrupted_contract_1001.end_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_contracts_1001.refresh_from_db()
+        self.assertFalse(status_contracts_1001.content_hash_1)
+
+        corrupted_contract_1002.refresh_from_db()
+        self.assertEqual(
+            corrupted_contract_1002.start_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        self.assertEqual(
+            corrupted_contract_1002.end_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        status_contracts_1002.refresh_from_db()
+        self.assertFalse(status_contracts_1002.content_hash_1)
+
+        corrupted_contract_1101.refresh_from_db()
+        self.assertEqual(
+            corrupted_contract_1101.start_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+        self.assertEqual(
+            corrupted_contract_1101.end_location.id, Location.LOCATION_UNKNOWN_ID
+        )
+
+        status_contracts_1101.refresh_from_db()
+        self.assertFalse(status_contracts_1101.content_hash_1)
+
+        params = section_tasks_calls[Character.UpdateSection.CONTRACTS.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])

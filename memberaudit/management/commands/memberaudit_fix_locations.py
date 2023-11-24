@@ -10,6 +10,7 @@ from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.models import (
     Character,
     CharacterAsset,
+    CharacterContract,
     CharacterJumpClone,
     CharacterLocation,
     CharacterUpdateStatus,
@@ -24,8 +25,8 @@ from . import get_input
 # [x]: Add logic for removing invalid locations also from characterjumpclone_set
 # [x]: Add logic for removing invalid locations also from characterlocation_set
 # [x]: Add logic for removing invalid locations also from characterwallettransaction_set
-# [ ]: Add logic for removing invalid locations also from contract_start_location
-# [ ]: Add logic for removing invalid locations also from contract_end_location
+# [x]: Add logic for removing invalid locations also from contract_start_location
+# [x]: Add logic for removing invalid locations also from contract_end_location
 # [ ]: Only call tasks as needed
 
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
@@ -115,7 +116,15 @@ class Command(BaseCommand):
                 self._fixing_assets(location_ids_chunk, unknown_location)
             )
             character_pks_all = character_pks_all.union(
-                self._fixing_implants(location_ids_chunk, unknown_location)
+                self._fixing_jump_clones(location_ids_chunk, unknown_location)
+            )
+            character_pks_all = character_pks_all.union(
+                self._fixing_contract_start_location(
+                    location_ids_chunk, unknown_location
+                )
+            )
+            character_pks_all = character_pks_all.union(
+                self._fixing_contract_end_location(location_ids_chunk, unknown_location)
             )
             character_pks_all = character_pks_all.union(
                 self._fixing_character_locations(location_ids_chunk, unknown_location)
@@ -161,7 +170,7 @@ class Command(BaseCommand):
         )
         return character_pks_for_assets_chunk
 
-    def _fixing_implants(
+    def _fixing_jump_clones(
         self, location_ids_chunk: List[int], unknown_location: Location
     ) -> Set[int]:
         invalid_clones = CharacterJumpClone.objects.filter(
@@ -181,6 +190,52 @@ class Command(BaseCommand):
 
         self._marking_characters_for_update(
             character_pks, Character.UpdateSection.JUMP_CLONES
+        )
+        return character_pks
+
+    def _fixing_contract_start_location(
+        self, location_ids_chunk: List[int], unknown_location: Location
+    ) -> Set[int]:
+        invalid_contracts = CharacterContract.objects.filter(
+            start_location_id__in=location_ids_chunk
+        )
+        if not invalid_contracts.exists():
+            return set()
+
+        character_pks = set(
+            invalid_contracts.values_list("character__pk", flat=True).distinct()
+        )
+        self.stdout.write(
+            f"Fixing {invalid_contracts.count():,} corrupted contracts "
+            f"across {len(character_pks):,} characters...."
+        )
+        invalid_contracts.update(start_location=unknown_location)
+
+        self._marking_characters_for_update(
+            character_pks, Character.UpdateSection.CONTRACTS
+        )
+        return character_pks
+
+    def _fixing_contract_end_location(
+        self, location_ids_chunk: List[int], unknown_location: Location
+    ) -> Set[int]:
+        invalid_contracts = CharacterContract.objects.filter(
+            end_location_id__in=location_ids_chunk
+        )
+        if not invalid_contracts.exists():
+            return set()
+
+        character_pks = set(
+            invalid_contracts.values_list("character__pk", flat=True).distinct()
+        )
+        self.stdout.write(
+            f"Fixing {invalid_contracts.count():,} corrupted contracts "
+            f"across {len(character_pks):,} characters...."
+        )
+        invalid_contracts.update(end_location=unknown_location)
+
+        self._marking_characters_for_update(
+            character_pks, Character.UpdateSection.CONTRACTS
         )
         return character_pks
 
@@ -232,6 +287,34 @@ class Command(BaseCommand):
         )
         return character_pks
 
+    # def _fixing_corrupted_objects(
+    #     self,
+    #     location_ids_chunk: List[int],
+    #     unknown_location: Location,
+    #     model_class: type,
+    #     field_name: str,
+    #     section: Character.UpdateSection,
+    # ) -> Set[int]:
+    #     params_filter = {f"{field_name}__in": location_ids_chunk}
+    #     corrupted_objs = model_class.objects.filter(**params_filter)
+    #     if not corrupted_objs.exists():
+    #         return set()
+
+    #     character_pks = set(
+    #         corrupted_objs.values_list("character__pk", flat=True).distinct()
+    #     )
+    #     self.stdout.write(
+    #         f"Fixing {corrupted_objs.count():,} corrupted {section.label} "
+    #         f"across {len(character_pks):,} characters...."
+    #     )
+    #     params_update = {field_name: unknown_location}
+    #     corrupted_objs.update(**params_update)
+
+    #     self._marking_characters_for_update(
+    #         character_pks, Character.UpdateSection.ASSETS
+    #     )
+    #     return character_pks
+
     def _marking_characters_for_update(
         self, character_pks: Set[int], section: Character.UpdateSection
     ):
@@ -253,6 +336,7 @@ class Command(BaseCommand):
         )
         for character_pk in characters_updateable_pks:
             for section in [
+                Character.UpdateSection.CONTRACTS,
                 Character.UpdateSection.LOCATION,
                 Character.UpdateSection.JUMP_CLONES,
                 Character.UpdateSection.WALLET_TRANSACTIONS,
