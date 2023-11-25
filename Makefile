@@ -1,5 +1,6 @@
 appname = aa-memberaudit
 package = memberaudit
+myauth_path = ../myauth/manage.py
 
 help:
 	@echo "Makefile for $(appname)"
@@ -41,14 +42,14 @@ compilemessages:
 		-l zh_Hans
 
 coverage:
-	coverage run --concurrency=multiprocessing ../myauth/manage.py test $(package).tests --keepdb --failfast --timing --parallel && coverage combine && coverage html && coverage report -m
+	coverage run --concurrency=multiprocessing $(myauth_path) test $(package).tests --keepdb --failfast --timing --parallel && coverage combine && coverage html && coverage report -m
+
+coverage_single:
+	coverage run $(myauth_path) test $(package).tests --keepdb --failfast --timing && coverage html && coverage report -m
 
 test:
 	# runs a full test incl. re-creating of the test DB
-	python ../myauth/manage.py test $(package).tests --failfast --timing --parallel -v 2
-
-pylint:
-	pylint --load-plugins pylint_django $(package)
+	python $(myauth_path) test $(package).tests --failfast --timing --parallel -v 2
 
 check_complexity:
 	flake8 $(package) --max-complexity=10
@@ -57,7 +58,7 @@ flake8:
 	flake8 $(package) --count
 
 graph_models:
-	python ../myauth/manage.py graph_models $(package) --arrow-shape normal -o $(appname)_models.png
+	python $(myauth_path) graph_models $(package) --arrow-shape normal -o $(appname)_models.png
 
 create_testdata:
-	python ../myauth/manage.py test $(package).tests.testdata.create_eveuniverse --keepdb -v 2
+	python $(myauth_path) test $(package).tests.testdata.create_eveuniverse --keepdb -v 2
