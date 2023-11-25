@@ -1,7 +1,6 @@
 # flake8: noqa
 """This is a standalone scripts that generates many test characters for Member Audit."""
 
-
 import os
 import sys
 from pathlib import Path
