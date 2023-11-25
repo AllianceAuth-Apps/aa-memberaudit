@@ -121,6 +121,10 @@ class TestDataExport(NoSocketsTestCase):
     spec=True,
 )
 @patch(
+    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_contracts",
+    spec=True,
+)
+@patch(
     PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets",
     spec=True,
 )
@@ -132,7 +136,7 @@ class TestFixInvalidLocations(TestCase):
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
-    def test_should_do_nothing_when_no_invalid_locations(self, _mock_1, _mock_2):
+    def test_should_do_nothing_when_no_invalid_locations(self, _m1, _m2, _m3):
         # given
         asset = create_character_asset(
             character=self.character_1001, location=create_location()
@@ -170,7 +174,10 @@ class TestFixInvalidLocations(TestCase):
         self.assertTrue(wallet.location)
 
     def test_should_delete_invalid_locations_and_fix_related_assets(
-        self, mock_task_update_character_assets, mock_task_update_character_section
+        self,
+        mock_task_update_character_assets,
+        mock_task_update_character_contracts,
+        mock_task_update_character_section,
     ):
         # given characters
         character_1002 = create_memberaudit_character(1002)
@@ -416,7 +423,7 @@ class TestFixInvalidLocations(TestCase):
             for o in mock_task_update_character_section.apply_async.call_args_list
         ]
         self.assertEqual(
-            len(section_tasks_calls_list), 4
+            len(section_tasks_calls_list), 3
         )  # only start tasks for 1001 character
         section_tasks_calls = {
             params["section"]: params for params in section_tasks_calls_list
@@ -537,6 +544,13 @@ class TestFixInvalidLocations(TestCase):
         status_contracts_1101.refresh_from_db()
         self.assertFalse(status_contracts_1101.content_hash_1)
 
-        params = section_tasks_calls[Character.UpdateSection.CONTRACTS.value]
+        asset_task_calls = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_contracts.apply_async.call_args_list
+        ]
+        self.assertEqual(
+            len(asset_task_calls), 1
+        )  # only start tasks for 1001 character
+        params = asset_task_calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])

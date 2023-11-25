@@ -253,7 +253,6 @@ class Command(BaseCommand):
     def _start_character_updates(self, character_pks: Set[int]):
         for character_pk in character_pks:
             for section in [
-                Character.UpdateSection.CONTRACTS,
                 Character.UpdateSection.LOCATION,
                 Character.UpdateSection.JUMP_CLONES,
                 Character.UpdateSection.WALLET_TRANSACTIONS,
@@ -268,6 +267,14 @@ class Command(BaseCommand):
                 )  # type: ignore
 
             tasks.update_character_assets.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
+                    "force_update": True,
+                },
+                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )  # type: ignore
+
+            tasks.update_character_contracts.apply_async(
                 kwargs={
                     "character_pk": character_pk,
                     "force_update": True,
