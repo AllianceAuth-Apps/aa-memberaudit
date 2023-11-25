@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass, field
 from typing import List, Set
 
 from tqdm import tqdm
@@ -26,9 +27,38 @@ from . import get_input
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-# [ ] Fix major performance issue of this script or find alternative solution (e.g. run as task?)
-# [x] Add ability to conduct mass test in dev environment to tune performance of this script
-# [ ] Maybe deliver fix w/o script first? Need to mark invalid locations with a migration, then exclude from asset update and others
+
+@dataclass
+class CharacterPksContainer:
+    """Container for character PKs."""
+
+    assets: Set[int] = field(default_factory=set)
+    clones: Set[int] = field(default_factory=set)
+    contracts: Set[int] = field(default_factory=set)
+    locations: Set[int] = field(default_factory=set)
+    transactions: Set[int] = field(default_factory=set)
+
+    def __bool__(self) -> bool:
+        return (
+            bool(self.assets)
+            or bool(self.clones)
+            or bool(self.contracts)
+            or bool(self.locations)
+            or bool(self.transactions)
+        )
+
+    def __len__(self) -> int:
+        return len(self.all())
+
+    def all(self) -> Set[int]:
+        """Return all character PKs."""
+        return (
+            self.assets
+            | self.clones
+            | self.contracts
+            | self.locations
+            | self.transactions
+        )
 
 
 class Command(BaseCommand):
@@ -120,7 +150,7 @@ class Command(BaseCommand):
 
     def _fix_data_corruption_and_remove_invalid_locations(
         self, invalid_location_ids: List[int], batch_size: int
-    ) -> Set[int]:
+    ) -> CharacterPksContainer:
         invalid_location_count = len(invalid_location_ids)
         logger.info(
             "Started fixing %d invalid locations with batch size %d",
@@ -129,7 +159,7 @@ class Command(BaseCommand):
         )
 
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
-        character_pks_all = set()
+        character_pks = CharacterPksContainer()
         batch_count = math.ceil(invalid_location_count / batch_size)
 
         for location_ids_chunk in tqdm(
@@ -140,55 +170,43 @@ class Command(BaseCommand):
             unit_scale=batch_size,
             disable=IS_TESTING,
         ):
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.ASSETS,
-                    model_class=CharacterAsset,
-                )
+            character_pks.assets |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.ASSETS,
+                model_class=CharacterAsset,
             )
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.JUMP_CLONES,
-                    model_class=CharacterJumpClone,
-                )
+            character_pks.clones |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.JUMP_CLONES,
+                model_class=CharacterJumpClone,
             )
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.CONTRACTS,
-                    model_class=CharacterContract,
-                    field_name="start_location",
-                )
+            character_pks.contracts |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.CONTRACTS,
+                model_class=CharacterContract,
+                field_name="start_location",
             )
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.CONTRACTS,
-                    model_class=CharacterContract,
-                    field_name="end_location",
-                )
+            character_pks.contracts |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.CONTRACTS,
+                model_class=CharacterContract,
+                field_name="end_location",
             )
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.LOCATION,
-                    model_class=CharacterLocation,
-                )
+            character_pks.locations |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.LOCATION,
+                model_class=CharacterLocation,
             )
-            character_pks_all = character_pks_all.union(
-                self._fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.WALLET_TRANSACTIONS,
-                    model_class=CharacterWalletTransaction,
-                )
+            character_pks.transactions |= self._fix_corrupted_character_section(
+                location_ids=location_ids_chunk,
+                unknown_location=unknown_location,
+                section=Character.UpdateSection.WALLET_TRANSACTIONS,
+                model_class=CharacterWalletTransaction,
             )
             locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
             locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
@@ -201,7 +219,7 @@ class Command(BaseCommand):
         logger.info(msg)
         self.stdout.write(msg)
         self.stdout.write("")
-        return character_pks_all
+        return character_pks
 
     def _find_invalid_locations(self) -> List[int]:
         asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
@@ -240,32 +258,22 @@ class Command(BaseCommand):
 
         return character_pks
 
-    def _identify_updateable_characters(self, character_pks) -> Set[int]:
-        characters_updateable_pks = set(
-            Character.objects.filter(
-                pk__in=character_pks,
-                is_disabled=False,
-                eve_character__character_ownership__isnull=False,
-            ).values_list("pk", flat=True)
-        )
-        return characters_updateable_pks
+    def _identify_updateable_characters(
+        self, character_pks: CharacterPksContainer
+    ) -> CharacterPksContainer:
+        params = {}
+        for section in ["assets", "clones", "contracts", "locations", "transactions"]:
+            params[section] = set(
+                Character.objects.filter(
+                    pk__in=getattr(character_pks, section),
+                    is_disabled=False,
+                    eve_character__character_ownership__isnull=False,
+                ).values_list("pk", flat=True)
+            )
+        return CharacterPksContainer(**params)
 
-    def _start_character_updates(self, character_pks: Set[int]):
-        for character_pk in character_pks:
-            for section in [
-                Character.UpdateSection.LOCATION,
-                Character.UpdateSection.JUMP_CLONES,
-                Character.UpdateSection.WALLET_TRANSACTIONS,
-            ]:
-                tasks.update_character_section.apply_async(
-                    kwargs={
-                        "character_pk": character_pk,
-                        "section": section,
-                        "force_update": True,
-                    },
-                    priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-                )  # type: ignore
-
+    def _start_character_updates(self, character_pks: CharacterPksContainer):
+        for character_pk in character_pks.assets:
             tasks.update_character_assets.apply_async(
                 kwargs={
                     "character_pk": character_pk,
@@ -274,9 +282,40 @@ class Command(BaseCommand):
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
             )  # type: ignore
 
+        for character_pk in character_pks.clones:
+            tasks.update_character_section.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
+                    "section": Character.UpdateSection.JUMP_CLONES,
+                    "force_update": True,
+                },
+                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )  # type: ignore
+
+        for character_pk in character_pks.contracts:
             tasks.update_character_contracts.apply_async(
                 kwargs={
                     "character_pk": character_pk,
+                    "force_update": True,
+                },
+                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )  # type: ignore
+
+        for character_pk in character_pks.locations:
+            tasks.update_character_section.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
+                    "section": Character.UpdateSection.LOCATION,
+                    "force_update": True,
+                },
+                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+            )  # type: ignore
+
+        for character_pk in character_pks.transactions:
+            tasks.update_character_section.apply_async(
+                kwargs={
+                    "character_pk": character_pk,
+                    "section": Character.UpdateSection.WALLET_TRANSACTIONS,
                     "force_update": True,
                 },
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
