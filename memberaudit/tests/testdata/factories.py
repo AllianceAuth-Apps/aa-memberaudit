@@ -734,7 +734,7 @@ def create_eve_market_price(**kwargs) -> EveMarketPrice:
     return EveMarketPrice.objects.create(**params)
 
 
-def next_number(key=None) -> int:
+def next_number(key=None, offset=None) -> int:
     if key is None:
         key = "_general"
     try:
@@ -744,7 +744,9 @@ def next_number(key=None) -> int:
     except KeyError:
         pass
     next_number._counter[key] = count(start=1)
-    return next_number._counter[key].__next__()
+    number = next_number._counter[key].__next__()
+    result = number + offset if offset else number
+    return result
 
 
 def _set_missing_foreign_keys(params: dict, **kwargs):

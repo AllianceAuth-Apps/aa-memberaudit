@@ -26,6 +26,10 @@ from . import get_input
 BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
+# [ ] Fix major performance issue of this script or find alternative solution (e.g. run as task?)
+# [ ] Add ability to conduct mass test in dev environment to tune performance of this script
+# [ ] Maybe deliver fix w/o script first? Need to mark invalid locations with a migration, then exclude from asset update and others
+
 
 class Command(BaseCommand):
     help = "Remove invalid locations and corrupted data caused by issue #153"
