@@ -2,14 +2,12 @@ import math
 from typing import List, Set
 
 from django.core.management.base import BaseCommand
-from django.db.models import QuerySet
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
-from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.models import (
     Character,
     CharacterAsset,
@@ -23,7 +21,7 @@ from memberaudit.models import (
 
 from . import get_input
 
-BATCH_SIZE = MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+BATCH_SIZE = 100
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 # [ ] Fix major performance issue of this script or find alternative solution (e.g. run as task?)
@@ -43,12 +41,20 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        self.stdout.write("Looking for invalid locations...")
+        invalid_location_ids = self._find_invalid_locations()
+
+        if not invalid_location_ids:
+            self.stdout.write(self.style.SUCCESS("No invalid locations found."))
+            return
+
         if not options["noinput"]:
             self.stdout.write(
-                "This command will remote invalid locations "
-                "and fix corrupted character data caused by issue #153. "
-                "This command logs to the extensions log."
+                f"This command will remove {len(invalid_location_ids):,} "
+                "invalid locations "
+                "and fix related character data corruption caused by issue #153. "
             )
+            self.stdout.write("This command logs to the extensions log.")
             self.stdout.write("This process can take a while to complete.")
             user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
@@ -59,15 +65,9 @@ class Command(BaseCommand):
             return
 
         self.stdout.write("")
-        self.stdout.write("Looking for invalid locations...")
-        invalid_locations = self._find_invalid_locations()
-
-        if not invalid_locations.exists():
-            self.stdout.write(self.style.SUCCESS("No invalid locations found."))
-            return
 
         character_pks_all = self._fix_data_corruption_and_remove_invalid_locations(
-            invalid_locations
+            invalid_location_ids
         )
 
         characters_updateable_pks = self._identify_updateable_characters(
@@ -121,16 +121,15 @@ class Command(BaseCommand):
         return characters_updateable_pks
 
     def _fix_data_corruption_and_remove_invalid_locations(
-        self, invalid_locations: QuerySet[Location]
+        self, invalid_location_ids: List[int]
     ) -> Set[int]:
-        invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
         invalid_location_count = len(invalid_location_ids)
         msg = f"Found {invalid_location_count:,} invalid locations"
         logger.info(msg)
         self.stdout.write(msg)
         self.stdout.write("")
 
-        self.stdout.write("Fixing...")
+        self.stdout.write(f"Fixing {BATCH_SIZE:,} invalid locations per batch...")
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
         batch_count = math.ceil(invalid_location_count / BATCH_SIZE)
@@ -190,8 +189,8 @@ class Command(BaseCommand):
                     model_class=CharacterWalletTransaction,
                 )
             )
-
-            invalid_locations.delete()
+            locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
+            locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
             logger.info("Deleted %d invalid locations", len(location_ids_chunk))
 
         msg = (
@@ -203,10 +202,11 @@ class Command(BaseCommand):
         self.stdout.write("")
         return character_pks_all
 
-    def _find_invalid_locations(self) -> QuerySet[Location]:
+    def _find_invalid_locations(self) -> List[int]:
         asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
         invalid_locations = Location.objects.filter(id__in=asset_item_ids)
-        return invalid_locations
+        invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
+        return invalid_location_ids
 
     def _fix_corrupted_character_section(
         self,
