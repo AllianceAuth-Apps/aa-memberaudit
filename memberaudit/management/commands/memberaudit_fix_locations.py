@@ -1,6 +1,8 @@
 import math
 from typing import List, Set
 
+from tqdm import tqdm
+
 from django.core.management.base import BaseCommand
 
 from allianceauth.services.hooks import get_extension_logger
@@ -8,6 +10,7 @@ from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
+from memberaudit.constants import IS_TESTING
 from memberaudit.models import (
     Character,
     CharacterAsset,
@@ -21,11 +24,10 @@ from memberaudit.models import (
 
 from . import get_input
 
-BATCH_SIZE = 100
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 # [ ] Fix major performance issue of this script or find alternative solution (e.g. run as task?)
-# [ ] Add ability to conduct mass test in dev environment to tune performance of this script
+# [x] Add ability to conduct mass test in dev environment to tune performance of this script
 # [ ] Maybe deliver fix w/o script first? Need to mark invalid locations with a migration, then exclude from asset update and others
 
 
@@ -38,6 +40,12 @@ class Command(BaseCommand):
             "--no-input",
             action="store_true",
             help="Do NOT prompt the user for input of any kind.",
+        )
+
+        parser.add_argument(
+            "--batch-size",
+            default=100,
+            help="Maximum number of locations fixed per batch run",
         )
 
     def handle(self, *args, **options):
@@ -53,8 +61,8 @@ class Command(BaseCommand):
                 f"This command will remove {len(invalid_location_ids):,} "
                 "invalid locations "
                 "and fix related character data corruption caused by issue #153. "
+                "Details will be logged to the extensions log."
             )
-            self.stdout.write("This command logs to the extensions log.")
             self.stdout.write("This process can take a while to complete.")
             user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
@@ -67,7 +75,7 @@ class Command(BaseCommand):
         self.stdout.write("")
 
         character_pks_all = self._fix_data_corruption_and_remove_invalid_locations(
-            invalid_location_ids
+            invalid_location_ids, options["batch_size"]
         )
 
         characters_updateable_pks = self._identify_updateable_characters(
@@ -110,35 +118,28 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Done"))
 
-    def _identify_updateable_characters(self, character_pks) -> Set[int]:
-        characters_updateable_pks = set(
-            Character.objects.filter(
-                pk__in=character_pks,
-                is_disabled=False,
-                eve_character__character_ownership__isnull=False,
-            ).values_list("pk", flat=True)
-        )
-        return characters_updateable_pks
-
     def _fix_data_corruption_and_remove_invalid_locations(
-        self, invalid_location_ids: List[int]
+        self, invalid_location_ids: List[int], batch_size: int
     ) -> Set[int]:
         invalid_location_count = len(invalid_location_ids)
-        msg = f"Found {invalid_location_count:,} invalid locations"
-        logger.info(msg)
-        self.stdout.write(msg)
-        self.stdout.write("")
+        logger.info(
+            "Started fixing %d invalid locations with batch size %d",
+            invalid_location_count,
+            batch_size,
+        )
 
-        self.stdout.write(f"Fixing {BATCH_SIZE:,} invalid locations per batch...")
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks_all = set()
-        batch_count = math.ceil(invalid_location_count / BATCH_SIZE)
-        batch_num = 0
-        for location_ids_chunk in chunks(invalid_location_ids, BATCH_SIZE):
-            batch_num += 1
-            if batch_count > 1:
-                self.stdout.write(f"Batch {batch_num} / {batch_count}")
+        batch_count = math.ceil(invalid_location_count / batch_size)
 
+        for location_ids_chunk in tqdm(
+            chunks(invalid_location_ids, batch_size),
+            desc="Fixing locations",
+            total=batch_count,
+            leave=False,
+            unit_scale=batch_size,
+            disable=IS_TESTING,
+        ):
             character_pks_all = character_pks_all.union(
                 self._fix_corrupted_character_section(
                     location_ids=location_ids_chunk,
@@ -238,6 +239,16 @@ class Command(BaseCommand):
         )
 
         return character_pks
+
+    def _identify_updateable_characters(self, character_pks) -> Set[int]:
+        characters_updateable_pks = set(
+            Character.objects.filter(
+                pk__in=character_pks,
+                is_disabled=False,
+                eve_character__character_ownership__isnull=False,
+            ).values_list("pk", flat=True)
+        )
+        return characters_updateable_pks
 
     def _start_character_updates(self, character_pks: Set[int]):
         for character_pk in character_pks:

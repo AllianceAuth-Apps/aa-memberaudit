@@ -37,6 +37,7 @@ dependencies = [
     "django-eveuniverse>=1.5",
     "humanize>=4.7.0",
     "unidecode",
+    "tqdm>=4.66",
 ]
 
 [project.urls]
