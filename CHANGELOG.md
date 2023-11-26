@@ -1174,3 +1174,5 @@ The feature for sharing ones characters now requires the new permission `share_c
 ### Added
 
 - Initial alpha release
+
+---
