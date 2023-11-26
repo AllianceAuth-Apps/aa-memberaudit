@@ -200,7 +200,7 @@ class Location(models.Model):
     def __repr__(self) -> str:
         return (
             f"{self.__class__.__name__}(id={self.id}, name='{self.name}', "
-            f"eve_type={self.eve_type}), eve_solar_system={self.eve_solar_system})"
+            f"eve_type={self.eve_type}, eve_solar_system={self.eve_solar_system})"
         )
 
     @property

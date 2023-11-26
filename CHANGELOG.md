@@ -15,11 +15,37 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Update notes
 
-This release fixes a major bug (#153) which causes the creation of invalid locations and asset data corruption. To restore your corrupted data, please run the following management command **after** completing the update and restarting AA:
+This patch release fixes a major bug (#153), which causes the creation of invalid locations and the corruption of asset and other data . This patch release includes a special command, which can repair the data again. Since the command is very database intensive and can take a while to complete, we strongly recommend to run it while AA is shutdown. We also suggest to make a DB backup before running the command.
+
+You can follow this step-by-step guide for the whole process: [^1]
+
+With your sudo user please first shutdown your AA instance:
 
 ```sh
-python manage.py memberaudit_fix_locations
+sudo supervisorctl stop myauth:
 ```
+
+Next, you have the option to make a full DB backup:
+
+```sh
+sudo mysqldump -u root alliance_auth > alliance_auth.sql
+```
+
+Then, after switching to your AA user, you can start the fix command with:
+
+```sh
+python /home/allianceserver/myauth/manage.py memberaudit_fix_locations
+```
+
+After the command is finished, you can start your your AA instance again with:
+
+```sh
+sudo supervisorctl start myauth:
+```
+
+Finally, the update tasks for the affected characters need to complete, before the data repair is finally done.
+
+[^1]: We assume you have a standard installation from the official installation guide (aka "bare metal"). The syntax for a docker installation might differ.
 
 ## Changed
 
