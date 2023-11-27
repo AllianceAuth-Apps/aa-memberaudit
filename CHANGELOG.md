@@ -15,9 +15,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Update notes
 
-This patch release fixes a major bug (#153), which causes the creation of invalid locations and the corruption of asset and other data . This patch release includes a special command, which can repair the data again. Since the command is very database intensive and can take a while to complete, we strongly recommend to run it while AA is shutdown. We also suggest to make a DB backup before running the command.
+This patch release fixes a major bug (#153), which causes the creation of invalid locations and the corruption of asset and other character data. To repair the data corruption, please follow the process below, which includes running a special repair command: [^1]
 
-You can follow this step-by-step guide for the whole process: [^1]
+>**Important**: We strongly to run this repair command while your AA instance is shutdown. Otherwise the command might fail and take much longer to complete.
+
+### Step 1 - Shutdown AA
 
 With your sudo user please first shutdown your AA instance:
 
@@ -25,17 +27,33 @@ With your sudo user please first shutdown your AA instance:
 sudo supervisorctl stop myauth:
 ```
 
-Next, you have the option to make a full DB backup:
+### Step 2 - Backup your database
+
+We recommend you make a full backup of your database before proceeding. Here is one easy way to do it:
 
 ```sh
 sudo mysqldump -u root alliance_auth > alliance_auth.sql
 ```
 
-Then, after switching to your AA user, you can start the fix command with:
+### Step 3 - Run repair command
+
+Then, after switching to your AA user, you can start the repair command with:
 
 ```sh
 python /home/allianceserver/myauth/manage.py memberaudit_fix_locations
 ```
+
+Note that details will be logged to the extensions log. You can filter for relevant log entries only like so:
+
+```sh
+grep memberaudit_fix_locations log/extensions.log
+```
+
+Should the repair command fail to remove all invalid locations you can try running the command again.
+
+Should you run into any issues you can increase logging verbosity or exclude problematic locations via parameters to the repair command. Please run the command with `-h` for details.
+
+### Step 4 - Start AA instance again
 
 After the command is finished, you can start your your AA instance again with:
 

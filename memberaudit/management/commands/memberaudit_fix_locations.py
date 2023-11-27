@@ -92,8 +92,15 @@ class Command(BaseCommand):
             help="Log additional details",
         )
 
+        parser.add_argument(
+            "--exclude-locations",
+            nargs="+",
+            type=int,
+            help="Exclude locations given by their IDs",
+        )
+
     def handle(self, *args, **options):
-        logger.info("Started command for fixing locations")
+        logger.info("Started command for fixing invalid locations")
         self.stdout.write("Looking for invalid locations...")
         invalid_location_ids = find_invalid_locations(options)
 
@@ -149,11 +156,11 @@ class Command(BaseCommand):
                 "Or do you want to (w)ait for the update to happen "
                 "with the regular schedule?"
             )
-            user_input = get_input("(S/w)?")
+            user_input = get_input("(s/W)?")
         else:
-            user_input = "s"
+            user_input = "w"
 
-        if user_input.lower() != "w":
+        if user_input.lower() != "s":
             start_character_updates(characters_updateable_pks)
             msg = (
                 "Immediate updates has been started for "
@@ -271,9 +278,14 @@ def find_invalid_locations(options: dict = None) -> List[int]:
     """Return IDs of invalid locations.
     An empty list means no invalid locations where found.
     """
-    asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
+    asset_item_ids = set(CharacterAsset.objects.values_list("item_id", flat=True))
+    if options and (exclude_location_ids := options.get("exclude_locations")):
+        asset_item_ids -= set(exclude_location_ids)
+        logger.info("Ignoring location IDs: %s", exclude_location_ids)
+
     invalid_locations = Location.objects.filter(id__in=asset_item_ids)
     invalid_location_ids = list(sorted(invalid_locations.values_list("id", flat=True)))
+
     if options and options.get("verbose_log"):
         logger.info(
             "Found %d invalid locations: %s",

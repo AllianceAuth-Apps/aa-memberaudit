@@ -541,3 +541,57 @@ class TestFixInvalidLocations(TestCase):
         params = section_tasks_calls[Character.UpdateSection.WALLET_TRANSACTIONS.value]
         self.assertEqual(params["character_pk"], transaction_pk)
         self.assertTrue(params["force_update"])
+
+    def test_should_allow_excluding_locations(self, *args, **kwargs):
+        # given
+        valid_location = create_location()
+        invalid_location_1 = create_location()
+        invalid_location_2 = create_location()
+        invalid_location_3 = create_location()
+
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_1.id,
+        )
+        corrupted_asset_1 = create_character_asset(
+            character=self.character_1001, location=invalid_location_1
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_2.id,
+        )
+        corrupted_asset_2 = create_character_asset(
+            character=self.character_1001, location=invalid_location_2
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_3.id,
+        )
+        corrupted_asset_3 = create_character_asset(
+            character=self.character_1001, location=invalid_location_3
+        )
+
+        out = StringIO()
+
+        # when
+        call_command(
+            "memberaudit_fix_locations",
+            "--noinput",
+            "--exclude-locations",
+            str(invalid_location_1.id),
+            str(invalid_location_3.id),
+            stdout=out,
+        )
+
+        # then
+        corrupted_asset_1.refresh_from_db()
+        self.assertEqual(corrupted_asset_1.location.id, invalid_location_1.id)
+
+        corrupted_asset_2.refresh_from_db()
+        self.assertEqual(corrupted_asset_2.location.id, Location.LOCATION_UNKNOWN_ID)
+
+        corrupted_asset_3.refresh_from_db()
+        self.assertEqual(corrupted_asset_3.location.id, invalid_location_3.id)
