@@ -27,8 +27,8 @@ from memberaudit.models import (
 from . import get_input
 
 # [x] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
-# [ ] Add tests for individual character updates
-# [ ] Add option to log the location and character IDs, which are processed
+# [x] Add tests for individual character updates
+# [x] Add option to log the location and character IDs, which are processed
 # [ ] Add more explanation to the issue about the effects of the issue
 # [x] Re-calculate the amount of remaining invalid locations at the end of the script
 
@@ -37,7 +37,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 @dataclass
-class CharacterPksContainer:
+class CharacterPkContainer:
     """Container for character PKs."""
 
     assets: Set[int] = field(default_factory=set)
@@ -171,7 +171,7 @@ class Command(BaseCommand):
 
     def _fix_data_corruption_and_remove_invalid_locations(
         self, invalid_location_ids: List[int], options: dict
-    ) -> CharacterPksContainer:
+    ) -> CharacterPkContainer:
         invalid_location_count = len(invalid_location_ids)
         batch_size: int = options["batch_size"]
         logger.info(
@@ -181,7 +181,7 @@ class Command(BaseCommand):
         )
 
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
-        character_pks = CharacterPksContainer()
+        character_pks = CharacterPkContainer()
         batch_count = math.ceil(invalid_location_count / batch_size)
         removed_location_ids = []
         error_count = 0
@@ -332,8 +332,8 @@ def fix_corrupted_character_section(
 
 
 def identify_updateable_characters(
-    character_pks: CharacterPksContainer, options: dict = None
-) -> CharacterPksContainer:
+    character_pks: CharacterPkContainer, options: dict = None
+) -> CharacterPkContainer:
     """Return selection of character PKs, which can be updated."""
     params = {}
     for section in ["assets", "clones", "contracts", "locations", "transactions"]:
@@ -345,7 +345,7 @@ def identify_updateable_characters(
             ).values_list("pk", flat=True)
         )
 
-    updateable_character_pks = CharacterPksContainer(**params)
+    updateable_character_pks = CharacterPkContainer(**params)
 
     if options and options.get("verbose_log"):
         logger.info(
@@ -364,7 +364,7 @@ def identify_updateable_characters(
     return updateable_character_pks
 
 
-def start_character_updates(character_pks: CharacterPksContainer):
+def start_character_updates(character_pks: CharacterPkContainer):
     """Start character section updates for characters as needed."""
     for character_pk in character_pks.assets:
         tasks.update_character_assets.apply_async(

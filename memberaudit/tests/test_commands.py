@@ -138,7 +138,7 @@ class TestFixInvalidLocations(TestCase):
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
-    def test_should_do_nothing_when_no_invalid_locations(self, _m1, _m2, _m3):
+    def test_should_do_nothing_when_no_invalid_locations(self, *args, **kwargs):
         # given
         asset = create_character_asset(
             character=self.character_1001, location=create_location()
@@ -408,16 +408,15 @@ class TestFixInvalidLocations(TestCase):
         normal_asset_1003.refresh_from_db()
         self.assertEqual(normal_asset_1003.location, valid_location_1)
 
-        asset_task_calls = [
+        assets_task_calls = [
             o[1]["kwargs"]
             for o in mock_task_update_character_assets.apply_async.call_args_list
         ]
         self.assertEqual(
-            len(asset_task_calls), 1
+            len(assets_task_calls), 1
         )  # only start tasks for 1001 character
-        params = asset_task_calls[0]
+        params = assets_task_calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertTrue(params["force_update"])
 
         # parse section task calls into dict
         section_tasks_calls_list = [
@@ -451,7 +450,6 @@ class TestFixInvalidLocations(TestCase):
 
         params = section_tasks_calls[Character.UpdateSection.JUMP_CLONES.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertTrue(params["force_update"])
 
         # then character locations
         corrupted_location_1001.refresh_from_db()
@@ -481,7 +479,6 @@ class TestFixInvalidLocations(TestCase):
 
         params = section_tasks_calls[Character.UpdateSection.LOCATION.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertTrue(params["force_update"])
 
         # then wallet transactions
         normal_transaction_1001.refresh_from_db()
@@ -509,7 +506,6 @@ class TestFixInvalidLocations(TestCase):
 
         params = section_tasks_calls[Character.UpdateSection.WALLET_TRANSACTIONS.value]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertTrue(params["force_update"])
 
         # then contracts
         normal_contract_1001.refresh_from_db()
@@ -546,18 +542,17 @@ class TestFixInvalidLocations(TestCase):
         status_contracts_1101.refresh_from_db()
         self.assertFalse(status_contracts_1101.content_hash_1)
 
-        asset_task_calls = [
+        contract_task_calls = [
             o[1]["kwargs"]
             for o in mock_task_update_character_contracts.apply_async.call_args_list
         ]
         self.assertEqual(
-            len(asset_task_calls), 1
+            len(contract_task_calls), 1
         )  # only start tasks for 1001 character
-        params = asset_task_calls[0]
+        params = contract_task_calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
-        self.assertTrue(params["force_update"])
 
-    def test_should_ignore_db_issue_when_fixing_section(self, _m1, _m2, _m3):
+    def test_should_ignore_db_issue_when_fixing_section(self, *args, **kwargs):
         # given
         valid_location = create_location()
         invalid_location = create_location()
@@ -585,3 +580,65 @@ class TestFixInvalidLocations(TestCase):
         self.assertTrue(asset.location)
         corrupted_asset.refresh_from_db()
         self.assertEqual(corrupted_asset.location.id, invalid_location.id)
+
+    def test_should_start_update_tasks_for_needed_characters_only(
+        self,
+        mock_task_update_character_assets,
+        mock_task_update_character_contracts,
+        mock_task_update_character_section,
+    ):
+        # given
+        character_pks = memberaudit_fix_locations.CharacterPkContainer()
+        asset_pk = 1001
+        character_pks.assets.add(asset_pk)
+        clone_pk = 1002
+        character_pks.clones.add(clone_pk)
+        contract_pk = 1002
+        character_pks.contracts.add(contract_pk)
+        location_pk = 1003
+        character_pks.locations.add(location_pk)
+        transaction_pk = 1004
+        character_pks.transactions.add(transaction_pk)
+
+        # when
+        memberaudit_fix_locations.start_character_updates(character_pks)
+
+        # then
+        section_tasks_calls_list = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_section.apply_async.call_args_list
+        ]
+        self.assertEqual(len(section_tasks_calls_list), 3)
+        section_tasks_calls = {
+            params["section"]: params for params in section_tasks_calls_list
+        }
+
+        assets_task_calls = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_assets.apply_async.call_args_list
+        ]
+        self.assertEqual(len(assets_task_calls), 1)
+        params = assets_task_calls[0]
+        self.assertEqual(params["character_pk"], asset_pk)
+        self.assertTrue(params["force_update"])
+
+        params = section_tasks_calls[Character.UpdateSection.JUMP_CLONES.value]
+        self.assertEqual(params["character_pk"], clone_pk)
+        self.assertTrue(params["force_update"])
+
+        contract_task_calls = [
+            o[1]["kwargs"]
+            for o in mock_task_update_character_contracts.apply_async.call_args_list
+        ]
+        self.assertEqual(len(contract_task_calls), 1)
+        params = contract_task_calls[0]
+        self.assertEqual(params["character_pk"], contract_pk)
+        self.assertTrue(params["force_update"])
+
+        params = section_tasks_calls[Character.UpdateSection.LOCATION.value]
+        self.assertEqual(params["character_pk"], location_pk)
+        self.assertTrue(params["force_update"])
+
+        params = section_tasks_calls[Character.UpdateSection.WALLET_TRANSACTIONS.value]
+        self.assertEqual(params["character_pk"], transaction_pk)
+        self.assertTrue(params["force_update"])
