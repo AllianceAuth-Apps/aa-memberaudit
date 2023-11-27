@@ -65,6 +65,10 @@ Finally, the update tasks for the affected characters need to complete, before t
 
 [^1]: We assume you have a standard installation from the official installation guide (aka "bare metal"). The syntax for a docker installation might differ.
 
+## Added
+
+- Special command `memberaudit_fix_locations` to repair data corruptions caused by #153
+
 ## Changed
 
 - Now searches full names instead of just beginning in character finder
@@ -73,7 +77,7 @@ Finally, the update tasks for the affected characters need to complete, before t
 
 ## Fixed
 
-- Attempt to fix an issue with asset update, where some parent assets are apparently not created in time for when the related child assets are created. (#152)
+- Some parent assets are apparently not created in time for when the related child assets are created. (#152)
 - Can no longer see contents of asset containers (#153)
 - Asset update recorded as success even when there are assets leftover
 
