@@ -259,14 +259,14 @@ class Command(BaseCommand):
         return character_pks
 
 
-def find_invalid_locations(options: dict) -> List[int]:
+def find_invalid_locations(options: dict = None) -> List[int]:
     """Return IDs of invalid locations.
     An empty list means no invalid locations where found.
     """
     asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
     invalid_locations = Location.objects.filter(id__in=asset_item_ids)
     invalid_location_ids = list(sorted(invalid_locations.values_list("id", flat=True)))
-    if options["verbose_log"]:
+    if options and options.get("verbose_log"):
         logger.info(
             "Found %d invalid locations: %s",
             len(invalid_location_ids),
@@ -302,7 +302,7 @@ def fix_corrupted_character_section(
     CharacterUpdateStatus.objects.filter(
         character__pk__in=character_pks, section=section
     ).update(content_hash_1="", content_hash_2="", content_hash_3="")
-    if options and options["verbose_log"]:
+    if options and options.get("verbose_log"):
         logger.info(
             "Removed %d invalid locations from %d corrupted %s across %d characters: %s",
             len(location_ids),
@@ -324,7 +324,7 @@ def fix_corrupted_character_section(
 
 
 def identify_updateable_characters(
-    character_pks: CharacterPksContainer, options: dict
+    character_pks: CharacterPksContainer, options: dict = None
 ) -> CharacterPksContainer:
     """Return selection of character PKs, which can be updated."""
     params = {}
@@ -339,7 +339,7 @@ def identify_updateable_characters(
 
     updateable_character_pks = CharacterPksContainer(**params)
 
-    if options["verbose_log"]:
+    if options and options.get("verbose_log"):
         logger.info(
             "From %d repaired characters, %d can be updated: %s",
             len(character_pks),
