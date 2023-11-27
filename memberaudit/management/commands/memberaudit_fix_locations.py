@@ -1,10 +1,11 @@
 import math
 from dataclasses import dataclass, field
-from typing import List, Set
+from typing import List, Optional, Set
 
 from tqdm import tqdm
 
 from django.core.management.base import BaseCommand
+from django.db import DatabaseError
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import chunks
@@ -25,13 +26,14 @@ from memberaudit.models import (
 
 from . import get_input
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
-
 # [ ] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
 # [ ] Add tests for individual character updates
 # [ ] Add option to log the location and character IDs, which are processed
 # [ ] Add more explanation to the issue about the effects of the issue
 # [ ] Re-calculate the amount of remaining invalid locations at the end of the script
+
+DEFAULT_BATCH_SIZE = 100
+logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 @dataclass
@@ -73,7 +75,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument(
             "--batch-size",
-            default=100,
+            default=DEFAULT_BATCH_SIZE,
             help="Maximum number of locations fixed per batch run",
         )
 
@@ -146,7 +148,7 @@ class Command(BaseCommand):
             user_input = "s"
 
         if user_input.lower() != "w":
-            self._start_character_updates(characters_updateable_pks)
+            start_character_updates(characters_updateable_pks)
             msg = (
                 "Immediate updates has been started for "
                 f"{len(characters_updateable_pks):,} characters."
@@ -175,6 +177,8 @@ class Command(BaseCommand):
         unknown_location, _ = Location.objects.get_or_create_unknown_location()  # type: ignore
         character_pks = CharacterPksContainer()
         batch_count = math.ceil(invalid_location_count / batch_size)
+        removed_location_ids = []
+        has_errors = False
 
         for location_ids_chunk in tqdm(
             chunks(invalid_location_ids, batch_size),
@@ -184,111 +188,75 @@ class Command(BaseCommand):
             unit_scale=batch_size,
             disable=IS_TESTING,
         ):
-            character_pks.assets |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.ASSETS,
-                model_class=CharacterAsset,
-                options=options,
-            )
-            character_pks.clones |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.JUMP_CLONES,
-                model_class=CharacterJumpClone,
-                options=options,
-            )
-            character_pks.contracts |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.CONTRACTS,
-                model_class=CharacterContract,
-                field_name="start_location",
-                options=options,
-            )
-            character_pks.contracts |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.CONTRACTS,
-                model_class=CharacterContract,
-                field_name="end_location",
-                options=options,
-            )
-            character_pks.locations |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.LOCATION,
-                model_class=CharacterLocation,
-                options=options,
-            )
-            character_pks.transactions |= fix_corrupted_character_section(
-                location_ids=location_ids_chunk,
-                unknown_location=unknown_location,
-                section=Character.UpdateSection.WALLET_TRANSACTIONS,
-                model_class=CharacterWalletTransaction,
-                options=options,
-            )
-            locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
-            locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
-            logger.info("Deleted %d invalid locations", len(location_ids_chunk))
+            try:
+                character_pks.assets |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.ASSETS,
+                    model_class=CharacterAsset,
+                    options=options,
+                )
+                character_pks.clones |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.JUMP_CLONES,
+                    model_class=CharacterJumpClone,
+                    options=options,
+                )
+                character_pks.contracts |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.CONTRACTS,
+                    model_class=CharacterContract,
+                    field_name="start_location",
+                    options=options,
+                )
+                character_pks.contracts |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.CONTRACTS,
+                    model_class=CharacterContract,
+                    field_name="end_location",
+                    options=options,
+                )
+                character_pks.locations |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.LOCATION,
+                    model_class=CharacterLocation,
+                    options=options,
+                )
+                character_pks.transactions |= fix_corrupted_character_section(
+                    location_ids=location_ids_chunk,
+                    unknown_location=unknown_location,
+                    section=Character.UpdateSection.WALLET_TRANSACTIONS,
+                    model_class=CharacterWalletTransaction,
+                    options=options,
+                )
+                locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
+                locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
+                removed_location_ids += location_ids_chunk
+                logger.info("Deleted %d invalid locations", len(location_ids_chunk))
+
+            except DatabaseError:
+                logger.exception(
+                    "Failed to remove %d invalid locations. Skipping to next chunk.",
+                    len(location_ids_chunk),
+                )
+                has_errors = True
 
         msg = (
-            f"Fixing complete: Removed {invalid_location_count:,} invalid locations "
-            "and related corrupted data"
+            f"Process completed: Removed {len(removed_location_ids):,} "
+            "invalid locations and repaired related character data."
         )
         logger.info(msg)
         self.stdout.write(msg)
+        if has_errors:
+            self.stdout.write(
+                self.style.ERROR("Errors occurred. Please check logs for details.")
+            )
         self.stdout.write("")
         return character_pks
-
-    def _start_character_updates(self, character_pks: CharacterPksContainer):
-        for character_pk in character_pks.assets:
-            tasks.update_character_assets.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
-
-        for character_pk in character_pks.clones:
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "section": Character.UpdateSection.JUMP_CLONES,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
-
-        for character_pk in character_pks.contracts:
-            tasks.update_character_contracts.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
-
-        for character_pk in character_pks.locations:
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "section": Character.UpdateSection.LOCATION,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
-
-        for character_pk in character_pks.transactions:
-            tasks.update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "section": Character.UpdateSection.WALLET_TRANSACTIONS,
-                    "force_update": True,
-                },
-                priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-            )  # type: ignore
 
 
 def find_invalid_locations(options: dict) -> List[int]:
@@ -317,7 +285,7 @@ def fix_corrupted_character_section(
     model_class: type,
     field_name: str = "location",
     options: dict = None,
-) -> Set[int]:
+) -> Optional[Set[int]]:
     """Entangle locations from a character section of any related characters."""
     params_filter = {f"{field_name}__in": location_ids}
     corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
@@ -330,6 +298,7 @@ def fix_corrupted_character_section(
     )
     params_update = {field_name: unknown_location}
     corrupted_objs.update(**params_update)
+
     CharacterUpdateStatus.objects.filter(
         character__pk__in=character_pks, section=section
     ).update(content_hash_1="", content_hash_2="", content_hash_3="")
@@ -385,3 +354,54 @@ def identify_updateable_characters(
         )
 
     return updateable_character_pks
+
+
+def start_character_updates(character_pks: CharacterPksContainer):
+    """Start character section updates for characters as needed."""
+    for character_pk in character_pks.assets:
+        tasks.update_character_assets.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "force_update": True,
+            },
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore
+
+    for character_pk in character_pks.clones:
+        tasks.update_character_section.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "section": Character.UpdateSection.JUMP_CLONES,
+                "force_update": True,
+            },
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore
+
+    for character_pk in character_pks.contracts:
+        tasks.update_character_contracts.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "force_update": True,
+            },
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore
+
+    for character_pk in character_pks.locations:
+        tasks.update_character_section.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "section": Character.UpdateSection.LOCATION,
+                "force_update": True,
+            },
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore
+
+    for character_pk in character_pks.transactions:
+        tasks.update_character_section.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "section": Character.UpdateSection.WALLET_TRANSACTIONS,
+                "force_update": True,
+            },
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore

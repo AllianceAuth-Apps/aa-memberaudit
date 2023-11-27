@@ -5,11 +5,13 @@ from unittest import skip
 from unittest.mock import patch
 
 from django.core.management import call_command
+from django.db import IntegrityError
 from django.test import TestCase
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase
 
+from memberaudit.management.commands import memberaudit_fix_locations
 from memberaudit.models import Character, Location
 from memberaudit.tests.testdata.factories import (
     create_character,
@@ -155,9 +157,9 @@ class TestFixInvalidLocations(TestCase):
         wallet = create_character_wallet_transaction(
             character=self.character_1001, location=create_location()
         )
+        out = StringIO()
 
         # when
-        out = StringIO()
         call_command("memberaudit_fix_locations", "--noinput", stdout=out)
 
         # then
@@ -373,9 +375,9 @@ class TestFixInvalidLocations(TestCase):
             section=Character.UpdateSection.CONTRACTS,
             content_hash_1="some_data",
         )
+        out = StringIO()
 
         # when
-        out = StringIO()
         call_command("memberaudit_fix_locations", "--noinput", stdout=out)
 
         # then locations
@@ -554,3 +556,32 @@ class TestFixInvalidLocations(TestCase):
         params = asset_task_calls[0]
         self.assertEqual(params["character_pk"], self.character_1001.pk)
         self.assertTrue(params["force_update"])
+
+    def test_should_ignore_db_issue_when_fixing_section(self, _m1, _m2, _m3):
+        # given
+        valid_location = create_location()
+        invalid_location = create_location()
+
+        asset = create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location.id,
+        )
+        corrupted_asset = create_character_asset(
+            character=self.character_1001, location=invalid_location
+        )
+        out = StringIO()
+
+        # when
+        with patch(
+            PACKAGE_PATH + ".memberaudit_fix_locations.CharacterAsset",
+            wraps=memberaudit_fix_locations.CharacterAsset,
+        ) as mock:
+            mock.objects.filter.return_value.update.side_effect = IntegrityError
+            call_command("memberaudit_fix_locations", "--noinput", stdout=out)
+
+        # then
+        asset.refresh_from_db()
+        self.assertTrue(asset.location)
+        corrupted_asset.refresh_from_db()
+        self.assertEqual(corrupted_asset.location.id, invalid_location.id)
