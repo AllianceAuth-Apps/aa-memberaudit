@@ -26,11 +26,11 @@ from memberaudit.models import (
 
 from . import get_input
 
-# [ ] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
+# [x] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
 # [ ] Add tests for individual character updates
 # [ ] Add option to log the location and character IDs, which are processed
 # [ ] Add more explanation to the issue about the effects of the issue
-# [ ] Re-calculate the amount of remaining invalid locations at the end of the script
+# [x] Re-calculate the amount of remaining invalid locations at the end of the script
 
 DEFAULT_BATCH_SIZE = 100
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -123,6 +123,12 @@ class Command(BaseCommand):
             invalid_location_ids, options
         )
 
+        self.stdout.write("Looking for remaining invalid locations...")
+        remaining_invalid_location_ids = find_invalid_locations(options)
+        self.stdout.write(
+            f"{len(remaining_invalid_location_ids)} invalid locations remaining."
+        )
+
         characters_updateable_pks = identify_updateable_characters(
             character_pks=character_pks_all, options=options
         )
@@ -178,7 +184,7 @@ class Command(BaseCommand):
         character_pks = CharacterPksContainer()
         batch_count = math.ceil(invalid_location_count / batch_size)
         removed_location_ids = []
-        has_errors = False
+        error_count = 0
 
         for location_ids_chunk in tqdm(
             chunks(invalid_location_ids, batch_size),
@@ -243,7 +249,7 @@ class Command(BaseCommand):
                     "Failed to remove %d invalid locations. Skipping to next chunk.",
                     len(location_ids_chunk),
                 )
-                has_errors = True
+                error_count += 1
 
         msg = (
             f"Process completed: Removed {len(removed_location_ids):,} "
@@ -251,10 +257,12 @@ class Command(BaseCommand):
         )
         logger.info(msg)
         self.stdout.write(msg)
-        if has_errors:
-            self.stdout.write(
-                self.style.ERROR("Errors occurred. Please check logs for details.")
-            )
+
+        if error_count:
+            msg = f"{error_count:,} errors occurred. Please check logs for details."
+            self.stdout.write(self.style.ERROR(msg))
+            logger.warning(msg)
+
         self.stdout.write("")
         return character_pks
 
