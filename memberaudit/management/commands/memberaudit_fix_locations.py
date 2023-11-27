@@ -158,7 +158,7 @@ class Command(BaseCommand):
             )
             user_input = get_input("(s/W)?")
         else:
-            user_input = "w"
+            user_input = "s"
 
         if user_input.lower() == "s":
             start_character_updates(characters_updateable_pks)
