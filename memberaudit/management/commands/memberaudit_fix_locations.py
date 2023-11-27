@@ -83,7 +83,7 @@ class Command(BaseCommand):
             "--noinput",
             "--no-input",
             action="store_true",
-            help="Do NOT prompt the user for input of any kind.",
+            help="Do NOT prompt the user for input of any kind",
         )
 
         parser.add_argument(
@@ -105,7 +105,7 @@ class Command(BaseCommand):
         invalid_location_ids = find_invalid_locations(options)
 
         if not invalid_location_ids:
-            self.stdout.write(self.style.SUCCESS("No invalid locations found."))
+            self.stdout.write(self.style.SUCCESS("No invalid locations found"))
             return
 
         if not options["noinput"]:
@@ -113,9 +113,9 @@ class Command(BaseCommand):
                 f"This command will remove {len(invalid_location_ids):,} "
                 "invalid locations "
                 "and fix related character data corruption caused by issue #153. "
-                "Details will be logged to the extensions log."
+                "Details will be logged to the extensions log"
             )
-            self.stdout.write("This process can take a while to complete.")
+            self.stdout.write("This process can take a while to complete")
             user_input = get_input("Are you sure you want to proceed (Y/n)?")
         else:
             user_input = "y"
@@ -133,7 +133,7 @@ class Command(BaseCommand):
         self.stdout.write("Looking for remaining invalid locations...")
         remaining_invalid_location_ids = find_invalid_locations(options)
         self.stdout.write(
-            f"{len(remaining_invalid_location_ids)} invalid locations remaining."
+            f"{len(remaining_invalid_location_ids)} invalid locations remaining"
         )
 
         characters_updateable_pks = identify_updateable_characters(
@@ -146,7 +146,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f"Data for up to {len(characters_updateable_pks):,} characters may "
-            "have been disrupted by invalid locations."
+            "have been disrupted by invalid locations"
         )
         if not options["noinput"]:
             self.stdout.write(
@@ -164,15 +164,13 @@ class Command(BaseCommand):
             start_character_updates(characters_updateable_pks)
             msg = (
                 "Immediate updates has been started for "
-                f"{len(characters_updateable_pks):,} characters."
+                f"{len(characters_updateable_pks):,} characters"
             )
             logger.info(msg)
             self.stdout.write(msg)
 
         else:
-            self.stdout.write(
-                "Characters will be updated with the next regular update."
-            )
+            self.stdout.write("Characters will be updated with the next regular update")
 
         self.stdout.write(self.style.SUCCESS("Done"))
 
@@ -253,20 +251,20 @@ class Command(BaseCommand):
 
             except DatabaseError:
                 logger.exception(
-                    "Failed to remove %d invalid locations. Skipping to next chunk.",
+                    "Failed to remove %d invalid locations. Skipping to next chunk",
                     len(location_ids_chunk),
                 )
                 error_count += 1
 
         msg = (
             f"Process completed: Removed {len(removed_location_ids):,} "
-            "invalid locations and repaired related character data."
+            "invalid locations and repaired related character data"
         )
         logger.info(msg)
         self.stdout.write(msg)
 
         if error_count:
-            msg = f"{error_count:,} errors occurred. Please check logs for details."
+            msg = f"{error_count:,} errors occurred. Please check logs for details"
             self.stdout.write(self.style.ERROR(msg))
             logger.warning(msg)
 

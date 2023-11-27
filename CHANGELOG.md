@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 This patch release fixes a major bug (#153), which causes the creation of invalid locations and the corruption of asset and other character data. To repair the data corruption, please follow the process below, which includes running a special repair command: [^1]
 
->**Important**: We strongly to run this repair command while your AA instance is shutdown. Otherwise the command might fail and take much longer to complete.
+>**Important**: We strongly recommend to run the repair command while your AA instance is shutdown. Otherwise the command might take much longer to complete or could even fail.
 
 ### Step 1 - Shutdown AA
 
