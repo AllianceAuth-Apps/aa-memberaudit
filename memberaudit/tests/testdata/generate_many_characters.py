@@ -42,7 +42,7 @@ from memberaudit.tests.testdata.factories import (
 from memberaudit.tests.utils import create_memberaudit_character
 
 # configuration
-CHARACTER_COUNT = 50  # max number of characters to generate
+CHARACTER_COUNT = 10  # max number of characters to generate
 CORRUPTED_ASSETS_PER_CHARACTER = 100  # set to 0 to disable
 CREATE_SKILL_SET_SKILLS = False
 

@@ -27,6 +27,12 @@ from . import get_input
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
+# [ ] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
+# [ ] Add tests for individual character updates
+# [ ] Add option to log the location and character IDs, which are processed
+# [ ] Add more explanation to the issue about the effects of the issue
+# [ ] Re-calculate the amount of remaining invalid locations at the end of the script
+
 
 @dataclass
 class CharacterPksContainer:
@@ -66,6 +72,12 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--batch-size",
+            default=100,
+            help="Maximum number of locations fixed per batch run",
+        )
+
+        parser.add_argument(
             "--noinput",
             "--no-input",
             action="store_true",
@@ -73,14 +85,15 @@ class Command(BaseCommand):
         )
 
         parser.add_argument(
-            "--batch-size",
-            default=100,
-            help="Maximum number of locations fixed per batch run",
+            "--verbose-log",
+            action="store_true",
+            help="Log additional details",
         )
 
     def handle(self, *args, **options):
+        logger.info("Started command for fixing locations")
         self.stdout.write("Looking for invalid locations...")
-        invalid_location_ids = self._find_invalid_locations()
+        invalid_location_ids = find_invalid_locations(options)
 
         if not invalid_location_ids:
             self.stdout.write(self.style.SUCCESS("No invalid locations found."))
@@ -105,11 +118,11 @@ class Command(BaseCommand):
         self.stdout.write("")
 
         character_pks_all = self._fix_data_corruption_and_remove_invalid_locations(
-            invalid_location_ids, options["batch_size"]
+            invalid_location_ids, options
         )
 
-        characters_updateable_pks = self._identify_updateable_characters(
-            character_pks_all
+        characters_updateable_pks = identify_updateable_characters(
+            character_pks=character_pks_all, options=options
         )
 
         if not characters_updateable_pks:
@@ -149,9 +162,10 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Done"))
 
     def _fix_data_corruption_and_remove_invalid_locations(
-        self, invalid_location_ids: List[int], batch_size: int
+        self, invalid_location_ids: List[int], options: dict
     ) -> CharacterPksContainer:
         invalid_location_count = len(invalid_location_ids)
+        batch_size: int = options["batch_size"]
         logger.info(
             "Started fixing %d invalid locations with batch size %d",
             invalid_location_count,
@@ -170,43 +184,49 @@ class Command(BaseCommand):
             unit_scale=batch_size,
             disable=IS_TESTING,
         ):
-            character_pks.assets |= self._fix_corrupted_character_section(
+            character_pks.assets |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.ASSETS,
                 model_class=CharacterAsset,
+                options=options,
             )
-            character_pks.clones |= self._fix_corrupted_character_section(
+            character_pks.clones |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.JUMP_CLONES,
                 model_class=CharacterJumpClone,
+                options=options,
             )
-            character_pks.contracts |= self._fix_corrupted_character_section(
+            character_pks.contracts |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.CONTRACTS,
                 model_class=CharacterContract,
                 field_name="start_location",
+                options=options,
             )
-            character_pks.contracts |= self._fix_corrupted_character_section(
+            character_pks.contracts |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.CONTRACTS,
                 model_class=CharacterContract,
                 field_name="end_location",
+                options=options,
             )
-            character_pks.locations |= self._fix_corrupted_character_section(
+            character_pks.locations |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.LOCATION,
                 model_class=CharacterLocation,
+                options=options,
             )
-            character_pks.transactions |= self._fix_corrupted_character_section(
+            character_pks.transactions |= fix_corrupted_character_section(
                 location_ids=location_ids_chunk,
                 unknown_location=unknown_location,
                 section=Character.UpdateSection.WALLET_TRANSACTIONS,
                 model_class=CharacterWalletTransaction,
+                options=options,
             )
             locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
             locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
@@ -220,57 +240,6 @@ class Command(BaseCommand):
         self.stdout.write(msg)
         self.stdout.write("")
         return character_pks
-
-    def _find_invalid_locations(self) -> List[int]:
-        asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
-        invalid_locations = Location.objects.filter(id__in=asset_item_ids)
-        invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
-        return invalid_location_ids
-
-    def _fix_corrupted_character_section(
-        self,
-        location_ids: List[int],
-        unknown_location: Location,
-        section: Character.UpdateSection,
-        model_class: type,
-        field_name: str = "location",
-    ) -> Set[int]:
-        params_filter = {f"{field_name}__in": location_ids}
-        corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
-        corrupted_objs_count = corrupted_objs.count()
-        if not corrupted_objs_count:
-            return set()
-
-        character_pks = set(
-            corrupted_objs.values_list("character__pk", flat=True).distinct()
-        )
-        params_update = {field_name: unknown_location}
-        corrupted_objs.update(**params_update)
-        CharacterUpdateStatus.objects.filter(
-            character__pk__in=character_pks, section=section
-        ).update(content_hash_1="", content_hash_2="", content_hash_3="")
-        logger.info(
-            "Fixed %s corrupted %s across %d characters",
-            corrupted_objs_count,
-            section.label,
-            len(character_pks),
-        )
-
-        return character_pks
-
-    def _identify_updateable_characters(
-        self, character_pks: CharacterPksContainer
-    ) -> CharacterPksContainer:
-        params = {}
-        for section in ["assets", "clones", "contracts", "locations", "transactions"]:
-            params[section] = set(
-                Character.objects.filter(
-                    pk__in=getattr(character_pks, section),
-                    is_disabled=False,
-                    eve_character__character_ownership__isnull=False,
-                ).values_list("pk", flat=True)
-            )
-        return CharacterPksContainer(**params)
 
     def _start_character_updates(self, character_pks: CharacterPksContainer):
         for character_pk in character_pks.assets:
@@ -320,3 +289,99 @@ class Command(BaseCommand):
                 },
                 priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
             )  # type: ignore
+
+
+def find_invalid_locations(options: dict) -> List[int]:
+    """Return IDs of invalid locations.
+    An empty list means no invalid locations where found.
+    """
+    asset_item_ids = list(CharacterAsset.objects.values_list("item_id", flat=True))
+    invalid_locations = Location.objects.filter(id__in=asset_item_ids)
+    invalid_location_ids = list(sorted(invalid_locations.values_list("id", flat=True)))
+    if options["verbose_log"]:
+        logger.info(
+            "Found %d invalid locations: %s",
+            len(invalid_location_ids),
+            invalid_location_ids,
+        )
+    else:
+        logger.info("Found %d invalid locations", len(invalid_location_ids))
+
+    return invalid_location_ids
+
+
+def fix_corrupted_character_section(
+    section: Character.UpdateSection,
+    location_ids: List[int],
+    unknown_location: Location,
+    model_class: type,
+    field_name: str = "location",
+    options: dict = None,
+) -> Set[int]:
+    """Entangle locations from a character section of any related characters."""
+    params_filter = {f"{field_name}__in": location_ids}
+    corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
+    corrupted_objs_count = corrupted_objs.count()
+    if not corrupted_objs_count:
+        return set()
+
+    character_pks = list(
+        sorted(corrupted_objs.values_list("character__pk", flat=True).distinct())
+    )
+    params_update = {field_name: unknown_location}
+    corrupted_objs.update(**params_update)
+    CharacterUpdateStatus.objects.filter(
+        character__pk__in=character_pks, section=section
+    ).update(content_hash_1="", content_hash_2="", content_hash_3="")
+    if options and options["verbose_log"]:
+        logger.info(
+            "Removed %d invalid locations from %d corrupted %s across %d characters: %s",
+            len(location_ids),
+            corrupted_objs_count,
+            section.label,
+            len(character_pks),
+            character_pks,
+        )
+    else:
+        logger.info(
+            "Removed %d invalid locations from %d corrupted %s across %d characters",
+            len(location_ids),
+            corrupted_objs_count,
+            section.label,
+            len(character_pks),
+        )
+
+    return set(character_pks)
+
+
+def identify_updateable_characters(
+    character_pks: CharacterPksContainer, options: dict
+) -> CharacterPksContainer:
+    """Return selection of character PKs, which can be updated."""
+    params = {}
+    for section in ["assets", "clones", "contracts", "locations", "transactions"]:
+        params[section] = set(
+            Character.objects.filter(
+                pk__in=getattr(character_pks, section),
+                is_disabled=False,
+                eve_character__character_ownership__isnull=False,
+            ).values_list("pk", flat=True)
+        )
+
+    updateable_character_pks = CharacterPksContainer(**params)
+
+    if options["verbose_log"]:
+        logger.info(
+            "From %d repaired characters, %d can be updated: %s",
+            len(character_pks),
+            len(updateable_character_pks),
+            updateable_character_pks,
+        )
+    else:
+        logger.info(
+            "From %d repaired characters, %d can be updated",
+            len(character_pks),
+            len(updateable_character_pks),
+        )
+
+    return updateable_character_pks
