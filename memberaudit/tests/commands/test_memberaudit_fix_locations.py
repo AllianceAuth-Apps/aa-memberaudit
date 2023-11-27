@@ -1,7 +1,4 @@
-import tempfile
 from io import StringIO
-from pathlib import Path
-from unittest import skip
 from unittest.mock import patch
 
 from django.core.management import call_command
@@ -9,16 +6,13 @@ from django.db import IntegrityError
 from django.test import TestCase
 
 from allianceauth.eveonline.models import EveCharacter
-from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.management.commands import memberaudit_fix_locations
 from memberaudit.models import Character, Location
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_asset,
-    create_character_contract,
     create_character_contract_courier,
-    create_character_contract_item,
     create_character_jump_clone,
     create_character_location,
     create_character_update_status,
@@ -27,109 +21,14 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import (
-    add_auth_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-)
+from memberaudit.tests.utils import create_memberaudit_character
 
-DATA_EXPORTERS_PATH = "memberaudit.core.data_exporters"
-PACKAGE_PATH = "memberaudit.management.commands"
+MODULE_PATH = "memberaudit.management.commands.memberaudit_fix_locations"
 
 
-@skip("Maria DB breaks")
-class TestResetCharacters(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
-    def test_normal(self):
-        """can recreate member audit characters from main and alt of matching tokens"""
-        user, co_1001 = create_user_from_evecharacter_with_access(1001)
-        co_1002 = add_auth_character_to_user(user, 1002)
-
-        out = StringIO()
-        call_command("memberaudit_reset_characters", "--noinput", stdout=out)
-
-        self.assertSetEqual(
-            set(
-                Character.objects.values_list(
-                    "eve_character__character_ownership__id", flat=True
-                )
-            ),
-            {co_1001.id, co_1002.id},
-        )
-
-    def test_orphaned_tokens(self):
-        """
-        given a matching token exists and the respective auth character
-        is now owner by another user
-        and no longer has a matching token
-        when creating member audit characters
-        then no member audit character is created for the switched auth character
-        """
-        user_1, co_1001 = create_user_from_evecharacter_with_access(1001)
-        add_auth_character_to_user(user_1, 1002)
-        user_2, co_1101 = create_user_from_evecharacter_with_access(1101)
-
-        # re-add auth character 1002 to another user, but without member audit scopes
-        add_auth_character_to_user(user_2, 1002, scopes="publicData")
-
-        out = StringIO()
-        call_command("memberaudit_reset_characters", "--noinput", stdout=out)
-
-        self.assertSetEqual(
-            set(
-                Character.objects.values_list(
-                    "eve_character__character_ownership__id", flat=True
-                )
-            ),
-            {co_1001.id, co_1101.id},
-        )
-
-
-class TestDataExport(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        cls.character_1001 = create_memberaudit_character(1001)
-
-    def test_should_export_contract_item(self):
-        with tempfile.TemporaryDirectory() as tmp_dir_name:
-            # given
-            contract = create_character_contract(character=self.character_1001)
-            create_character_contract_item(contract=contract, record_id=12)
-            out = StringIO()
-            # when
-            call_command(
-                "memberaudit_data_export",
-                "contract-item",
-                "--destination",
-                tmp_dir_name,
-                stdout=out,
-            )
-            # then
-            output_file = Path(tmp_dir_name) / Path(
-                "memberaudit_contract-item"
-            ).with_suffix(".csv")
-            self.assertTrue(output_file.exists())
-
-
-@patch(
-    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_section",
-    spec=True,
-)
-@patch(
-    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_contracts",
-    spec=True,
-)
-@patch(
-    PACKAGE_PATH + ".memberaudit_fix_locations.tasks.update_character_assets",
-    spec=True,
-)
+@patch(MODULE_PATH + ".tasks.update_character_section", spec=True)
+@patch(MODULE_PATH + ".tasks.update_character_contracts", spec=True)
+@patch(MODULE_PATH + ".tasks.update_character_assets", spec=True)
 class TestFixInvalidLocations(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -569,7 +468,7 @@ class TestFixInvalidLocations(TestCase):
 
         # when
         with patch(
-            PACKAGE_PATH + ".memberaudit_fix_locations.CharacterAsset",
+            MODULE_PATH + ".CharacterAsset",
             wraps=memberaudit_fix_locations.CharacterAsset,
         ) as mock:
             mock.objects.filter.return_value.update.side_effect = IntegrityError
