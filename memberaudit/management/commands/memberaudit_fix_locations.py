@@ -160,7 +160,7 @@ class Command(BaseCommand):
         else:
             user_input = "w"
 
-        if user_input.lower() != "s":
+        if user_input.lower() == "s":
             start_character_updates(characters_updateable_pks)
             msg = (
                 "Immediate updates has been started for "

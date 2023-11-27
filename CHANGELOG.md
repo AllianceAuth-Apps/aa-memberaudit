@@ -49,7 +49,7 @@ Note that details will be logged to the extensions log. You can filter for relev
 grep memberaudit_fix_locations log/extensions.log
 ```
 
-Should the repair command fail to remove all invalid locations you can try running the command again.
+Should the repair command fail to remove all invalid locations you can try running the command again. If that stills fails, you might want to try again after one complete update cycle with this patch has completed.
 
 Should you run into any issues you can increase logging verbosity or exclude problematic locations via parameters to the repair command. Please run the command with `-h` for details.
 
