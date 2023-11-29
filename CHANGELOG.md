@@ -7,6 +7,68 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.4.4b1] - 2023-11-29
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
+
+## Update notes
+
+This patch release fixes a major bug (#153), which causes the creation of invalid locations and the corruption of asset and other character data. To repair the data corruption, please follow the process below, which includes running a special repair command: [^1]
+
+>**Important**: We strongly recommend to run the repair command while your AA instance is shutdown. Otherwise the command might take much longer to complete or could even fail.
+
+### Step 1 - Shutdown AA
+
+With your sudo user please first shutdown your AA instance:
+
+```sh
+sudo supervisorctl stop myauth:
+```
+
+### Step 2 - Backup your database
+
+We recommend you make a full backup of your database before proceeding. Here is one easy way to do it:
+
+```sh
+sudo mysqldump -u root alliance_auth > alliance_auth.sql
+```
+
+### Step 3 - Run repair command
+
+Then, after switching to your AA user, you can start the repair command with:
+
+```sh
+python /home/allianceserver/myauth/manage.py memberaudit_fix_locations
+```
+
+Note that details will be logged to the extensions log. You can filter for relevant log entries only like so:
+
+```sh
+grep memberaudit_fix_locations log/extensions.log
+```
+
+Should the repair command fail to remove all invalid locations you can try running the command again. If that stills fails, you might want to try again after one complete update cycle with this patch has completed.
+
+Should you run into any issues you can increase logging verbosity or exclude problematic locations via parameters to the repair command. Please run the command with `-h` for details.
+
+### Step 4 - Start AA instance again
+
+After the command is finished, you can start your your AA instance again with:
+
+```sh
+sudo supervisorctl start myauth:
+```
+
+Finally, the update tasks for the affected characters need to complete, before the data repair is finally done.
+
+[^1]: We assume you have a standard installation from the official installation guide (aka "bare metal"). The syntax for a docker installation might differ.
+
+## Added
+
+- Special command `memberaudit_fix_locations` to repair data corruptions caused by #153
+
 ## [3.4.3] - 2023-11-29
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
