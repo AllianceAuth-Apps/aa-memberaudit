@@ -173,6 +173,26 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
     return CharacterContract.objects.create(**params)
 
 
+def create_character_contract_courier(
+    character: Character, **kwargs
+) -> CharacterContract:
+    start_location = kwargs.get("start_location") or create_location()
+    end_location = kwargs.get("end_location") or create_location()
+    params = {
+        "character": character,
+        "availability": CharacterContract.AVAILABILITY_PERSONAL,
+        "contract_type": CharacterContract.TYPE_COURIER,
+        "days_to_complete": 7,
+        "end_location": end_location,
+        "reward": 100_000_000,
+        "start_location": start_location,
+        "status": CharacterContract.STATUS_OUTSTANDING,
+        "volume": 250_000,
+    }
+    params.update(kwargs)
+    return create_character_contract(**params)
+
+
 def create_character_contract_item(
     contract: CharacterContract, **kwargs
 ) -> CharacterContractItem:
@@ -714,7 +734,7 @@ def create_eve_market_price(**kwargs) -> EveMarketPrice:
     return EveMarketPrice.objects.create(**params)
 
 
-def next_number(key=None) -> int:
+def next_number(key=None, offset=None) -> int:
     if key is None:
         key = "_general"
     try:
@@ -724,7 +744,9 @@ def next_number(key=None) -> int:
     except KeyError:
         pass
     next_number._counter[key] = count(start=1)
-    return next_number._counter[key].__next__()
+    number = next_number._counter[key].__next__()
+    result = number + offset if offset else number
+    return result
 
 
 def _set_missing_foreign_keys(params: dict, **kwargs):

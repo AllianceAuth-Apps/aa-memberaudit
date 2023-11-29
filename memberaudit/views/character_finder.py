@@ -34,9 +34,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 @permission_required("memberaudit.finder_access")
 def character_finder(request) -> HttpResponse:
     """Render view for character finder."""
-    context = {
-        "page_title": _("Character Finder"),
-    }
+    context = {"page_title": _("Character Finder")}
     return render(
         request,
         "memberaudit/character_finder.html",
@@ -147,9 +145,9 @@ class CharacterFinderListJson(
         search = self.request.GET.get("search[value]", None)
         if search:
             qs = qs.filter(
-                Q(character_name__istartswith=search)
+                Q(character_name__icontains=search)
                 | Q(
-                    character_ownership__user__profile__main_character__character_name__istartswith=search
+                    character_ownership__user__profile__main_character__character_name__icontains=search
                 )
             )
         return qs

@@ -522,15 +522,21 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )
         return data, True
 
-    def update_section_log_success(self, section: UpdateSection) -> None:
-        """Log success after successfully updating a character's section."""
-        logger.info("%s: %s update completed", self, section.label)
+    def update_section_log_result(
+        self,
+        section: UpdateSection,
+        is_success: bool,
+        last_error_message: str = None,
+    ) -> None:
+        """Log update result for a character's section."""
+        status = "successfully" if is_success else "with errors"
+        logger.info("%s: %s update completed %s", self, section.label, status)
         self.update_status_set.update_or_create(
             section=section,
             defaults={
-                "is_success": True,
+                "is_success": is_success,
                 "has_token_error": False,
-                "last_error_message": "",
+                "last_error_message": last_error_message if last_error_message else "",
                 "finished_at": now(),
             },
         )
@@ -617,9 +623,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """
         return self.assets.fetch_from_esi(self, force_update)
 
-    def assets_preload_objects(self, assets_data: dict) -> None:
+    def assets_preload_objects(self, asset_list: list) -> None:
         """Preload objects needed to build the character's asset tree from ESI."""
-        self.assets.preload_objects_from_esi(self, assets_data)
+        self.assets.preload_objects_from_esi(self, asset_list)
 
     def update_attributes(self, force_update: bool = False):
         """Update the character's learning attributes from ESI."""
@@ -802,9 +808,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             location = character_location.location_safe()
         except CharacterLocation.DoesNotExist:
-            location, _ = Location.objects.get_or_create_esi(
-                id=Location.LOCATION_UNKNOWN_ID, token=None
-            )
+            location, _ = Location.objects.get_or_create_unknown_location()
 
         ship_asset_record = {
             "is_blueprint_copy": False,
@@ -981,3 +985,4 @@ class CharacterUpdateStatus(models.Model):
         self.root_task_id = root_task_id if root_task_id else ""
         self.parent_task_id = parent_task_id if root_task_id else ""
         self.save()
+        # TODO: Check if the hash also needs to be reset?

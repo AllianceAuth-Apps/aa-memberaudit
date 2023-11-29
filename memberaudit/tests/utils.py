@@ -10,6 +10,7 @@ from django.http import JsonResponse
 from django.test import TestCase
 from esi.models import Token
 
+from allianceauth.authentication.backends import StateBackend
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
@@ -28,9 +29,8 @@ def create_user_from_evecharacter_with_access(
 ) -> Tuple[User, CharacterOwnership]:
     """Create user with access from an existing eve character and use it as main."""
     auth_character = EveCharacter.objects.get(character_id=character_id)
-    user = AuthUtils.create_user(
-        auth_character.character_name, disconnect_signals=disconnect_signals
-    )
+    username = StateBackend.iterate_username(auth_character.character_name)
+    user = AuthUtils.create_user(username, disconnect_signals=disconnect_signals)
     user = AuthUtils.add_permission_to_user_by_name(
         "memberaudit.basic_access", user, disconnect_signals=disconnect_signals
     )

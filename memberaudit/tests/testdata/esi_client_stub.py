@@ -156,10 +156,19 @@ _endpoints = [
         "mail_id",
         needs_token=True,
     ),
-    EsiEndpoint("Market", "get_markets_prices"),
+    EsiEndpoint(
+        "Market",
+        "get_markets_prices",
+    ),
     EsiEndpoint(
         "Planetary_Interaction",
         "get_characters_character_id_planets",
+        "character_id",
+        needs_token=True,
+    ),
+    EsiEndpoint(
+        "Skills",
+        "get_characters_character_id_attributes",
         "character_id",
         needs_token=True,
     ),
@@ -175,8 +184,15 @@ _endpoints = [
         "character_id",
         needs_token=True,
     ),
-    EsiEndpoint("Status", "get_status"),
-    EsiEndpoint("Universe", "get_universe_stations_station_id", "station_id"),
+    EsiEndpoint(
+        "Status",
+        "get_status",
+    ),
+    EsiEndpoint(
+        "Universe",
+        "get_universe_stations_station_id",
+        "station_id",
+    ),
     EsiEndpoint(
         "Universe",
         "get_universe_structures_structure_id",
@@ -198,12 +214,6 @@ _endpoints = [
     EsiEndpoint(
         "Wallet",
         "get_characters_character_id_wallet_transactions",
-        "character_id",
-        needs_token=True,
-    ),
-    EsiEndpoint(
-        "Skills",
-        "get_characters_character_id_attributes",
         "character_id",
         needs_token=True,
     ),

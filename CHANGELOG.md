@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.4.3] - 2023-11-29
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
+
+## Changed
+
+- Searches in character finder match against full names instead of just beginning
+- Improved category filter for Locations
+- Improved test suite for asset updates
+
+## Fixed
+
+- Some parent assets are apparently not created in time for when the related child assets are created. (#152)
+- Can no longer see contents of asset containers (#153)
+- Asset update recorded as success even when there are assets leftover
+
 ## [3.4.2] - 2023-11-16
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
@@ -1122,3 +1140,5 @@ The feature for sharing ones characters now requires the new permission `share_c
 ### Added
 
 - Initial alpha release
+
+---

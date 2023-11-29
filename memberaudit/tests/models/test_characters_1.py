@@ -329,14 +329,30 @@ class TestCharacterStatus(NoSocketsTestCase):
         # given
         section = Character.UpdateSection.LOCATION
         # when
-        self.character.update_section_log_success(section=section)
+        self.character.update_section_log_result(section=section, is_success=True)
         # then
         status: CharacterUpdateStatus = self.character.update_status_set.get(
             section=section
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertFalse(status.last_error_message)
+        self.assertEqual(status.last_error_message, "")
+        self.assertTrue(status.finished_at)
+
+    def test_should_log_error_for_section(self):
+        # given
+        section = Character.UpdateSection.LOCATION
+        # when
+        self.character.update_section_log_result(
+            section=section, is_success=False, last_error_message="some issue"
+        )
+        # then
+        status: CharacterUpdateStatus = self.character.update_status_set.get(
+            section=section
+        )
+        self.assertFalse(status.is_success)
+        self.assertFalse(status.has_token_error)
+        self.assertEqual(status.last_error_message, "some issue")
         self.assertTrue(status.finished_at)
 
 

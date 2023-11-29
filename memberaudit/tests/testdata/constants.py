@@ -42,10 +42,13 @@ class EveTypeId(IntEnum):
 
     AMARR_CARRIER = 24311  # skill
     ASSET_SAFETY_WRAP = 60
-    ASTRAHUS = 35832
+    ASTRAHUS = 35832  # structure
     CALDARI_CARRIER = 24312  # skill
-    CAPSULE = 670
+    CAPSULE = 670  # ship
+    CARGO_CONTAINER = 23
+    CHARON = 20185  # ship
     HIGH_GRADE_SNAKE_ALPHA = 19540  # implant
-    MERLIN = 603
+    LIQUID_OZONE = 16273
+    MERLIN = 603  # ship
     SOLAR_SYSTEM = 5
     VELDSPAR = 1230

@@ -30,35 +30,35 @@ class TestCharacterUserHasAccess(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_user_owning_character_has_access(self):
         # given
-        character_1001 = create_character_from_user(self.user)
+        character_1001 = create_character_from_user(self.user_1001)
         # when/then
-        self.assertTrue(character_1001.user_has_access(self.user))
+        self.assertTrue(character_1001.user_has_access(self.user_1001))
 
     def test_other_user_has_no_access(self):
         # given
-        character_1001 = create_character_from_user(self.user)
-        user = AuthUtils.create_user("Lex Luthor")
+        character_1001 = create_character_from_user(self.user_1001)
+        user_lex = AuthUtils.create_user("Lex_Luthor")
         # when/then
-        self.assertFalse(character_1001.user_has_access(user))
+        self.assertFalse(character_1001.user_has_access(user_lex))
 
     def test_has_no_access_for_view_everything_without_scope_permission(self):
         # given
-        character_1001 = create_memberaudit_character(1101)
-        user, _ = create_user_from_evecharacter(
-            1001,
+        character_1101 = create_memberaudit_character(1101)
+        user_1002, _ = create_user_from_evecharacter(
+            1002,
             permissions=["memberaudit.basic_access", "memberaudit.view_everything"],
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user))
+        self.assertFalse(character_1101.user_has_access(user_1002))
 
     def test_has_access_for_view_everything_with_scope_permission(self):
         # given
-        character_1001 = create_character_from_user(self.user)
-        user, _ = create_user_from_evecharacter(
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter(
             1002,
             permissions=[
                 "memberaudit.basic_access",
@@ -67,12 +67,12 @@ class TestCharacterUserHasAccess(TestCase):
             ],
         )
         # when/then
-        self.assertTrue(character_1001.user_has_access(user))
+        self.assertTrue(character_1001.user_has_access(user_1002))
 
     def test_has_access_for_view_everything_with_scope_permission_to_orphan(self):
         # given
         character_1121 = create_character(EveCharacter.objects.get(character_id=1121))
-        user, _ = create_user_from_evecharacter(
+        user_1002, _ = create_user_from_evecharacter(
             1002,
             permissions=[
                 "memberaudit.basic_access",
@@ -81,7 +81,7 @@ class TestCharacterUserHasAccess(TestCase):
             ],
         )
         # when/then
-        self.assertTrue(character_1121.user_has_access(user))
+        self.assertTrue(character_1121.user_has_access(user_1002))
 
     def test_view_same_corporation_1a(self):
         """
@@ -90,8 +90,8 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user, _ = create_user_from_evecharacter(
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter(
             1002,
             permissions=[
                 "memberaudit.basic_access",
@@ -99,7 +99,7 @@ class TestCharacterUserHasAccess(TestCase):
             ],
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user))
+        self.assertFalse(character_1001.user_has_access(user_1002))
 
     def test_view_same_corporation_1b(self):
         """
@@ -108,16 +108,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1002)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter_with_access(1002)
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1002
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1002
         )
         # when/then
-        self.assertTrue(character_1001.user_has_access(user_3))
+        self.assertTrue(character_1001.user_has_access(user_1002))
 
     def test_view_same_corporation_2a(self):
         """
@@ -126,16 +126,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1002)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter_with_access(1002)
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1002
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
         # when/then
-        self.assertFalse(character_1103.user_has_access(user_3))
+        self.assertFalse(character_1103.user_has_access(user_1002))
 
     def test_view_same_corporation_2b(self):
         """
@@ -144,18 +144,18 @@ class TestCharacterUserHasAccess(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1002)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter_with_access(1002)
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1002
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1002
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
-        self.assertTrue(character_1103.user_has_access(user_3))
+        self.assertTrue(character_1103.user_has_access(user_1002))
 
     def test_view_same_corporation_3(self):
         """
@@ -164,16 +164,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1003
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1003
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user_3))
+        self.assertFalse(character_1001.user_has_access(user_1003))
 
     def test_view_same_alliance_1a(self):
         """
@@ -182,13 +182,13 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user_3))
+        self.assertFalse(character_1001.user_has_access(user_1003))
 
     def test_view_same_alliance_1b(self):
         """
@@ -197,16 +197,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1003
         )
         # when/then
-        self.assertTrue(character_1001.user_has_access(user_3))
+        self.assertTrue(character_1001.user_has_access(user_1003))
 
     def test_view_same_alliance_2a(self):
         """
@@ -215,16 +215,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
         # when/then
-        self.assertFalse(character_1103.user_has_access(user_3))
+        self.assertFalse(character_1103.user_has_access(user_1003))
 
     def test_view_same_alliance_2b(self):
         """
@@ -233,19 +233,19 @@ class TestCharacterUserHasAccess(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1003
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
         # when/then
-        self.assertTrue(character_1103.user_has_access(user_3))
+        self.assertTrue(character_1103.user_has_access(user_1003))
 
     def test_view_same_alliance_3(self):
         """
@@ -254,16 +254,16 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1101)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1101, _ = create_user_from_evecharacter_with_access(1101)
+        user_1101 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1101
         )
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_3
+        user_1101 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.characters_access", user_1101
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user_3))
+        self.assertFalse(character_1001.user_has_access(user_1101))
 
     def test_recruiter_access_1(self):
         """
@@ -272,19 +272,19 @@ class TestCharacterUserHasAccess(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
+        character_1001 = create_character_from_user(self.user_1001)
         character_1001.is_shared = True
         character_1001.save()
         AuthUtils.add_permission_to_user_by_name(
             "memberaudit.share_characters",
             character_1001.eve_character.character_ownership.user,
         )
-        user_3, _ = create_user_from_evecharacter_with_access(1101)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user_3
+        user_1101, _ = create_user_from_evecharacter_with_access(1101)
+        user_1101 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_shared_characters", user_1101
         )
         # when/then
-        self.assertTrue(character_1001.user_has_access(user_3))
+        self.assertTrue(character_1001.user_has_access(user_1101))
 
     def test_recruiter_access_2(self):
         """
@@ -293,72 +293,64 @@ class TestCharacterUserHasAccess(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
+        character_1001 = create_character_from_user(self.user_1001)
         character_1001.is_shared = False
         character_1001.save()
         AuthUtils.add_permission_to_user_by_name(
             "memberaudit.share_characters",
             character_1001.eve_character.character_ownership.user,
         )
-        user_3, _ = create_user_from_evecharacter_with_access(1101)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user_3
+        user_1101, _ = create_user_from_evecharacter_with_access(1101)
+        user_1101 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_shared_characters", user_1101
         )
         # when/then
-        self.assertFalse(character_1001.user_has_access(user_3))
+        self.assertFalse(character_1001.user_has_access(user_1101))
 
 
 class TestCharacterUserHasScope(TestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_user_owning_character_has_scope(self):
         # given
-        character_1001 = create_character_from_user(self.user)
+        character_1001 = create_character_from_user(self.user_1001)
         # when/then
-        self.assertTrue(character_1001.user_has_scope(self.user))
+        self.assertTrue(character_1001.user_has_scope(self.user_1001))
 
     def test_other_user_has_no_scope(self):
         # given
-        character_1001 = create_character_from_user(self.user)
-        user = AuthUtils.create_user("Lex Luthor")
+        character_1001 = create_character_from_user(self.user_1001)
+        user_lex = AuthUtils.create_user("Lex Luthor")
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user))
+        self.assertFalse(character_1001.user_has_scope(user_lex))
 
     def test_has_no_scope_for_view_everything_without_scope_permission(self):
         # given
         character_1001 = create_memberaudit_character(1101)
-        user, _ = create_user_from_evecharacter(
-            1001,
-        )
+        user_1002, _ = create_user_from_evecharacter(1002)
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user))
+        self.assertFalse(character_1001.user_has_scope(user_1002))
 
     def test_has_scope_for_view_everything_with_scope_permission(self):
         # given
-        character_1001 = create_character_from_user(self.user)
-        user, _ = create_user_from_evecharacter(
-            1002,
-            permissions=[
-                "memberaudit.view_everything",
-            ],
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter(
+            1002, permissions=["memberaudit.view_everything"]
         )
         # when/then
-        self.assertTrue(character_1001.user_has_scope(user))
+        self.assertTrue(character_1001.user_has_scope(user_1002))
 
     def test_has_scope_for_view_everything_with_scope_permission_to_orphan(self):
         # given
         character_1121 = create_character(EveCharacter.objects.get(character_id=1121))
-        user, _ = create_user_from_evecharacter(
-            1002,
-            permissions=[
-                "memberaudit.view_everything",
-            ],
+        user_1002, _ = create_user_from_evecharacter(
+            1002, permissions=["memberaudit.view_everything"]
         )
         # when/then
-        self.assertTrue(character_1121.user_has_scope(user))
+        self.assertTrue(character_1121.user_has_scope(user_1002))
 
     def test_view_same_corporation_1(self):
         """
@@ -367,13 +359,13 @@ class TestCharacterUserHasScope(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1002)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter_with_access(1002)
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1002
         )
         # when/then
-        self.assertTrue(character_1001.user_has_scope(user_3))
+        self.assertTrue(character_1001.user_has_scope(user_1002))
 
     def test_view_same_corporation_2(self):
         """
@@ -382,15 +374,15 @@ class TestCharacterUserHasScope(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1002)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1002, _ = create_user_from_evecharacter_with_access(1002)
+        user_1002 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1002
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
-        self.assertTrue(character_1103.user_has_scope(user_3))
+        self.assertTrue(character_1103.user_has_scope(user_1002))
 
     def test_view_same_corporation_3(self):
         """
@@ -399,13 +391,13 @@ class TestCharacterUserHasScope(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_corporation", user_1003
         )
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user_3))
+        self.assertFalse(character_1001.user_has_scope(user_1003))
 
     def test_view_same_alliance_1(self):
         """
@@ -414,13 +406,13 @@ class TestCharacterUserHasScope(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
         # when/then
-        self.assertTrue(character_1001.user_has_scope(user_3))
+        self.assertTrue(character_1001.user_has_scope(user_1003))
 
     def test_view_same_alliance_2(self):
         """
@@ -429,16 +421,16 @@ class TestCharacterUserHasScope(TestCase):
         then return True
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1003)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1003, _ = create_user_from_evecharacter_with_access(1003)
+        user_1003 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1003
         )
         character_1103 = add_memberaudit_character_to_user(
             character_1001.eve_character.character_ownership.user, 1103
         )
         # when/then
-        self.assertTrue(character_1103.user_has_scope(user_3))
+        self.assertTrue(character_1103.user_has_scope(user_1003))
 
     def test_view_same_alliance_3(self):
         """
@@ -447,13 +439,13 @@ class TestCharacterUserHasScope(TestCase):
         then return False
         """
         # given
-        character_1001 = create_character_from_user(self.user)
-        user_3, _ = create_user_from_evecharacter_with_access(1101)
-        user_3 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_3
+        character_1001 = create_character_from_user(self.user_1001)
+        user_1101, _ = create_user_from_evecharacter_with_access(1101)
+        user_1101 = AuthUtils.add_permission_to_user_by_name(
+            "memberaudit.view_same_alliance", user_1101
         )
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user_3))
+        self.assertFalse(character_1001.user_has_scope(user_1101))
 
 
 @patch(MODULE_PATH + ".Character.update_section_content_hash")
