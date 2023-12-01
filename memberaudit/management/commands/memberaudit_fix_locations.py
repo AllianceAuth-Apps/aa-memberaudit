@@ -260,11 +260,12 @@ def find_invalid_locations(
         batch_size,
         asset_items_count,
     )
+    batch_count = math.ceil(asset_items_count / batch_size)
     invalid_location_ids = []
     for asset_item_ids_chunk in tqdm(
         chunks(list(asset_item_ids), size=batch_size),
         desc="Finding invalid locations",
-        total=asset_items_count,
+        total=batch_count,
         leave=False,
         unit_scale=batch_size,
         disable=IS_TESTING,
