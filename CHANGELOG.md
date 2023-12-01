@@ -7,23 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.4.4b2] - 2023-11-29
-
->**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+## [3.4.4] - 2023-12-01
 
 >**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
 
->**IMPORTANT**: When updating from a version prior to 3.4.4, please see the important update notes for 3.4.4 first!
-
-## Fixed
-
-- Fix attempt: The fix locations command aborts with DB error: `Server has gone away` on a large installations (i.e. ~6K characters)
-
-## [3.4.4b1] - 2023-11-29
-
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
-
->**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
 
 ## Update notes
 
@@ -76,6 +64,22 @@ sudo supervisorctl start myauth:
 Finally, the update tasks for the affected characters need to complete, before the data repair is finally done.
 
 [^1]: We assume you have a standard installation from the official installation guide (aka "bare metal"). The syntax for a docker installation might differ.
+
+## Changed
+
+- Moved updates notes to this entry
+
+## Fixed
+
+- Typo in log messages of repair tool
+
+## [3.4.4b2] - 2023-11-29
+
+## Fixed
+
+- Fix attempt: The fix locations command aborts with DB error: `Server has gone away` on a large installations (i.e. ~6K characters)
+
+## [3.4.4b1] - 2023-11-29
 
 ## Added
 

@@ -257,8 +257,8 @@ def find_invalid_locations(
     asset_items_count = len(asset_item_ids)
     logger.info(
         "Looking for invalid locations among %d asset items (batch size: %d)",
-        batch_size,
         asset_items_count,
+        batch_size,
     )
     batch_count = math.ceil(asset_items_count / batch_size)
     invalid_location_ids = []
