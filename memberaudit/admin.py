@@ -268,12 +268,9 @@ def generic_action_update_section(
 ):
     """Update a section for the selected characters as generic action."""
     for obj in queryset:
-        tasks.update_character_section.apply_async(
-            kwargs={
-                "character_pk": obj.pk,
-                "section": section,
-                "force_update": True,
-            },
+        task = getattr(tasks, f"update_character_{section.value}")
+        task.apply_async(
+            kwargs={"character_pk": obj.pk, "force_update": True},
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
         )  # type: ignore
 
@@ -354,7 +351,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     def get_actions(self, request):
         """Generate and add generated actions for all sections
-        which can be updated through ``update_character_section`` task.
+        which can be updated through single task.
         """
         actions: dict = super().get_actions(request)
         sections = (

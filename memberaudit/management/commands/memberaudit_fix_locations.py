@@ -446,48 +446,30 @@ def start_character_updates(character_pks: CharacterPkContainer) -> None:
     """Start character section updates for characters as needed."""
     for character_pk in character_pks.assets:
         tasks.update_character_assets.apply_async(
-            kwargs={
-                "character_pk": character_pk,
-                "force_update": True,
-            },
-            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
-        )  # type: ignore
-
-    for character_pk in character_pks.clones:
-        tasks.update_character_section.apply_async(
-            kwargs={
-                "character_pk": character_pk,
-                "section": Character.UpdateSection.JUMP_CLONES,
-                "force_update": True,
-            },
+            kwargs={"character_pk": character_pk, "force_update": True},
             priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
         )  # type: ignore
 
     for character_pk in character_pks.contracts:
         tasks.update_character_contracts.apply_async(
-            kwargs={
-                "character_pk": character_pk,
-                "force_update": True,
-            },
+            kwargs={"character_pk": character_pk, "force_update": True},
+            priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+        )  # type: ignore
+
+    for character_pk in character_pks.clones:
+        tasks.update_character_jump_clones.apply_async(
+            kwargs={"character_pk": character_pk, "force_update": True},
             priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
         )  # type: ignore
 
     for character_pk in character_pks.locations:
-        tasks.update_character_section.apply_async(
-            kwargs={
-                "character_pk": character_pk,
-                "section": Character.UpdateSection.LOCATION,
-                "force_update": True,
-            },
+        tasks.update_character_location.apply_async(
+            kwargs={"character_pk": character_pk, "force_update": True},
             priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
         )  # type: ignore
 
     for character_pk in character_pks.transactions:
-        tasks.update_character_section.apply_async(
-            kwargs={
-                "character_pk": character_pk,
-                "section": Character.UpdateSection.WALLET_TRANSACTIONS,
-                "force_update": True,
-            },
+        tasks.update_character_wallet_transactions.apply_async(
+            kwargs={"character_pk": character_pk, "force_update": True},
             priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
         )  # type: ignore

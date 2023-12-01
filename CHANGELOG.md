@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+### Changed
+
+- Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
+
 ## [3.4.4] - 2023-12-01
 
 >**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!

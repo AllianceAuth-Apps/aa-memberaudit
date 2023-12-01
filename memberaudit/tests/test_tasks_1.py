@@ -988,7 +988,7 @@ class TestUpdateCharacterSection(TestCase):
         character.clear_cache()
         section = Character.UpdateSection.LOCATION
         # when
-        tasks.update_character_section(
+        tasks._update_character_section(
             character_pk=character.pk, section=section.value, force_update=False
         )
         # then
@@ -1008,7 +1008,7 @@ class TestUpdateCharacterSection(TestCase):
         section = Character.UpdateSection.LOCATION
         # when
         with self.assertRaises(RuntimeError):
-            tasks.update_character_section(
+            tasks._update_character_section(
                 character_pk=character.pk, section=section.value, force_update=False
             )
         # then
@@ -1034,7 +1034,7 @@ class TestUpdateCharacterSection(TestCase):
             finished_at=finished_at,
         )
         # when
-        tasks.update_character_section(
+        tasks._update_character_section(
             character_pk=character.pk, section=section.value, force_update=False
         )
         # then

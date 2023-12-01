@@ -96,7 +96,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             cls,
         ) -> Set["Character.UpdateSection"]:
             """Return enabled section that can be updated by
-            ``update_character_section`` task.
+            with simple update task.
             """
             return cls.enabled_sections().difference(
                 {
