@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.4.4b2] - 2023-11-29
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.4.4, please see the important update notes for 3.4.4 first!
+
+## Fixed
+
+- Fix attempt: The fix locations command aborts with DB error: `Server has gone away` on a large installations (i.e. ~6K characters)
+
 ## [3.4.4b1] - 2023-11-29
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
