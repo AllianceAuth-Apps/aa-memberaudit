@@ -105,7 +105,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         logger.info("Started command for fixing invalid locations")
-        self.stdout.write("Looking for invalid locations...")
 
         batch_size = options["batch_size_fetch"]
         exclude_location_ids = (
@@ -145,7 +144,6 @@ class Command(BaseCommand):
             invalid_location_ids, options
         )
 
-        self.stdout.write("Looking for remaining invalid locations...")
         remaining_invalid_location_ids = find_invalid_locations(
             batch_size=batch_size,
             exclude_location_ids=exclude_location_ids,
@@ -256,13 +254,21 @@ def find_invalid_locations(
         asset_item_ids -= set(exclude_location_ids)
         logger.info("Ignoring location IDs: %s", exclude_location_ids)
 
+    asset_items_count = len(asset_item_ids)
     logger.info(
         "Looking for invalid locations among %d asset items (batch size: %d)",
         batch_size,
-        len(asset_item_ids),
+        asset_items_count,
     )
     invalid_location_ids = []
-    for asset_item_ids_chunk in chunks(list(asset_item_ids), size=batch_size):
+    for asset_item_ids_chunk in tqdm(
+        chunks(list(asset_item_ids), size=batch_size),
+        desc="Finding invalid locations",
+        total=asset_items_count,
+        leave=False,
+        unit_scale=batch_size,
+        disable=IS_TESTING,
+    ):
         invalid_location_ids += _find_invalid_locations_chunk(asset_item_ids_chunk)
 
     invalid_location_ids.sort()
