@@ -26,13 +26,9 @@ from memberaudit.models import (
 
 from . import get_input
 
-# [x] Add exception handling for critical DB issues and ability to ignore and continue when DB errors happen
-# [x] Add tests for individual character updates
-# [x] Add option to log the location and character IDs, which are processed
-# [ ] Add more explanation to the issue about the effects of the issue
-# [x] Re-calculate the amount of remaining invalid locations at the end of the script
+BATCH_SIZE_UPDATE = 100
+BATCH_SIZE_FETCH = 500_000
 
-DEFAULT_BATCH_SIZE = 100
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
@@ -74,9 +70,17 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument(
-            "--batch-size",
-            default=DEFAULT_BATCH_SIZE,
-            help="Maximum number of locations fixed per batch run",
+            "--batch-size-fetch",
+            type=int,
+            default=BATCH_SIZE_FETCH,
+            help="Maximum number of invalid locations fetched per batch",
+        )
+
+        parser.add_argument(
+            "--batch-size-update",
+            type=int,
+            default=BATCH_SIZE_UPDATE,
+            help="Maximum number of invalid locations fixed per batch",
         )
 
         parser.add_argument(
@@ -178,9 +182,9 @@ class Command(BaseCommand):
         self, invalid_location_ids: List[int], options: dict
     ) -> CharacterPkContainer:
         invalid_location_count = len(invalid_location_ids)
-        batch_size: int = options["batch_size"]
+        batch_size: int = options["batch_size_update"]
         logger.info(
-            "Started fixing %d invalid locations with batch size %d",
+            "Started fixing %d invalid locations (batch size: %d)",
             invalid_location_count,
             batch_size,
         )
@@ -192,68 +196,22 @@ class Command(BaseCommand):
         error_count = 0
 
         for location_ids_chunk in tqdm(
-            chunks(invalid_location_ids, batch_size),
+            chunks(invalid_location_ids, size=batch_size),
             desc="Fixing locations",
             total=batch_count,
             leave=False,
             unit_scale=batch_size,
             disable=IS_TESTING,
         ):
-            try:
-                character_pks.assets |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.ASSETS,
-                    model_class=CharacterAsset,
-                    options=options,
-                )
-                character_pks.clones |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.JUMP_CLONES,
-                    model_class=CharacterJumpClone,
-                    options=options,
-                )
-                character_pks.contracts |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.CONTRACTS,
-                    model_class=CharacterContract,
-                    field_name="start_location",
-                    options=options,
-                )
-                character_pks.contracts |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.CONTRACTS,
-                    model_class=CharacterContract,
-                    field_name="end_location",
-                    options=options,
-                )
-                character_pks.locations |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.LOCATION,
-                    model_class=CharacterLocation,
-                    options=options,
-                )
-                character_pks.transactions |= fix_corrupted_character_section(
-                    location_ids=location_ids_chunk,
-                    unknown_location=unknown_location,
-                    section=Character.UpdateSection.WALLET_TRANSACTIONS,
-                    model_class=CharacterWalletTransaction,
-                    options=options,
-                )
-                locations_chunk = Location.objects.filter(id__in=location_ids_chunk)
-                locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
+            is_success = fix_invalid_locations(
+                location_ids=location_ids_chunk,
+                character_pks=character_pks,
+                unknown_location=unknown_location,
+                options=options,
+            )
+            if is_success:
                 removed_location_ids += location_ids_chunk
-                logger.info("Deleted %d invalid locations", len(location_ids_chunk))
-
-            except DatabaseError:
-                logger.exception(
-                    "Failed to remove %d invalid locations. Skipping to next chunk",
-                    len(location_ids_chunk),
-                )
+            else:
                 error_count += 1
 
         msg = (
@@ -281,8 +239,17 @@ def find_invalid_locations(options: dict = None) -> List[int]:
         asset_item_ids -= set(exclude_location_ids)
         logger.info("Ignoring location IDs: %s", exclude_location_ids)
 
-    invalid_locations = Location.objects.filter(id__in=asset_item_ids)
-    invalid_location_ids = list(sorted(invalid_locations.values_list("id", flat=True)))
+    batch_size: int = options["batch_size_fetch"]
+    logger.info(
+        "Looking for invalid locations among %d asset items (batch size: %d)",
+        batch_size,
+        len(asset_item_ids),
+    )
+    invalid_location_ids = []
+    for asset_item_ids_chunk in chunks(list(asset_item_ids), size=batch_size):
+        invalid_location_ids += _find_invalid_locations_chunk(asset_item_ids_chunk)
+
+    invalid_location_ids.sort()
 
     if options and options.get("verbose_log"):
         logger.info(
@@ -296,7 +263,82 @@ def find_invalid_locations(options: dict = None) -> List[int]:
     return invalid_location_ids
 
 
-def fix_corrupted_character_section(
+def _find_invalid_locations_chunk(asset_item_ids_chunk: List[int]) -> List[int]:
+    invalid_locations = Location.objects.filter(id__in=asset_item_ids_chunk)
+    invalid_location_ids = list(invalid_locations.values_list("id", flat=True))
+    return invalid_location_ids
+
+
+def fix_invalid_locations(
+    location_ids: List[int],
+    character_pks: CharacterPkContainer,
+    unknown_location: Location,
+    options: dict,
+) -> bool:
+    """Fix corruption in character data and remove invalid locations.
+
+    Return True, when successful, else False.
+    """
+    try:
+        character_pks.assets |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.ASSETS,
+            model_class=CharacterAsset,
+            options=options,
+        )
+        character_pks.clones |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.JUMP_CLONES,
+            model_class=CharacterJumpClone,
+            options=options,
+        )
+        character_pks.contracts |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.CONTRACTS,
+            model_class=CharacterContract,
+            field_name="start_location",
+            options=options,
+        )
+        character_pks.contracts |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.CONTRACTS,
+            model_class=CharacterContract,
+            field_name="end_location",
+            options=options,
+        )
+        character_pks.locations |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.LOCATION,
+            model_class=CharacterLocation,
+            options=options,
+        )
+        character_pks.transactions |= _fix_corrupted_character_section(
+            location_ids=location_ids,
+            unknown_location=unknown_location,
+            section=Character.UpdateSection.WALLET_TRANSACTIONS,
+            model_class=CharacterWalletTransaction,
+            options=options,
+        )
+        locations_chunk = Location.objects.filter(id__in=location_ids)
+        locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
+
+    except DatabaseError:
+        logger.exception(
+            "Failed to remove %d invalid locations. Skipping to next chunk",
+            len(location_ids),
+        )
+        return False
+
+    logger.info("Deleted %d invalid locations", len(location_ids))
+    return True
+
+
+def _fix_corrupted_character_section(
     section: Character.UpdateSection,
     location_ids: List[int],
     unknown_location: Location,
