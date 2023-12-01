@@ -26,7 +26,7 @@ from memberaudit.models import (
 
 from . import get_input
 
-DEFAULT_BATCH_SIZE_FETCH = 100_000
+DEFAULT_BATCH_SIZE_FETCH = 10_000
 DEFAULT_BATCH_SIZE_UPDATE = 100
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
