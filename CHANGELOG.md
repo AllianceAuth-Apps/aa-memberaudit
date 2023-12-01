@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.5.0] - TBD
+
 ### Changed
 
 - Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
