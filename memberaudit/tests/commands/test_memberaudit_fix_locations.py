@@ -595,3 +595,112 @@ class TestFixInvalidLocations(TestCase):
 
         corrupted_asset_3.refresh_from_db()
         self.assertEqual(corrupted_asset_3.location.id, invalid_location_3.id)
+
+    def test_should_fix_locations_in_batches(self, *args, **kwargs):
+        # given
+        valid_location = create_location()
+        invalid_location_1 = create_location()
+        invalid_location_2 = create_location()
+        invalid_location_3 = create_location()
+
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_1.id,
+        )
+        corrupted_asset_1 = create_character_asset(
+            character=self.character_1001, location=invalid_location_1
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_2.id,
+        )
+        corrupted_asset_2 = create_character_asset(
+            character=self.character_1001, location=invalid_location_2
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_3.id,
+        )
+        corrupted_asset_3 = create_character_asset(
+            character=self.character_1001, location=invalid_location_3
+        )
+
+        out = StringIO()
+
+        # when
+        with patch(
+            MODULE_PATH + ".fix_invalid_locations",
+            wraps=memberaudit_fix_locations.fix_invalid_locations,
+        ) as spy_fix_corrupted_character_section:
+            call_command(
+                "memberaudit_fix_locations",
+                "--noinput",
+                "--batch-size-update",
+                "1",
+                stdout=out,
+            )
+
+            # then
+            self.assertEqual(spy_fix_corrupted_character_section.call_count, 3)
+            for corrupted_asset in [
+                corrupted_asset_1,
+                corrupted_asset_2,
+                corrupted_asset_3,
+            ]:
+                corrupted_asset.refresh_from_db()
+                self.assertEqual(
+                    corrupted_asset.location.id, Location.LOCATION_UNKNOWN_ID
+                )
+
+    def test_should_fetch_locations_in_batches(self, *args, **kwargs):
+        # given
+        valid_location = create_location()
+        invalid_location_1 = create_location()
+        invalid_location_2 = create_location()
+        invalid_location_3 = create_location()
+
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_1.id,
+        )
+        create_character_asset(
+            character=self.character_1001, location=invalid_location_1
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_2.id,
+        )
+        create_character_asset(
+            character=self.character_1001, location=invalid_location_2
+        )
+        create_character_asset(
+            character=self.character_1001,
+            location=valid_location,
+            item_id=invalid_location_3.id,
+        )
+        create_character_asset(
+            character=self.character_1001, location=invalid_location_3
+        )
+
+        out = StringIO()
+
+        # when
+        with patch(
+            MODULE_PATH + "._find_invalid_locations_chunk",
+            wraps=memberaudit_fix_locations._find_invalid_locations_chunk,
+        ) as spy_find_invalid_locations:
+            call_command(
+                "memberaudit_fix_locations",
+                "--noinput",
+                "--batch-size-fetch",
+                "1",
+                stdout=out,
+            )
+
+            # then
+            self.assertEqual(spy_find_invalid_locations.call_count, 6 * 2)
