@@ -1,6 +1,6 @@
 import math
 from dataclasses import dataclass, field
-from typing import List, Optional, Set
+from typing import List, Set
 
 from tqdm import tqdm
 
@@ -26,8 +26,8 @@ from memberaudit.models import (
 
 from . import get_input
 
-BATCH_SIZE_UPDATE = 100
-BATCH_SIZE_FETCH = 500_000
+DEFAULT_BATCH_SIZE_FETCH = 100_000
+DEFAULT_BATCH_SIZE_UPDATE = 100
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -72,14 +72,14 @@ class Command(BaseCommand):
         parser.add_argument(
             "--batch-size-fetch",
             type=int,
-            default=BATCH_SIZE_FETCH,
+            default=DEFAULT_BATCH_SIZE_FETCH,
             help="Maximum number of invalid locations fetched per batch",
         )
 
         parser.add_argument(
             "--batch-size-update",
             type=int,
-            default=BATCH_SIZE_UPDATE,
+            default=DEFAULT_BATCH_SIZE_UPDATE,
             help="Maximum number of invalid locations fixed per batch",
         )
 
@@ -106,7 +106,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info("Started command for fixing invalid locations")
         self.stdout.write("Looking for invalid locations...")
-        invalid_location_ids = find_invalid_locations(options)
+
+        batch_size = options["batch_size_fetch"]
+        exclude_location_ids = (
+            set(options["exclude_locations"]) if options["exclude_locations"] else set()
+        )
+        is_verbose_log = options["verbose_log"]
+
+        invalid_location_ids = find_invalid_locations(
+            batch_size=batch_size,
+            exclude_location_ids=exclude_location_ids,
+            is_verbose_log=is_verbose_log,
+        )
 
         if not invalid_location_ids:
             self.stdout.write(self.style.SUCCESS("No invalid locations found"))
@@ -135,13 +146,17 @@ class Command(BaseCommand):
         )
 
         self.stdout.write("Looking for remaining invalid locations...")
-        remaining_invalid_location_ids = find_invalid_locations(options)
+        remaining_invalid_location_ids = find_invalid_locations(
+            batch_size=batch_size,
+            exclude_location_ids=exclude_location_ids,
+            is_verbose_log=is_verbose_log,
+        )
         self.stdout.write(
             f"{len(remaining_invalid_location_ids)} invalid locations remaining"
         )
 
         characters_updateable_pks = identify_updateable_characters(
-            character_pks=character_pks_all, options=options
+            character_pks=character_pks_all, is_verbose_log=is_verbose_log
         )
 
         if not characters_updateable_pks:
@@ -207,7 +222,7 @@ class Command(BaseCommand):
                 location_ids=location_ids_chunk,
                 character_pks=character_pks,
                 unknown_location=unknown_location,
-                options=options,
+                is_verbose_log=options["verbose_log"],
             )
             if is_success:
                 removed_location_ids += location_ids_chunk
@@ -230,16 +245,17 @@ class Command(BaseCommand):
         return character_pks
 
 
-def find_invalid_locations(options: dict = None) -> List[int]:
+def find_invalid_locations(
+    batch_size: int, exclude_location_ids: Set[int], is_verbose_log: bool
+) -> List[int]:
     """Return IDs of invalid locations.
     An empty list means no invalid locations where found.
     """
     asset_item_ids = set(CharacterAsset.objects.values_list("item_id", flat=True))
-    if options and (exclude_location_ids := options.get("exclude_locations")):
+    if exclude_location_ids:
         asset_item_ids -= set(exclude_location_ids)
         logger.info("Ignoring location IDs: %s", exclude_location_ids)
 
-    batch_size: int = options["batch_size_fetch"]
     logger.info(
         "Looking for invalid locations among %d asset items (batch size: %d)",
         batch_size,
@@ -251,7 +267,7 @@ def find_invalid_locations(options: dict = None) -> List[int]:
 
     invalid_location_ids.sort()
 
-    if options and options.get("verbose_log"):
+    if is_verbose_log:
         logger.info(
             "Found %d invalid locations: %s",
             len(invalid_location_ids),
@@ -273,7 +289,7 @@ def fix_invalid_locations(
     location_ids: List[int],
     character_pks: CharacterPkContainer,
     unknown_location: Location,
-    options: dict,
+    is_verbose_log: bool,
 ) -> bool:
     """Fix corruption in character data and remove invalid locations.
 
@@ -285,14 +301,14 @@ def fix_invalid_locations(
             unknown_location=unknown_location,
             section=Character.UpdateSection.ASSETS,
             model_class=CharacterAsset,
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         character_pks.clones |= _fix_corrupted_character_section(
             location_ids=location_ids,
             unknown_location=unknown_location,
             section=Character.UpdateSection.JUMP_CLONES,
             model_class=CharacterJumpClone,
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         character_pks.contracts |= _fix_corrupted_character_section(
             location_ids=location_ids,
@@ -300,7 +316,7 @@ def fix_invalid_locations(
             section=Character.UpdateSection.CONTRACTS,
             model_class=CharacterContract,
             field_name="start_location",
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         character_pks.contracts |= _fix_corrupted_character_section(
             location_ids=location_ids,
@@ -308,21 +324,21 @@ def fix_invalid_locations(
             section=Character.UpdateSection.CONTRACTS,
             model_class=CharacterContract,
             field_name="end_location",
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         character_pks.locations |= _fix_corrupted_character_section(
             location_ids=location_ids,
             unknown_location=unknown_location,
             section=Character.UpdateSection.LOCATION,
             model_class=CharacterLocation,
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         character_pks.transactions |= _fix_corrupted_character_section(
             location_ids=location_ids,
             unknown_location=unknown_location,
             section=Character.UpdateSection.WALLET_TRANSACTIONS,
             model_class=CharacterWalletTransaction,
-            options=options,
+            is_verbose_log=is_verbose_log,
         )
         locations_chunk = Location.objects.filter(id__in=location_ids)
         locations_chunk._raw_delete(locations_chunk.db)  # type: ignore
@@ -344,9 +360,12 @@ def _fix_corrupted_character_section(
     unknown_location: Location,
     model_class: type,
     field_name: str = "location",
-    options: dict = None,
-) -> Optional[Set[int]]:
-    """Entangle locations from a character section of any related characters."""
+    is_verbose_log: bool = False,
+) -> Set[int]:
+    """Entangle locations from a character section of any related characters.
+
+    Return character PKs, when updates where successful, else empty set.
+    """
     params_filter = {f"{field_name}__in": location_ids}
     corrupted_objs = model_class.objects.filter(**params_filter)  # type: ignore
     corrupted_objs_count = corrupted_objs.count()
@@ -362,7 +381,7 @@ def _fix_corrupted_character_section(
     CharacterUpdateStatus.objects.filter(
         character__pk__in=character_pks, section=section
     ).update(content_hash_1="", content_hash_2="", content_hash_3="")
-    if options and options.get("verbose_log"):
+    if is_verbose_log:
         logger.info(
             "Removed %d invalid locations from %d corrupted %s across %d characters: %s",
             len(location_ids),
@@ -384,7 +403,7 @@ def _fix_corrupted_character_section(
 
 
 def identify_updateable_characters(
-    character_pks: CharacterPkContainer, options: dict = None
+    character_pks: CharacterPkContainer, is_verbose_log: bool
 ) -> CharacterPkContainer:
     """Return selection of character PKs, which can be updated."""
     params = {}
@@ -399,7 +418,7 @@ def identify_updateable_characters(
 
     updateable_character_pks = CharacterPkContainer(**params)
 
-    if options and options.get("verbose_log"):
+    if is_verbose_log:
         logger.info(
             "From %d repaired characters, %d can be updated: %s",
             len(character_pks),
@@ -416,7 +435,7 @@ def identify_updateable_characters(
     return updateable_character_pks
 
 
-def start_character_updates(character_pks: CharacterPkContainer):
+def start_character_updates(character_pks: CharacterPkContainer) -> None:
     """Start character section updates for characters as needed."""
     for character_pk in character_pks.assets:
         tasks.update_character_assets.apply_async(
