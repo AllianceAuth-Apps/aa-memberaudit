@@ -46,6 +46,10 @@ from memberaudit.models import (
     MailEntity,
 )
 
+# [ ] Check that each section detects and reports correctly when data is still fresh
+# [ ] Maybe add a limit for current data to become stale?
+# [ ] Are failed character updates reported as failure correctly?
+
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 MAX_RETRIES_DEFAULT = 3
@@ -246,13 +250,13 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
 # Updating sections with simple update logic
 
 
-_task_params = {
+_update_character_params = {
     **TASK_DEFAULTS_ONCE,
     **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
 }
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_attributes(
     character_pk: int,
@@ -270,7 +274,7 @@ def update_character_attributes(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_character_details(
     character_pk: int,
@@ -288,7 +292,7 @@ def update_character_character_details(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_corporation_history(
     character_pk: int,
@@ -306,7 +310,7 @@ def update_character_corporation_history(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_fw_stats(
     character_pk: int,
@@ -324,7 +328,7 @@ def update_character_fw_stats(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_implants(
     character_pk: int,
@@ -342,7 +346,7 @@ def update_character_implants(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_jump_clones(
     character_pk: int,
@@ -360,7 +364,7 @@ def update_character_jump_clones(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_location(
     character_pk: int,
@@ -378,7 +382,7 @@ def update_character_location(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_loyalty(
     character_pk: int,
@@ -396,7 +400,7 @@ def update_character_loyalty(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_mining_ledger(
     character_pk: int,
@@ -414,7 +418,7 @@ def update_character_mining_ledger(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_online_status(
     character_pk: int,
@@ -432,7 +436,7 @@ def update_character_online_status(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_planets(
     character_pk: int,
@@ -450,7 +454,7 @@ def update_character_planets(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_roles(
     character_pk: int,
@@ -468,7 +472,7 @@ def update_character_roles(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_ship(
     character_pk: int,
@@ -486,7 +490,7 @@ def update_character_ship(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_skill_queue(
     character_pk: int,
@@ -504,7 +508,7 @@ def update_character_skill_queue(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_skill_sets(
     character_pk: int,
@@ -522,7 +526,7 @@ def update_character_skill_sets(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_skills(
     character_pk: int,
@@ -540,7 +544,7 @@ def update_character_skills(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_standings(
     character_pk: int,
@@ -558,7 +562,7 @@ def update_character_standings(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_titles(
     character_pk: int,
@@ -576,7 +580,7 @@ def update_character_titles(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_wallet_balance(
     character_pk: int,
@@ -594,7 +598,7 @@ def update_character_wallet_balance(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_wallet_journal(
     character_pk: int,
@@ -612,7 +616,7 @@ def update_character_wallet_journal(
     )
 
 
-@shared_task(**_task_params)
+@shared_task(**_update_character_params)
 @when_esi_is_available
 def update_character_wallet_transactions(
     character_pk: int,
@@ -676,13 +680,13 @@ def update_unresolved_eve_entities() -> None:
 # Special tasks for updating assets
 
 
-DEFAULT_UPDATE_TASK_PARAMS = {
+_update_task_params_with_bind = {
     **TASK_DEFAULTS_BIND_ONCE,
     **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
 }
 
 
-@shared_task(**DEFAULT_UPDATE_TASK_PARAMS)
+@shared_task(**_update_task_params_with_bind)
 def update_character_assets(
     self,
     character_pk: int,
@@ -940,7 +944,7 @@ def assets_create_children(
 # Special tasks for updating mail section
 
 
-@shared_task(**DEFAULT_UPDATE_TASK_PARAMS)
+@shared_task(**_update_task_params_with_bind)
 def update_character_mails(
     self,
     character_pk: int,
@@ -1056,7 +1060,7 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
 # special tasks for updating contacts
 
 
-@shared_task(**DEFAULT_UPDATE_TASK_PARAMS)
+@shared_task(**_update_task_params_with_bind)
 def update_character_contacts(
     self,
     character_pk: int,
@@ -1120,7 +1124,7 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
 # special tasks for updating contracts
 
 
-@shared_task(**DEFAULT_UPDATE_TASK_PARAMS)
+@shared_task(**_update_task_params_with_bind)
 def update_character_contracts(
     self,
     character_pk: int,
