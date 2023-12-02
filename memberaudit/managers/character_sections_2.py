@@ -31,11 +31,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import (
-    data_retention_cutoff,
-    eve_entity_ids_from_objs,
-    store_debug_data_to_disk,
-)
+from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -43,7 +39,7 @@ from memberaudit.utils import (
     get_or_none,
 )
 
-from ._common import GenericUpdateSimpleObjMixin
+from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character
@@ -51,7 +47,7 @@ if TYPE_CHECKING:
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterCorporationHistoryManager(models.Manager):
+class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create corporation history for character."""
 
@@ -62,7 +58,7 @@ class CharacterCorporationHistoryManager(models.Manager):
             force_update=force_update,
         )
 
-    def _fetch_data_from_esi(self, character: Character):
+    def _fetch_data_from_esi(self, character: Character) -> List[dict]:
         logger.info("%s: Fetching corporation history from ESI", character)
         history = esi.client.Character.get_characters_character_id_corporationhistory(
             character_id=character.eve_character.character_id,
@@ -70,31 +66,29 @@ class CharacterCorporationHistoryManager(models.Manager):
 
         return history
 
-    # TODO: Replace delete & create with update
-    def _update_or_create_objs(self, character: Character, history) -> Set[int]:
-        entries = [
-            self.model(
+    def _update_or_create_objs(
+        self, character: Character, esi_data: List[dict]
+    ) -> Set[int]:
+        def make_obj_from_esi_entry(character: Character, entry: dict):
+            corporation = get_or_create_or_none("corporation_id", entry, EveEntity)
+            obj = self.model(
                 character=character,
-                record_id=row.get("record_id"),
-                corporation=get_or_create_or_none("corporation_id", row, EveEntity),
-                is_deleted=row.get("is_deleted"),
-                start_date=row.get("start_date"),
+                record_id=entry["record_id"],
+                corporation=corporation,
+                is_deleted=entry.get("is_deleted"),
+                start_date=entry["start_date"],
             )
-            for row in history
-        ]
-        with transaction.atomic():
-            self.filter(character=character).delete()
-            if entries:
-                logger.info(
-                    "%s: Creating %s entries for corporation history",
-                    character,
-                    len(entries),
-                )
-                self.bulk_create(entries)
-            else:
-                logger.info("%s: Corporation history is empty", character)
+            return obj
 
-        return eve_entity_ids_from_objs(entries)
+        new_eve_entity_ids = self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            model_key_field="record_id",
+            fields_for_update=("corporation_id", "is_deleted", "start_date"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
+            return_new_eve_entities=True,
+        )
+        return new_eve_entity_ids
 
 
 class CharacterDetailsManager(models.Manager):
