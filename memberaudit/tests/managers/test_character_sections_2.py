@@ -618,7 +618,7 @@ class TestCharacterLocationManager(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".esi")
-class TestCharacterLoyaltyManager(NoSocketsTestCase):
+class TestCharacterLoyaltyEntryManager(NoSocketsTestCase):
     @classmethod
     def setUpTestData(cls) -> None:
         super().setUpTestData()

@@ -68,6 +68,7 @@ class CharacterCorporationHistoryManager(models.Manager):
 
         return history
 
+    # TODO: Replace delete & create with update
     def _update_or_create_objs(self, character: Character, history) -> Set[int]:
         entries = [
             self.model(
@@ -231,6 +232,7 @@ class CharacterImplantManager(models.Manager):
         if implants_data:
             EveType.objects.bulk_get_or_create_esi(ids=implants_data)
 
+        # TODO: Replace delete & create with update
         with transaction.atomic():
             self.filter(character=character).delete()
             if implants_data:
@@ -269,6 +271,7 @@ class CharacterJumpCloneManager(models.Manager):
         ).results()
         return jump_clones_info
 
+    # TODO: Replace delete & create with update
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def _update_or_create_objs(
         self, character: Character, token: Token, jump_clones_info: dict
@@ -401,6 +404,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
         return loyalty_entries
 
+    # TODO: Replace delete & create with update
     def _update_or_create_objs(self, character: Character, loyalty_entries):
         with transaction.atomic():
             self.filter(character=character).delete()

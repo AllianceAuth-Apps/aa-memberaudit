@@ -231,9 +231,12 @@ class CharacterRoleManager(models.Manager):
                     )
         if to_add:
             self.bulk_create(to_add)
+            logger.info("%s: Added %d new roles", character, len(to_add))
 
-        for location, role in to_remove:
-            self.filter(character=character, location=location, role=role).delete()
+        if to_remove:
+            for location, role in to_remove:
+                self.filter(character=character, location=location, role=role).delete()
+            logger.info("%s: Removed %d obsolete roles", character, len(to_add))
 
 
 class CharacterPlanetManager(models.Manager):
@@ -258,6 +261,7 @@ class CharacterPlanetManager(models.Manager):
 
         return planets_data
 
+    # TODO: Replace delete & create with update
     @transaction.atomic()
     def _update_or_create_objs(self, character: Character, planets_data):
         self.filter(character=character).delete()
@@ -505,6 +509,7 @@ class CharacterSkillManager(models.Manager):
 
 
 class CharacterSkillSetCheckManager(models.Manager):
+    # TODO: Replace delete & create with update
     @transaction.atomic()
     def update_for_character(self, character):
         """Update or create skill sets for a character."""
@@ -514,7 +519,7 @@ class CharacterSkillSetCheckManager(models.Manager):
             obj["eve_type_id"]: obj["active_skill_level"]
             for obj in character.skills.values("eve_type_id", "active_skill_level")
         }
-        self.filter(character=character).all().delete()
+        self.filter(character=character).delete()
         skill_sets_qs = SkillSet.objects.prefetch_related(
             "skills", "skills__eve_type"
         ).all()
@@ -703,7 +708,7 @@ class CharacterTitleManager(models.Manager):
         ).results()
         return titles_data
 
-    # TODO: Refactor to only write changes
+    # TODO: Replace delete & create with update
     def _update_or_create_objs(self, character: Character, titles_data: List[dict]):
         objs = []
         for entry in titles_data:

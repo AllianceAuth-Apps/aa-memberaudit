@@ -209,9 +209,9 @@ class CharacterContactLabelManager(models.Manager):
         ).results()
         return labels
 
+    # TODO: Replace delete & create with update
     @transaction.atomic()
     def _update_or_create_objs(self, character: Character, labels: List[dict]):
-        # TODO: replace with bulk methods to optimize
         if labels:
             incoming_ids = {label["label_id"] for label in labels}
         else:
@@ -680,6 +680,7 @@ class CharacterContractItemManagerBase(models.Manager):
 
         return items_data
 
+    # TODO: Replace delete & create with update
     def _update_or_create_objs(self, contract, items_data):
         logger.info(
             "%s, %s: Storing %s contract items",

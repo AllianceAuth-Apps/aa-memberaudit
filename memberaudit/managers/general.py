@@ -543,7 +543,7 @@ class MailEntityManager(models.Manager):
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(character, mailing_lists, "mailing_lists")
 
-        # TODO: replace with bulk methods to optimize
+        # TODO: Replace delete & create with update
 
         incoming_ids = set(mailing_lists.keys())
         # existing_ids = set(character.mailing_lists.values_list("list_id", flat=True))
