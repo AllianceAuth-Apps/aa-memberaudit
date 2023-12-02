@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import ast
-from typing import TYPE_CHECKING, Any, Dict, List, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Sequence, Set
 
 from bravado.exception import HTTPNotFound
 
@@ -44,7 +44,7 @@ from memberaudit.utils import (
 )
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, CharacterLoyaltyEntry
+    from memberaudit.models import Character
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -382,7 +382,116 @@ class CharacterLocationManager(models.Manager):
         )
 
 
-class CharacterLoyaltyEntryManager(models.Manager):
+class GenericObjUpdateMixin:
+    """Adds the ability to update objs from ESI data.
+
+    This is a generic implementation that works for any section,
+    which data can be represented as a list of key/value pairs.
+    """
+
+    def _update_or_create_objs_generic(
+        self,
+        character: Character,
+        esi_data: List[Dict[str, Any]],
+        esi_fields: Sequence[str],
+        model_fields: Sequence[str],
+        make_obj_from_esi_entry: Callable,
+    ) -> Set[int]:
+        """Update or create objs from esi data."""
+        if not esi_data:
+            self.filter(character=character).delete()
+            logger.info("%s: No %s", character, self.model._meta.verbose_name_plural)
+            return set()
+
+        current_entries = {obj[0]: obj[1] for obj in self.values_list(*model_fields)}
+        incoming_entries = {obj[esi_fields[0]]: obj[esi_fields[1]] for obj in esi_data}
+
+        new_eve_entity_ids = self._create_new_objs(
+            character, current_entries, incoming_entries, make_obj_from_esi_entry
+        )
+        self._update_modified_objs(
+            character, current_entries, incoming_entries, model_fields
+        )
+        self._delete_obsolete_objs(
+            character, current_entries, incoming_entries, model_fields
+        )
+
+        return new_eve_entity_ids
+
+    def _create_new_objs(
+        self, character, current_entries, incoming_entries, make_obj_from_esi_entry
+    ) -> Set[int]:
+        new_entries = {
+            entity_id: standing
+            for entity_id, standing in incoming_entries.items()
+            if entity_id not in current_entries
+        }
+        if not new_entries:
+            return set()
+
+        objs = [
+            make_obj_from_esi_entry(character, key, value)
+            for key, value in new_entries.items()
+        ]
+        self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        logger.info(
+            "%s: Created %d new %s",
+            character,
+            len(objs),
+            self.model._meta.verbose_name_plural,
+        )
+        return set(new_entries.keys())
+
+    def _update_modified_objs(
+        self, character, current_entries, incoming_entries, model_fields
+    ) -> None:
+        modified_entries = {
+            key: value
+            for key, value in incoming_entries.items()
+            if key in current_entries and current_entries[key] != value
+        }
+        if not modified_entries:
+            return
+
+        params = {"character": character, f"{model_fields[0]}__in": modified_entries}
+        objs = self.filter(**params).in_bulk()
+        for obj in objs.values():
+            setattr(obj, model_fields[1], modified_entries[obj.corporation_id])
+
+        self.bulk_update(
+            objs.values(),
+            fields=[model_fields[1]],
+            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+        )
+        logger.info(
+            "%s: Updated %d %s",
+            character,
+            len(objs),
+            self.model._meta.verbose_name_plural,
+        )
+
+    def _delete_obsolete_objs(
+        self, character, current_entries, incoming_entries, model_fields
+    ) -> None:
+        obsolete_entries = {
+            key: value
+            for key, value in current_entries.items()
+            if key not in incoming_entries
+        }
+        if not obsolete_entries:
+            return
+
+        params = {"character": character, f"{model_fields[0]}__in": obsolete_entries}
+        self.filter(**params).delete()
+        logger.info(
+            "%s: Removed %d obsolete %s",
+            character,
+            len(obsolete_entries),
+            self.model._meta.verbose_name_plural,
+        )
+
+
+class CharacterLoyaltyEntryManager(GenericObjUpdateMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
         character.update_section_if_changed(
@@ -405,89 +514,20 @@ class CharacterLoyaltyEntryManager(models.Manager):
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
     ) -> Set[int]:
-        if not esi_data:
-            self.filter(character=character).delete()
-            logger.info("%s: No loyalty entries for this character", character)
-            return set()
-
-        current_entries = {
-            obj[0]: obj[1]
-            for obj in self.values_list("corporation_id", "loyalty_points")
-        }
-        incoming_entries = {
-            obj["corporation_id"]: obj["loyalty_points"] for obj in esi_data
-        }
-
-        new_eve_entity_ids = self._create_new_objs(
-            character, current_entries, incoming_entries
-        )
-        self._update_modified_objs(character, current_entries, incoming_entries)
-        self._delete_obsolete_objs(character, current_entries, incoming_entries)
-
-        return new_eve_entity_ids
-
-    def _create_new_objs(
-        self, character, current_standings, incoming_standings
-    ) -> Set[int]:
-        new_entries = {
-            entity_id: standing
-            for entity_id, standing in incoming_standings.items()
-            if entity_id not in current_standings
-        }
-        if not new_entries:
-            return set()
-
-        objs = [
-            self.model(
+        def make_obj_from_esi_entry(character, key, value):
+            obj = self.model(
                 character=character,
-                corporation=EveEntity.objects.get_or_create(id=entity_id)[0],
-                loyalty_points=loyalty_points,
+                corporation=EveEntity.objects.get_or_create(id=key)[0],
+                loyalty_points=value,
             )
-            for entity_id, loyalty_points in new_entries.items()
-        ]
-        self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        logger.info("%s: Created %d new loyalty point entries", character, len(objs))
-        return set(new_entries.keys())
+            return obj
 
-    def _update_modified_objs(
-        self, character, current_standings, incoming_standings
-    ) -> None:
-        modified_entries = {
-            entity_id: standing
-            for entity_id, standing in incoming_standings.items()
-            if entity_id in current_standings
-            and current_standings[entity_id] != standing
-        }
-        if not modified_entries:
-            return
-
-        objs: Dict[int, CharacterLoyaltyEntry] = self.filter(
-            character=character, corporation_id__in=modified_entries
-        ).in_bulk()
-        for obj in objs.values():
-            obj.loyalty_points = modified_entries[obj.corporation_id]
-
-        self.bulk_update(
-            objs.values(),
-            fields=["loyalty_points"],
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
-        logger.info("%s: Updated %d loyalty point entries", character, len(objs))
-
-    def _delete_obsolete_objs(
-        self, character, current_standings, incoming_standings
-    ) -> None:
-        obsolete_entries = {
-            entity_id: standing
-            for entity_id, standing in current_standings.items()
-            if entity_id not in incoming_standings
-        }
-        if not obsolete_entries:
-            return
-
-        self.filter(character=character, corporation_id__in=obsolete_entries).delete()
-        logger.info(
-            "%s: Removed %d obsolete loyalty entries", character, len(obsolete_entries)
+        return self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            esi_fields=("corporation_id", "loyalty_points"),
+            model_fields=("corporation_id", "loyalty_points"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
         )
 
 
