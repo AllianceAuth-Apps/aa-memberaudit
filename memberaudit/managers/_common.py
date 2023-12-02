@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
+# TODO: Add test to make sure only changed objs are updated
 class GenericObjUpdateMixin:
     """Adds the ability to update objs from ESI data.
 

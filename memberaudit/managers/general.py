@@ -546,7 +546,6 @@ class MailEntityManager(models.Manager):
         # TODO: Replace delete & create with update
 
         incoming_ids = set(mailing_lists.keys())
-        # existing_ids = set(character.mailing_lists.values_list("list_id", flat=True))
         if not incoming_ids:
             logger.info("%s: No new mailing lists", character)
             return

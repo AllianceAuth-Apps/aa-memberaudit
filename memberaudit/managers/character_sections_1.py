@@ -670,7 +670,6 @@ class CharacterContractItemManagerBase(models.Manager):
 
         return items_data
 
-    # TODO: Replace delete & create with update
     def _update_or_create_objs(self, contract, items_data):
         logger.info(
             "%s, %s: Storing %s contract items",
@@ -691,6 +690,7 @@ class CharacterContractItemManagerBase(models.Manager):
             for item in items_data
             if "record_id" in item
         ]
+        # delete & create is fine here, since contracts items are never updated
         with transaction.atomic():
             self.filter(contract=contract).delete()
             self.bulk_create(items, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
