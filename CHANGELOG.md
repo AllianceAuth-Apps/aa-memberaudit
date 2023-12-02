@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
-- Improved performance of character update process for: loyalty points, standings
+- Improved performance of character update process for: loyalty points, standings, titles
 - Refactoring
 
 ## [3.4.4] - 2023-12-01

@@ -619,7 +619,7 @@ class CharacterStandingManager(GenericObjUpdateMixin, models.Manager):
         )
 
 
-class CharacterTitleManager(models.Manager):
+class CharacterTitleManager(GenericObjUpdateMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create titles for a character from ESI."""
 
@@ -641,21 +641,21 @@ class CharacterTitleManager(models.Manager):
         ).results()
         return titles_data
 
-    # TODO: Replace delete & create with update
-    def _update_or_create_objs(self, character: Character, titles_data: List[dict]):
-        objs = []
-        for entry in titles_data:
-            name = strip_tags(entry["name"]).strip()[:100]
-            obj = self.model(character=character, title_id=entry["title_id"], name=name)
-            objs.append(obj)
+    def _update_or_create_objs(
+        self, character: Character, esi_data: List[dict]
+    ) -> Set[int]:
+        def make_obj_from_esi_entry(character, key, value):
+            name_sanitized = strip_tags(value).strip()[:100]
+            obj = self.model(character=character, title_id=key, name=name_sanitized)
+            return obj
 
-        with transaction.atomic():
-            self.filter(character=character).delete()
-            if objs:
-                logger.info("%s: Writing %s titles", character, len(objs))
-                self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-            else:
-                logger.info("%s: No titles", character)
+        return self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            esi_fields=("title_id", "name"),
+            model_fields=("title_id", "name"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
+        )
 
 
 class CharacterWalletBalanceManager(models.Manager):
