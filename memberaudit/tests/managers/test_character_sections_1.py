@@ -6,6 +6,7 @@ from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
+from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import (
@@ -276,11 +277,18 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
-    def test_should_do_nothing(self, mock_esi):
+    def test_should_do_nothing_when_no_esi_data(self, mock_esi):
         # when
-        CharacterContactLabel.objects._update_or_create_objs(
-            character=self.character, labels=[]
-        )
+        endpoints = [
+            EsiEndpoint(
+                "Contacts",
+                "get_characters_character_id_contacts_labels",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # then
         self.assertEqual(CharacterContactLabel.objects.count(), 0)
 

@@ -32,6 +32,8 @@ from memberaudit.utils import (
     get_or_none,
 )
 
+from ._common import GenericObjUpdateMixin
+
 if TYPE_CHECKING:
     from memberaudit.models import Character
 
@@ -188,7 +190,7 @@ class CharacterAttributesManager(models.Manager):
         )
 
 
-class CharacterContactLabelManager(models.Manager):
+class CharacterContactLabelManager(GenericObjUpdateMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
@@ -209,32 +211,20 @@ class CharacterContactLabelManager(models.Manager):
         ).results()
         return labels
 
-    # TODO: Replace delete & create with update
-    @transaction.atomic()
-    def _update_or_create_objs(self, character: Character, labels: List[dict]):
-        if labels:
-            incoming_ids = {label["label_id"] for label in labels}
-        else:
-            incoming_ids = set()
-        existing_ids = set(
-            self.filter(character=character).values_list("label_id", flat=True)
+    def _update_or_create_objs(
+        self, character: Character, esi_data: List[dict]
+    ) -> Set[int]:
+        def make_obj_from_esi_entry(character, key, value):
+            obj = self.model(character=character, label_id=key, name=value)
+            return obj
+
+        self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            esi_fields=("label_id", "label_name"),
+            model_fields=("label_id", "name"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
         )
-        obsolete_ids = existing_ids.difference(incoming_ids)
-        if obsolete_ids:
-            logger.info("%s: Removing %s obsolete skills", character, len(obsolete_ids))
-            self.filter(character=character, label_id__in=obsolete_ids).delete()
-        if incoming_ids:
-            logger.info("%s: Storing %s contact labels", character, len(incoming_ids))
-            for label in labels:
-                self.update_or_create(
-                    character=character,
-                    label_id=label.get("label_id"),
-                    defaults={
-                        "name": label.get("label_name"),
-                    },
-                )
-        else:
-            logger.info("%s: No contact labels", character)
 
 
 class CharacterContactManager(models.Manager):
