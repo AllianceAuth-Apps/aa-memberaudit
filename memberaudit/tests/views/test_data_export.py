@@ -20,7 +20,8 @@ MODULE_PATH = "memberaudit.views.data_export"
 
 class TestDataExport(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_entities()
 

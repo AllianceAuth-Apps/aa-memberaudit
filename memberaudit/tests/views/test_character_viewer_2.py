@@ -74,7 +74,8 @@ MODULE_PATH = "memberaudit.views.character_viewer_2"
 
 class TestJumpClones(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -131,7 +132,8 @@ class TestJumpClones(TestCase):
 
 class TestCharacterMiningLedgerData(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -158,7 +160,8 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
 
 class TestCharacterPlanetData(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -183,7 +186,8 @@ class TestCharacterPlanetData(NoSocketsTestCase):
 
 class TestCharacterRolesData(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -229,7 +233,8 @@ class TestCharacterRolesData(NoSocketsTestCase):
 
 class TestMailData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -370,7 +375,8 @@ class TestMailData(TestCase):
 
 class TestSkillSetsData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -500,7 +506,8 @@ class TestSkillSetsData(TestCase):
 
 class TestSkillSetsDetails(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -605,7 +612,8 @@ class TestSkillSetsDetails(TestCase):
 
 class TestSkillAndSkillqueue(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
@@ -700,7 +708,8 @@ class TestSkillAndSkillqueue(TestCase):
 
 class TestStandings(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -729,7 +738,8 @@ class TestStandings(TestCase):
 
 class TestCharacterTitlesData(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -768,7 +778,8 @@ class TestCharacterTitlesData(NoSocketsTestCase):
 
 class TestWallet(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()

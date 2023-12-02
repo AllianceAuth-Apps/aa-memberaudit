@@ -38,7 +38,8 @@ MODULE_PATH = "memberaudit.core.data_exporters"
 
 class TestExportTopicToArchive(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         load_eveuniverse()
         cls.character = create_memberaudit_character(1001)
@@ -124,7 +125,8 @@ class InvalidTopicExporter(NotTopicExporter):
 
 class TestDataExporter(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         load_eveuniverse()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -280,7 +282,8 @@ class TestDataExporter(TestCase):
 
 class TestTopicsAndExportFiles(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         load_eveuniverse()
         cls.character = create_memberaudit_character(1001)

@@ -38,7 +38,8 @@ class TestAdminSite(TestCase):
     fixtures = ["disable_analytics.json"]
 
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)

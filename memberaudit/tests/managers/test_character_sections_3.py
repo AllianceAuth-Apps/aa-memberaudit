@@ -128,7 +128,8 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterOnlineStatusManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -382,7 +383,8 @@ class TestCharacterRolesManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterShipManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -436,7 +438,8 @@ class TestCharacterShipManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterSkillManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -534,7 +537,8 @@ class TestCharacterSkillManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -650,7 +654,8 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
 
 class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -750,7 +755,8 @@ class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterStandingManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -948,7 +954,8 @@ class TestCharacterTitleManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletBalanceManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -965,7 +972,8 @@ class TestCharacterWalletBalanceManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletJournalManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -1110,7 +1118,8 @@ class TestCharacterWalletJournalManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletTransactionManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

@@ -42,7 +42,8 @@ from memberaudit.views.reports import (
 
 class TestReports(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_entities()
 

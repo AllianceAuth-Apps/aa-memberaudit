@@ -28,7 +28,8 @@ MODULE_PATH = "memberaudit.models.characters"
 
 class TestCharacterUserHasAccess(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -310,7 +311,8 @@ class TestCharacterUserHasAccess(TestCase):
 
 class TestCharacterUserHasScope(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -452,7 +454,8 @@ class TestCharacterUserHasScope(TestCase):
 @patch(MODULE_PATH + ".Character.has_section_changed")
 class TestCharacterUpdateDataIfChangedOrForced(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1002 = create_memberaudit_character(1002)
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -655,7 +658,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
 
 class TestCharacterHasTokenError(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -703,7 +707,8 @@ class TestCharacterHasTokenError(TestCase):
 
 class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -751,7 +756,8 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
 
 class TestCharacterIsUpdateNeeded(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -846,7 +852,8 @@ class TestCharacterGetEsiScopes(TestCase):
 
 class TestCharacterPerformUpdateWithErrorLogging(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -911,7 +918,8 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
 
 class TestCharacterUpdateStatusAsDict(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 

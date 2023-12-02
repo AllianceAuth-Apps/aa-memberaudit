@@ -44,7 +44,8 @@ TASKS_PATH = "memberaudit.tasks"
 
 class TestCharacter(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -196,7 +197,8 @@ class TestCharacter(TestCase):
 
 class TestCharacterFetchToken(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -272,7 +274,8 @@ class TestCharacterFetchToken(TestCase):
 
 class TestCharacterStatus(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -384,7 +387,8 @@ class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
 
 class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.section = Character.UpdateSection.ASSETS
@@ -495,7 +499,8 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
 @patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
 class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.section = Character.UpdateSection.ASSETS
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -566,7 +571,8 @@ class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
 
 class TestCharacterUpdateSkillSets(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -758,7 +764,8 @@ class TestCharacterUpdateSkillSets(NoSocketsTestCase):
 
 class TestCharacterGenerateShipAsset(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

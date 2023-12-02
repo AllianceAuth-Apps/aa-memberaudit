@@ -18,7 +18,8 @@ class TestBaseFittingItem(NoSocketsTestCase):
 
 class TestModule(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
 
     def test_should_be_empty(self):
@@ -72,7 +73,8 @@ class TestModule(NoSocketsTestCase):
 
 class TestFitting(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
 
     def test_should_return_str(self):

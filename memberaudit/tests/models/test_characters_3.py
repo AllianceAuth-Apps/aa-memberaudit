@@ -19,7 +19,8 @@ from memberaudit.tests.utils import create_memberaudit_character
 
 class TestCharacterUpdateStatus(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.content = {"alpha": 1, "bravo": 2}
@@ -129,7 +130,8 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
 
 class TestCharacterLocation(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

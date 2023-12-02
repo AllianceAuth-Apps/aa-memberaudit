@@ -37,7 +37,8 @@ class TestTasksIntegration(TestCase):
     fixtures = ["disable_analytics.json"]
 
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

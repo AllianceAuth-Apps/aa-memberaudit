@@ -95,7 +95,8 @@ class TestOtherTasks(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -407,7 +408,8 @@ class TestUpdateCharacterAssets(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContacts(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -456,7 +458,8 @@ class TestUpdateCharacterContacts(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContracts(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -507,7 +510,8 @@ class TestUpdateCharacterContracts(TestCase):
 @patch(MANAGERS_PATH + ".general.esi")
 class TestUpdateCharacterMails(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -565,7 +569,8 @@ class TestUpdateCharacterMails(TestCase):
 )
 class TestCharacterUpdateFull(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -709,7 +714,8 @@ class TestCharacterUpdateFull(TestCase):
 )
 class TestCharacterUpdateErrorReporting(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -737,7 +743,8 @@ class TestCharacterUpdateErrorReporting(TestCase):
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
 class TestUpdateStructureEsi(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
         cls.token = (
@@ -810,7 +817,8 @@ class TestUpdateMailEntityEsi(TestCase):
 )
 class TestUpdateCharactersDoctrines(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         reset_celery_once_locks()
 
@@ -825,7 +833,8 @@ class TestUpdateCharactersDoctrines(TestCase):
 
 class TestDeleteCharacters(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         Character.objects.all().delete()
 
@@ -851,7 +860,8 @@ class TestDeleteCharacters(TestCase):
 )
 class TestExportData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
         reset_celery_once_locks()
@@ -883,7 +893,8 @@ class TestExportData(TestCase):
 
 class TestUpdateComplianceGroupDesignations(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
 
     @patch(TASKS_PATH + ".ComplianceGroupDesignation.objects.update_user", spec=True)
@@ -903,7 +914,8 @@ class TestUpdateComplianceGroupDesignations(TestCase):
 @patch(TASKS_PATH + ".update_character", spec=True)
 class TestUpdateAllCharacters(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

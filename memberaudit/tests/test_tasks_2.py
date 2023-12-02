@@ -36,7 +36,8 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -174,7 +175,8 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets2(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         reset_celery_once_locks()
         load_eveuniverse()
         load_entities()

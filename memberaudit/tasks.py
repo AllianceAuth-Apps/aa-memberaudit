@@ -46,9 +46,10 @@ from memberaudit.models import (
     MailEntity,
 )
 
-# [ ] Optimize update function where possible to reduce load
+# [x] Optimize update function where possible to reduce load
 # [ ] Maybe add a limit for current data to become stale?
 # [ ] Are failed character updates reported as failure correctly?
+# [ ] Consider removing storing task IDs - are they really needed?
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 

@@ -44,7 +44,8 @@ MODULE_PATH = "memberaudit.managers.character_sections_2"
 @patch(MODULE_PATH + ".esi")
 class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -156,7 +157,8 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterDetailManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -469,7 +471,8 @@ class TestCharacterFwStatsManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterImplantManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -521,7 +524,8 @@ class TestCharacterImplantManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterJumpClonesManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -589,7 +593,8 @@ class TestCharacterJumpClonesManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterLocationManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -650,7 +655,8 @@ class TestCharacterLocationManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterLoyaltyEntryManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -754,7 +760,8 @@ class TestCharacterLoyaltyEntryManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi")
 class TestCharacterMailManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_eveuniverse()
         load_entities()
@@ -972,7 +979,8 @@ class TestCharacterMailManager(NoSocketsTestCase):
 @patch(MODULE_PATH + ".esi", esi_stub)
 class TestCharacterMailLabelManager(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         super().setUpTestData()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)

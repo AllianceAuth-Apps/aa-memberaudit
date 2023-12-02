@@ -23,7 +23,8 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(MANAGERS_PATH + ".general.esi")
 class TestCharacterMailUpdate(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
