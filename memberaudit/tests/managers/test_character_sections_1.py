@@ -284,11 +284,14 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
         # then
         self.assertEqual(CharacterContactLabel.objects.count(), 0)
 
-    def test_update_contact_labels_1(self, mock_esi):
-        """can create new contact labels from scratch"""
+    def test_should_create_labels_from_scratch(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         self.character.update_contact_labels()
+
+        # then
         self.assertEqual(self.character.contact_labels.count(), 2)
 
         label = self.character.contact_labels.get(label_id=1)
@@ -297,58 +300,67 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
         label = self.character.contact_labels.get(label_id=2)
         self.assertEqual(label.name, "pirate")
 
-    def test_update_contact_labels_2(self, mock_esi):
-        """can remove obsolete labels"""
+    def test_should_remove_obsolete_labels(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=99)
 
+        # when
         self.character.update_contact_labels()
-        self.assertEqual(
-            {x.label_id for x in self.character.contact_labels.all()}, {1, 2}
-        )
 
-    def test_update_contact_labels_3(self, mock_esi):
-        """can update existing labels"""
+        # then
+        self.assertSetEqual(self._current_label_ids(), {1, 2})
+
+    def test_should_update_existing_label(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=1)
 
+        # when
         self.character.update_contact_labels()
-        self.assertEqual(
-            {x.label_id for x in self.character.contact_labels.all()}, {1, 2}
-        )
+
+        # then
+        self.assertSetEqual(self._current_label_ids(), {1, 2})
 
         label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
 
-    def test_update_contact_labels_4(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
+    def test_should_skip_update_when_esi_data_has_not_changed(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character.update_contact_labels()
         label = self.character.contact_labels.get(label_id=1)
         label.name = "foe"
         label.save()
 
+        # when
         self.character.update_contact_labels()
 
+        # then
         self.assertEqual(self.character.contact_labels.count(), 2)
         label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "foe")
 
-    def test_update_contact_labels_5(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
+    def test_should_do_update_when_esi_data_has_not_changed_and_forced(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
-
         self.character.update_contact_labels()
         label = self.character.contact_labels.get(label_id=1)
         label.name = "foe"
         label.save()
 
+        # when
         self.character.update_contact_labels(force_update=True)
 
         self.assertEqual(self.character.contact_labels.count(), 2)
         label = self.character.contact_labels.get(label_id=1)
         self.assertEqual(label.name, "friend")
+
+    def _current_label_ids(self):
+        current_label_ids = {
+            obj.label_id for obj in self.character.contact_labels.all()
+        }
+        return current_label_ids
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
