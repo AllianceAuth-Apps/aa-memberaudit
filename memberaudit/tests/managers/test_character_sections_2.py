@@ -24,6 +24,7 @@ from memberaudit.models import (
 )
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
 from memberaudit.tests.testdata.factories import (
+    create_character_corporation_history,
     create_character_details,
     create_character_fw_stats,
     create_character_location,
@@ -54,8 +55,10 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
     def test_can_create_from_scratch(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
+
         # when
         CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+
         # then
         self.assertEqual(self.character_1001.corporation_history.count(), 2)
 
@@ -72,11 +75,16 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
     def test_can_update_existing_history(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        self.character_1001.corporation_history.create(
-            record_id=500, corporation=self.corporation_2002, start_date=now()
+        create_character_corporation_history(
+            character=self.character_1001,
+            record_id=500,
+            corporation=self.corporation_2002,
+            start_date=now(),
         )
+
         # when
         CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+
         # then
         self.assertEqual(self.character_1001.corporation_history.count(), 2)
 
@@ -85,6 +93,24 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
         self.assertTrue(obj.is_deleted)
         self.assertEqual(obj.start_date, parse_datetime("2016-06-26T20:00:00Z"))
 
+    def test_can_remove_obsolete_entries(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        create_character_corporation_history(
+            character=self.character_1001,
+            record_id=499,
+            corporation=EveEntity.objects.get(id=2101),
+        )
+
+        # when
+        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+
+        # then
+        record_ids = set(
+            self.character_1001.corporation_history.values_list("record_id", flat=True)
+        )
+        self.assertSetEqual(record_ids, {500, 501})
+
     def test_should_skip_update_when_data_on_ESI_has_not_changed(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
@@ -92,8 +118,10 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
         obj = self.character_1001.corporation_history.get(record_id=500)
         obj.corporation = self.corporation_2002
         obj.save()
+
         # when
         CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+
         # then
         obj = self.character_1001.corporation_history.get(record_id=500)
         self.assertEqual(obj.corporation, self.corporation_2002)
@@ -105,10 +133,12 @@ class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
         obj = self.character_1001.corporation_history.get(record_id=500)
         obj.corporation = self.corporation_2002
         obj.save()
+
         # when
         CharacterCorporationHistory.objects.update_or_create_esi(
             self.character_1001, force_update=True
         )
+
         # then
         obj = self.character_1001.corporation_history.get(record_id=500)
         self.assertEqual(obj.corporation, self.corporation_2001)
