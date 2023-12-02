@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Set
+from typing import TYPE_CHECKING, List, Set
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -18,6 +18,7 @@ from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
+from memberaudit.managers._common import GenericUpdateComplexObjMixin
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -25,7 +26,7 @@ from memberaudit.utils import (
     get_or_none,
 )
 
-from ._common import GenericObjUpdateMixin
+from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterSkillqueueEntry
@@ -237,7 +238,7 @@ class CharacterRoleManager(models.Manager):
             logger.info("%s: Removed %d obsolete roles", character, len(to_add))
 
 
-class CharacterPlanetManager(models.Manager):
+class CharacterPlanetManager(GenericUpdateComplexObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create planets for a character from ESI."""
         character.update_section_if_changed(
@@ -279,112 +280,6 @@ class CharacterPlanetManager(models.Manager):
             model_key_field="eve_planet_id",
             fields_for_update=("num_pins", "upgrade_level", "last_update_at"),
             make_obj_from_esi_entry=make_obj_from_esi_entry,
-        )
-
-    def _update_or_create_objs_generic(
-        self,
-        character: Character,
-        esi_data: List[Dict[str, Any]],
-        model_key_field: str,
-        fields_for_update: Iterable[str],
-        make_obj_from_esi_entry: Callable,
-    ) -> None:
-        """Update or create objs from esi data."""
-        if not esi_data:
-            self.filter(character=character).delete()
-            logger.info("%s: No %s", character, self.model._meta.verbose_name_plural)
-            return
-
-        current_objs = {
-            getattr(obj, model_key_field): obj
-            for obj in self.filter(character=character).in_bulk().values()
-        }
-        incoming_objs = {
-            getattr(obj, model_key_field): obj
-            for obj in [make_obj_from_esi_entry(character, entry) for entry in esi_data]
-        }
-
-        self._create_new_objs(character, current_objs, incoming_objs)
-        self._update_modified_objs(
-            character, current_objs, incoming_objs, fields_for_update
-        )
-        self._delete_obsolete_objs(
-            character, current_objs, incoming_objs, key_field=model_key_field
-        )
-
-    def _create_new_objs(
-        self, character: Character, current_objs: dict, incoming_objs: dict
-    ) -> None:
-        new_objs = [
-            obj for key, obj in incoming_objs.items() if key not in current_objs
-        ]
-        if not new_objs:
-            return
-
-        self.bulk_create(new_objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        logger.info(
-            "%s: Created %d new %s",
-            character,
-            len(new_objs),
-            self.model._meta.verbose_name_plural,
-        )
-
-    def _update_modified_objs(
-        self,
-        character: Character,
-        current_objs: dict,
-        incoming_objs: dict,
-        fields_for_update: List[str],
-    ) -> None:
-        modified_objs = []
-        for key, incoming_obj in incoming_objs.items():
-            if key not in current_objs:
-                continue
-
-            current_obj = current_objs[key]
-            has_changed = False
-            for field in fields_for_update:
-                new_value = getattr(incoming_obj, field)
-                if getattr(current_obj, field) != new_value:
-                    setattr(current_obj, field, new_value)
-                    has_changed = True
-
-            if has_changed:
-                modified_objs.append(current_obj)
-
-        if not modified_objs:
-            return
-
-        self.bulk_update(
-            objs=modified_objs,
-            fields=fields_for_update,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
-        logger.info(
-            "%s: Updated %d %s",
-            character,
-            len(modified_objs),
-            self.model._meta.verbose_name_plural,
-        )
-
-    def _delete_obsolete_objs(
-        self,
-        character: Character,
-        current_objs: dict,
-        incoming_objs: dict,
-        key_field: str,
-    ) -> None:
-        obsolete_obj_ids = {key for key in current_objs if key not in incoming_objs}
-        if not obsolete_obj_ids:
-            return
-
-        params = {"character": character, f"{key_field}__in": obsolete_obj_ids}
-        self.filter(**params).delete()
-        logger.info(
-            "%s: Removed %d obsolete %s",
-            character,
-            len(obsolete_obj_ids),
-            self.model._meta.verbose_name_plural,
         )
 
 
@@ -684,7 +579,7 @@ class CharacterSkillSetCheckManager(models.Manager):
         return failed_skills
 
 
-class CharacterStandingManager(GenericObjUpdateMixin, models.Manager):
+class CharacterStandingManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create standing for a character from ESI."""
 
@@ -725,7 +620,7 @@ class CharacterStandingManager(GenericObjUpdateMixin, models.Manager):
         )
 
 
-class CharacterTitleManager(GenericObjUpdateMixin, models.Manager):
+class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create titles for a character from ESI."""
 

@@ -43,7 +43,7 @@ from memberaudit.utils import (
     get_or_none,
 )
 
-from ._common import GenericObjUpdateMixin
+from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character
@@ -384,7 +384,7 @@ class CharacterLocationManager(models.Manager):
         )
 
 
-class CharacterLoyaltyEntryManager(GenericObjUpdateMixin, models.Manager):
+class CharacterLoyaltyEntryManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
         character.update_section_if_changed(

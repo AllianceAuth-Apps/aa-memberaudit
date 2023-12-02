@@ -32,7 +32,7 @@ from memberaudit.utils import (
     get_or_none,
 )
 
-from ._common import GenericObjUpdateMixin
+from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character
@@ -190,7 +190,7 @@ class CharacterAttributesManager(models.Manager):
         )
 
 
-class CharacterContactLabelManager(GenericObjUpdateMixin, models.Manager):
+class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
