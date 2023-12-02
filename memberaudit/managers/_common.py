@@ -45,16 +45,24 @@ class GenericObjUpdateMixin:
             character, current_entries, incoming_entries, make_obj_from_esi_entry
         )
         self._update_modified_objs(
-            character, current_entries, incoming_entries, model_fields
+            character,
+            current_entries,
+            incoming_entries,
+            key_field=model_fields[0],
+            value_field=model_fields[1],
         )
         self._delete_obsolete_objs(
-            character, current_entries, incoming_entries, model_fields
+            character, current_entries, incoming_entries, key_field=model_fields[0]
         )
 
         return new_eve_entity_ids
 
     def _create_new_objs(
-        self, character, current_entries, incoming_entries, make_obj_from_esi_entry
+        self,
+        character: Character,
+        current_entries: dict,
+        incoming_entries: dict,
+        make_obj_from_esi_entry: Callable,
     ) -> Set[int]:
         new_entries = {
             entity_id: standing
@@ -78,7 +86,12 @@ class GenericObjUpdateMixin:
         return set(new_entries.keys())
 
     def _update_modified_objs(
-        self, character, current_entries, incoming_entries, model_fields
+        self,
+        character: Character,
+        current_entries: dict,
+        incoming_entries: dict,
+        key_field: str,
+        value_field: str,
     ) -> None:
         modified_entries = {
             key: value
@@ -88,14 +101,15 @@ class GenericObjUpdateMixin:
         if not modified_entries:
             return
 
-        params = {"character": character, f"{model_fields[0]}__in": modified_entries}
+        params = {"character": character, f"{key_field}__in": modified_entries}
         objs = self.filter(**params).in_bulk()
         for obj in objs.values():
-            setattr(obj, model_fields[1], modified_entries[obj.corporation_id])
+            key = getattr(obj, key_field)
+            setattr(obj, value_field, modified_entries[key])
 
         self.bulk_update(
             objs.values(),
-            fields=[model_fields[1]],
+            fields=[value_field],
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
         logger.info(
@@ -106,7 +120,11 @@ class GenericObjUpdateMixin:
         )
 
     def _delete_obsolete_objs(
-        self, character, current_entries, incoming_entries, model_fields
+        self,
+        character: Character,
+        current_entries: dict,
+        incoming_entries: dict,
+        key_field: str,
     ) -> None:
         obsolete_entries = {
             key: value
@@ -116,7 +134,7 @@ class GenericObjUpdateMixin:
         if not obsolete_entries:
             return
 
-        params = {"character": character, f"{model_fields[0]}__in": obsolete_entries}
+        params = {"character": character, f"{key_field}__in": obsolete_entries}
         self.filter(**params).delete()
         logger.info(
             "%s: Removed %d obsolete %s",

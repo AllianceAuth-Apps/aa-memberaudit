@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, List, Set
+from typing import TYPE_CHECKING, List, Set
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -25,12 +25,10 @@ from memberaudit.utils import (
     get_or_none,
 )
 
+from ._common import GenericObjUpdateMixin
+
 if TYPE_CHECKING:
-    from memberaudit.models import (
-        Character,
-        CharacterSkillqueueEntry,
-        CharacterStanding,
-    )
+    from memberaudit.models import Character, CharacterSkillqueueEntry
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -580,7 +578,7 @@ class CharacterSkillSetCheckManager(models.Manager):
         return failed_skills
 
 
-class CharacterStandingManager(models.Manager):
+class CharacterStandingManager(GenericObjUpdateMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create standing for a character from ESI."""
 
@@ -604,86 +602,20 @@ class CharacterStandingManager(models.Manager):
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
     ) -> Set[int]:
-        if not esi_data:
-            self.filter(character=character).delete()
-            logger.info("%s: No standings for this character", character)
-            return set()
-
-        current_entries = {
-            obj[0]: obj[1] for obj in self.values_list("eve_entity_id", "standing")
-        }
-        incoming_entries = {obj["from_id"]: obj.get("standing") for obj in esi_data}
-
-        new_eve_entity_ids = self._create_new_objs(
-            character, current_entries, incoming_entries
-        )
-        self._update_modified_objs(character, current_entries, incoming_entries)
-        self._delete_obsolete_objs(character, current_entries, incoming_entries)
-
-        return new_eve_entity_ids
-
-    def _create_new_objs(
-        self, character, current_standings, incoming_standings
-    ) -> Set[int]:
-        new_standings = {
-            entity_id: standing
-            for entity_id, standing in incoming_standings.items()
-            if entity_id not in current_standings
-        }
-        if not new_standings:
-            return set()
-
-        objs = [
-            self.model(
+        def make_obj_from_esi_entry(character, key, value):
+            obj = self.model(
                 character=character,
-                eve_entity=EveEntity.objects.get_or_create(id=entity_id)[0],
-                standing=standing,
+                eve_entity=EveEntity.objects.get_or_create(id=key)[0],
+                standing=value,
             )
-            for entity_id, standing in new_standings.items()
-        ]
-        self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
-        logger.info("%s: Created %d new standings", character, len(objs))
-        return set(new_standings.keys())
+            return obj
 
-    def _update_modified_objs(
-        self, character, current_standings, incoming_standings
-    ) -> None:
-        modified_standings = {
-            entity_id: standing
-            for entity_id, standing in incoming_standings.items()
-            if entity_id in current_standings
-            and current_standings[entity_id] != standing
-        }
-        if not modified_standings:
-            return
-
-        objs: Dict[int, CharacterStanding] = self.filter(
-            character=character, eve_entity_id__in=modified_standings
-        ).in_bulk()
-        for obj in objs.values():
-            obj.standing = modified_standings[obj.eve_entity_id]
-
-        self.bulk_update(
-            objs.values(),
-            fields=["standing"],
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        )
-        logger.info("%s: Updated %d standings", character, len(objs))
-
-    def _delete_obsolete_objs(
-        self, character, current_standings, incoming_standings
-    ) -> None:
-        obsolete_standings = {
-            entity_id: standing
-            for entity_id, standing in current_standings.items()
-            if entity_id not in incoming_standings
-        }
-        if not obsolete_standings:
-            return
-
-        self.filter(character=character, eve_entity_id__in=obsolete_standings).delete()
-        logger.info(
-            "%s: Removed %d obsolete standings", character, len(obsolete_standings)
+        return self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            esi_fields=("from_id", "standing"),
+            model_fields=("eve_entity_id", "standing"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
         )
 
 
