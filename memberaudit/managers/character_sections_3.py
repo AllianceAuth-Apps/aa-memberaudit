@@ -602,23 +602,23 @@ class CharacterStandingManager(models.Manager):
         return standings
 
     def _update_or_create_objs(
-        self, character: Character, standings: List[dict]
+        self, character: Character, esi_data: List[dict]
     ) -> Set[int]:
-        if not standings:
+        if not esi_data:
             self.filter(character=character).delete()
             logger.info("%s: No standings for this character", character)
             return set()
 
-        current_standings = {
+        current_entries = {
             obj[0]: obj[1] for obj in self.values_list("eve_entity_id", "standing")
         }
-        incoming_standings = {obj["from_id"]: obj.get("standing") for obj in standings}
+        incoming_entries = {obj["from_id"]: obj.get("standing") for obj in esi_data}
 
         new_eve_entity_ids = self._create_new_objs(
-            character, current_standings, incoming_standings
+            character, current_entries, incoming_entries
         )
-        self._update_modified_objs(character, current_standings, incoming_standings)
-        self._delete_obsolete_objs(character, current_standings, incoming_standings)
+        self._update_modified_objs(character, current_entries, incoming_entries)
+        self._delete_obsolete_objs(character, current_entries, incoming_entries)
 
         return new_eve_entity_ids
 
@@ -655,7 +655,7 @@ class CharacterStandingManager(models.Manager):
             and current_standings[entity_id] != standing
         }
         if not modified_standings:
-            return set()
+            return
 
         objs: Dict[int, CharacterStanding] = self.filter(
             character=character, eve_entity_id__in=modified_standings
@@ -668,6 +668,7 @@ class CharacterStandingManager(models.Manager):
             fields=["standing"],
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
+        logger.info("%s: Updated %d standings", character, len(objs))
 
     def _delete_obsolete_objs(
         self, character, current_standings, incoming_standings

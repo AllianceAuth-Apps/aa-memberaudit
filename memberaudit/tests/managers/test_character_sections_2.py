@@ -652,6 +652,27 @@ class TestCharacterLoyaltyEntryManager(NoSocketsTestCase):
         obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
         self.assertEqual(obj.loyalty_points, 100)
 
+    def test_can_remove_obsolete_entries(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        obsolete_entry = self.character_1001.loyalty_entries.create(
+            corporation=EveEntity.objects.get(id=2101), loyalty_points=200
+        )
+
+        # when
+        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+
+        # then
+        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
+        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
+        self.assertEqual(obj.loyalty_points, 100)
+
+        self.assertFalse(
+            self.character_1001.loyalty_entries.filter(
+                corporation_id=obsolete_entry.corporation_id
+            ).exists()
+        )
+
     def test_should_skip_update_when_no_change(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub

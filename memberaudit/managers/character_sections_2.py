@@ -44,7 +44,7 @@ from memberaudit.utils import (
 )
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, CharacterLoyaltyEntry
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -220,35 +220,33 @@ class CharacterImplantManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-clones.read_implants.v1")
-    def _fetch_data_from_esi(self, character: Character, token: Token):
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> List[int]:
         logger.info("%s: Fetching implants from ESI", character)
-        implants_data = esi.client.Clones.get_characters_character_id_implants(
+        implant_type_ids = esi.client.Clones.get_characters_character_id_implants(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
-        return implants_data
+        return implant_type_ids
 
-    def _update_or_create_objs(self, character: Character, implants_data):
-        if implants_data:
-            EveType.objects.bulk_get_or_create_esi(ids=implants_data)
+    def _update_or_create_objs(self, character: Character, implant_type_ids: List[int]):
+        if not implant_type_ids:
+            self.filter(character=character).delete()
+            logger.info("%s: Character has no implants", character)
 
-        # TODO: Replace delete & create with update
+        EveType.objects.bulk_get_or_create_esi(ids=implant_type_ids)
+
+        # bulk delete & create is fine here, since characters mostly switch
+        # between clones, and rarely replace some implants of their current clone
         with transaction.atomic():
             self.filter(character=character).delete()
-            if implants_data:
-                implants = [
-                    self.model(
-                        character=character,
-                        eve_type=EveType.objects.get(id=eve_type_id),
-                    )
-                    for eve_type_id in implants_data
-                ]
-                logger.info("%s: Storing %s implants", character, len(implants))
-                self.bulk_create(
-                    implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+            implants = [
+                self.model(
+                    character=character, eve_type=EveType.objects.get(id=eve_type_id)
                 )
-            else:
-                logger.info("%s: No implants", character)
+                for eve_type_id in implant_type_ids
+            ]
+            logger.info("%s: Storing %s implants", character, len(implants))
+            self.bulk_create(implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
 
 class CharacterJumpCloneManager(models.Manager):
@@ -395,7 +393,7 @@ class CharacterLoyaltyEntryManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_loyalty.v1")
-    def _fetch_data_from_esi(self, character: Character, token):
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
         logger.info("%s: Fetching loyalty entries from ESI", character)
         loyalty_entries = esi.client.Loyalty.get_characters_character_id_loyalty_points(
             character_id=character.eve_character.character_id,
@@ -404,24 +402,93 @@ class CharacterLoyaltyEntryManager(models.Manager):
 
         return loyalty_entries
 
-    # TODO: Replace delete & create with update
-    def _update_or_create_objs(self, character: Character, loyalty_entries):
-        with transaction.atomic():
+    def _update_or_create_objs(
+        self, character: Character, esi_data: List[dict]
+    ) -> Set[int]:
+        if not esi_data:
             self.filter(character=character).delete()
-            new_entries = [
-                self.model(
-                    character=character,
-                    corporation=get_or_create_or_none(
-                        "corporation_id", entry, EveEntity
-                    ),
-                    loyalty_points=entry.get("loyalty_points"),
-                )
-                for entry in loyalty_entries
-                if "corporation_id" in entry and "loyalty_points" in entry
-            ]
-            self.bulk_create(new_entries, MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+            logger.info("%s: No loyalty entries for this character", character)
+            return set()
 
-        return eve_entity_ids_from_objs(new_entries)
+        current_entries = {
+            obj[0]: obj[1]
+            for obj in self.values_list("corporation_id", "loyalty_points")
+        }
+        incoming_entries = {
+            obj["corporation_id"]: obj["loyalty_points"] for obj in esi_data
+        }
+
+        new_eve_entity_ids = self._create_new_objs(
+            character, current_entries, incoming_entries
+        )
+        self._update_modified_objs(character, current_entries, incoming_entries)
+        self._delete_obsolete_objs(character, current_entries, incoming_entries)
+
+        return new_eve_entity_ids
+
+    def _create_new_objs(
+        self, character, current_standings, incoming_standings
+    ) -> Set[int]:
+        new_entries = {
+            entity_id: standing
+            for entity_id, standing in incoming_standings.items()
+            if entity_id not in current_standings
+        }
+        if not new_entries:
+            return set()
+
+        objs = [
+            self.model(
+                character=character,
+                corporation=EveEntity.objects.get_or_create(id=entity_id)[0],
+                loyalty_points=loyalty_points,
+            )
+            for entity_id, loyalty_points in new_entries.items()
+        ]
+        self.bulk_create(objs, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        logger.info("%s: Created %d new loyalty point entries", character, len(objs))
+        return set(new_entries.keys())
+
+    def _update_modified_objs(
+        self, character, current_standings, incoming_standings
+    ) -> None:
+        modified_entries = {
+            entity_id: standing
+            for entity_id, standing in incoming_standings.items()
+            if entity_id in current_standings
+            and current_standings[entity_id] != standing
+        }
+        if not modified_entries:
+            return
+
+        objs: Dict[int, CharacterLoyaltyEntry] = self.filter(
+            character=character, corporation_id__in=modified_entries
+        ).in_bulk()
+        for obj in objs.values():
+            obj.loyalty_points = modified_entries[obj.corporation_id]
+
+        self.bulk_update(
+            objs.values(),
+            fields=["loyalty_points"],
+            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+        )
+        logger.info("%s: Updated %d loyalty point entries", character, len(objs))
+
+    def _delete_obsolete_objs(
+        self, character, current_standings, incoming_standings
+    ) -> None:
+        obsolete_entries = {
+            entity_id: standing
+            for entity_id, standing in current_standings.items()
+            if entity_id not in incoming_standings
+        }
+        if not obsolete_entries:
+            return
+
+        self.filter(character=character, corporation_id__in=obsolete_entries).delete()
+        logger.info(
+            "%s: Removed %d obsolete loyalty entries", character, len(obsolete_entries)
+        )
 
 
 class CharacterMailManager(models.Manager):
