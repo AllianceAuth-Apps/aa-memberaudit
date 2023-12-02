@@ -26,7 +26,7 @@ from memberaudit.utils import (
 )
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, CharacterSkillqueueEntry
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -323,7 +323,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-skills.read_skillqueue.v1")
-    def _fetch_data_from_esi(self, character: Character, token):
+    def _fetch_data_from_esi(self, character: Character, token) -> List[dict]:
         logger.info("%s: Fetching skill queue from ESI", character)
         skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
             character_id=character.eve_character.character_id,
@@ -332,36 +332,41 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
         return skillqueue
 
-    def _update_or_create_objs(self, character: Character, skillqueue):
-        # TODO: Replace delete + create with create + update
-        if skillqueue:
-            entries = [
-                self.model(
-                    character=character,
-                    eve_type=get_or_create_esi_or_none("skill_id", entry, EveType),
-                    finish_date=entry.get("finish_date"),
-                    finished_level=entry.get("finished_level"),
-                    level_end_sp=entry.get("level_end_sp"),
-                    level_start_sp=entry.get("level_start_sp"),
-                    queue_position=entry.get("queue_position"),
-                    start_date=entry.get("start_date"),
-                    training_start_sp=entry.get("training_start_sp"),
-                )
-                for entry in skillqueue
-            ]
-        else:
-            entries = []
-        with transaction.atomic():
-            self.filter(character=character).delete()
-            if entries:
-                logger.info(
-                    "%s: Writing skill queue of size %s", character, len(entries)
-                )
-                self.bulk_create(
-                    entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
-                )
-            else:
-                logger.info("%s: Skill queue is empty", character)
+    def _update_or_create_objs(self, character: Character, skillqueue: List[dict]):
+        entries = self._compile_objs(character, skillqueue)
+        self._write_objs(character, entries)
+
+    def _compile_objs(self, character: Character, skillqueue: List[dict]):
+        if not skillqueue:
+            return []
+
+        entries = [
+            self.model(
+                character=character,
+                eve_type=get_or_create_esi_or_none("skill_id", entry, EveType),
+                finish_date=entry.get("finish_date"),
+                finished_level=entry.get("finished_level"),
+                level_end_sp=entry.get("level_end_sp"),
+                level_start_sp=entry.get("level_start_sp"),
+                queue_position=entry.get("queue_position"),
+                start_date=entry.get("start_date"),
+                training_start_sp=entry.get("training_start_sp"),
+            )
+            for entry in skillqueue
+        ]
+        return entries
+
+    @transaction.atomic()
+    def _write_objs(
+        self, character: Character, entries: List[CharacterSkillqueueEntry]
+    ):
+        self.filter(character=character).delete()
+        if not entries:
+            logger.info("%s: Skill queue is empty", character)
+            return
+
+        self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
+        logger.info("%s: Updated skill queue of size %s", character, len(entries))
 
 
 class CharacterSkillManager(models.Manager):
