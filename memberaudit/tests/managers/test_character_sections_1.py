@@ -322,16 +322,27 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
     def test_should_update_existing_label(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=1)
+        create_character_contact_label(
+            character=self.character, label_id=1, name="update-me"
+        )
+        with patch(
+            MODULE_PATH + ".CharacterContactLabelManager.bulk_update",
+            wraps=CharacterContactLabel.objects.filter(
+                character=self.character
+            ).bulk_update,
+        ) as mock_bulk_update:
+            # when
+            self.character.update_contact_labels()
 
-        # when
-        self.character.update_contact_labels()
+            # then
+            self.assertSetEqual(self._current_label_ids(), {1, 2})
 
-        # then
-        self.assertSetEqual(self._current_label_ids(), {1, 2})
+            label = self.character.contact_labels.get(label_id=1)
+            self.assertEqual(label.name, "friend")
 
-        label = self.character.contact_labels.get(label_id=1)
-        self.assertEqual(label.name, "friend")
+            # then only the modified label was updated
+            updated_obj_ids = {o.id for o in mock_bulk_update.call_args.kwargs["objs"]}
+            self.assertSetEqual(updated_obj_ids, {label.id})
 
     def test_should_skip_update_when_esi_data_has_not_changed(self, mock_esi):
         # given

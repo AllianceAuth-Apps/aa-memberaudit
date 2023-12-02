@@ -18,7 +18,6 @@ if TYPE_CHECKING:
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-# TODO: Add test to make sure only changed objs are updated
 class GenericUpdateSimpleObjMixin:
     """Adds the ability to update objs from ESI data.
 
@@ -113,7 +112,7 @@ class GenericUpdateSimpleObjMixin:
             setattr(obj, value_field, modified_entries[key])
 
         self.bulk_update(
-            objs.values(),
+            objs=objs.values(),
             fields=[value_field],
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         )
