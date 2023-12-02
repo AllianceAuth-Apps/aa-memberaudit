@@ -715,6 +715,33 @@ class TestCharacterStandingManager(NoSocketsTestCase):
         # then
         self.assertEqual(self.character_1002.standings.count(), 0)
 
+    def test_can_remove_obsolete_standings(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        obsolete_standing = create_character_standing(
+            self.character_1001, EveEntity.objects.get(id=1101), standing=-5
+        )
+        # when
+        CharacterStanding.objects.update_or_create_esi(self.character_1001)
+
+        # then
+        self.assertEqual(self.character_1001.standings.count(), 3)
+
+        entry = self.character_1001.standings.get(eve_entity_id=1901)
+        self.assertEqual(entry.standing, 0.1)
+
+        entry = self.character_1001.standings.get(eve_entity_id=2901)
+        self.assertEqual(entry.standing, 0)
+
+        entry = self.character_1001.standings.get(eve_entity_id=500001)
+        self.assertEqual(entry.standing, -1)
+
+        self.assertFalse(
+            self.character_1001.standings.filter(
+                eve_entity_id=obsolete_standing.eve_entity.id
+            ).exists()
+        )
+
 
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterTitleManager(NoSocketsTestCase):
