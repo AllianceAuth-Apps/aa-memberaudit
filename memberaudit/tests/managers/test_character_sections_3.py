@@ -447,7 +447,7 @@ class TestCharacterSkillManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillQueueManager(NoSocketsTestCase):
+class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
     @classmethod
     def setUpTestData(cls):
         load_eveuniverse()

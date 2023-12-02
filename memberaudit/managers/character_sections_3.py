@@ -1,7 +1,9 @@
 """Managers for character section models (3/3)."""
 # pylint: disable=missing-class-docstring
 
-from typing import List, Set
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Set
 
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
@@ -23,6 +25,9 @@ from memberaudit.utils import (
     get_or_none,
 )
 
+if TYPE_CHECKING:
+    from memberaudit.models import Character
+
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
@@ -42,7 +47,7 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create mining ledger for a character from ESI."""
 
         character.update_section_if_changed(
@@ -53,7 +58,7 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
         )
 
     @fetch_token_for_character("esi-industry.read_character_mining.v1")
-    def _fetch_data_from_esi(self, character, token: Token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching mining ledger from ESI", character)
         entries = esi.client.Industry.get_characters_character_id_mining(
             character_id=character.eve_character.character_id,
@@ -61,7 +66,7 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
         ).results()
         return entries
 
-    def _update_or_create_objs(self, character, entries):
+    def _update_or_create_objs(self, character: Character, entries):
         # preload solar systems
         solar_system_ids = {entry["solar_system_id"] for entry in entries}
         for solar_system_id in solar_system_ids:
@@ -89,7 +94,7 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 
 class CharacterOnlineStatusManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create online status for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.ONLINE_STATUS,
@@ -99,7 +104,7 @@ class CharacterOnlineStatusManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-location.read_online.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching online status from ESI", character)
         online_info = esi.client.Location.get_characters_character_id_online(
             character_id=character.eve_character.character_id,
@@ -108,7 +113,7 @@ class CharacterOnlineStatusManager(models.Manager):
 
         return online_info
 
-    def _update_or_create_objs(self, character, online_info):
+    def _update_or_create_objs(self, character: Character, online_info):
         self.update_or_create(
             character=character,
             defaults={
@@ -120,7 +125,7 @@ class CharacterOnlineStatusManager(models.Manager):
 
 
 class CharacterRoleManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create roles for a character from ESI."""
 
         character.update_section_if_changed(
@@ -131,7 +136,7 @@ class CharacterRoleManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_corporation_roles.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         """Update the character's roles"""
 
         logger.info("%s: Fetching roles from ESI", character)
@@ -142,7 +147,7 @@ class CharacterRoleManager(models.Manager):
         return roles_data
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character, roles_data: dict):
+    def _update_or_create_objs(self, character: Character, roles_data: dict):
         from memberaudit.models import CharacterRole
 
         Role = CharacterRole.Role
@@ -228,7 +233,7 @@ class CharacterRoleManager(models.Manager):
 
 
 class CharacterPlanetManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create planets for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.PLANETS,
@@ -238,7 +243,7 @@ class CharacterPlanetManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-planets.manage_planets.v1")
-    def _fetch_data_from_esi(self, character, token: Token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching planets from ESI", character)
         planets_data = (
             esi.client.Planetary_Interaction.get_characters_character_id_planets(
@@ -250,7 +255,7 @@ class CharacterPlanetManager(models.Manager):
         return planets_data
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character, planets_data):
+    def _update_or_create_objs(self, character: Character, planets_data):
         self.filter(character=character).delete()
         if planets_data:
             planets = []
@@ -272,7 +277,7 @@ class CharacterPlanetManager(models.Manager):
 
 
 class CharacterShipManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create ship for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.SHIP,
@@ -282,7 +287,7 @@ class CharacterShipManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-location.read_ship_type.v1")
-    def _fetch_data_from_esi(self, character, token: Token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching ship from ESI", character)
         ship_info = esi.client.Location.get_characters_character_id_ship(
             character_id=character.eve_character.character_id,
@@ -290,7 +295,7 @@ class CharacterShipManager(models.Manager):
         ).results()
         return ship_info
 
-    def _update_or_create_objs(self, character, ship_info):
+    def _update_or_create_objs(self, character: Character, ship_info):
         ship_type_id = ship_info.get("ship_type_id")
         if not ship_type_id:
             self.filter(character=character).delete()
@@ -308,7 +313,7 @@ class CharacterShipManager(models.Manager):
 
 
 class CharacterSkillqueueEntryManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create skills queue for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.SKILL_QUEUE,
@@ -318,7 +323,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-skills.read_skillqueue.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching skill queue from ESI", character)
         skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
             character_id=character.eve_character.character_id,
@@ -327,7 +332,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
         return skillqueue
 
-    def _update_or_create_objs(self, character, skillqueue):
+    def _update_or_create_objs(self, character: Character, skillqueue):
         # TODO: Replace delete + create with create + update
         if skillqueue:
             entries = [
@@ -360,7 +365,7 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
 
 class CharacterSkillManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create skills for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.SKILLS,
@@ -370,7 +375,7 @@ class CharacterSkillManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-skills.read_skills.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         logger.info("%s: Fetching skills from ESI", character)
         skills_info = esi.client.Skills.get_characters_character_id_skills(
             character_id=character.eve_character.character_id,
@@ -385,7 +390,7 @@ class CharacterSkillManager(models.Manager):
             new_ids = incoming_ids.difference(existing_ids)
             EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
 
-    def _update_or_create_objs(self, character, skills_info):
+    def _update_or_create_objs(self, character: Character, skills_info):
         from memberaudit.models import CharacterSkillpoints
 
         CharacterSkillpoints.objects.update_or_create(
@@ -437,7 +442,9 @@ class CharacterSkillManager(models.Manager):
             if not obsolete_ids and not create_ids and not update_ids:
                 logger.info("%s: Skills have not changed", character)
 
-    def _create_from_dict(self, character, skills_list: dict, create_ids: set):
+    def _create_from_dict(
+        self, character: Character, skills_list: dict, create_ids: set
+    ):
         logger.info("%s: Storing %s new skills", character, len(create_ids))
         skills = [
             self.model(
@@ -452,7 +459,9 @@ class CharacterSkillManager(models.Manager):
         ]
         self.bulk_create(skills, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
 
-    def _update_from_dict(self, character, skills_list: dict, update_ids: set):
+    def _update_from_dict(
+        self, character: Character, skills_list: dict, update_ids: set
+    ):
         logger.info("%s: Updating %s skills", character, len(update_ids))
         update_pks = list(
             self.filter(character=character, eve_type_id__in=update_ids).values_list(
@@ -558,7 +567,7 @@ class CharacterSkillSetCheckManager(models.Manager):
 
 
 class CharacterStandingManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create standing for a character from ESI."""
 
         character.update_section_if_changed(
@@ -569,7 +578,7 @@ class CharacterStandingManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_standings.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching character standings from ESI", character)
         standings = esi.client.Character.get_characters_character_id_standings(
             character_id=character.eve_character.character_id,
@@ -578,7 +587,7 @@ class CharacterStandingManager(models.Manager):
 
         return standings
 
-    def _update_or_create_objs(self, character, standings) -> Set[int]:
+    def _update_or_create_objs(self, character: Character, standings) -> Set[int]:
         # TODO: Replace delete + create with create + update
         if standings:
             entries = [
@@ -605,7 +614,7 @@ class CharacterStandingManager(models.Manager):
 
 
 class CharacterTitleManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create titles for a character from ESI."""
 
         character.update_section_if_changed(
@@ -616,7 +625,7 @@ class CharacterTitleManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_titles.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         """Update the character's roles"""
 
         logger.info("%s: Fetching titles from ESI", character)
@@ -627,7 +636,7 @@ class CharacterTitleManager(models.Manager):
         return titles_data
 
     # TODO: Refactor to only write changes
-    def _update_or_create_objs(self, character, titles_data: List[dict]):
+    def _update_or_create_objs(self, character: Character, titles_data: List[dict]):
         objs = []
         for entry in titles_data:
             name = strip_tags(entry["name"]).strip()[:100]
@@ -644,7 +653,7 @@ class CharacterTitleManager(models.Manager):
 
 
 class CharacterWalletBalanceManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create wallet balance for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.WALLET_BALLANCE,
@@ -654,7 +663,7 @@ class CharacterWalletBalanceManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching wallet balance from ESI", character)
         balance = esi.client.Wallet.get_characters_character_id_wallet(
             character_id=character.eve_character.character_id,
@@ -662,12 +671,12 @@ class CharacterWalletBalanceManager(models.Manager):
         ).results()
         return balance
 
-    def _update_or_create_objs(self, character, balance):
+    def _update_or_create_objs(self, character: Character, balance):
         self.update_or_create(character=character, defaults={"total": balance})
 
 
 class CharacterWalletJournalEntryManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create wallet journal entries for character from ESI.
 
         Note: Does not update unknown EveEntities.
@@ -680,7 +689,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def _fetch_data_from_esi(self, character, token: Token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching wallet journal from ESI", character)
         journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
             character_id=character.eve_character.character_id,
@@ -688,7 +697,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
         ).results()
         return journal
 
-    def _update_or_create_objs(self, character, journal):
+    def _update_or_create_objs(self, character: Character, journal):
         cutoff_datetime = data_retention_cutoff()
         entries_list = {
             obj.get("id"): obj
@@ -739,7 +748,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
 
 
 class CharacterWalletTransactionManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create wallet transactions for a character from ESI."""
         character.update_section_if_changed(
             section=character.UpdateSection.WALLET_TRANSACTIONS,
@@ -749,7 +758,7 @@ class CharacterWalletTransactionManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching wallet transactions from ESI", character)
         transactions = (
             esi.client.Wallet.get_characters_character_id_wallet_transactions(
@@ -760,7 +769,9 @@ class CharacterWalletTransactionManager(models.Manager):
         return transactions
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
-    def _update_or_create_objs(self, character, token: Token, transactions) -> Set[int]:
+    def _update_or_create_objs(
+        self, character: Character, token: Token, transactions
+    ) -> Set[int]:
         from memberaudit.models import Location
 
         cutoff_datetime = data_retention_cutoff()
@@ -783,7 +794,9 @@ class CharacterWalletTransactionManager(models.Manager):
         return eve_entity_ids
 
     @transaction.atomic()
-    def _bulk_update_or_create(self, character, transaction_list) -> Set[int]:
+    def _bulk_update_or_create(
+        self, character: Character, transaction_list
+    ) -> Set[int]:
         from memberaudit.models import Location
 
         incoming_ids = set(transaction_list.keys())

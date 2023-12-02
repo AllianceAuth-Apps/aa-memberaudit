@@ -46,7 +46,7 @@ from memberaudit.models import (
     MailEntity,
 )
 
-# [ ] Check that each section detects and reports correctly when data is still fresh
+# [ ] Optimize update function where possible to reduce load
 # [ ] Maybe add a limit for current data to become stale?
 # [ ] Are failed character updates reported as failure correctly?
 
