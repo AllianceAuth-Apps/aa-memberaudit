@@ -13,7 +13,7 @@ from app_utils.caching import ObjectCacheMixin
 from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, app_settings
+from memberaudit import __title__
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -217,48 +217,7 @@ class CharacterUpdateStatusQuerySet(models.QuerySet):
 
 
 class CharacterUpdateStatusManagerBase(models.Manager):
-    def statistics(self) -> dict:
-        """Return detailed statistics about Member Audit."""
-
-        from memberaudit.models import (
-            Character,
-            CharacterAsset,
-            CharacterContact,
-            CharacterContract,
-            CharacterMail,
-            SkillSet,
-            SkillSetGroup,
-        )
-
-        user_count = (
-            User.objects.filter(
-                character_ownerships__character__memberaudit_character__isnull=False
-            )
-            .distinct()
-            .count()
-        )
-
-        return {
-            "app_totals": {
-                "users_count": user_count,
-                "characters_count": Character.objects.count(),
-                "skill_set_groups_count": SkillSetGroup.objects.count(),
-                "skill_sets_count": SkillSet.objects.count(),
-                "assets_count": CharacterAsset.objects.count(),
-                "mails_count": CharacterMail.objects.count(),
-                "contacts_count": CharacterContact.objects.count(),
-                "contracts_count": CharacterContract.objects.count(),
-            },
-            "settings": self._fetch_settings(),
-        }
-
-    def _fetch_settings(self):
-        settings = {
-            name: value
-            for name, value in vars(app_settings).items()
-            if name.startswith("MEMBERAUDIT_")
-        }
-        return settings
+    pass
 
 
 CharacterUpdateStatusManager = CharacterUpdateStatusManagerBase.from_queryset(
