@@ -23,12 +23,12 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
+    MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
     MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS,
     MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
     MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT,
     MEMBERAUDIT_TASKS_TIME_LIMIT,
-    MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
@@ -47,7 +47,7 @@ from memberaudit.models import (
 # [x] Optimize update function where possible to reduce load
 # [ ] Maybe add a limit for current data to become stale?
 # [ ] Are failed character updates reported as failure correctly?
-# [ ] Consider removing storing task IDs - are they really needed?
+# [x] Consider removing storing task IDs - are they really needed?
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -1034,7 +1034,7 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 def update_market_prices():
     """Update market prices from ESI."""
     EveMarketPrice.objects.update_from_esi(
-        minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2
+        minutes_until_stale=MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
     )
 
 

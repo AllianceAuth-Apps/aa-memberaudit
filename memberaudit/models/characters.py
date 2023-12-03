@@ -30,10 +30,10 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_FEATURE_ROLES_ENABLED,
     MEMBERAUDIT_NOTIFY_TOKEN_ERRORS,
+    MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
+    MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
+    MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS,
     MEMBERAUDIT_UPDATE_STALE_OFFSET,
-    MEMBERAUDIT_UPDATE_STALE_RING_1,
-    MEMBERAUDIT_UPDATE_STALE_RING_2,
-    MEMBERAUDIT_UPDATE_STALE_RING_3,
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
@@ -100,42 +100,37 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             """
             return cls.enabled_sections().difference(
                 {
-                    Character.UpdateSection.ASSETS,
-                    Character.UpdateSection.MAILS,
-                    Character.UpdateSection.CONTACTS,
-                    Character.UpdateSection.CONTRACTS,
-                    Character.UpdateSection.SKILL_SETS,
-                    Character.UpdateSection.SKILLS,
+                    cls.ASSETS,
+                    cls.MAILS,
+                    cls.CONTACTS,
+                    cls.CONTRACTS,
+                    cls.SKILL_SETS,
+                    cls.SKILLS,
                 }
             )
 
-    UPDATE_SECTION_RINGS_MAP = {
-        UpdateSection.ASSETS: 3,
-        UpdateSection.ATTRIBUTES: 3,
-        UpdateSection.CHARACTER_DETAILS: 2,
-        UpdateSection.CONTACTS: 2,
-        UpdateSection.CONTRACTS: 2,
-        UpdateSection.CORPORATION_HISTORY: 3,
-        UpdateSection.FW_STATS: 3,
-        UpdateSection.IMPLANTS: 2,
-        UpdateSection.JUMP_CLONES: 2,
-        UpdateSection.LOCATION: 1,
-        UpdateSection.LOYALTY: 3,
-        UpdateSection.MAILS: 2,
-        UpdateSection.MINING_LEDGER: 2,
-        UpdateSection.ONLINE_STATUS: 1,
-        UpdateSection.PLANETS: 2,
-        UpdateSection.ROLES: 2,
-        UpdateSection.SHIP: 1,
-        UpdateSection.SKILLS: 2,
-        UpdateSection.SKILL_SETS: 2,
-        UpdateSection.SKILL_QUEUE: 1,
-        UpdateSection.STANDINGS: 2,
-        UpdateSection.TITLES: 3,
-        UpdateSection.WALLET_BALLANCE: 2,
-        UpdateSection.WALLET_JOURNAL: 2,
-        UpdateSection.WALLET_TRANSACTIONS: 2,
-    }
+        @classmethod
+        def time_until_section_updates_are_stale(cls) -> Dict[str, int]:
+            """Return map of each section and their time until an update is stale."""
+            config = {
+                section.value: MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
+                for section in cls
+            }
+            config.update(MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS)
+            config.update(MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG)
+
+            invalid_keys = [key for key in config if key not in cls]
+            if invalid_keys:
+                logger.warning(
+                    "Invalid sections in config of stale minutes. "
+                    "Will use global default instead: %s",
+                    ",".join(sorted(invalid_keys)),
+                )
+
+            for key in invalid_keys:
+                del config[key]
+
+            return config
 
     class TotalUpdateStatus(models.TextChoices):
         """An summary update status of a character
@@ -353,31 +348,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.token_error_notified_at = None
                 self.save(update_fields=["token_error_notified_at"])
 
-    @classmethod
-    def _update_section_time_until_stale(cls, section: UpdateSection) -> dt.timedelta:
-        """Return time until given update section is considered stale."""
-        section = cls.UpdateSection(section)
-        ring = cls.UPDATE_SECTION_RINGS_MAP[section]
-        if ring == 1:
-            minutes = MEMBERAUDIT_UPDATE_STALE_RING_1
-        elif ring == 2:
-            minutes = MEMBERAUDIT_UPDATE_STALE_RING_2
-        else:
-            minutes = MEMBERAUDIT_UPDATE_STALE_RING_3
-
-        # setting reduced by offset to ensure all sections are stale when
-        # periodic task starts
-        return dt.timedelta(minutes=minutes - MEMBERAUDIT_UPDATE_STALE_OFFSET)
-
-    @classmethod
-    def sections_in_ring(cls, ring: int) -> Set["Character.UpdateSection"]:
-        """Return the sections for a given ring."""
-        return {
-            section
-            for section, ring_num in cls.UPDATE_SECTION_RINGS_MAP.items()
-            if ring_num == ring
-        }
-
     def is_update_needed(self) -> bool:
         """Return True when this character needs to be updated, otherwise False."""
         needs_update = False
@@ -398,7 +368,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if not update_status.is_success or not update_status.started_at:
             needs_update = True
         else:
-            deadline = now() - self._update_section_time_until_stale(section)
+            minutes = (
+                section_time_until_stale[section.value]
+                - MEMBERAUDIT_UPDATE_STALE_OFFSET
+            )
+            deadline = now() - dt.timedelta(minutes=minutes)
             needs_update = update_status.started_at < deadline
 
         if needs_update and update_status.has_token_error:
@@ -965,3 +939,8 @@ class CharacterUpdateStatus(models.Model):
         self.finished_at = None
         self.save()
         # TODO: Check if the hash also needs to be reset?
+
+
+section_time_until_stale = (
+    Character.UpdateSection.time_until_section_updates_are_stale()
+)

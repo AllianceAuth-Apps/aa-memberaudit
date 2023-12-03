@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Remove task statistics from memberaudit_stats command and obsolete setting MEMBERAUDIT_LOG_UPDATE_STATS. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) to analyze task statistics for Member Audit
 - Improved output of stats command
 - Refactoring
+- Remove "rings" and add ability to define custom update times for each section
 
 ## [3.4.4] - 2023-12-01
 

@@ -359,12 +359,26 @@ class TestCharacterStatus(NoSocketsTestCase):
         self.assertTrue(status.finished_at)
 
 
-class TestCharacterUpdateSection(NoSocketsTestCase):
+class TestCharacterUpdateSection(TestCase):
     def test_method_name(self):
         # given
         section = Character.UpdateSection.CORPORATION_HISTORY
         # when/then
         self.assertEqual(section.method_name, "update_corporation_history")
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG", {"titles": 98})
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 42)
+    def test_should_return_correct_map(self):
+        # when
+        result = Character.UpdateSection.time_until_section_updates_are_stale()
+        # then
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertIn(section, result)
+
+        self.assertEqual(result["mails"], 42)  # global default
+        self.assertEqual(result["assets"], 480)  # section defaults
+        self.assertEqual(result["titles"], 98)  # custom setting
 
 
 class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
@@ -496,7 +510,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             self.character_1001.update_status_for_section("invalid")
 
 
-@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
+@patch(MODELS_PATH + ".section_time_until_stale", {"assets": 640})
 class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
