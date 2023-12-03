@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
 - Improved performance of character update process for: contact labels, loyalty points, planets, standings, titles
 - Refactoring
+- Removed obsolete setting MEMBERAUDIT_LOG_UPDATE_STATS
 
 ## [3.4.4] - 2023-12-01
 

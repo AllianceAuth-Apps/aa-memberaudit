@@ -46,11 +46,6 @@ MEMBERAUDIT_LOCATION_STALE_HOURS = clean_setting("MEMBERAUDIT_LOCATION_STALE_HOU
 e.g. for name changes of structures.
 """
 
-MEMBERAUDIT_LOG_UPDATE_STATS = clean_setting("MEMBERAUDIT_LOG_UPDATE_STATS", False)
-"""When set True will log the update stats at the start of every run
-The update stats include the measures durations from the last run per round and section.
-"""
-
 MEMBERAUDIT_MAX_MAILS = clean_setting("MEMBERAUDIT_MAX_MAILS", 250)
 """Maximum amount of mails fetched from ESI for each character."""
 

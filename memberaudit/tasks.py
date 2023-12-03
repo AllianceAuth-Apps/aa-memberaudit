@@ -23,7 +23,6 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_LOG_UPDATE_STATS,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
     MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS,
     MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
@@ -39,7 +38,6 @@ from memberaudit.models import (
     CharacterAsset,
     CharacterContract,
     CharacterMail,
-    CharacterUpdateStatus,
     ComplianceGroupDesignation,
     General,
     Location,
@@ -92,10 +90,6 @@ def update_all_characters(self, force_update: bool = False) -> None:
     Args:
         - force_update: When set to True will always update regardless of stale status
     """
-    if MEMBERAUDIT_LOG_UPDATE_STATS:
-        stats = CharacterUpdateStatus.objects.statistics()
-        logger.info(f"Update statistics: {stats}")
-
     Character.objects.disable_characters_with_no_owner()
 
     # start sync for all enabled characters
