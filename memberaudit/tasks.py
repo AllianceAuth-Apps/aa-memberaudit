@@ -154,12 +154,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
             task_name = f"update_character_{section.value}"
             task = globals()[task_name]
             task.apply_async(
-                kwargs={
-                    "character_pk": character.pk,
-                    "force_update": force_update,
-                    "root_task_id": self.request.parent_id,
-                    "parent_task_id": self.request.id,
-                },
+                kwargs={"character_pk": character.pk, "force_update": force_update},
                 priority=priority,
             )
 
@@ -167,12 +162,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         Character.UpdateSection.MAILS
     ):
         update_character_mails.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
+            kwargs={"character_pk": character.pk, "force_update": force_update},
             priority=priority,
         )
 
@@ -180,12 +170,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         Character.UpdateSection.CONTACTS
     ):
         update_character_contacts.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
+            kwargs={"character_pk": character.pk, "force_update": force_update},
             priority=priority,
         )
 
@@ -193,24 +178,14 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         Character.UpdateSection.CONTRACTS
     ):
         update_character_contracts.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
+            kwargs={"character_pk": character.pk, "force_update": force_update},
             priority=priority,
         )
     if force_update or character.is_update_needed_for_section(
         Character.UpdateSection.ASSETS
     ):
         update_character_assets.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
+            kwargs={"character_pk": character.pk, "force_update": force_update},
             priority=priority,
         )
 
@@ -220,18 +195,12 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         or character.is_update_needed_for_section(Character.UpdateSection.SKILL_SETS)
     ):
         chain(
-            update_character_skills.si(
-                character.pk,
-                force_update,
-                self.request.parent_id,
-                self.request.id,
-            ).set(priority=priority),
-            update_character_skill_sets.si(
-                character.pk,
-                force_update,
-                self.request.parent_id,
-                self.request.id,
-            ).set(priority=priority),
+            update_character_skills.si(character.pk, force_update).set(
+                priority=priority
+            ),
+            update_character_skill_sets.si(character.pk, force_update).set(
+                priority=priority
+            ),
         ).delay()
 
     if character.is_shared:
@@ -253,395 +222,244 @@ _update_character_params = {
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_attributes(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_attributes(character_pk: int, force_update: bool) -> None:
     """Update attributes for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.ATTRIBUTES,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_character_details(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_character_details(character_pk: int, force_update: bool) -> None:
     """Update character_details for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.CHARACTER_DETAILS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_corporation_history(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_corporation_history(character_pk: int, force_update: bool) -> None:
     """Update corporation_history for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.CORPORATION_HISTORY,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_fw_stats(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
     """Update fw_stats for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.FW_STATS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_implants(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_implants(character_pk: int, force_update: bool) -> None:
     """Update implants for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.IMPLANTS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_jump_clones(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
     """Update jump_clones for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.JUMP_CLONES,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_location(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_location(character_pk: int, force_update: bool) -> None:
     """Update location for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.LOCATION,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_loyalty(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_loyalty(character_pk: int, force_update: bool) -> None:
     """Update loyalty for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.LOYALTY,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_mining_ledger(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_mining_ledger(character_pk: int, force_update: bool) -> None:
     """Update mining_ledger for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.MINING_LEDGER,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_online_status(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_online_status(character_pk: int, force_update: bool) -> None:
     """Update online_status for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.ONLINE_STATUS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_planets(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_planets(character_pk: int, force_update: bool) -> None:
     """Update planets for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.PLANETS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_roles(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_roles(character_pk: int, force_update: bool) -> None:
     """Update roles for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.ROLES,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_ship(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_ship(character_pk: int, force_update: bool) -> None:
     """Update ship for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.SHIP,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_skill_queue(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
     """Update skill_queue for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_QUEUE,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_skill_sets(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
     """Update skill_sets for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_SETS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_skills(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_skills(character_pk: int, force_update: bool) -> None:
     """Update skills for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.SKILLS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_standings(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_standings(character_pk: int, force_update: bool) -> None:
     """Update standings for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.STANDINGS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_titles(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_titles(character_pk: int, force_update: bool) -> None:
     """Update titles for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.TITLES,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_wallet_balance(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_wallet_balance(character_pk: int, force_update: bool) -> None:
     """Update wallet_balance for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_BALLANCE,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_wallet_journal(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_wallet_journal(character_pk: int, force_update: bool) -> None:
     """Update wallet_journal for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_JOURNAL,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 @shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_wallet_transactions(
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_wallet_transactions(character_pk: int, force_update: bool) -> None:
     """Update wallet_transactions for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_TRANSACTIONS,
         force_update=force_update,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
     )
 
 
 def _update_character_section(
-    character_pk: int,
-    section: str,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
+    character_pk: int, section: str, force_update: bool
 ) -> None:
     """Update a section for a character from ESI."""
     section = Character.UpdateSection(section)
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.reset_update_section(section, root_task_id, parent_task_id)
+    character.reset_update_section(section)
     logger.info("%s: Updating %s", character, section.label)
 
     method: Callable = getattr(character, section.method_name)
@@ -682,24 +500,14 @@ _update_task_params_with_bind = {
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_assets(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_assets(self, character_pk: int, force_update: bool) -> None:
     """Update the assets of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.ASSETS
     logger.info("%s: Updating %s", character, section.label)
-    character.reset_update_section(
-        section=section,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
-    )
+    character.reset_update_section(section=section)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         assets_build_list_from_esi.s(character.pk, force_update).set(priority=priority),
@@ -940,22 +748,14 @@ def assets_create_children(
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_mails(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_mails(self, character_pk: int, force_update: bool) -> None:
     """Update mails of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.MAILS
     logger.info("%s: Updating %s", character, section.label)
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         update_character_mailing_lists.si(character.pk, force_update=force_update).set(
@@ -1056,21 +856,13 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_contacts(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_contacts(self, character_pk: int, force_update: bool) -> None:
     """Update contacts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTACTS
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
@@ -1120,21 +912,13 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_contracts(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+def update_character_contracts(self, character_pk: int, force_update: bool) -> None:
     """Update contracts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTRACTS
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(

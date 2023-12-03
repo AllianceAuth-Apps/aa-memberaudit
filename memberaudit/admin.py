@@ -164,7 +164,6 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "last_error_message",
         "started_at",
         "finished_at",
-        "root_task_id",
     )
     readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
     ordering = ["section"]

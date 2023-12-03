@@ -442,17 +442,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         )[0]
         section_obj.update_content_hash(content=content, hash_num=hash_num)
 
-    def reset_update_section(
-        self,
-        section: UpdateSection,
-        root_task_id: Optional[str] = None,
-        parent_task_id: Optional[str] = None,
-    ) -> "CharacterUpdateStatus":
+    def reset_update_section(self, section: UpdateSection) -> "CharacterUpdateStatus":
         """Reset status of given update section and returns it."""
         update_status_obj: CharacterUpdateStatus = self.update_status_set.get_or_create(
             section=section
         )[0]
-        update_status_obj.reset(root_task_id, parent_task_id)
+        update_status_obj.reset()
         return update_status_obj
 
     def update_status_as_dict(self) -> Dict[str, Any]:
@@ -894,18 +889,6 @@ class CharacterUpdateStatus(models.Model):
         db_index=True,
     )
     last_error_message = models.TextField()
-    root_task_id = models.CharField(
-        max_length=36,
-        default="",
-        db_index=True,
-        help_text="ID of update_all_characters task that started this update",
-    )
-    parent_task_id = models.CharField(
-        max_length=36,
-        default="",
-        db_index=True,
-        help_text="ID of character_update task that started this update",
-    )
     started_at = models.DateTimeField(null=True, default=None, db_index=True)
 
     objects = CharacterUpdateStatusManager()
@@ -973,16 +956,12 @@ class CharacterUpdateStatus(models.Model):
             json.dumps(content, cls=DjangoJSONEncoder).encode("utf-8")
         ).hexdigest()
 
-    def reset(
-        self, root_task_id: Optional[str] = None, parent_task_id: Optional[str] = None
-    ) -> None:
+    def reset(self) -> None:
         """Reset this update status."""
         self.is_success = None
         self.last_error_message = ""
         self.has_token_error = False
         self.started_at = now()
         self.finished_at = None
-        self.root_task_id = root_task_id if root_task_id else ""
-        self.parent_task_id = parent_task_id if root_task_id else ""
         self.save()
         # TODO: Check if the hash also needs to be reset?

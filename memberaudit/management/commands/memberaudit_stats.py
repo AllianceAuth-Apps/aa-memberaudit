@@ -1,3 +1,5 @@
+"""Return current statistics about Member Audit."""
+
 import json
 import logging
 
@@ -13,7 +15,7 @@ logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
 
 class Command(BaseCommand):
-    help = "This command returns current statistics as JSON"
+    help = __doc__
 
     def handle(self, *args, **options):
         stats = CharacterUpdateStatus.objects.statistics()
