@@ -1,0 +1,24 @@
+from io import StringIO
+
+from django.core.management import call_command
+
+from app_utils.testing import NoSocketsTestCase
+
+from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.utils import create_memberaudit_character
+
+
+class TestStats(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_entities()
+
+    def test_command_should_work(self):
+        # given
+        create_memberaudit_character(1001)
+        create_memberaudit_character(1002)
+        out = StringIO()
+
+        # when/then
+        call_command("memberaudit_stats", stdout=out)

@@ -1,24 +1,14 @@
 """Return current statistics about Member Audit."""
 
-import json
 import logging
 
+from django.apps import apps
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
-from django.core.serializers.json import DjangoJSONEncoder
 
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
-from memberaudit.models import (
-    Character,
-    CharacterAsset,
-    CharacterContact,
-    CharacterContract,
-    CharacterMail,
-    SkillSet,
-    SkillSetGroup,
-)
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
@@ -28,18 +18,34 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         stats = calc_statistics()
-        stats_out = json.dumps(
-            stats,
-            sort_keys=True,
-            indent=4,
-            ensure_ascii=False,
-            cls=DjangoJSONEncoder,
-        )
-        self.stdout.write(stats_out)
+
+        self._output_section(stats["object_counts"], "Object counts")
+        self.stdout.write("")
+        self._output_section(stats["settings"], "Settings")
+
+    def _output_section(self, data: dict, title: str):
+        self.stdout.write(f"{title}:")
+        max_width = max(len(label) for label in data) + 1
+        data_sorted = dict(sorted(data.items()))
+        for label, value in data_sorted.items():
+            value_str = f"{value:,}" if isinstance(value, (int, float)) else value
+            self.stdout.write(f"  {label: <{max_width}}: {value_str}")
 
 
 def calc_statistics() -> dict:
     """Return detailed statistics about Member Audit."""
+
+    object_counts = {}
+    my_app = apps.get_app_config("memberaudit")
+    my_character_models = [
+        model_class
+        for model_class in my_app.get_models()
+        if model_class.__name__.startswith("Character")
+    ]
+    for model_class in my_character_models:
+        name = str(model_class._meta.verbose_name_plural)
+        count = model_class.objects.count()
+        object_counts[name] = count
 
     user_count = (
         User.objects.filter(
@@ -48,20 +54,10 @@ def calc_statistics() -> dict:
         .distinct()
         .count()
     )
+    object_counts["users with access"] = user_count
+    data = {"object_counts": object_counts, "settings": _fetch_settings()}
 
-    return {
-        "app_totals": {
-            "users_count": user_count,
-            "characters_count": Character.objects.count(),
-            "skill_set_groups_count": SkillSetGroup.objects.count(),
-            "skill_sets_count": SkillSet.objects.count(),
-            "assets_count": CharacterAsset.objects.count(),
-            "mails_count": CharacterMail.objects.count(),
-            "contacts_count": CharacterContact.objects.count(),
-            "contracts_count": CharacterContract.objects.count(),
-        },
-        "settings": _fetch_settings(),
-    }
+    return data
 
 
 def _fetch_settings():
