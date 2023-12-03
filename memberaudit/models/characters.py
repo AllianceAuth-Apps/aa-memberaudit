@@ -33,7 +33,6 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
     MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS,
-    MEMBERAUDIT_UPDATE_STALE_OFFSET,
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
@@ -368,12 +367,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if not update_status.is_success or not update_status.started_at:
             needs_update = True
         else:
-            minutes = (
-                section_time_until_stale[section.value]
-                - MEMBERAUDIT_UPDATE_STALE_OFFSET
-            )
+            minutes = section_time_until_stale[section.value]
             deadline = now() - dt.timedelta(minutes=minutes)
-            needs_update = update_status.started_at < deadline
+            needs_update = update_status.started_at <= deadline
 
         if needs_update and update_status.has_token_error:
             if not silent:

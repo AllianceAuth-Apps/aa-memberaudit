@@ -93,11 +93,6 @@ MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS = {
 }
 """Default values for stale minutes of specific sections."""
 
-MEMBERAUDIT_UPDATE_STALE_OFFSET = clean_setting("MEMBERAUDIT_UPDATE_STALE_OFFSET", 5)
-"""Actual value for considering staleness will reduced by this value.
-This is required to avoid time synchronization issues.
-"""
-
 MEMBERAUDIT_TASKS_HIGH_PRIORITY = clean_setting(
     "MEMBERAUDIT_TASKS_HIGH_PRIORITY", default_value=3, min_value=1, max_value=9
 )

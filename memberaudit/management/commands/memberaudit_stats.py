@@ -9,6 +9,7 @@ from django.core.management.base import BaseCommand
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
+from memberaudit.models import characters
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
@@ -22,6 +23,8 @@ class Command(BaseCommand):
         self._output_section(stats["object_counts"], "Object counts")
         self.stdout.write("")
         self._output_section(stats["settings"], "Settings")
+        self.stdout.write("")
+        self._output_section(stats["stale_minutes"], "Section stale minutes")
 
     def _output_section(self, data: dict, title: str):
         self.stdout.write(f"{title}:")
@@ -35,6 +38,16 @@ class Command(BaseCommand):
 def calc_statistics() -> dict:
     """Return detailed statistics about Member Audit."""
 
+    data = {
+        "object_counts": _calc_object_counts(),
+        "settings": _fetch_settings(),
+        "stale_minutes": dict(characters.section_time_until_stale),
+    }
+
+    return data
+
+
+def _calc_object_counts():
     object_counts = {}
     my_app = apps.get_app_config("memberaudit")
     my_character_models = [
@@ -55,9 +68,7 @@ def calc_statistics() -> dict:
         .count()
     )
     object_counts["users with access"] = user_count
-    data = {"object_counts": object_counts, "settings": _fetch_settings()}
-
-    return data
+    return object_counts
 
 
 def _fetch_settings():
@@ -65,5 +76,10 @@ def _fetch_settings():
         name: value
         for name, value in vars(app_settings).items()
         if name.startswith("MEMBERAUDIT_")
+        and name
+        not in {
+            "MEMBERAUDIT_BASE_URL",
+            "MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS",
+        }
     }
     return settings
