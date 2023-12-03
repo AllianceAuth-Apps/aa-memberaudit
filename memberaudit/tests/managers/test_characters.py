@@ -1,13 +1,11 @@
-import datetime as dt
 from unittest.mock import patch
 
 from django.test import TestCase
-from django.utils.timezone import now
 
 from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 
-from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.models import Character
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
@@ -514,62 +512,6 @@ class TestCharacterUserHasAccess(TestCase):
         # when
         result_qs = Character.objects.user_has_access(user=user)
         self.assertNotIn(1107, result_qs.eve_character_ids())
-
-
-class TestCharacterUpdateStatusManager(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-
-    def test_calculate_stats_1(self):
-        """Can handle no data"""
-        try:
-            CharacterUpdateStatus.objects.statistics()
-        except Exception as ex:
-            self.fail(f"Unexpected exception {ex} occurred")
-
-    def test_calculate_stats_2(self):
-        """normal calculation"""
-        my_now = now()
-        root_task_id = "1"
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.CONTACTS,
-            is_success=True,
-            started_at=my_now - dt.timedelta(seconds=30),
-            finished_at=my_now,
-            root_task_id=root_task_id,
-        )
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.SKILLS,
-            is_success=True,
-            started_at=my_now + dt.timedelta(seconds=10),
-            finished_at=my_now + dt.timedelta(seconds=30),
-            root_task_id=root_task_id,
-        )
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.ASSETS,
-            is_success=True,
-            started_at=my_now,
-            finished_at=my_now + dt.timedelta(seconds=90),
-            root_task_id=root_task_id,
-        )
-        stats = CharacterUpdateStatus.objects.statistics()["update_statistics"]
-
-        # round duration is calculated as total duration
-        # from start of first to end of last section
-        self.assertEqual(stats["ring_2"]["total"]["duration"], 60)
-        self.assertEqual(stats["ring_2"]["total"]["root_task_id"], root_task_id)
-
-        # can identify longest section with character
-        self.assertEqual(stats["ring_2"]["first"]["section"], "contacts")
-        self.assertEqual(stats["ring_2"]["last"]["section"], "skills")
-        self.assertEqual(stats["ring_3"]["max"]["section"], "assets")
-        self.assertEqual(stats["ring_3"]["max"]["duration"], 90)
 
 
 class TestCharacterUnregisteredCharacterCount(TestCase):
