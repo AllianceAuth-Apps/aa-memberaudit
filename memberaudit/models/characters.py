@@ -364,12 +364,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         if not update_status:
             return True
 
-        if not update_status.is_success or not update_status.started_at:
+        if not update_status.is_success or not update_status.finished_at:
             needs_update = True
         else:
             minutes = section_time_until_stale[section.value]
             deadline = now() - dt.timedelta(minutes=minutes)
-            needs_update = update_status.started_at <= deadline
+            needs_update = update_status.finished_at <= deadline
 
         if needs_update and update_status.has_token_error:
             if not silent:

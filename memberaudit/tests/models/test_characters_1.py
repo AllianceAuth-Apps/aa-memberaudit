@@ -545,11 +545,13 @@ class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
     def test_should_report_true_when_section_is_stale(self):
         # given
         started_at = now() - dt.timedelta(hours=12)
+        finished_at = started_at + dt.timedelta(minutes=10)
         create_character_update_status(
             character=self.character,
             section=self.section,
             is_success=True,
             started_at=started_at,
+            finished_at=finished_at,
         )
         # when/then
         self.assertTrue(self.character.is_update_needed_for_section(self.section))
@@ -581,6 +583,58 @@ class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
         )
         # when/then
         self.assertFalse(self.character.is_update_needed_for_section(self.section))
+
+
+class TestCharacterIsUpdateNeeded(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_false_when_all_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection:
+            create_character_update_status(self.character, section=section)
+
+        # when/then
+        self.assertFalse(self.character.is_update_needed())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_true_when_one_section_is_outdated(self):
+        # given
+        current_sections = set(Character.UpdateSection) - {
+            Character.UpdateSection.ASSETS
+        }
+        for section in current_sections:
+            create_character_update_status(self.character, section=section)
+
+        started_at = now() - dt.timedelta(hours=24)
+        finished_at = started_at + dt.timedelta(minutes=5)
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            started_at=started_at,
+            finished_at=finished_at,
+        )
+
+        # when/then
+        self.assertTrue(self.character.is_update_needed())
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_false_when_all_enabled_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(self.character, section=section)
+
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ROLES,
+            started_at=now() - dt.timedelta(hours=24),
+        )
+        # when/then
+        self.assertFalse(self.character.is_update_needed())
 
 
 class TestCharacterUpdateSkillSets(NoSocketsTestCase):

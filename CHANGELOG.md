@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.5.0] - TBD
 
+### Update notes
+
+Many changes and improvements to task performance...
+
 ### Changed
 
 - Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
@@ -17,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Improved output of stats command
 - Refactoring
 - Remove "rings" and add ability to define custom update times for each section
+- Stale update time now calculated from when an update finished, instead of when it started
 
 ## [3.4.4] - 2023-12-01
 
