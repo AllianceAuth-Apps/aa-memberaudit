@@ -3,6 +3,7 @@
 import datetime as dt
 import hashlib
 import json
+from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPInternalServerError
@@ -43,6 +44,21 @@ from memberaudit.managers.characters import (
 )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+
+
+@dataclass(frozen=True)
+class CharacterNeedsUpdate:
+    """An object which knows what character sections need to be updated."""
+
+    section_map: Dict["Character.UpdateSection", bool]
+    character: "Character"
+
+    def __bool__(self) -> bool:
+        return any(self.section_map.values())
+
+    def for_section(self, section: "Character.UpdateSection") -> bool:
+        """Return True if update is needed for given section, else False."""
+        return self.section_map[Character.UpdateSection(section)]
 
 
 class Character(models.Model):  # pylint: disable=too-many-public-methods
@@ -347,40 +363,19 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.token_error_notified_at = None
                 self.save(update_fields=["token_error_notified_at"])
 
-    def is_update_needed(self) -> bool:
-        """Return True when this character needs to be updated, otherwise False."""
-        needs_update = False
-        for section in Character.UpdateSection.enabled_sections():
-            needs_update |= self.is_update_needed_for_section(section, silent=True)
-        return needs_update
-
-    def is_update_needed_for_section(
-        self, section: UpdateSection, silent: bool = False
-    ) -> bool:
-        """Return True if the given section is stale and needs to be updated, else False.
-        But never report sections with token error as stale.
-        """
-        update_status = self.update_status_for_section(section)
-        if not update_status:
-            return True
-
-        if not update_status.is_success or not update_status.finished_at:
-            needs_update = True
-        else:
-            minutes = section_time_until_stale[section.value]
-            deadline = now() - dt.timedelta(minutes=minutes)
-            needs_update = update_status.finished_at <= deadline
-
-        if needs_update and update_status.has_token_error:
-            if not silent:
-                logger.warning(
-                    "%s: Skipping update due to token error for section: %s",
-                    self,
-                    section.label,
-                )
-            return False
-
-        return needs_update
+    def calc_update_needed(self) -> CharacterNeedsUpdate:
+        """Return map of section and if they need to be update."""
+        sections_needs_update = {
+            section: True for section in self.UpdateSection.enabled_sections()
+        }
+        status_all: List[CharacterUpdateStatus] = self.update_status_set.all()
+        sections_current = {
+            obj.section: obj.is_update_needed()
+            for obj in status_all
+            if obj.section in sections_needs_update
+        }
+        sections_needs_update.update(sections_current)
+        return CharacterNeedsUpdate(sections_needs_update, self)
 
     def update_status_for_section(
         self, section: UpdateSection
@@ -391,6 +386,15 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return self.update_status_set.get(section=section)
         except CharacterUpdateStatus.DoesNotExist:
             return None
+
+    def is_update_needed_for_section(self, section: UpdateSection) -> bool:
+        """Return True if the given section needs to be updated,
+        else False.
+        """
+        status = self.update_status_for_section(section)
+        if not status:
+            return True
+        return status.is_update_needed()
 
     def has_section_changed(
         self, section: UpdateSection, content: Any, hash_num: int = 1
@@ -919,6 +923,28 @@ class CharacterUpdateStatus(models.Model):
             self.content_hash_1 = new_hash
 
         self.save()
+
+    def is_update_needed(self) -> bool:
+        """Return True if this status is stale and needs to be updated, else False.
+        But never report sections with token error as stale.
+        """
+        section = Character.UpdateSection(self.section)
+        if not self.is_success or not self.finished_at:
+            needs_update = True
+        else:
+            minutes = section_time_until_stale[section]
+            deadline = now() - dt.timedelta(minutes=minutes)
+            needs_update = self.finished_at <= deadline
+
+        if needs_update and self.has_token_error:
+            logger.warning(
+                "%s: Ignoring update need because of token error for section: %s",
+                self.character,
+                section.label,
+            )
+            return False
+
+        return needs_update
 
     @staticmethod
     def _calculate_hash(content: Any) -> str:

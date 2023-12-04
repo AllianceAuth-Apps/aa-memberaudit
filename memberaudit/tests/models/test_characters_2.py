@@ -1,3 +1,4 @@
+import datetime as dt
 from unittest.mock import MagicMock, patch
 
 from django.test import TestCase
@@ -7,9 +8,10 @@ from esi.errors import TokenError
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import create_user_from_evecharacter
+from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.tests.models.test_characters_1 import MODELS_PATH
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
@@ -888,3 +890,71 @@ class TestCharacterUpdateStatusAsDict(TestCase):
         result = self.character.update_status_as_dict()
         # then
         self.assertDictEqual(result, {})
+
+
+@patch(MODELS_PATH + ".section_time_until_stale", {"assets": 640})
+class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_entities()
+        cls.section = Character.UpdateSection.ASSETS
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_report_false_when_section_not_stale(self):
+        # given
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=now() - dt.timedelta(seconds=30),
+            finished_at=now(),
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())
+
+    def test_should_report_true_when_section_has_error(self):
+        # given
+        status = create_character_update_status(
+            character=self.character, section=self.section, is_success=False
+        )
+        # when/then
+        self.assertTrue(status.is_update_needed())
+
+    def test_should_report_true_when_section_is_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        finished_at = started_at + dt.timedelta(minutes=10)
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            started_at=started_at,
+            finished_at=finished_at,
+        )
+        # when/then
+        self.assertTrue(status.is_update_needed())
+
+    def test_should_report_false_when_section_has_token_error_and_stale(self):
+        # given
+        started_at = now() - dt.timedelta(hours=12)
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            started_at=started_at,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())
+
+    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
+        # given
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())

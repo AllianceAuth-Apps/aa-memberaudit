@@ -510,82 +510,7 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             self.character_1001.update_status_for_section("invalid")
 
 
-@patch(MODELS_PATH + ".section_time_until_stale", {"assets": 640})
-class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.section = Character.UpdateSection.ASSETS
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def setUp(self) -> None:
-        self.character = create_character_from_user(self.user)
-
-    def test_should_report_false_when_section_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_has_error(self):
-        # given
-        create_character_update_status(
-            character=self.character, section=self.section, is_success=False
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_is_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        finished_at = started_at + dt.timedelta(minutes=10)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=started_at,
-            finished_at=finished_at,
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_return_true_when_section_does_not_exist(self):
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            started_at=started_at,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-
-class TestCharacterIsUpdateNeeded(TestCase):
+class TestCharacterCalcUpdateNeeded(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -598,8 +523,11 @@ class TestCharacterIsUpdateNeeded(TestCase):
         for section in Character.UpdateSection:
             create_character_update_status(self.character, section=section)
 
-        # when/then
-        self.assertFalse(self.character.is_update_needed())
+        # when
+        update_needed = self.character.calc_update_needed()
+
+        # then
+        self.assertFalse(update_needed)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_true_when_one_section_is_outdated(self):
@@ -619,8 +547,11 @@ class TestCharacterIsUpdateNeeded(TestCase):
             finished_at=finished_at,
         )
 
-        # when/then
-        self.assertTrue(self.character.is_update_needed())
+        # when
+        update_needed = self.character.calc_update_needed()
+
+        # then
+        self.assertTrue(update_needed)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_false_when_all_enabled_sections_are_current(self):
@@ -633,8 +564,12 @@ class TestCharacterIsUpdateNeeded(TestCase):
             section=Character.UpdateSection.ROLES,
             started_at=now() - dt.timedelta(hours=24),
         )
-        # when/then
-        self.assertFalse(self.character.is_update_needed())
+
+        # when
+        update_needed = self.character.calc_update_needed()
+
+        # then
+        self.assertFalse(update_needed)
 
 
 class TestCharacterUpdateSkillSets(NoSocketsTestCase):

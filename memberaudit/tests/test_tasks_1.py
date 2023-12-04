@@ -603,6 +603,7 @@ class TestCharacterUpdateFull(TestCase):
 
         # when
         result = tasks.update_character(self.character_1001.pk)
+
         # then
         self.assertTrue(result)
         for section in Character.UpdateSection.enabled_sections():
@@ -822,11 +823,9 @@ class TestUpdateCharactersDoctrines(TestCase):
         load_entities()
         reset_celery_once_locks()
 
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
-
     @patch(MODELS_PATH + ".characters.Character.update_skill_sets")
     def test_normal(self, mock_update_skill_sets):
+        create_memberaudit_character(1001)
         tasks.update_characters_skill_checks()
         self.assertTrue(mock_update_skill_sets.called)
 
