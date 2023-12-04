@@ -54,10 +54,11 @@ class CharacterNeedsUpdate:
     character: "Character"
 
     def __bool__(self) -> bool:
+        """Return True if any section needs to be updated, else False."""
         return any(self.section_map.values())
 
     def for_section(self, section: "Character.UpdateSection") -> bool:
-        """Return True if update is needed for given section, else False."""
+        """Return True if the given section needs to be updated, else False."""
         return self.section_map[Character.UpdateSection(section)]
 
 

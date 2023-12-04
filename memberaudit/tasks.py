@@ -128,7 +128,9 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     - True when update was conducted
     - False when no updated was needed
     """
-    character: Character = Character.objects.get(pk=character_pk)
+    character: Character = Character.objects.prefetch_related("update_status_set").get(
+        pk=character_pk
+    )
     if character.is_orphan:
         logger.info("%s: Skipping update for orphaned character", character)
         return False

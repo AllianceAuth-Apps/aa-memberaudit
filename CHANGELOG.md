@@ -22,6 +22,7 @@ Many changes and improvements to task performance...
 - Refactoring
 - Remove "rings" and add ability to define custom update times for each section
 - Stale update time now calculated from when an update finished, instead of when it started
+- Various task related performance tweaks
 
 ## [3.4.4] - 2023-12-01
 
