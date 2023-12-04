@@ -9,20 +9,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.5.0] - TBD
 
-### Update notes
-
-Many changes and improvements to task performance...
-
 ### Changed
 
-- Have one explicit update task per character section, instead of a generic update section task. This should make it much easier to monitor task executions and spot issues.
-- Improved performance of character update process for: contact labels, loyalty points, planets, standings, titles
-- Remove task statistics from memberaudit_stats command and obsolete setting MEMBERAUDIT_LOG_UPDATE_STATS. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) to analyze task statistics for Member Audit
-- Improved output of stats command
+- Major changes to the character update tasks:
+  - Ability to define how often each and every section is updates (this replaces the former rings approach)
+  - We now have one main task for updating each section to make it easier to monitor what is happening (this replaces the previous character_update_section task, which did most of the work)
+  - Many performance improvements (e.g. Only updating changes, instead of recreating all objects every time). Effected sections are: contact labels, loyalty points, planets, standings, titles
+  - Stale update time now calculated from when an update finished, instead of when it started
+
+- Removed task statistics from **memberaudit_stats** command incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics for Member Audit
+- **memberaudit_stats** now shows the current objects counts for all sections, the current Member Audit settings and the current configuration for section stale minutes (i.e. how often sections are updated)
 - Refactoring
-- Remove "rings" and add ability to define custom update times for each section
-- Stale update time now calculated from when an update finished, instead of when it started
-- Various task related performance tweaks
+- Improved test suite
 
 ## [3.4.4] - 2023-12-01
 

@@ -507,7 +507,7 @@ class SkillSetSkill(models.Model):
         return max(levels)
 
     @property
-    def maximum_skill_str(self) -> str:  # TODO: Add test
+    def maximum_skill_str(self) -> str:
         """Skill with maximum level as string."""
         return self._skill_with_roman_level(self.maximum_level)
 

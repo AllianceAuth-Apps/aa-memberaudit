@@ -432,3 +432,9 @@ class TestSkillSetSkill(NoSocketsTestCase):
         obj = create_skill_set_skill(self.skill_set, required_level=None)
         # when/then
         self.assertFalse(obj.is_required)
+
+    def test_should_return_maximum_skill_str(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, recommended_level=1)
+        # when/then
+        self.assertIn(obj.eve_type.name, obj.maximum_skill_str)
