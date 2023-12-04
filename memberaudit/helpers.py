@@ -90,3 +90,12 @@ def determine_task_priority(task_obj: Task) -> Optional[int]:
     """Return priority of give task or None if not defined."""
     properties = task_obj.request.get("properties") or {}
     return properties.get("priority")
+
+
+def arabic_number_to_roman(value) -> str:
+    """Map to convert arabic to roman numbers (1 to 5 only)"""
+    my_map = {0: "-", 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
+    try:
+        return my_map[value]
+    except KeyError:
+        return "-"

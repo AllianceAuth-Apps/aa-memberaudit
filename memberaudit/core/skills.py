@@ -5,8 +5,8 @@ from typing import DefaultDict, Dict, Iterable, List, Tuple
 
 from eveuniverse.models import EveType, EveTypeDogmaAttribute
 
-from memberaudit.constants import MAP_ARABIC_TO_ROMAN_NUMBERS
 from memberaudit.constants import EveDogmaAttributeId as AttributeId
+from memberaudit.helpers import arabic_number_to_roman
 
 
 @dataclass(frozen=True)
@@ -17,7 +17,7 @@ class Skill:
     level: int
 
     def __str__(self) -> str:
-        level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[self.level]
+        level_str = arabic_number_to_roman(self.level)
         return f"{self.eve_type.name} {level_str}"
 
     def __lt__(self, other):

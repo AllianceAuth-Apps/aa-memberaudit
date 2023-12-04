@@ -87,9 +87,6 @@ class EveDogmaEffectId(IntEnum):
     SUB_SYSTEM = 3772
 
 
-MAP_ARABIC_TO_ROMAN_NUMBERS = {0: "-", 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
-"""Map to convert arabic to roman numbers (1 to 5 only)"""
-
 DATETIME_FORMAT = "%Y-%b-%d %H:%M"
 MY_DATETIME_FORMAT = "Y-M-d H:i"
 DEFAULT_ICON_SIZE = 32

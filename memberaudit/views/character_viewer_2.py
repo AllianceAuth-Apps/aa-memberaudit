@@ -34,14 +34,13 @@ from memberaudit.constants import (
     DATETIME_FORMAT,
     DEFAULT_ICON_SIZE,
     MAIL_LABEL_ID_ALL_MAILS,
-    MAP_ARABIC_TO_ROMAN_NUMBERS,
     MY_DATETIME_FORMAT,
     SKILL_SET_DEFAULT_ICON_TYPE_ID,
     EveSkillTypeId,
 )
 from memberaudit.core.standings import Standing
 from memberaudit.decorators import fetch_character_if_allowed
-from memberaudit.helpers import implant_slot_num
+from memberaudit.helpers import arabic_number_to_roman, implant_slot_num
 from memberaudit.models import (
     Character,
     CharacterMail,
@@ -295,6 +294,9 @@ def character_planets_data(
             planet.last_update_at.strftime(DATETIME_FORMAT),
             humanize.naturaltime(planet.last_update_at),
         )
+        upgrade_level = (
+            arabic_number_to_roman(planet.upgrade_level) if planet.upgrade_level else ""
+        )
         data.append(
             {
                 "id": planet.pk,
@@ -311,9 +313,7 @@ def character_planets_data(
                 },
                 "solar_system_name": eve_solar_system.name,
                 "type": planet.eve_planet.type_name(),
-                "upgrade_level": MAP_ARABIC_TO_ROMAN_NUMBERS.get(
-                    planet.upgrade_level, ""
-                ),
+                "upgrade_level": upgrade_level,
             }
         )
 
@@ -364,7 +364,7 @@ def character_skillqueue_data(
         for row in character.skillqueue.select_related("eve_type").filter(
             character_id=character_pk
         ):
-            level_roman = MAP_ARABIC_TO_ROMAN_NUMBERS[row.finished_level]
+            level_roman = arabic_number_to_roman(row.finished_level)
             skill_str = f"{row.eve_type.name}&nbsp;{level_roman}"
             if row.is_active:
                 skill_str += " [ACTIVE]"
@@ -450,7 +450,7 @@ def character_skill_sets_data(
                     format_html(
                         "{}&nbsp;{}",
                         obj["name"],
-                        MAP_ARABIC_TO_ROMAN_NUMBERS[obj[level_name]],
+                        arabic_number_to_roman(obj[level_name]),
                     ),
                     "default",
                 )
@@ -550,15 +550,13 @@ def character_skill_set_details(
         met_required = True
 
         if character_skill:
-            current_str = MAP_ARABIC_TO_ROMAN_NUMBERS[
-                character_skill.active_skill_level
-            ]
+            current_str = arabic_number_to_roman(character_skill.active_skill_level)
 
         if skill.recommended_level:
-            recommended_level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[skill.recommended_level]
+            recommended_level_str = arabic_number_to_roman(skill.recommended_level)
 
         if skill.required_level:
-            required_level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[skill.required_level]
+            required_level_str = arabic_number_to_roman(skill.required_level)
 
         if not character_skill:
             result_icon = ICON_FAILED
@@ -669,7 +667,7 @@ def character_skills_data(
     skills_data = []
     try:
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
-            level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[skill.active_skill_level]
+            level_str = arabic_number_to_roman(skill.active_skill_level)
             skill_name = format_html(
                 '<span title="{}">{} {}</span>',
                 skill.eve_type.description,
