@@ -108,25 +108,30 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return sections
 
         @classmethod
-        def time_until_section_updates_are_stale(cls) -> Dict[str, int]:
+        def time_until_section_updates_are_stale(
+            cls,
+        ) -> Dict["Character.UpdateSection", int]:
             """Return map of each section and their time until an update is stale."""
             config = {
-                section.value: MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
+                section: MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
                 for section in cls
             }
-            config.update(MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS)
-            config.update(MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG)
 
-            invalid_keys = [key for key in config if key not in cls]
-            if invalid_keys:
-                logger.warning(
-                    "Invalid sections in config of stale minutes. "
-                    "Will use global default instead: %s",
-                    ",".join(sorted(invalid_keys)),
-                )
+            section_defaults = MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS
+            for key, value in section_defaults.items():
+                config[cls(key)] = value
 
-            for key in invalid_keys:
-                del config[key]
+            section_config = MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG
+            for key, value in section_config.items():
+                try:
+                    config[cls(key)] = value
+                except ValueError:
+                    logger.warning(
+                        "Ignoring invalid section name '%s' in config "
+                        "for stale minutes. "
+                        "Please correct the invalid config.",
+                        value,
+                    )
 
             return config
 
@@ -949,3 +954,4 @@ class CharacterUpdateStatus(models.Model):
 section_time_until_stale = (
     Character.UpdateSection.time_until_section_updates_are_stale()
 )
+"""Mapping of all sections with effective stale minutes."""

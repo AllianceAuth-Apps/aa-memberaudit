@@ -13,7 +13,7 @@ from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.models import Character, CharacterUpdateStatus, Location
+from memberaudit.models import Character, CharacterUpdateStatus, Location, characters
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.factories import (
     create_character,
@@ -376,9 +376,25 @@ class TestCharacterUpdateSection(TestCase):
             with self.subTest(section=section):
                 self.assertIn(section, result)
 
-        self.assertEqual(result["mails"], 42)  # global default
-        self.assertEqual(result["assets"], 480)  # section defaults
-        self.assertEqual(result["titles"], 98)  # custom setting
+        self.assertEqual(result[Character.UpdateSection.MAILS], 42)  # global default
+        self.assertEqual(
+            result[Character.UpdateSection.ASSETS], 480
+        )  # section defaults
+        self.assertEqual(result[Character.UpdateSection.TITLES], 98)  # custom setting
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG", {"invalid": 98})
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 42)
+    @patch(MODELS_PATH + ".logger", wraps=characters.logger)
+    def test_should_ignore_invalid_config(self, spy_logger):
+        # when
+        result = Character.UpdateSection.time_until_section_updates_are_stale()
+
+        # then
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertIn(section, result)
+
+        self.assertTrue(spy_logger.warning.called)
 
 
 class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
