@@ -1,6 +1,7 @@
 """Old style asset tests."""
 
 import datetime as dt
+from typing import Dict
 from unittest.mock import patch
 
 from bravado.exception import HTTPError
@@ -580,12 +581,20 @@ class TestCharacterUpdateFull(TestCase):
         self.character_1001 = create_memberaudit_character(1001)
 
     @tag("breaks_with_tox")  # TODO: Find solution
+    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_update_all_sections_from_scratch(self):
         # when
         result = tasks.update_character(self.character_1001.pk)
+
         # then
         self.assertTrue(result)
-        self.assertTrue(self.character_1001.is_update_status_ok())
+
+        status_all: Dict[str, CharacterUpdateStatus] = {
+            obj.section: obj for obj in self.character_1001.update_status_set.all()
+        }
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertTrue(status_all[section].is_success)
 
     @tag("breaks_with_tox")  # TODO: Find solution
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
@@ -606,11 +615,13 @@ class TestCharacterUpdateFull(TestCase):
 
         # then
         self.assertTrue(result)
+
         for section in Character.UpdateSection.enabled_sections():
             with self.subTest(section=section):
                 self.assertFalse(
                     self.character_1001.is_update_needed_for_section(section=section)
                 )
+
         self.assertTrue(
             self.character_1001.is_update_needed_for_section(
                 section=Character.UpdateSection.ROLES

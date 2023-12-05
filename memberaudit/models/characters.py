@@ -108,24 +108,6 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             return sections
 
         @classmethod
-        def enabled_sections_for_simple_update_tasks(
-            cls,
-        ) -> Set["Character.UpdateSection"]:
-            """Return enabled section that can be updated by
-            with simple update task.
-            """
-            return cls.enabled_sections().difference(
-                {
-                    cls.ASSETS,
-                    cls.MAILS,
-                    cls.CONTACTS,
-                    cls.CONTRACTS,
-                    cls.SKILL_SETS,
-                    cls.SKILLS,
-                }
-            )
-
-        @classmethod
         def time_until_section_updates_are_stale(cls) -> Dict[str, int]:
             """Return map of each section and their time until an update is stale."""
             config = {

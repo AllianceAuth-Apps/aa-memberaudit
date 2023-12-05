@@ -353,15 +353,13 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         which can be updated through single task.
         """
         actions: dict = super().get_actions(request)
-        sections = (
-            Character.UpdateSection.enabled_sections_for_simple_update_tasks()
-            | {Character.UpdateSection.SKILLS, Character.UpdateSection.SKILL_SETS}
-        )
-        for section in sorted(list(sections)):
+        sections = sorted(list(Character.UpdateSection.enabled_sections()))
+        for section in sections:
             action_name = f"update_section_{section}"
             func = functools.partial(generic_action_update_section, section=section)
             description = f"Update {section.label} for selected characters"
             actions[action_name] = (func, action_name, description)
+
         return dict(sorted(actions.items(), key=lambda item: item[1][2]))
 
     @admin.display(description="")
@@ -450,18 +448,6 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
         self.message_user(
             request, __("Started updating %d characters.") % queryset.count()
-        )
-
-    @admin.action(description=__("Update assets for selected characters"))
-    def update_assets(self, request, queryset):
-        for obj in queryset:
-            tasks.update_character_assets.apply_async(
-                kwargs={"character_pk": obj.pk, "force_update": True},
-                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )  # type: ignore
-
-        self.message_user(
-            request, __("Started updating assets for %d character.") % queryset.count()
         )
 
     @admin.action(

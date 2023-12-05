@@ -131,6 +131,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
         return False
 
     character.reset_token_error_notified_if_status_ok()
+    character.clear_cache()
 
     character_needs_update = character.calc_update_needed()
     if not force_update and not character_needs_update:
@@ -140,13 +141,11 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     logger.info(
         "%s: Starting %s character update", character, "forced" if force_update else ""
     )
-    character.clear_cache()
-
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    sections_to_update_in_loop = list(
-        Character.UpdateSection.enabled_sections_for_simple_update_tasks()
-    )
-    for section in sorted(sections_to_update_in_loop):
+
+    # TODO: Sort tasks by stale minutes
+    sections = list(Character.UpdateSection.enabled_sections())
+    for section in sections:
         if force_update or character_needs_update.for_section(section):
             task_name = f"update_character_{section.value}"
             task = globals()[task_name]
@@ -154,51 +153,6 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
                 kwargs={"character_pk": character.pk, "force_update": force_update},
                 priority=priority,
             )
-
-    if force_update or character_needs_update.for_section(
-        Character.UpdateSection.MAILS
-    ):
-        update_character_mails.apply_async(
-            kwargs={"character_pk": character.pk, "force_update": force_update},
-            priority=priority,
-        )
-
-    if force_update or character_needs_update.for_section(
-        Character.UpdateSection.CONTACTS
-    ):
-        update_character_contacts.apply_async(
-            kwargs={"character_pk": character.pk, "force_update": force_update},
-            priority=priority,
-        )
-
-    if force_update or character_needs_update.for_section(
-        Character.UpdateSection.CONTRACTS
-    ):
-        update_character_contracts.apply_async(
-            kwargs={"character_pk": character.pk, "force_update": force_update},
-            priority=priority,
-        )
-    if force_update or character_needs_update.for_section(
-        Character.UpdateSection.ASSETS
-    ):
-        update_character_assets.apply_async(
-            kwargs={"character_pk": character.pk, "force_update": force_update},
-            priority=priority,
-        )
-
-    if (
-        force_update
-        or character_needs_update.for_section(Character.UpdateSection.SKILLS)
-        or character_needs_update.for_section(Character.UpdateSection.SKILL_SETS)
-    ):
-        chain(
-            update_character_skills.si(character.pk, force_update).set(
-                priority=priority
-            ),
-            update_character_skill_sets.si(character.pk, force_update).set(
-                priority=priority
-            ),
-        ).delay()
 
     if character.is_shared:
         check_character_consistency.apply_async(
