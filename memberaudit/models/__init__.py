@@ -38,7 +38,11 @@ from .character_sections_3 import (
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
 )
-from .characters import Character, CharacterUpdateStatus
+from .characters import (
+    Character,
+    CharacterUpdateStatus,
+    enabled_sections_by_stale_minutes,
+)
 from .general import (
     ComplianceGroupDesignation,
     EveShipType,

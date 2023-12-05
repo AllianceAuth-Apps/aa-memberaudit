@@ -955,3 +955,17 @@ section_time_until_stale = (
     Character.UpdateSection.time_until_section_updates_are_stale()
 )
 """Mapping of all sections with effective stale minutes."""
+
+
+def enabled_sections_by_stale_minutes() -> List[Character.UpdateSection]:
+    """Return list of enabled sections, ordered by stale minutes ascending."""
+    sections_and_minutes = {
+        section: value
+        for section, value in section_time_until_stale.items()
+        if section in Character.UpdateSection.enabled_sections()
+    }
+    sections = [
+        obj[0] for obj in sorted(sections_and_minutes.items(), key=lambda o: o[1])
+    ]
+
+    return sections

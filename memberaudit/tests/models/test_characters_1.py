@@ -13,7 +13,13 @@ from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.models import Character, CharacterUpdateStatus, Location, characters
+from memberaudit.models import (
+    Character,
+    CharacterUpdateStatus,
+    Location,
+    characters,
+    enabled_sections_by_stale_minutes,
+)
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.factories import (
     create_character,
@@ -965,3 +971,30 @@ class TestCharacterGenerateShipAsset(TestCase):
 
         # then
         self.assertIsNone(obj)
+
+
+class TestEnabledSectionsByStaleMinutes(TestCase):
+    def test_should_order_correctly(self):
+        # when
+        with patch(
+            MODELS_PATH + ".section_time_until_stale",
+            {
+                Character.UpdateSection.MAILS: 10,
+                Character.UpdateSection.ASSETS: 5,
+                Character.UpdateSection.LOCATION: 7,
+            },
+        ):
+            result = enabled_sections_by_stale_minutes()
+        # then
+        excepted_result = [
+            Character.UpdateSection.ASSETS,
+            Character.UpdateSection.LOCATION,
+            Character.UpdateSection.MAILS,
+        ]
+        self.assertListEqual(result, excepted_result)
+
+    def test_should_include_enabled_sections_only(self):
+        # when
+        result = enabled_sections_by_stale_minutes()
+        # then
+        self.assertEqual(set(result), Character.UpdateSection.enabled_sections())

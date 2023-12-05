@@ -42,6 +42,7 @@ from memberaudit.models import (
     General,
     Location,
     MailEntity,
+    enabled_sections_by_stale_minutes,
 )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -143,9 +144,7 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     )
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
-    # TODO: Sort tasks by stale minutes
-    sections = list(Character.UpdateSection.enabled_sections())
-    for section in sections:
+    for section in enabled_sections_by_stale_minutes():
         if force_update or character_needs_update.for_section(section):
             task_name = f"update_character_{section.value}"
             task = globals()[task_name]
