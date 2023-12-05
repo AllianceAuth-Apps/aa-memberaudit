@@ -47,7 +47,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 @dataclass(frozen=True)
-class CharacterNeedsUpdate:
+class _CharacterNeedsUpdate:
     """An object which knows what character sections need to be updated."""
 
     section_map: Dict["Character.UpdateSection", bool]
@@ -364,7 +364,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 self.token_error_notified_at = None
                 self.save(update_fields=["token_error_notified_at"])
 
-    def calc_update_needed(self) -> CharacterNeedsUpdate:
+    def calc_update_needed(self) -> _CharacterNeedsUpdate:
         """Return map of section and if they need to be update."""
         sections_needs_update = {
             section: True for section in self.UpdateSection.enabled_sections()
@@ -376,7 +376,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             if obj.section in sections_needs_update
         }
         sections_needs_update.update(sections_current)
-        return CharacterNeedsUpdate(sections_needs_update, self)
+        return _CharacterNeedsUpdate(sections_needs_update, self)
 
     def update_status_for_section(
         self, section: UpdateSection

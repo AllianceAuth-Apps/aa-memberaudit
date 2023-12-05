@@ -986,7 +986,7 @@ class TestCheckCharacterConsistency(TestCase):
 
 
 @patch(TASKS_PATH + ".Character.update_location")
-class TestUpdateCharacterSection(TestCase):
+class TestUpdateCharacterLocation(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -997,14 +997,13 @@ class TestUpdateCharacterSection(TestCase):
         # given
         character = create_character_from_user(self.user)
         character.clear_cache()
-        section = Character.UpdateSection.LOCATION
         # when
-        tasks._update_character_section(
-            character_pk=character.pk, section=section.value, force_update=False
-        )
+        tasks.update_character_location(character_pk=character.pk, force_update=False)
         # then
         self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section="location"
+        )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
         self.assertTrue(status.finished_at)
@@ -1016,15 +1015,16 @@ class TestUpdateCharacterSection(TestCase):
         mock_update_location.side_effect = RuntimeError
         character = create_character_from_user(self.user)
         character.clear_cache()
-        section = Character.UpdateSection.LOCATION
         # when
         with self.assertRaises(RuntimeError):
-            tasks._update_character_section(
-                character_pk=character.pk, section=section.value, force_update=False
+            tasks.update_character_location(
+                character_pk=character.pk, force_update=False
             )
         # then
         self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section="location"
+        )
         self.assertFalse(status.is_success)
         self.assertTrue(status.last_error_message)
         self.assertTrue(status.finished_at)
@@ -1045,9 +1045,7 @@ class TestUpdateCharacterSection(TestCase):
             finished_at=finished_at,
         )
         # when
-        tasks._update_character_section(
-            character_pk=character.pk, section=section.value, force_update=False
-        )
+        tasks.update_character_location(character_pk=character.pk, force_update=False)
         # then
         self.assertTrue(mock_update_location.called)
         status.refresh_from_db()
