@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.5.0] - TBD
 
+### Update notes
+
+This release makes changes to the task structure. To avoid generating many failed tasks(which can happen when celery tries to run an old task from the queue against the new version), we recommend waiting until all Member Audit tasks in the queue are processed, before installing this update.
+
 ### Changed
 
 - Major changes to the character update tasks:
