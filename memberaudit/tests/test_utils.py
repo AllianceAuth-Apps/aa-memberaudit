@@ -1,9 +1,13 @@
+from unittest.mock import patch
+
 from django.contrib.auth.models import Group
 from django.db import models
 from django.test import TestCase
+from eveuniverse.models import EveEntity
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from app_utils.testing import (
+    NoSocketsTestCase,
     create_authgroup,
     create_state,
     create_user_from_evecharacter,
@@ -12,10 +16,15 @@ from app_utils.testing import (
 from memberaudit.utils import (
     clear_users_from_group,
     filter_groups_available_to_user,
+    get_or_create_esi_or_none,
+    get_or_create_or_none,
+    get_or_none,
     get_unidecoded_slug,
 )
 
 from .testdata.load_entities import load_entities
+
+MODULE_PATH = "memberaudit.utils"
 
 
 def querysets_pks(qs1: models.QuerySet, qs2: models.QuerySet) -> tuple:
@@ -117,3 +126,99 @@ class TestHelpers(TestCase):
         # then
         expected_app_url_slug = "koregajian-cha-desu"
         self.assertEqual(app_url_slug, expected_app_url_slug)
+
+
+class TestGetOrCreateEsiOrNone(NoSocketsTestCase):
+    def test_should_get_and_return_obj_when_it_exists(self):
+        # given
+        obj = EveEntity.objects.create(
+            id=42, name="dummy", category=EveEntity.CATEGORY_CHARACTER
+        )
+        # when
+        result = get_or_create_esi_or_none(
+            "character_id", {"character_id": 42}, EveEntity
+        )
+        # then
+        self.assertEqual(obj, result)
+
+    def test_should_create_and_return_obj_when_it_exists(self):
+        def my_func(*args, **kwargs):
+            obj = EveEntity.objects.create(
+                id=42, name="dummy", category=EveEntity.CATEGORY_CHARACTER
+            )
+            return obj, True
+
+        # when
+        with patch.object(EveEntity.objects, "get_or_create_esi") as mock:
+            mock.side_effect = my_func
+            result = get_or_create_esi_or_none(
+                "character_id", {"character_id": 42}, EveEntity
+            )
+        # then
+        self.assertEqual(result.id, 42)
+
+    def test_should_return_none_when_obj_can_not_be_found(self):
+        cases = [
+            ("unknown", {"character_id": 42}),
+            ("character_id", {"character_id": None}),
+            ("character_id", {}),
+        ]
+        for num, (prop_name, dct) in enumerate(cases):
+            with self.subTest(num=num):
+                # when
+                result = get_or_create_esi_or_none(prop_name, dct, EveEntity)
+                # then
+                self.assertIsNone(result)
+
+
+class TestGetOrCreateOrNone(TestCase):
+    def test_should_get_and_return_obj_when_it_exists(self):
+        # given
+        obj = EveEntity.objects.create(id=42)
+        # when
+        result = get_or_create_or_none("character_id", {"character_id": 42}, EveEntity)
+        # then
+        self.assertEqual(obj, result)
+
+    def test_should_create_and_return_obj_when_it_exists(self):
+        # when
+        result = get_or_create_or_none("character_id", {"character_id": 42}, EveEntity)
+        # then
+        self.assertEqual(result.id, 42)
+
+    def test_should_return_none_when_obj_can_not_be_found(self):
+        cases = [
+            ("unknown", {"character_id": 42}),
+            ("character_id", {"character_id": None}),
+            ("character_id", {}),
+        ]
+        for num, (prop_name, dct) in enumerate(cases):
+            with self.subTest(num=num):
+                # when
+                result = get_or_create_or_none(prop_name, dct, EveEntity)
+                # then
+                self.assertIsNone(result)
+
+
+class TestGetOrNone(TestCase):
+    def test_should_return_obj_when_it_exists(self):
+        # given
+        obj = EveEntity.objects.create(id=42)
+        # when
+        result = get_or_none("character_id", {"character_id": 42}, EveEntity)
+        # then
+        self.assertEqual(obj, result)
+
+    def test_should_return_none_when_obj_can_not_be_found(self):
+        cases = [
+            ("unknown", {"character_id": 42}),
+            ("character_id", {"character_id": None}),
+            ("character_id", {"character_id": 42}),
+            ("character_id", {}),
+        ]
+        for num, (prop_name, dct) in enumerate(cases):
+            with self.subTest(num=num):
+                # when
+                result = get_or_none(prop_name, dct, EveEntity)
+                # then
+                self.assertIsNone(result)
