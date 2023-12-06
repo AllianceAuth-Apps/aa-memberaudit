@@ -226,8 +226,9 @@ class TestCharacterAttributesManager(NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         # when
-        CharacterAttributes.objects.update_or_create_esi(self.character)
+        _, changed = CharacterAttributes.objects.update_or_create_esi(self.character)
         # then
+        self.assertTrue(changed)
         self.assertEqual(
             self.character.attributes.accrued_remap_cooldown_date,
             parse_datetime("2016-10-24T09:00:00Z"),
@@ -258,8 +259,10 @@ class TestCharacterAttributesManager(NoSocketsTestCase):
             willpower=106,
         )
         # when
-        CharacterAttributes.objects.update_or_create_esi(self.character)
+        _, changed = CharacterAttributes.objects.update_or_create_esi(self.character)
+
         # then
+        self.assertTrue(changed)
         self.character.attributes.refresh_from_db()
         self.assertEqual(
             self.character.attributes.accrued_remap_cooldown_date,
@@ -400,14 +403,17 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
-    def test_update_contacts_1(self, mock_esi):
-        """can create contacts"""
+    def test_should_create_from_scratch(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=1)
         create_character_contact_label(character=self.character, label_id=2)
 
-        self.character.update_contacts()
+        # when
+        _, changed = self.character.update_contacts()
 
+        # then
+        self.assertTrue(changed)
         self.assertEqual(self.character.contacts.count(), 2)
 
         obj = self.character.contacts.get(eve_entity_id=1101)
@@ -424,8 +430,8 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         self.assertEqual(obj.standing, 5)
         self.assertEqual(obj.labels.count(), 0)
 
-    def test_update_contacts_2(self, mock_esi):
-        """can remove obsolete contacts"""
+    def test_should_remove_obsolete_contacts(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=1)
         create_character_contact_label(character=self.character, label_id=2)
@@ -435,14 +441,17 @@ class TestCharacterContactsManager(NoSocketsTestCase):
             standing=-5,
         )
 
-        self.character.update_contacts()
+        # when
+        _, changed = self.character.update_contacts()
 
+        # then
+        self.assertTrue(changed)
         self.assertEqual(
             {x.eve_entity_id for x in self.character.contacts.all()}, {1101, 2002}
         )
 
-    def test_update_contacts_3(self, mock_esi):
-        """can update existing contacts"""
+    def test_should_update_existing_contracts(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=2)
         my_label = create_character_contact_label(character=self.character, label_id=1)
@@ -455,8 +464,11 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         )
         my_contact.labels.add(my_label)
 
-        self.character.update_contacts()
+        # when
+        _, changed = self.character.update_contacts()
 
+        # then
+        self.assertTrue(changed)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
         self.assertFalse(obj.is_blocked)
@@ -464,8 +476,8 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         self.assertEqual(obj.standing, -10)
         self.assertEqual({x.label_id for x in obj.labels.all()}, {2})
 
-    def test_update_contacts_4(self, mock_esi):
-        """when ESI data has not changed, then skip update"""
+    def test_should_not_update_when_data_has_not_changed(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=1)
         create_character_contact_label(character=self.character, label_id=2)
@@ -475,13 +487,16 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         obj.is_watched = False
         obj.save()
 
-        self.character.update_contacts()
+        # when
+        result, changed = self.character.update_contacts()
 
+        # then
+        self.assertFalse(changed)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertFalse(obj.is_watched)
 
-    def test_update_contacts_5(self, mock_esi):
-        """when ESI data has not changed and update is forced, then update"""
+    def test_should_always_update_when_data_has_not_changed_and_forced(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
         create_character_contact_label(character=self.character, label_id=1)
         create_character_contact_label(character=self.character, label_id=2)
@@ -491,8 +506,11 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         obj.is_watched = False
         obj.save()
 
-        self.character.update_contacts(force_update=True)
+        # when
+        _, changed = self.character.update_contacts(force_update=True)
 
+        # then
+        self.assertTrue(changed)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertTrue(obj.is_watched)
 

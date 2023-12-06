@@ -588,37 +588,37 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Update the character's learning attributes from ESI."""
         from memberaudit.models import CharacterAttributes
 
-        CharacterAttributes.objects.update_or_create_esi(self, force_update)
+        return CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
     def update_character_details(self, force_update: bool = False):
         """Update the character's details from ESI."""
         from memberaudit.models import CharacterDetails
 
-        CharacterDetails.objects.update_or_create_esi(self, force_update)
+        return CharacterDetails.objects.update_or_create_esi(self, force_update)
 
     def update_contact_labels(self, force_update: bool = False):
         """Update character's contact labels from ESI."""
-        self.contact_labels.update_or_create_esi(self, force_update)
+        return self.contact_labels.update_or_create_esi(self, force_update)
 
     def update_contacts(self, force_update: bool = False):
         """Update character's contacts from ESI."""
-        self.contacts.update_or_create_esi(self, force_update)
+        return self.contacts.update_or_create_esi(self, force_update)
 
     def update_contract_headers(self, force_update: bool = False):
         """Update the character's contract headers from ESI."""
-        self.contracts.update_or_create_esi(self, force_update)
+        return self.contracts.update_or_create_esi(self, force_update)
 
     def update_contract_items(self, contract):
         """Update the character's contract items from ESI."""
-        contract.items.update_or_create_esi(self, contract)
+        return contract.items.update_or_create_esi(self, contract)
 
     def update_contract_bids(self, contract):
         """Update the character's contract bids from ESI."""
-        contract.bids.update_or_create_esi(self, contract)
+        return contract.bids.update_or_create_esi(self, contract)
 
     def update_corporation_history(self, force_update: bool = False):
         """Update the character's corporation history from ESI."""
-        self.corporation_history.update_or_create_esi(self, force_update)
+        return self.corporation_history.update_or_create_esi(self, force_update)
 
     def update_fw_stats(self, force_update: bool = False):
         """Update character's FW stats from ESI."""
@@ -628,95 +628,95 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def update_implants(self, force_update: bool = False):
         """Update the character's current implants from ESI."""
-        self.implants.update_or_create_esi(self, force_update)
+        return self.implants.update_or_create_esi(self, force_update)
 
     def update_location(self, force_update: bool = False):
         """Update the character's current location from ESI."""
         from memberaudit.models import CharacterLocation
 
-        CharacterLocation.objects.update_or_create_esi(self, force_update)
+        return CharacterLocation.objects.update_or_create_esi(self, force_update)
 
     def update_loyalty(self, force_update: bool = False):
         """Update the character's loyalty entries from ESI."""
-        self.loyalty_entries.update_or_create_esi(self, force_update)
+        return self.loyalty_entries.update_or_create_esi(self, force_update)
 
     def update_jump_clones(self, force_update: bool = False):
         """Update the character's jump clones from ESI."""
-        self.jump_clones.update_or_create_esi(self, force_update)
+        return self.jump_clones.update_or_create_esi(self, force_update)
 
     def update_mailing_lists(self, force_update: bool = False):
         """Update the character's mailing lists from ESI."""
-        self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
+        return self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
 
     def update_mail_labels(self, force_update: bool = False):
         """Update the character's mail labels from ESI."""
-        self.mail_labels.update_or_create_esi(self, force_update)
+        return self.mail_labels.update_or_create_esi(self, force_update)
 
     def update_mail_headers(self, force_update: bool = False):
         """Update the character's mail headers from ESI."""
-        self.mails.update_or_create_headers_esi(self, force_update)
+        return self.mails.update_or_create_headers_esi(self, force_update)
 
     def update_mail_body(self, mail) -> None:
         """Update the characters's mail body from ESI."""
-        self.mails.update_or_create_body_esi(self, mail)
+        return self.mails.update_or_create_body_esi(self, mail)
 
     def update_mining_ledger(self, force_update: bool = False):
         """Update character's mining ledger from ESI."""
-        self.mining_ledger.update_or_create_esi(self, force_update)
+        return self.mining_ledger.update_or_create_esi(self, force_update)
 
     def update_online_status(self, force_update: bool = False):
         """Update the character's online status from ESI."""
         from memberaudit.models import CharacterOnlineStatus
 
-        CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
+        return CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
     def update_planets(self, force_update: bool = False):
         """Update the character's planets from ESI."""
-        self.planets.update_or_create_esi(self, force_update)
+        return self.planets.update_or_create_esi(self, force_update)
 
     def update_roles(self, force_update: bool = False):
         """Update the character's corporation roles from ESI."""
-        self.roles.update_or_create_esi(self, force_update)
+        return self.roles.update_or_create_esi(self, force_update)
 
     def update_titles(self, force_update: bool = False):
         """Update the character's corporation titles from ESI."""
-        self.titles.update_or_create_esi(self, force_update)
+        return self.titles.update_or_create_esi(self, force_update)
 
     def update_ship(self, force_update: bool = False):
         """Update the character's current ship from ESI."""
         from memberaudit.models import CharacterShip
 
-        CharacterShip.objects.update_or_create_esi(self, force_update)
+        return CharacterShip.objects.update_or_create_esi(self, force_update)
 
     def update_skill_queue(self, force_update: bool = False):
         """Update the character's skill queue from ESI."""
-        self.skillqueue.update_or_create_esi(self, force_update)
+        return self.skillqueue.update_or_create_esi(self, force_update)
 
     def update_skill_sets(self):
         """Update the character's skill sets."""
-        self.skill_set_checks.update_for_character(self)
+        return self.skill_set_checks.update_for_character(self)
 
     def update_skills(self, force_update: bool = False):
         """Update the character's skills from ESI."""
-        self.skills.update_or_create_esi(self, force_update)
+        return self.skills.update_or_create_esi(self, force_update)
 
     def update_standings(self, force_update: bool = False):
         """Update the character's standings from ESI."""
-        self.standings.update_or_create_esi(self, force_update)
+        return self.standings.update_or_create_esi(self, force_update)
 
     def update_wallet_balance(self, force_update: bool = False):
         """Update the character's wallet balance from ESI."""
         from memberaudit.models import CharacterWalletBalance
 
-        CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
+        return CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
     def update_wallet_journal(self, force_update: bool = False) -> None:
         """Update the character's wallet journal from ESI."""
-        self.wallet_journal.update_or_create_esi(self, force_update)
+        return self.wallet_journal.update_or_create_esi(self, force_update)
 
     def update_wallet_transactions(self, force_update: bool = False):
         """Update the character's wallet transactions from ESI."""
-        self.wallet_transactions.update_or_create_esi(self, force_update)
+        return self.wallet_transactions.update_or_create_esi(self, force_update)
 
     def update_sharing_consistency(self):
         """Update sharing to ensure consistency with permissions."""

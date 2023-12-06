@@ -51,7 +51,7 @@ class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Ma
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create corporation history for character."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CORPORATION_HISTORY,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -94,7 +94,7 @@ class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Ma
 class CharacterDetailsManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create character details from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CHARACTER_DETAILS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -167,7 +167,7 @@ class CharacterFwStatsManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create fw stats for a character from ESI."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.FW_STATS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -208,7 +208,7 @@ class CharacterFwStatsManager(models.Manager):
 class CharacterImplantManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create implants for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.IMPLANTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -249,7 +249,7 @@ class CharacterJumpCloneManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create jump clones for a character from ESI."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.JUMP_CLONES,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -330,7 +330,7 @@ class CharacterLocationManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create location for a character from ESI."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -381,7 +381,7 @@ class CharacterLocationManager(models.Manager):
 class CharacterLoyaltyEntryManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create loyalty entries for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.LOYALTY,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -423,7 +423,7 @@ class CharacterMailManager(models.Manager):
         self, character: Character, force_update: bool = False
     ):
         """Update or create mail headers for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.MAILS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -674,7 +674,7 @@ class CharacterMailLabelManager(models.Manager):
 
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create mail labels for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.MAILS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,

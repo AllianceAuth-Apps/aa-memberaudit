@@ -3,7 +3,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Optional, Set
+from typing import TYPE_CHECKING, List, Set
 
 from django.db import models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
@@ -75,9 +75,7 @@ class CharacterAssetQuerySet(models.QuerySet):
 
 
 class CharacterAssetManagerBase(models.Manager):
-    def fetch_from_esi(
-        self, character: Character, force_update: bool = False
-    ) -> Optional[list]:
+    def fetch_from_esi(self, character: Character, force_update: bool = False):
         """Fetch assets from ESI and preload related objects from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
@@ -152,7 +150,7 @@ CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQu
 class CharacterAttributesManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create attributes for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.ATTRIBUTES,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -190,7 +188,7 @@ class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -226,7 +224,7 @@ class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
 class CharacterContactManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create assets for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -372,7 +370,7 @@ class CharacterContactManager(models.Manager):
 class CharacterContractManager(models.Manager):
     def update_or_create_esi(self, character: Character, force_update: bool = False):
         """Update or create contracts for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTRACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
