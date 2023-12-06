@@ -79,16 +79,12 @@ class CharacterAssetManagerBase(models.Manager):
         self, character: Character, force_update: bool = False
     ) -> Optional[list]:
         """Fetch assets from ESI and preload related objects from ESI."""
-        asset_list, changed = character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
             fetch_func=self._fetch_data_from_esi,
             store_func=None,
             force_update=force_update,
         )
-        if changed:
-            return asset_list
-
-        return None
 
     @fetch_token_for_character("esi-assets.read_assets.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> list:

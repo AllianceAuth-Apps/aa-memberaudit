@@ -477,7 +477,7 @@ def assets_build_list_from_esi(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    asset_list: list = character.perform_update_with_error_logging(
+    asset_list, _ = character.perform_update_with_error_logging(
         section=Character.UpdateSection.ASSETS,
         method=character.assets_build_list_from_esi,
         force_update=force_update,

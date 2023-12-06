@@ -132,8 +132,9 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         # when
-        result = CharacterAsset.objects.fetch_from_esi(self.character)
+        result, changed = CharacterAsset.objects.fetch_from_esi(self.character)
         # then
+        self.assertTrue(changed)
         asset_data = {asset["item_id"]: asset for asset in result}
         self.assertSetEqual(
             set(asset_data.keys()),
@@ -162,11 +163,12 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
         CharacterAsset.objects.fetch_from_esi(self.character)
         # when
-        result = CharacterAsset.objects.fetch_from_esi(
+        result, changed = CharacterAsset.objects.fetch_from_esi(
             self.character, force_update=True
         )
         # then
         self.assertIsNotNone(result)
+        self.assertTrue(changed)
 
 
 @patch("memberaudit.models.Location.objects.create_missing_esi", spec=True)
