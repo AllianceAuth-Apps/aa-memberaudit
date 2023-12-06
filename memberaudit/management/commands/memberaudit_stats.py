@@ -21,6 +21,9 @@ class Command(BaseCommand):
     help = str(__doc__)
 
     def handle(self, *args, **options):
+        self.stdout.write("Collecting data for statistics...")
+        self.stdout.write("")
+
         stats = calc_statistics()
 
         self._write_title("sections")
