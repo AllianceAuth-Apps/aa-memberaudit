@@ -4,6 +4,7 @@ from django.core.management import call_command
 
 from app_utils.testing import NoSocketsTestCase
 
+from memberaudit.tests.testdata.factories import create_character_update_status
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.utils import create_memberaudit_character
 
@@ -16,8 +17,10 @@ class TestStats(NoSocketsTestCase):
 
     def test_command_should_work(self):
         # given
-        create_memberaudit_character(1001)
-        create_memberaudit_character(1002)
+        character_1001 = create_memberaudit_character(1001)
+        create_character_update_status(character_1001)
+        character_1002 = create_memberaudit_character(1002)
+        create_character_update_status(character_1002)
         out = StringIO()
 
         # when/then
