@@ -4,6 +4,8 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
+from tqdm import tqdm
+
 from django.apps import apps
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand, OutputWrapper
@@ -12,6 +14,7 @@ from django.db.models import Avg, F, Max, Min
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
+from memberaudit.constants import IS_TESTING
 from memberaudit.models import Character, CharacterUpdateStatus, characters
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
@@ -21,9 +24,6 @@ class Command(BaseCommand):
     help = str(__doc__)
 
     def handle(self, *args, **options):
-        self.stdout.write("Collecting data for statistics...")
-        self.stdout.write("")
-
         stats = calc_statistics()
 
         self._write_title("sections")
@@ -160,12 +160,18 @@ class Table:
 def calc_statistics() -> dict:
     """Return detailed statistics about Member Audit."""
 
-    data = {
-        "object_counts": _calc_object_counts(),
-        "sections": _calc_sections(),
-        "settings": _fetch_settings(),
-    }
+    work = [
+        ("settings", _fetch_settings),
+        ("object_counts", _calc_object_counts),
+        ("sections", _calc_sections),
+    ]
 
+    data = {
+        key: func()
+        for key, func in tqdm(
+            work, desc="Collecting data for statistics", disable=IS_TESTING, leave=False
+        )
+    }
     return data
 
 
