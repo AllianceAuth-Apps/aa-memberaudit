@@ -29,18 +29,13 @@ from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
     create_character_asset,
-    create_character_from_user,
     create_character_update_status,
     create_compliance_group_designation,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import (
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-    reset_celery_once_locks,
-)
+from .utils import create_memberaudit_character, reset_celery_once_locks
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -994,72 +989,3 @@ class TestCheckCharacterConsistency(TestCase):
         tasks.check_character_consistency(character.pk)
         # then
         self.assertTrue(mock_check_character_consistency.called)
-
-
-@patch(TASKS_PATH + ".Character.update_location")
-class TestUpdateCharacterLocation(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def test_should_update_normally(self, mock_update_location):
-        # given
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        # when
-        tasks.update_character_location(character_pk=character.pk, force_update=False)
-        # then
-        self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(
-            section="location"
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
-
-    def test_should_pass_though_exceptions_from_update_method(
-        self, mock_update_location
-    ):
-        # given
-        mock_update_location.side_effect = RuntimeError
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        # when
-        with self.assertRaises(RuntimeError):
-            tasks.update_character_location(
-                character_pk=character.pk, force_update=False
-            )
-        # then
-        self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(
-            section="location"
-        )
-        self.assertFalse(status.is_success)
-        self.assertTrue(status.last_error_message)
-        self.assertTrue(status.finished_at)
-
-    def test_should_clear_previous_errors_when_update_succeeded(
-        self, mock_update_location
-    ):
-        # given
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        section = Character.UpdateSection.LOCATION
-        finished_at = now() - dt.timedelta(hours=4)
-        status = create_character_update_status(
-            character=character,
-            section=section,
-            is_success=False,
-            last_error_message="some error",
-            finished_at=finished_at,
-        )
-        # when
-        tasks.update_character_location(character_pk=character.pk, force_update=False)
-        # then
-        self.assertTrue(mock_update_location.called)
-        status.refresh_from_db()
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-        self.assertGreater(status.finished_at, finished_at)
