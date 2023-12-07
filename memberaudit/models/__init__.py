@@ -41,7 +41,6 @@ from .character_sections_3 import (
 from .characters import (
     Character,
     CharacterUpdateStatus,
-    UpdateSectionResult,
     enabled_sections_by_stale_minutes,
 )
 from .general import (

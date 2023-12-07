@@ -4,7 +4,7 @@ import datetime as dt
 import itertools
 import json
 import os
-from typing import Any, Iterable, Optional, Set
+from typing import Any, Iterable, NamedTuple, Optional, Set
 
 from celery import Task
 
@@ -99,3 +99,11 @@ def arabic_number_to_roman(value) -> str:
         return my_map[value]
     except KeyError:
         return "-"
+
+
+class UpdateSectionResult(NamedTuple):
+    """A result of an attempted section update."""
+
+    is_changed: Optional[bool]
+    is_updated: bool
+    data: Any = None

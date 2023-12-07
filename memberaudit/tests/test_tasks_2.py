@@ -8,12 +8,12 @@ from eveuniverse.models import EveSolarSystem
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 
 from memberaudit import tasks
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterUpdateStatus,
     Location,
-    UpdateSectionResult,
 )
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.load_entities import load_entities

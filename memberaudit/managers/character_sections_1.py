@@ -21,6 +21,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
+    UpdateSectionResult,
     data_retention_cutoff,
     eve_entity_ids_from_objs,
     store_debug_data_to_disk,
@@ -35,7 +36,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, UpdateSectionResult
+    from memberaudit.models import Character
 
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -118,7 +119,6 @@ class CharacterAssetManagerBase(models.Manager):
         self, character: Character, asset_list: list
     ) -> UpdateSectionResult:
         """Preloads objects needed to build the asset tree."""
-        from memberaudit.models import UpdateSectionResult
 
         logger.info("%s: Preloading objects for asset tree", character)
 

@@ -4,7 +4,7 @@ import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, NamedTuple, Optional, Set
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from bravado.exception import HTTPInternalServerError
 
@@ -37,21 +37,13 @@ from memberaudit.app_settings import (
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.helpers import store_debug_data_to_disk
+from memberaudit.helpers import UpdateSectionResult, store_debug_data_to_disk
 from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
-
-
-class UpdateSectionResult(NamedTuple):
-    """A result of an attempted section update."""
-
-    is_changed: Optional[bool]
-    is_updated: bool
-    data: Any = None
 
 
 @dataclass(frozen=True)

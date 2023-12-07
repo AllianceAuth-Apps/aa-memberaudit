@@ -10,7 +10,8 @@ from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import build_http_error
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
-from memberaudit.models import Character, CharacterUpdateStatus, UpdateSectionResult
+from memberaudit.helpers import UpdateSectionResult
+from memberaudit.models import Character, CharacterUpdateStatus
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,

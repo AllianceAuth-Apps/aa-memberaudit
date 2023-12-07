@@ -31,7 +31,11 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff, store_debug_data_to_disk
+from memberaudit.helpers import (
+    UpdateSectionResult,
+    data_retention_cutoff,
+    store_debug_data_to_disk,
+)
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -42,7 +46,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, CharacterMail, UpdateSectionResult
+    from memberaudit.models import Character, CharacterMail
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -656,8 +660,6 @@ class CharacterMailManager(models.Manager):
         self, character: Character, mail: CharacterMail
     ) -> UpdateSectionResult:
         """Update or create mail body for a character from ESI."""
-        from memberaudit.models import UpdateSectionResult
-
         try:
             mail_body = self._fetch_mail_body_from_esi(character, mail)
         except HTTPNotFound:

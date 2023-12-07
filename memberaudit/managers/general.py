@@ -33,12 +33,12 @@ from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import store_debug_data_to_disk
+from memberaudit.helpers import UpdateSectionResult, store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, UpdateSectionResult
+    from memberaudit.models import Character
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -532,8 +532,6 @@ class MailEntityManager(models.Manager):
         Note: Obsolete mailing lists must not be removed,
         since they might still be referenced by older mails.
         """
-        from memberaudit.models import UpdateSectionResult
-
         logger.info("%s: Fetching mailing lists from ESI", character)
         mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
             character_id=character.eve_character.character_id,

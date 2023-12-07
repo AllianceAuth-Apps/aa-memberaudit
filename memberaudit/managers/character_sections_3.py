@@ -17,7 +17,11 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import data_retention_cutoff, eve_entity_ids_from_objs
+from memberaudit.helpers import (
+    UpdateSectionResult,
+    data_retention_cutoff,
+    eve_entity_ids_from_objs,
+)
 from memberaudit.managers._common import GenericUpdateComplexObjMixin
 from memberaudit.providers import esi
 from memberaudit.utils import (
@@ -29,11 +33,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import (
-        Character,
-        CharacterSkillqueueEntry,
-        UpdateSectionResult,
-    )
+    from memberaudit.models import Character, CharacterSkillqueueEntry
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -530,7 +530,7 @@ class CharacterSkillSetCheckManager(models.Manager):
     @transaction.atomic()
     def update_for_character(self, character: Character) -> UpdateSectionResult:
         """Update or create skill sets for a character."""
-        from memberaudit.models import SkillSet, UpdateSectionResult
+        from memberaudit.models import SkillSet
 
         character_skills = {
             obj["eve_type_id"]: obj["active_skill_level"]

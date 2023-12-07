@@ -23,12 +23,8 @@ from app_utils.testing import (
 )
 
 from memberaudit import tasks
-from memberaudit.models import (
-    Character,
-    CharacterUpdateStatus,
-    Location,
-    UpdateSectionResult,
-)
+from memberaudit.helpers import UpdateSectionResult
+from memberaudit.models import Character, CharacterUpdateStatus, Location
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
