@@ -686,13 +686,13 @@ class CharacterMailManager(models.Manager):
 
         return UpdateSectionResult(is_changed=is_changed, is_updated=is_updated)
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
     def _fetch_mail_body_from_esi(
-        self, character: Character, token: Token, mail
+        self, character: Character, mail: CharacterMail
     ) -> str:
         logger.info(
             "%s: Fetching mail body from ESI for mail ID %d", character, mail.mail_id
         )
+        token = character.fetch_token("esi-mail.read_mail.v1")
         mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
             character_id=character.eve_character.character_id,
             mail_id=mail.mail_id,
