@@ -13,6 +13,7 @@ from memberaudit.models import (
     CharacterAsset,
     CharacterUpdateStatus,
     Location,
+    UpdateSectionResult,
 )
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.load_entities import load_entities
@@ -413,7 +414,8 @@ class TestUpdateCharacterAssets2(TestCase):
         ]
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # when
-        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as _:
+        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as mock:
+            mock.return_value = UpdateSectionResult(None, False)
             tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         # then
@@ -490,7 +492,8 @@ class TestUpdateCharacterAssets2(TestCase):
         ]
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         # when
-        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as _:
+        with patch(TASKS_PATH + ".Character.assets_preload_objects", spec=True) as mock:
+            mock.return_value = UpdateSectionResult(None, False)
             tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         # then
@@ -511,10 +514,10 @@ class TestUpdateCharacterSection(TestCase):
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
     def test_should_log_success_and_updated_when_update_succeeded(
-        self, mock_update_location
+        self, mock_update_implants
     ):
         # given
-        mock_update_location.return_value = None, True
+        mock_update_implants.return_value = UpdateSectionResult(True, True)
         character = create_character_from_user(self.user)
         character.clear_cache()
 
@@ -522,7 +525,7 @@ class TestUpdateCharacterSection(TestCase):
         tasks.update_character_implants(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertTrue(mock_update_location.called)
+        self.assertTrue(mock_update_implants.called)
         status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.IMPLANTS
         )
@@ -533,10 +536,10 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(status.update_finished_at)
 
     def test_should_pass_though_exceptions_from_update_method(
-        self, mock_update_location
+        self, mock_update_implants
     ):
         # given
-        mock_update_location.side_effect = RuntimeError
+        mock_update_implants.side_effect = RuntimeError
         character = create_character_from_user(self.user)
         character.clear_cache()
 
@@ -547,7 +550,7 @@ class TestUpdateCharacterSection(TestCase):
             )
 
         # then
-        self.assertTrue(mock_update_location.called)
+        self.assertTrue(mock_update_implants.called)
         status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.IMPLANTS
         )
@@ -558,10 +561,10 @@ class TestUpdateCharacterSection(TestCase):
         self.assertIsNone(status.update_finished_at)
 
     def test_should_clear_previous_errors_when_update_succeeded(
-        self, mock_update_location
+        self, mock_update_implants
     ):
         # given
-        mock_update_location.return_value = None, True
+        mock_update_implants.return_value = UpdateSectionResult(True, True)
         character = create_character_from_user(self.user)
         character.clear_cache()
         finished_at = now() - dt.timedelta(hours=4)
@@ -577,7 +580,7 @@ class TestUpdateCharacterSection(TestCase):
         tasks.update_character_implants(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertTrue(mock_update_location.called)
+        self.assertTrue(mock_update_implants.called)
         status.refresh_from_db()
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
@@ -586,10 +589,10 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(status.update_finished_at)
 
     def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_1(
-        self, mock_update_location
+        self, mock_update_implants
     ):
         # given
-        mock_update_location.return_value = None, False
+        mock_update_implants.return_value = UpdateSectionResult(False, False)
         character = create_character_from_user(self.user)
         character.clear_cache()
 
@@ -597,7 +600,7 @@ class TestUpdateCharacterSection(TestCase):
         tasks.update_character_implants(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertTrue(mock_update_location.called)
+        self.assertTrue(mock_update_implants.called)
         status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.IMPLANTS
         )
@@ -608,10 +611,10 @@ class TestUpdateCharacterSection(TestCase):
         self.assertIsNone(status.update_finished_at)
 
     def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_2(
-        self, mock_update_location
+        self, mock_update_implants
     ):
         # given
-        mock_update_location.return_value = None, False
+        mock_update_implants.return_value = UpdateSectionResult(False, False)
         character = create_character_from_user(self.user)
         character.clear_cache()
         update_started_at = now() - dt.timedelta(hours=4)
@@ -628,7 +631,7 @@ class TestUpdateCharacterSection(TestCase):
         tasks.update_character_implants(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertTrue(mock_update_location.called)
+        self.assertTrue(mock_update_implants.called)
         status.refresh_from_db()
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)

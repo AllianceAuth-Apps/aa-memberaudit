@@ -43,6 +43,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_title,
     create_character_wallet_journal_entry,
     create_skill_set,
+    create_skill_set_group,
     create_skill_set_skill,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
@@ -750,6 +751,258 @@ class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
             skill_set=self.caldari_carrier_skill_set
         ).first()
         self.assertFalse(obj.can_fly)
+
+
+class TestCharacterUpdateSkillSets(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+
+    def test_has_all_skills(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character,
+            eve_type=self.caldari_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        self.assertEqual(first.failed_required_skills.count(), 0)
+
+    def test_one_skill_below(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character,
+            eve_type=self.caldari_carrier_skill_type,
+            active_skill_level=2,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertEqual(required_skill_pks, {skill_2.pk})
+
+    def test_misses_one_skill(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, {skill_2.pk})
+
+    def test_passed_required_and_misses_recommended_skill(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=4,
+            skillpoints_in_skill=10,
+            trained_skill_level=4,
+        )
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, set())
+        recommended_skill_pks = {
+            obj.pk for obj in first.failed_recommended_skills.all()
+        }
+        self.assertSetEqual(recommended_skill_pks, {skill_1.pk})
+
+    def test_misses_recommended_skill_only(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=4,
+            skillpoints_in_skill=10,
+            trained_skill_level=4,
+        )
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            recommended_level=5,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, set())
+        recommended_skill_pks = {
+            obj.pk for obj in first.failed_recommended_skills.all()
+        }
+        self.assertSetEqual(recommended_skill_pks, {skill_1.pk})
+
+    def test_misses_all_skills(self):
+        # given
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(skill_pks, {skill_1.pk, skill_2.pk})
+
+    def test_does_not_require_doctrine_definition(self):
+        # given
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(skill_pks, {skill_1.pk, skill_2.pk})
+
+    def test_should_handle_no_skills(self):
+        # when
+        result = self.character.update_skill_sets()
+        # then
+        self.assertTrue(result.is_updated)
 
 
 @patch(MANAGERS_PATH + ".esi")

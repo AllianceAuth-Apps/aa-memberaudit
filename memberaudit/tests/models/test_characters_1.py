@@ -7,7 +7,7 @@ from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.models import EveSolarSystem
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
@@ -26,12 +26,8 @@ from memberaudit.tests.testdata.factories import (
     create_character_from_user,
     create_character_location,
     create_character_ship,
-    create_character_skill,
     create_character_update_status,
     create_location_eve_solar_system,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -592,199 +588,6 @@ class TestCharacterCalcUpdateNeeded(TestCase):
 
         # then
         self.assertFalse(update_needed)
-
-
-class TestCharacterUpdateSkillSets(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-        cls.skill_type_1 = EveType.objects.get(id=24311)
-        cls.skill_type_2 = EveType.objects.get(id=24312)
-
-    def test_has_all_skills(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_2,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(first.failed_required_skills.count(), 0)
-
-    def test_one_skill_below(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_2,
-            active_skill_level=2,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
-        )
-
-    def test_misses_one_skill(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
-        )
-
-    def test_passed_required_and_misses_recommended_skill(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
-        )
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set,
-            eve_type=self.skill_type_1,
-            required_level=3,
-            recommended_level=5,
-        )
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual({obj.pk for obj in first.failed_required_skills.all()}, set())
-        self.assertEqual(
-            {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
-        )
-
-    def test_misses_recommended_skill_only(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
-        )
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set,
-            eve_type=self.skill_type_1,
-            recommended_level=5,
-        )
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual({obj.pk for obj in first.failed_required_skills.all()}, set())
-        self.assertEqual(
-            {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
-        )
-
-    def test_misses_all_skills(self):
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()},
-            {skill_1.pk, skill_2.pk},
-        )
-
-    def test_does_not_require_doctrine_definition(self):
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()},
-            {skill_1.pk, skill_2.pk},
-        )
 
 
 class TestCharacterGenerateShipAsset(TestCase):

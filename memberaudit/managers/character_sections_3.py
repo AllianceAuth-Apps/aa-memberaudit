@@ -29,7 +29,11 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, CharacterSkillqueueEntry
+    from memberaudit.models import (
+        Character,
+        CharacterSkillqueueEntry,
+        UpdateSectionResult,
+    )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -50,7 +54,9 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create mining ledger for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -97,7 +103,9 @@ CharacterMiningLedgerEntryManager = CharacterMiningLedgerEntryManagerBase.from_q
 
 
 class CharacterOnlineStatusManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create online status for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.ONLINE_STATUS,
@@ -128,7 +136,9 @@ class CharacterOnlineStatusManager(models.Manager):
 
 
 class CharacterRoleManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create roles for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -239,7 +249,9 @@ class CharacterRoleManager(models.Manager):
 
 
 class CharacterPlanetManager(GenericUpdateComplexObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create planets for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.PLANETS,
@@ -284,7 +296,9 @@ class CharacterPlanetManager(GenericUpdateComplexObjMixin, models.Manager):
 
 
 class CharacterShipManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create ship for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.SHIP,
@@ -320,7 +334,9 @@ class CharacterShipManager(models.Manager):
 
 
 class CharacterSkillqueueEntryManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create skills queue for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.SKILL_QUEUE,
@@ -377,7 +393,9 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
 
 class CharacterSkillManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create skills for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.SKILLS,
@@ -510,9 +528,9 @@ class CharacterSkillManager(models.Manager):
 class CharacterSkillSetCheckManager(models.Manager):
     # TODO: Replace delete & create with update
     @transaction.atomic()
-    def update_for_character(self, character):
+    def update_for_character(self, character: Character) -> UpdateSectionResult:
         """Update or create skill sets for a character."""
-        from memberaudit.models import SkillSet
+        from memberaudit.models import SkillSet, UpdateSectionResult
 
         character_skills = {
             obj["eve_type_id"]: obj["active_skill_level"]
@@ -525,7 +543,7 @@ class CharacterSkillSetCheckManager(models.Manager):
         skill_sets_count = skill_sets_qs.count()
         if skill_sets_count == 0:
             logger.info("%s: No skill sets defined", character)
-            return None, False
+            return UpdateSectionResult(is_changed=None, is_updated=True)
 
         logger.info("%s: Checking %s skill sets", character, skill_sets_count)
         skill_set_checks = [
@@ -563,7 +581,7 @@ class CharacterSkillSetCheckManager(models.Manager):
                     *failed_skills
                 )
 
-        return None, True
+        return UpdateSectionResult(is_changed=None, is_updated=True)
 
     @staticmethod
     def _identify_failed_skills(
@@ -582,7 +600,9 @@ class CharacterSkillSetCheckManager(models.Manager):
 
 
 class CharacterStandingManager(GenericUpdateSimpleObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create standing for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -623,7 +643,9 @@ class CharacterStandingManager(GenericUpdateSimpleObjMixin, models.Manager):
 
 
 class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create titles for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -662,7 +684,9 @@ class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
 
 
 class CharacterWalletBalanceManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create wallet balance for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.WALLET_BALLANCE,
@@ -685,7 +709,9 @@ class CharacterWalletBalanceManager(models.Manager):
 
 
 class CharacterWalletJournalEntryManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create wallet journal entries for character from ESI.
 
         Note: Does not update unknown EveEntities.
@@ -757,7 +783,9 @@ class CharacterWalletJournalEntryManager(models.Manager):
 
 
 class CharacterWalletTransactionManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create wallet transactions for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.WALLET_TRANSACTIONS,

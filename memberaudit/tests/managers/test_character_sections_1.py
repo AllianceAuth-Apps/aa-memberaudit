@@ -30,6 +30,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_from_user,
     create_character_skillqueue_entry,
     create_eve_market_price,
+    create_location,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -132,10 +133,10 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         # when
-        result, changed = CharacterAsset.objects.fetch_from_esi(self.character)
+        result = CharacterAsset.objects.fetch_from_esi(self.character)
         # then
-        self.assertTrue(changed)
-        asset_data = {asset["item_id"]: asset for asset in result}
+        self.assertTrue(result.is_changed)
+        asset_data = {asset["item_id"]: asset for asset in result.data}
         self.assertSetEqual(
             set(asset_data.keys()),
             {
@@ -163,12 +164,12 @@ class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
         CharacterAsset.objects.fetch_from_esi(self.character)
         # when
-        result, changed = CharacterAsset.objects.fetch_from_esi(
+        result = CharacterAsset.objects.fetch_from_esi(
             self.character, force_update=True
         )
         # then
-        self.assertIsNotNone(result)
-        self.assertTrue(changed)
+        self.assertIsNotNone(result.data)
+        self.assertFalse(result.is_changed)
 
 
 @patch("memberaudit.models.Location.objects.create_missing_esi", spec=True)
@@ -187,9 +188,12 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         # given
         character = create_character_from_user(self.user)
         asset_list = []
+
         # when
-        character.assets_preload_objects(asset_list)
+        result = character.assets_preload_objects(asset_list)
+
         # then
+        self.assertFalse(result.is_updated)
         self.assertFalse(mock_eve_entity_create.called)
         self.assertFalse(mock_preload_locations.called)
 
@@ -203,8 +207,10 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
             {"item_id": 2, "type_id": 4, "location_id": 421},
         ]
         # when
-        character.assets_preload_objects(asset_list)
+        result = character.assets_preload_objects(asset_list)
+
         # then
+        self.assertTrue(result.is_updated)
         self.assertTrue(mock_eve_entity_create.called)
         _, kwargs = mock_eve_entity_create.call_args
         self.assertEqual(set(kwargs["ids"]), {3, 4})
@@ -212,13 +218,33 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         _, kwargs = mock_preload_locations.call_args
         self.assertEqual(kwargs["location_ids"], {420, 421})
 
+    def test_fetch_missing_eve_entity_objects_only(
+        self, mock_eve_entity_create, mock_preload_locations
+    ):
+        # given
+        create_location(id=420)
+        create_location(id=421)
+        character = create_character_from_user(self.user)
+        asset_list = [
+            {"item_id": 1, "type_id": 3, "location_id": 420},
+            {"item_id": 2, "type_id": 4, "location_id": 421},
+        ]
+        # when
+        result = character.assets_preload_objects(asset_list)
+
+        # then
+        self.assertTrue(result.is_updated)
+        self.assertTrue(mock_eve_entity_create.called)
+        _, kwargs = mock_eve_entity_create.call_args
+        self.assertEqual(set(kwargs["ids"]), {3, 4})
+        self.assertFalse(mock_preload_locations.called)
+
 
 @patch(MODULE_PATH + ".esi")
 class TestCharacterAttributesManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        super().setUpTestData()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -226,9 +252,9 @@ class TestCharacterAttributesManager(NoSocketsTestCase):
         # given
         mock_esi.client = esi_client_stub
         # when
-        _, changed = CharacterAttributes.objects.update_or_create_esi(self.character)
+        result = CharacterAttributes.objects.update_or_create_esi(self.character)
         # then
-        self.assertTrue(changed)
+        self.assertTrue(result.is_changed)
         self.assertEqual(
             self.character.attributes.accrued_remap_cooldown_date,
             parse_datetime("2016-10-24T09:00:00Z"),
@@ -259,10 +285,10 @@ class TestCharacterAttributesManager(NoSocketsTestCase):
             willpower=106,
         )
         # when
-        _, changed = CharacterAttributes.objects.update_or_create_esi(self.character)
+        result = CharacterAttributes.objects.update_or_create_esi(self.character)
 
         # then
-        self.assertTrue(changed)
+        self.assertTrue(result.is_changed)
         self.character.attributes.refresh_from_db()
         self.assertEqual(
             self.character.attributes.accrued_remap_cooldown_date,
@@ -284,7 +310,6 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        super().setUpTestData()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -399,7 +424,6 @@ class TestCharacterContactsManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        super().setUpTestData()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -410,10 +434,10 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         create_character_contact_label(character=self.character, label_id=2)
 
         # when
-        _, changed = self.character.update_contacts()
+        result = self.character.update_contacts()
 
         # then
-        self.assertTrue(changed)
+        self.assertTrue(result.is_changed)
         self.assertEqual(self.character.contacts.count(), 2)
 
         obj = self.character.contacts.get(eve_entity_id=1101)
@@ -442,10 +466,10 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         )
 
         # when
-        _, changed = self.character.update_contacts()
+        result = self.character.update_contacts()
 
         # then
-        self.assertTrue(changed)
+        self.assertTrue(result.is_changed)
         self.assertEqual(
             {x.eve_entity_id for x in self.character.contacts.all()}, {1101, 2002}
         )
@@ -465,10 +489,10 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         my_contact.labels.add(my_label)
 
         # when
-        _, changed = self.character.update_contacts()
+        result = self.character.update_contacts()
 
         # then
-        self.assertTrue(changed)
+        self.assertTrue(result.is_changed)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
         self.assertFalse(obj.is_blocked)
@@ -488,10 +512,10 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         obj.save()
 
         # when
-        result, changed = self.character.update_contacts()
+        result = self.character.update_contacts()
 
         # then
-        self.assertFalse(changed)
+        self.assertFalse(result.is_changed)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertFalse(obj.is_watched)
 
@@ -507,10 +531,11 @@ class TestCharacterContactsManager(NoSocketsTestCase):
         obj.save()
 
         # when
-        _, changed = self.character.update_contacts(force_update=True)
+        result = self.character.update_contacts(force_update=True)
 
         # then
-        self.assertTrue(changed)
+        self.assertFalse(result.is_changed)
+        self.assertTrue(result.is_updated)
         obj = self.character.contacts.get(eve_entity_id=1101)
         self.assertTrue(obj.is_watched)
 
@@ -815,7 +840,6 @@ class TestCharacterContractBidManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        super().setUpTestData()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 

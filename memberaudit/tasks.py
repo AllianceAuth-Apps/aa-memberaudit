@@ -419,10 +419,12 @@ def _update_character_section(
     else:
         kwargs = {}
 
-    _, is_updated = character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=section, method=method, **kwargs
     )
-    character.update_section_log_result(section, is_success=True, is_updated=is_updated)
+    character.update_section_log_result(
+        section, is_success=True, is_updated=result.is_updated
+    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -477,12 +479,16 @@ def assets_build_list_from_esi(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    asset_list, _ = character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.ASSETS,
         method=character.assets_build_list_from_esi,
         force_update=force_update,
     )
-    if asset_list is not None:
+    if not result.is_changed and not force_update:
+        return None
+
+    asset_list = result.data
+    if asset_list:
         ship_asset_record = character.generate_asset_from_current_ship_and_location()
         if ship_asset_record:
             ship_item_id = ship_asset_record["item_id"]
@@ -850,13 +856,13 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    _, is_updated = character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.CONTACTS,
         method=character.update_contacts,
         force_update=force_update,
     )
     character.update_section_log_result(
-        Character.UpdateSection.CONTACTS, is_success=True, is_updated=is_updated
+        Character.UpdateSection.CONTACTS, is_success=True, is_updated=result.is_updated
     )
 
 

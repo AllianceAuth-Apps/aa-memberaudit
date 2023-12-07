@@ -1,9 +1,10 @@
 """Managers for general models."""
 # pylint: disable=redefined-builtin,missing-class-docstring
 
+from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Iterable, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Set, Tuple
 
 from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
@@ -35,6 +36,9 @@ from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
+
+if TYPE_CHECKING:
+    from memberaudit.models import Character, UpdateSectionResult
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -520,12 +524,16 @@ class MailEntityManager(models.Manager):
             )
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_mailing_lists_esi(self, character, token: Token, force_update):
+    def update_or_create_mailing_lists_esi(
+        self, character: Character, token: Token, force_update: bool
+    ) -> UpdateSectionResult:
         """Update or create wallet balance for a character from ESI.
 
         Note: Obsolete mailing lists must not be removed,
         since they might still be referenced by older mails.
         """
+        from memberaudit.models import UpdateSectionResult
+
         logger.info("%s: Fetching mailing lists from ESI", character)
         mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
             character_id=character.eve_character.character_id,
@@ -548,12 +556,13 @@ class MailEntityManager(models.Manager):
         incoming_ids = set(mailing_lists.keys())
         if not incoming_ids:
             logger.info("%s: No new mailing lists", character)
-            return
+            UpdateSectionResult(is_changed=False, is_updated=False)
 
         section = character.UpdateSection.MAILS
-        if force_update or character.has_section_changed(
+        is_changed = character.has_section_changed(
             section=section, content=mailing_lists, hash_num=2
-        ):
+        )
+        if force_update or is_changed:
             new_mailing_lists = self._update_or_create_mailing_list_objs(
                 character=character, mailing_lists=mailing_lists
             )
@@ -561,12 +570,18 @@ class MailEntityManager(models.Manager):
             character.update_section_content_hash(
                 section=section, content=mailing_lists, hash_num=2
             )
+            is_updated = True
 
         else:
             logger.info("%s: Mailing lists have not changed", character)
+            is_updated = False
+
+        return UpdateSectionResult(is_changed=is_changed, is_updated=is_updated)
 
     # @transaction.atomic()
-    def _update_or_create_mailing_list_objs(self, character, mailing_lists):
+    def _update_or_create_mailing_list_objs(
+        self, character: Character, mailing_lists: dict
+    ):
         logger.info("%s: Updating %d mailing lists", character, len(mailing_lists))
         new_mailing_lists = []
         for list_id, mailing_list in mailing_lists.items():

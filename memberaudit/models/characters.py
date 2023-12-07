@@ -4,7 +4,7 @@ import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Set
 
 from bravado.exception import HTTPInternalServerError
 
@@ -44,6 +44,14 @@ from memberaudit.managers.characters import (
 )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+
+
+class UpdateSectionResult(NamedTuple):
+    """A result of an attempted section update."""
+
+    is_changed: Optional[bool]
+    is_updated: bool
+    data: Any = None
 
 
 @dataclass(frozen=True)
@@ -423,7 +431,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         store_func: Optional[Callable],
         force_update: bool = False,
         hash_num: int = 1,
-    ) -> Tuple[Any, Optional[bool]]:
+    ) -> UpdateSectionResult:
         """Update a character's section from ESI if it has changed or is forced.
 
         Args:
@@ -451,19 +459,21 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 section,
                 ex,
             )
-            return None, None
+            return UpdateSectionResult(is_changed=None, is_updated=False)
 
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
 
-        if not force_update and not self.has_section_changed(
+        is_changed = self.has_section_changed(
             section=section, content=data, hash_num=hash_num
-        ):
+        )
+        if not force_update and not is_changed:
             logger.info("%s: %s has not changed", section, self)
-            return None, False
+            return UpdateSectionResult(is_changed=is_changed, is_updated=False)
 
         if store_func:
             ids_to_resolve = store_func(self, data)
+            is_updated = True
             if ids_to_resolve:
                 logger.debug(
                     "%s: Received %d EveEntity IDs from %s "
@@ -473,11 +483,15 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     section,
                 )
                 EveEntity.objects.bulk_resolve_ids(ids_to_resolve)
+        else:
+            is_updated = False
 
         self.update_section_content_hash(
             section=section, content=data, hash_num=hash_num
         )
-        return data, True
+        return UpdateSectionResult(
+            is_changed=is_changed, is_updated=is_updated, data=data
+        )
 
     def update_section_log_result(
         self,
@@ -507,12 +521,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
 
     def perform_update_with_error_logging(
         self, section: UpdateSection, method: Callable, *args, **kwargs
-    ):
+    ) -> UpdateSectionResult:
         """Facilitate catching and logging of exceptions potentially occurring
         during a character update.
         """
         try:
-            return method(*args, **kwargs)
+            result = method(*args, **kwargs)
         except Exception as ex:
             error_message = f"{type(ex).__name__}: {str(ex)}"
             is_token_error = isinstance(ex, (TokenError))
@@ -534,6 +548,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 },
             )
             raise ex
+
+        if not isinstance(result, UpdateSectionResult):
+            raise TypeError(
+                f"{method}: Method must have return type: UpdateSectionResult"
+            )
+
+        return result
 
     def fetch_token(self, scopes=None) -> Token:
         """Return a valid token for this character and scope.
@@ -580,148 +601,156 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
         return token
 
-    def assets_build_list_from_esi(self, force_update=False):
+    def assets_build_list_from_esi(self, force_update=False) -> UpdateSectionResult:
         """Fetch character's assets from ESI and return it.
 
         Or return None if no update is required.
         """
         return self.assets.fetch_from_esi(self, force_update)
 
-    def assets_preload_objects(self, asset_list: list) -> None:
+    def assets_preload_objects(self, asset_list: list) -> UpdateSectionResult:
         """Preload objects needed to build the character's asset tree from ESI."""
-        self.assets.preload_objects_from_esi(self, asset_list)
+        return self.assets.preload_objects_from_esi(self, asset_list)
 
-    def update_attributes(self, force_update: bool = False):
+    def update_attributes(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's learning attributes from ESI."""
         from memberaudit.models import CharacterAttributes
 
         return CharacterAttributes.objects.update_or_create_esi(self, force_update)
 
-    def update_character_details(self, force_update: bool = False):
+    def update_character_details(
+        self, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update the character's details from ESI."""
         from memberaudit.models import CharacterDetails
 
         return CharacterDetails.objects.update_or_create_esi(self, force_update)
 
-    def update_contact_labels(self, force_update: bool = False):
+    def update_contact_labels(self, force_update: bool = False) -> UpdateSectionResult:
         """Update character's contact labels from ESI."""
         return self.contact_labels.update_or_create_esi(self, force_update)
 
-    def update_contacts(self, force_update: bool = False):
+    def update_contacts(self, force_update: bool = False) -> UpdateSectionResult:
         """Update character's contacts from ESI."""
         return self.contacts.update_or_create_esi(self, force_update)
 
-    def update_contract_headers(self, force_update: bool = False):
+    def update_contract_headers(
+        self, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update the character's contract headers from ESI."""
         return self.contracts.update_or_create_esi(self, force_update)
 
-    def update_contract_items(self, contract):
+    def update_contract_items(self, contract) -> UpdateSectionResult:
         """Update the character's contract items from ESI."""
         return contract.items.update_or_create_esi(self, contract)
 
-    def update_contract_bids(self, contract):
+    def update_contract_bids(self, contract) -> UpdateSectionResult:
         """Update the character's contract bids from ESI."""
         return contract.bids.update_or_create_esi(self, contract)
 
-    def update_corporation_history(self, force_update: bool = False):
+    def update_corporation_history(
+        self, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update the character's corporation history from ESI."""
         return self.corporation_history.update_or_create_esi(self, force_update)
 
-    def update_fw_stats(self, force_update: bool = False):
+    def update_fw_stats(self, force_update: bool = False) -> UpdateSectionResult:
         """Update character's FW stats from ESI."""
         from memberaudit.models import CharacterFwStats
 
         return CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
-    def update_implants(self, force_update: bool = False):
+    def update_implants(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's current implants from ESI."""
         return self.implants.update_or_create_esi(self, force_update)
 
-    def update_location(self, force_update: bool = False):
+    def update_location(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's current location from ESI."""
         from memberaudit.models import CharacterLocation
 
         return CharacterLocation.objects.update_or_create_esi(self, force_update)
 
-    def update_loyalty(self, force_update: bool = False):
+    def update_loyalty(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's loyalty entries from ESI."""
         return self.loyalty_entries.update_or_create_esi(self, force_update)
 
-    def update_jump_clones(self, force_update: bool = False):
+    def update_jump_clones(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's jump clones from ESI."""
         return self.jump_clones.update_or_create_esi(self, force_update)
 
-    def update_mailing_lists(self, force_update: bool = False):
+    def update_mailing_lists(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's mailing lists from ESI."""
         return self.mailing_lists.update_or_create_mailing_lists_esi(self, force_update)
 
-    def update_mail_labels(self, force_update: bool = False):
+    def update_mail_labels(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's mail labels from ESI."""
         return self.mail_labels.update_or_create_esi(self, force_update)
 
-    def update_mail_headers(self, force_update: bool = False):
+    def update_mail_headers(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's mail headers from ESI."""
         return self.mails.update_or_create_headers_esi(self, force_update)
 
-    def update_mail_body(self, mail) -> None:
+    def update_mail_body(self, mail) -> UpdateSectionResult:
         """Update the characters's mail body from ESI."""
         return self.mails.update_or_create_body_esi(self, mail)
 
-    def update_mining_ledger(self, force_update: bool = False):
+    def update_mining_ledger(self, force_update: bool = False) -> UpdateSectionResult:
         """Update character's mining ledger from ESI."""
         return self.mining_ledger.update_or_create_esi(self, force_update)
 
-    def update_online_status(self, force_update: bool = False):
+    def update_online_status(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's online status from ESI."""
         from memberaudit.models import CharacterOnlineStatus
 
         return CharacterOnlineStatus.objects.update_or_create_esi(self, force_update)
 
-    def update_planets(self, force_update: bool = False):
+    def update_planets(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's planets from ESI."""
         return self.planets.update_or_create_esi(self, force_update)
 
-    def update_roles(self, force_update: bool = False):
+    def update_roles(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's corporation roles from ESI."""
         return self.roles.update_or_create_esi(self, force_update)
 
-    def update_titles(self, force_update: bool = False):
+    def update_titles(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's corporation titles from ESI."""
         return self.titles.update_or_create_esi(self, force_update)
 
-    def update_ship(self, force_update: bool = False):
+    def update_ship(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's current ship from ESI."""
         from memberaudit.models import CharacterShip
 
         return CharacterShip.objects.update_or_create_esi(self, force_update)
 
-    def update_skill_queue(self, force_update: bool = False):
+    def update_skill_queue(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's skill queue from ESI."""
         return self.skillqueue.update_or_create_esi(self, force_update)
 
-    def update_skill_sets(self):
+    def update_skill_sets(self) -> UpdateSectionResult:
         """Update the character's skill sets."""
         return self.skill_set_checks.update_for_character(self)
 
-    def update_skills(self, force_update: bool = False):
+    def update_skills(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's skills from ESI."""
         return self.skills.update_or_create_esi(self, force_update)
 
-    def update_standings(self, force_update: bool = False):
+    def update_standings(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's standings from ESI."""
         return self.standings.update_or_create_esi(self, force_update)
 
-    def update_wallet_balance(self, force_update: bool = False):
+    def update_wallet_balance(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's wallet balance from ESI."""
         from memberaudit.models import CharacterWalletBalance
 
         return CharacterWalletBalance.objects.update_or_create_esi(self, force_update)
 
-    def update_wallet_journal(self, force_update: bool = False) -> None:
+    def update_wallet_journal(self, force_update: bool = False) -> UpdateSectionResult:
         """Update the character's wallet journal from ESI."""
         return self.wallet_journal.update_or_create_esi(self, force_update)
 
-    def update_wallet_transactions(self, force_update: bool = False):
+    def update_wallet_transactions(
+        self, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update the character's wallet transactions from ESI."""
         return self.wallet_transactions.update_or_create_esi(self, force_update)
 

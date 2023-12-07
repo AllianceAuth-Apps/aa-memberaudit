@@ -35,7 +35,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, UpdateSectionResult
 
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -113,25 +113,40 @@ class CharacterAssetManagerBase(models.Manager):
 
         return list(asset_data.values())
 
-    @fetch_token_for_character("esi-universe.read_structures.v1")
+    # TODO: Check if we can add forced feature
     def preload_objects_from_esi(
-        self, character: Character, token: Token, asset_list: list
-    ) -> None:
+        self, character: Character, asset_list: list
+    ) -> UpdateSectionResult:
         """Preloads objects needed to build the asset tree."""
-        from memberaudit.models import Location
-
-        if not asset_list:
-            return
+        from memberaudit.models import UpdateSectionResult
 
         logger.info("%s: Preloading objects for asset tree", character)
+
+        if not asset_list:
+            return UpdateSectionResult(is_changed=None, is_updated=False)
+
+        is_updated = self._fetch_missing_types_from_esi(character, asset_list)
+        is_updated |= self._create_missing_locations(character, asset_list)
+
+        return UpdateSectionResult(is_changed=None, is_updated=is_updated)
+
+    def _fetch_missing_types_from_esi(
+        self, character: Character, asset_list: list
+    ) -> bool:
         required_ids = {item["type_id"] for item in asset_list if "type_id" in item}
         existing_ids = set(EveType.objects.values_list("id", flat=True))
         missing_ids = required_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info(
-                "%s: Loading %s missing types from ESI", character, len(missing_ids)
-            )
-            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+        if not missing_ids:
+            return False
+
+        EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+        logger.info(
+            "%s: Fetched %s missing types from ESI", character, len(missing_ids)
+        )
+        return True
+
+    def _create_missing_locations(self, character: Character, asset_list: list) -> bool:
+        from memberaudit.models import Location
 
         asset_item_ids = {asset["item_id"] for asset in asset_list}
         incoming_location_ids = {
@@ -139,16 +154,28 @@ class CharacterAssetManagerBase(models.Manager):
             for item in asset_list
             if "location_id" in item and item["location_id"] not in asset_item_ids
         }
+        if not incoming_location_ids:
+            return False
+
+        current_location_ids = set(Location.objects.values_list("id", flat=True))
+        missing_location_ids = incoming_location_ids - current_location_ids
+        if not missing_location_ids:
+            return False
+
+        token = character.fetch_token("esi-universe.read_structures.v1")
         Location.objects.create_missing_esi(
-            location_ids=incoming_location_ids, token=token
+            location_ids=missing_location_ids, token=token
         )
+        return True
 
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)
 
 
 class CharacterAttributesManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create attributes for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.ATTRIBUTES,
@@ -185,7 +212,9 @@ class CharacterAttributesManager(models.Manager):
 
 
 class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create assets for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -222,7 +251,9 @@ class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
 
 
 class CharacterContactManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create assets for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
@@ -368,7 +399,9 @@ class CharacterContactManager(models.Manager):
 
 
 class CharacterContractManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create contracts for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.CONTRACTS,

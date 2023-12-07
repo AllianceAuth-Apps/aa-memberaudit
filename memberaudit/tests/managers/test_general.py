@@ -1059,7 +1059,6 @@ class TestCharacterMailingLists(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        super().setUpTestData()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 

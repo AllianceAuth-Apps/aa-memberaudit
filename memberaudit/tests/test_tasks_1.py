@@ -23,7 +23,12 @@ from app_utils.testing import (
 )
 
 from memberaudit import tasks
-from memberaudit.models import Character, CharacterUpdateStatus, Location
+from memberaudit.models import (
+    Character,
+    CharacterUpdateStatus,
+    Location,
+    UpdateSectionResult,
+)
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
@@ -832,7 +837,9 @@ class TestUpdateCharactersDoctrines(TestCase):
     @patch(MODELS_PATH + ".characters.Character.update_skill_sets")
     def test_normal(self, mock_update_skill_sets):
         # given
-        mock_update_skill_sets.return_value = None, True
+        mock_update_skill_sets.return_value = UpdateSectionResult(
+            is_changed=True, is_updated=True
+        )
         create_memberaudit_character(1001)
 
         # when

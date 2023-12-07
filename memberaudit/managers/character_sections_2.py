@@ -42,13 +42,15 @@ from memberaudit.utils import (
 from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, CharacterMail, UpdateSectionResult
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create corporation history for character."""
 
         return character.update_section_if_changed(
@@ -92,7 +94,9 @@ class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Ma
 
 
 class CharacterDetailsManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create character details from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.CHARACTER_DETAILS,
@@ -164,7 +168,9 @@ class CharacterDetailsManager(models.Manager):
 
 
 class CharacterFwStatsManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create fw stats for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -206,7 +212,9 @@ class CharacterFwStatsManager(models.Manager):
 
 
 class CharacterImplantManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create implants for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.IMPLANTS,
@@ -246,7 +254,9 @@ class CharacterImplantManager(models.Manager):
 
 
 class CharacterJumpCloneManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create jump clones for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -327,7 +337,9 @@ class CharacterJumpCloneManager(models.Manager):
 
 
 class CharacterLocationManager(models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create location for a character from ESI."""
 
         return character.update_section_if_changed(
@@ -379,7 +391,9 @@ class CharacterLocationManager(models.Manager):
 
 
 class CharacterLoyaltyEntryManager(GenericUpdateSimpleObjMixin, models.Manager):
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create loyalty entries for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.LOYALTY,
@@ -637,18 +651,15 @@ class CharacterMailManager(models.Manager):
 
         self.bulk_update(mails.values(), ["is_read"])
 
-    @fetch_token_for_character("esi-mail.read_mail.v1")
-    def update_or_create_body_esi(self, character: Character, token: Token, mail):
+    # TODO: Add forced feature
+    def update_or_create_body_esi(
+        self, character: Character, mail: CharacterMail
+    ) -> UpdateSectionResult:
         """Update or create mail body for a character from ESI."""
-        logger.debug(
-            "%s: Fetching body from ESI for mail ID %s", character, mail.mail_id
-        )
+        from memberaudit.models import UpdateSectionResult
+
         try:
-            mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
-                character_id=character.eve_character.character_id,
-                mail_id=mail.mail_id,
-                token=token.valid_access_token(),
-            ).result()
+            mail_body = self._fetch_mail_body_from_esi(character, mail)
         except HTTPNotFound:
             logger.info(
                 "%s: Mail %s was deleted in game. Removing mail header.",
@@ -656,14 +667,37 @@ class CharacterMailManager(models.Manager):
                 mail,
             )
             mail.delete()
-            return
+            return UpdateSectionResult(is_changed=True, is_updated=True)
 
-        mail.body = mail_body.get("body", "")
-        mail.save()
-        eve_xml_to_html(mail.body)  # resolve names early
+        if mail.body != mail_body:
+            is_changed = True
+            mail.body = mail_body
+            mail.save()
+            is_updated = True
+            eve_xml_to_html(mail.body)  # resolve names early
+        else:
+            is_changed = False
+            is_updated = False
 
         if MEMBERAUDIT_DEVELOPER_MODE:
             store_debug_data_to_disk(character, mail_body, "mail_body")
+
+        return UpdateSectionResult(is_changed=is_changed, is_updated=is_updated)
+
+    @fetch_token_for_character("esi-mail.read_mail.v1")
+    def _fetch_mail_body_from_esi(
+        self, character: Character, token: Token, mail
+    ) -> str:
+        logger.info(
+            "%s: Fetching mail body from ESI for mail ID %d", character, mail.mail_id
+        )
+        mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
+            character_id=character.eve_character.character_id,
+            mail_id=mail.mail_id,
+            token=token.valid_access_token(),
+        ).result()
+
+        return mail_body.get("body", "")
 
 
 class CharacterMailLabelManager(models.Manager):
@@ -672,7 +706,9 @@ class CharacterMailLabelManager(models.Manager):
         label_pks = self.values_list("pk", flat=True)
         return {label.label_id: label for label in self.in_bulk(label_pks).values()}
 
-    def update_or_create_esi(self, character: Character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create mail labels for a character from ESI."""
         return character.update_section_if_changed(
             section=character.UpdateSection.MAILS,

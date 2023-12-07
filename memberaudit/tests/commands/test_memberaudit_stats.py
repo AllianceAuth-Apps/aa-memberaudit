@@ -2,7 +2,7 @@ from io import StringIO
 
 from django.core.management import call_command
 
-from app_utils.testing import NoSocketsTestCase
+from app_utils.testing import TestCase
 
 from memberaudit.management.commands import memberaudit_stats
 from memberaudit.tests.testdata.factories import create_character_update_status
@@ -10,7 +10,7 @@ from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.utils import create_memberaudit_character
 
 
-class TestStats(NoSocketsTestCase):
+class TestStats(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
