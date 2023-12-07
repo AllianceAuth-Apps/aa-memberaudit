@@ -831,8 +831,14 @@ class TestUpdateCharactersDoctrines(TestCase):
 
     @patch(MODELS_PATH + ".characters.Character.update_skill_sets")
     def test_normal(self, mock_update_skill_sets):
+        # given
+        mock_update_skill_sets.return_value = None, True
         create_memberaudit_character(1001)
+
+        # when
         tasks.update_characters_skill_checks()
+
+        # then
         self.assertTrue(mock_update_skill_sets.called)
 
 

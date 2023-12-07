@@ -419,10 +419,10 @@ def _update_character_section(
     else:
         kwargs = {}
 
-    character.perform_update_with_error_logging(
+    _, is_updated = character.perform_update_with_error_logging(
         section=section, method=method, **kwargs
     )
-    character.update_section_log_result(section, is_success=True)
+    character.update_section_log_result(section, is_success=True, is_updated=is_updated)
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -500,7 +500,7 @@ def assets_preload_objects(
 ) -> Optional[list]:
     """Preload asset objects for a character from ESI."""
     if asset_list is None:
-        return None  # Exit when assets are unchanged
+        return None  # Exit when assets are unchanged  # TODO Check that this works!!
 
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -528,7 +528,7 @@ def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -
     )
     if asset_list is None:
         character.update_section_log_result(
-            Character.UpdateSection.ASSETS, is_success=True
+            Character.UpdateSection.ASSETS, is_success=True, is_updated=False
         )
         return
 
@@ -549,7 +549,7 @@ def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -
         )
     else:
         character.update_section_log_result(
-            Character.UpdateSection.ASSETS, is_success=True
+            Character.UpdateSection.ASSETS, is_success=True, is_updated=True
         )
 
 
@@ -690,7 +690,7 @@ def assets_create_children(
             )
         else:
             character.update_section_log_result(
-                Character.UpdateSection.ASSETS, is_success=True
+                Character.UpdateSection.ASSETS, is_success=True, is_updated=True
             )
 
 
@@ -799,7 +799,9 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
             )
 
     # the last task in the chain logs success (if any)
-    character.update_section_log_result(Character.UpdateSection.MAILS, is_success=True)
+    character.update_section_log_result(
+        Character.UpdateSection.MAILS, is_success=True, is_updated=True
+    )
 
 
 # special tasks for updating contacts
@@ -848,13 +850,13 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    _, is_updated = character.perform_update_with_error_logging(
         section=Character.UpdateSection.CONTACTS,
         method=character.update_contacts,
         force_update=force_update,
     )
     character.update_section_log_result(
-        Character.UpdateSection.CONTACTS, is_success=True
+        Character.UpdateSection.CONTACTS, is_success=True, is_updated=is_updated
     )
 
 
@@ -960,6 +962,7 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
+
     character.update_section_log_result(
         Character.UpdateSection.CONTRACTS, is_success=True
     )

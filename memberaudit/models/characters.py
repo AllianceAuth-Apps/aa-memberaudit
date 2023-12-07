@@ -483,24 +483,31 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         self,
         section: UpdateSection,
         is_success: bool,
+        is_updated: bool = False,
         last_error_message: str = None,
     ) -> None:
         """Log update result for a character's section."""
+        last_error_message = last_error_message if last_error_message else ""
+        defaults = {
+            "is_success": is_success,
+            "has_token_error": False,
+            "last_error_message": last_error_message,
+            "finished_at": now(),
+        }
+        obj: CharacterUpdateStatus = self.update_status_set.update_or_create(
+            section=section, defaults=defaults
+        )[0]
+        if is_updated:
+            obj.update_started_at = obj.started_at
+            obj.update_finished_at = now()
+            obj.save()
+
         status = "successfully" if is_success else "with errors"
-        logger.info("%s: %s update completed %s", self, section.label, status)
-        self.update_status_set.update_or_create(
-            section=section,
-            defaults={
-                "is_success": is_success,
-                "has_token_error": False,
-                "last_error_message": last_error_message if last_error_message else "",
-                "finished_at": now(),
-            },
-        )
+        logger.info("%s: %s update run completed %s", self, section.label, status)
 
     def perform_update_with_error_logging(
         self, section: UpdateSection, method: Callable, *args, **kwargs
-    ) -> None:
+    ):
         """Facilitate catching and logging of exceptions potentially occurring
         during a character update.
         """
@@ -573,7 +580,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
         return token
 
-    def assets_build_list_from_esi(self, force_update=False) -> Optional[list]:
+    def assets_build_list_from_esi(self, force_update=False):
         """Fetch character's assets from ESI and return it.
 
         Or return None if no update is required.
@@ -624,7 +631,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Update character's FW stats from ESI."""
         from memberaudit.models import CharacterFwStats
 
-        CharacterFwStats.objects.update_or_create_esi(self, force_update)
+        return CharacterFwStats.objects.update_or_create_esi(self, force_update)
 
     def update_implants(self, force_update: bool = False):
         """Update the character's current implants from ESI."""
@@ -844,14 +851,36 @@ class CharacterUpdateStatus(models.Model):
     has_token_error = models.BooleanField(
         default=False, help_text="Whether this section has a token error."
     )
-    finished_at = models.DateTimeField(null=True, default=None, db_index=True)
+    finished_at = models.DateTimeField(
+        null=True,
+        default=None,
+        db_index=True,
+        help_text="Finish time of an update attempt",
+    )
     is_success = models.BooleanField(
         null=True,
         default=None,
         db_index=True,
     )
     last_error_message = models.TextField()
-    started_at = models.DateTimeField(null=True, default=None, db_index=True)
+    started_at = models.DateTimeField(
+        null=True,
+        default=None,
+        db_index=True,
+        help_text="Start time of an update attempt",
+    )
+    update_finished_at = models.DateTimeField(
+        null=True,
+        default=None,
+        db_index=True,
+        help_text="Finish time of an actual update",
+    )
+    update_started_at = models.DateTimeField(
+        null=True,
+        default=None,
+        db_index=True,
+        help_text="Start time of an actual update",
+    )
 
     objects = CharacterUpdateStatusManager()
 

@@ -525,7 +525,7 @@ class CharacterSkillSetCheckManager(models.Manager):
         skill_sets_count = skill_sets_qs.count()
         if skill_sets_count == 0:
             logger.info("%s: No skill sets defined", character)
-            return
+            return None, False
 
         logger.info("%s: Checking %s skill sets", character, skill_sets_count)
         skill_set_checks = [
@@ -562,6 +562,8 @@ class CharacterSkillSetCheckManager(models.Manager):
                 checks_by_skill_set_id[skill_set.id].failed_recommended_skills.add(
                     *failed_skills
                 )
+
+        return None, True
 
     @staticmethod
     def _identify_failed_skills(

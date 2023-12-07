@@ -510,8 +510,11 @@ class TestUpdateCharacterSection(TestCase):
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
-    def test_should_update_normally(self, mock_update_location):
+    def test_should_log_success_and_updated_when_update_succeeded(
+        self, mock_update_location
+    ):
         # given
+        mock_update_location.return_value = None, True
         character = create_character_from_user(self.user)
         character.clear_cache()
 
@@ -526,6 +529,8 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
         self.assertTrue(status.finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
 
     def test_should_pass_though_exceptions_from_update_method(
         self, mock_update_location
@@ -549,11 +554,14 @@ class TestUpdateCharacterSection(TestCase):
         self.assertFalse(status.is_success)
         self.assertTrue(status.last_error_message)
         self.assertTrue(status.finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
 
     def test_should_clear_previous_errors_when_update_succeeded(
         self, mock_update_location
     ):
         # given
+        mock_update_location.return_value = None, True
         character = create_character_from_user(self.user)
         character.clear_cache()
         finished_at = now() - dt.timedelta(hours=4)
@@ -574,3 +582,56 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
         self.assertGreater(status.finished_at, finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+
+    def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_1(
+        self, mock_update_location
+    ):
+        # given
+        mock_update_location.return_value = None, False
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_location.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section=Character.UpdateSection.IMPLANTS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
+
+    def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_2(
+        self, mock_update_location
+    ):
+        # given
+        mock_update_location.return_value = None, False
+        character = create_character_from_user(self.user)
+        character.clear_cache()
+        update_started_at = now() - dt.timedelta(hours=4)
+        update_finished_at = now() - dt.timedelta(hours=3)
+        status = create_character_update_status(
+            character=character,
+            section=Character.UpdateSection.IMPLANTS,
+            is_success=True,
+            update_started_at=update_started_at,
+            update_finished_at=update_finished_at,
+        )
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_location.called)
+        status.refresh_from_db()
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.last_error_message)
+        self.assertTrue(status.finished_at)
+        self.assertEqual(status.update_started_at, update_started_at)
+        self.assertEqual(status.update_finished_at, update_finished_at)
