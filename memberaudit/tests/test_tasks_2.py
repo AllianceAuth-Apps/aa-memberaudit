@@ -356,6 +356,20 @@ class TestUpdateCharacterAssets2(TestCase):
         )
         self.assertTrue(status.is_success)
 
+    def test_should_do_nothing_when_assets_have_not_changed(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client
+        tasks.update_character_assets.delay(self.character_1001.pk, True)
+
+        # when
+        tasks.update_character_assets.delay(self.character_1001.pk, False)
+
+        status = self.character_1001.update_status_for_section(
+            Character.UpdateSection.ASSETS
+        )
+        self.assertTrue(status.is_success)
+        self.assertGreater(status.finished_at, status.update_finished_at)
+
     @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
     def test_log_warning_when_there_are_leftovers_1(self, mock_logger, mock_esi):
         # given

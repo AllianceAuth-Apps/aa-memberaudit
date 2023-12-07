@@ -506,7 +506,7 @@ def assets_preload_objects(
 ) -> Optional[list]:
     """Preload asset objects for a character from ESI."""
     if asset_list is None:
-        return None  # Exit when assets are unchanged  # TODO Check that this works!!
+        return None  # Exit when assets are unchanged
 
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT

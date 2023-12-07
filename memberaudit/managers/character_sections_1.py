@@ -114,7 +114,6 @@ class CharacterAssetManagerBase(models.Manager):
 
         return list(asset_data.values())
 
-    # TODO: Check if we can add forced feature
     def preload_objects_from_esi(
         self, character: Character, asset_list: list
     ) -> UpdateSectionResult:
