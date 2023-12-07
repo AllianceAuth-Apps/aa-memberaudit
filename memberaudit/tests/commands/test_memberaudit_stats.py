@@ -4,6 +4,7 @@ from django.core.management import call_command
 
 from app_utils.testing import NoSocketsTestCase
 
+from memberaudit.management.commands import memberaudit_stats
 from memberaudit.tests.testdata.factories import create_character_update_status
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.utils import create_memberaudit_character
@@ -14,6 +15,9 @@ class TestStats(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         load_entities()
+
+    def setUp(self) -> None:
+        memberaudit_stats.clear_cache()
 
     def test_command_should_work(self):
         # given

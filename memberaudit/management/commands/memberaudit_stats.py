@@ -4,27 +4,38 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
-from tqdm import tqdm
-
 from django.apps import apps
 from django.contrib.auth.models import User
+from django.core.cache import cache
 from django.core.management.base import BaseCommand, OutputWrapper
 from django.db.models import Avg, F, Max, Min
 
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
-from memberaudit.constants import IS_TESTING
 from memberaudit.models import Character, CharacterUpdateStatus, characters
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+
+_CACHE_TIMEOUT = 3600
+_CACHE_KEY = "memberaudit-stats"
 
 
 class Command(BaseCommand):
     help = str(__doc__)
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--clear-cache",
+            action="store_true",
+            help="Clear the cache for this command",
+        )
+
     def handle(self, *args, **options):
-        stats = calc_statistics()
+        if options["clear_cache"]:
+            clear_cache()
+
+        stats = self._calc_statistics()
 
         self._write_title("sections")
         table = Table()
@@ -40,6 +51,28 @@ class Command(BaseCommand):
 
         self._output_section(stats["settings"], "settings")
         self.stdout.write("")
+
+    def _calc_statistics(self) -> dict:
+        """Return detailed statistics about Member Audit."""
+
+        work = [
+            ("settings", _fetch_settings, False),
+            ("sections", _calc_sections, True),
+            ("object_counts", _calc_object_counts, True),
+        ]
+
+        data = {}
+        for key, func, can_cache in work:
+            if can_cache:
+                self.stdout.write(f"Calculating {key.replace('_', ' ')}...")
+                cache_key = f"{_CACHE_KEY}-{key}"
+                data[key] = cache.get_or_set(
+                    key=cache_key, default=func, timeout=_CACHE_TIMEOUT
+                )
+            else:
+                data[key] = func()
+
+        return data
 
     def _write_title(self, text: str):
         self.stdout.write(self.style.SUCCESS(f"{text.title()}:"))
@@ -157,24 +190,6 @@ class Table:
                 stdout.write(output_row)
 
 
-def calc_statistics() -> dict:
-    """Return detailed statistics about Member Audit."""
-
-    work = [
-        ("settings", _fetch_settings),
-        ("object_counts", _calc_object_counts),
-        ("sections", _calc_sections),
-    ]
-
-    data = {
-        key: func()
-        for key, func in tqdm(
-            work, desc="Collecting data for statistics", disable=IS_TESTING, leave=False
-        )
-    }
-    return data
-
-
 def _calc_object_counts():
     object_counts = {}
     my_app = apps.get_app_config("memberaudit")
@@ -247,3 +262,8 @@ def _fetch_settings():
         }
     }
     return settings
+
+
+def clear_cache():
+    """Delete the cache used by this command."""
+    cache.delete_pattern(f"{_CACHE_KEY}*")
