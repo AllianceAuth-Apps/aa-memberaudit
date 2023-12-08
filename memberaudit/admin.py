@@ -5,7 +5,7 @@ import datetime as dt
 import functools
 from typing import Any, List, Optional
 
-from humanize.time import naturaltime
+from humanize.time import naturaldelta, naturaltime
 
 from django import forms
 from django.contrib import admin
@@ -36,11 +36,6 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-
-
-def chop_microseconds(delta: dt.timedelta) -> dt.timedelta:
-    """Return new timedelta without the microseconds."""
-    return delta - dt.timedelta(microseconds=delta.microseconds)
 
 
 class AddDeleteObjects:
@@ -222,7 +217,7 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         if not started_at or not finished_at:
             return "-"
 
-        return chop_microseconds(finished_at - started_at)
+        return naturaldelta(finished_at - started_at)
 
 
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
