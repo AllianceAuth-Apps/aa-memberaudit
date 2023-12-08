@@ -1,8 +1,11 @@
 """Define admin site for Member Audit."""
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
+import datetime as dt
 import functools
 from typing import Any, List, Optional
+
+from humanize.time import naturaltime
 
 from django import forms
 from django.contrib import admin
@@ -33,6 +36,11 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
+
+
+def chop_microseconds(delta: dt.timedelta) -> dt.timedelta:
+    """Return new timedelta without the microseconds."""
+    return delta - dt.timedelta(microseconds=delta.microseconds)
 
 
 class AddDeleteObjects:
@@ -162,11 +170,28 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "_is_success",
         "_is_token_ok",
         "last_error_message",
-        "run_started_at",
         "run_finished_at",
+        "_run_duration",
+        "update_finished_at",
+        "_update_duration",
     )
-    readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
+    readonly_fields = (
+        "_is_enabled",
+        "_is_success",
+        "_is_token_ok",
+        "_run_duration",
+        "_update_duration",
+    )
     ordering = ["section"]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     @admin.display(boolean=True)
     def _is_enabled(self, obj: CharacterUpdateStatus) -> bool:
@@ -182,14 +207,22 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
     def _is_token_ok(self, obj: CharacterUpdateStatus) -> bool:
         return not obj.has_token_error
 
-    def has_add_permission(self, request, obj=None):
-        return False
+    @admin.display
+    def _run_duration(self, obj: CharacterUpdateStatus) -> float:
+        return self._calc_duration(obj.run_started_at, obj.run_finished_at)
 
-    def has_change_permission(self, request, obj=None):
-        return False
+    @admin.display
+    def _update_duration(self, obj: CharacterUpdateStatus) -> float:
+        return self._calc_duration(obj.update_started_at, obj.update_finished_at)
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    @staticmethod
+    def _calc_duration(
+        started_at: dt.datetime, finished_at: dt.datetime
+    ) -> dt.timedelta:
+        if not started_at or not finished_at:
+            return "-"
+
+        return chop_microseconds(finished_at - started_at)
 
 
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
@@ -426,9 +459,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def _created_at(self, obj: Character):
         return obj.created_at
 
-    @admin.display(ordering="last_update_at", description=__("last update"))
+    @admin.display(ordering="last_update_at", description=__("last update run"))
     def _last_update_at(self, obj: Character):
-        return obj.last_update_at
+        return naturaltime(obj.last_update_at)
 
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
