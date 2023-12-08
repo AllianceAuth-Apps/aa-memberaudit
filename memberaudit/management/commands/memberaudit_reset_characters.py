@@ -1,13 +1,17 @@
+"""Delete all character section data."""
+
 import logging
 
-from django.core.management.base import BaseCommand
-from esi.models import Token
+from tqdm import tqdm
 
-from allianceauth.authentication.models import CharacterOwnership
+from django.core.management.base import BaseCommand
+
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.models import Character, Location, MailEntity
+from memberaudit.constants import IS_TESTING
+from memberaudit.helpers import character_section_models
+from memberaudit.models import Character
 from memberaudit.tasks import update_all_characters
 
 from . import get_input
@@ -16,13 +20,21 @@ logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
 
 class Command(BaseCommand):
-    help = "Reset all character data"
+    help = str(__doc__)
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--reload",
             action="store_true",
             help="Also start reloading",
+        )
+        parser.add_argument(
+            "--all",
+            action="store_true",
+            help=(
+                "Delete all character data, incl. from those "
+                "which can not be reloaded from ESI"
+            ),
         )
         parser.add_argument(
             "--noinput",
@@ -32,76 +44,57 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        self.stdout.write("Member Audit - Reset all characters")
-        self.stdout.write("===================================")
+        if options["all"]:
+            characters_query = Character.objects.all()
+            orphan_text = "are included."
+        else:
+            characters_query = Character.objects.filter(
+                is_disabled=False, eve_character__character_ownership__isnull=False
+            )
+            orphan_text = "are not included."
 
+        character_count = characters_query.count()
         self.stdout.write(
-            "This command deletes all locally stored character data, "
-            "but maintains character skeletons, so they can be reloaded from ESI."
+            f"This will delete the section data for {character_count} characters. "
+            f"Orphans and disabled characters {orphan_text}."
+        )
+        self.stdout.write(
+            "All other local data incl. doctrines and the characters themselves will stay intact."
         )
         if options["reload"]:
             self.stdout.write("Will also start the task for reloading all characters.")
 
-        self.stdout.write()
         self.stdout.write(
-            "!! Please make sure your supervisors are shut down before running this command. !!"
-        )
-        self.stdout.write()
-        self.stdout.write("ATTENTION!")
-        self.stdout.write(
-            "- ESI does not provide for historical data, "
-            "so you will loose data like older mails and wallet journal entries. "
-        )
-        self.stdout.write(
-            "- Also, all characters will be reset, e.g. sharing will be turned off."
-        )
-        self.stdout.write("- Doctrines will stay intact.")
-        self.stdout.write()
-
-        tokens = (
-            Token.objects.all()
-            .require_scopes(Character.get_esi_scopes())
-            .require_valid()
-        )
-        character_ownerships = [
-            obj
-            for obj in CharacterOwnership.objects.filter(
-                character__character_id__in=tokens.values_list(
-                    "character_id", flat=True
-                )
+            self.style.NOTICE(
+                "Please make sure your supervisors are shut down "
+                "before running this command."
             )
-            if (obj.user_id, obj.character.character_id)
-            in tokens.values_list("user_id", "character_id")
-        ]
-
+        )
         if not options["noinput"]:
-            user_input = get_input(
-                "Are you sure you want to proceed{}? (y/N)?".format(
-                    f" for {len(character_ownerships)} character(s)"
-                )
-            )
+            user_input = get_input("Are you sure you want to proceed? (y/N)?")
         else:
             user_input = "y"
-        if user_input.lower() == "y":
-            logger.info("Running command reset_characters for %s characters.")
-            self.stdout.write(
-                self.style.SUCCESS("Character data reset has been started!")
-            )
-            self.stdout.write("Deleting Characters...")
-            Character.objects.all().delete()
-            self.stdout.write("Deleting Locations...")
-            Location.objects.all().delete()
-            self.stdout.write("Deleting MailEntities...")
-            MailEntity.objects.all().delete()
 
-            self.stdout.write(f"Recreating {len(character_ownerships)} characters ...")
-            for character_ownership in character_ownerships:
-                Character.objects.create(eve_character=character_ownership.character)
-
-            if options["reload"]:
-                update_all_characters.delay()
-                self.stdout.write("Started task to reload all character data")
-
-            self.stdout.write(self.style.SUCCESS("Done"))
-        else:
+        if user_input.lower() != "y":
             self.stdout.write(self.style.WARNING("Aborted"))
+            return
+
+        logger.info(
+            "Running command reset_characters for %s characters.", character_count
+        )
+        section_models = character_section_models()
+        for character in tqdm(
+            characters_query.iterator(),
+            desc="Deleting characters",
+            total=character_count,
+            disable=IS_TESTING,
+        ):
+            for model_class in section_models:
+                if hasattr(model_class, "character"):
+                    model_class.objects.filter(character=character).delete()
+
+        if options["reload"]:
+            update_all_characters.delay()
+            self.stdout.write("Started task to reload all character data")
+
+        self.stdout.write(self.style.SUCCESS("Done"))

@@ -23,6 +23,7 @@ This release makes changes to the task structure. To avoid generating many faile
 
 - Removed task statistics from **memberaudit_stats** command incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics for Member Audit
 - **memberaudit_stats** now shows the current objects counts for all sections, the current Member Audit settings and the current configuration for section stale minutes (i.e. how often sections are updated)
+- Fixed and improved **memberaudit_reset_characters** command
 - Refactoring
 - Improved test suite
 

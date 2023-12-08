@@ -4,7 +4,6 @@ import logging
 from enum import Enum
 from typing import Any, Dict, List, Sequence, Tuple, Union
 
-from django.apps import apps
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management.base import BaseCommand, OutputWrapper
@@ -13,6 +12,7 @@ from django.db.models import Avg, F, Max, Min
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
+from memberaudit.helpers import character_section_models
 from memberaudit.models import Character, CharacterUpdateStatus, characters
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
@@ -192,13 +192,7 @@ class Table:
 
 def _calc_object_counts():
     object_counts = {}
-    my_app = apps.get_app_config("memberaudit")
-    my_character_models = [
-        model_class
-        for model_class in my_app.get_models()
-        if model_class.__name__.startswith("Character")
-    ]
-    for model_class in my_character_models:
+    for model_class in character_section_models():
         name = str(model_class._meta.verbose_name_plural)
         count = model_class.objects.count()
         object_counts[name] = count

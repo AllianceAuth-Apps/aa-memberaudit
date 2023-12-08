@@ -8,6 +8,7 @@ from typing import Any, Iterable, NamedTuple, Optional, Set
 
 from celery import Task
 
+from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
@@ -107,3 +108,15 @@ class UpdateSectionResult(NamedTuple):
     is_changed: Optional[bool]
     is_updated: bool
     data: Any = None
+
+
+def character_section_models():
+    """Return all character section models."""
+    my_app = apps.get_app_config("memberaudit")
+    my_character_models = [
+        model_class
+        for model_class in my_app.get_models()
+        if model_class.__name__.startswith("Character")
+    ]
+
+    return my_character_models
