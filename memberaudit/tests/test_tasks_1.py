@@ -657,28 +657,34 @@ class TestUpdateCharacterContracts(TestCase):
         )
         reset_celery_once_locks()
 
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
+    def test_should_record_success_when_update_completed_successfully(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_contracts(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertTrue(status.update_finished_at)
 
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
+    def test_should_record_error_when_update_failed(self, mock_esi):
+        # given
         exception = build_http_error(502, "Test exception")
         mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
             exception
         )
 
+        # when
         with self.assertRaises(HTTPError):
             tasks.update_character_contracts(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
         )

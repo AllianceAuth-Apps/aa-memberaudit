@@ -902,10 +902,13 @@ def update_character_contract_headers(character_pk: int, force_update: bool = Fa
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.CONTRACTS,
         method=character.update_contract_headers,
         force_update=force_update,
+    )
+    character.update_section_log_result(
+        Character.UpdateSection.CONTRACTS, is_success=True, is_updated=result.is_updated
     )
 
 
@@ -975,10 +978,6 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
-
-    character.update_section_log_result(
-        Character.UpdateSection.CONTRACTS, is_success=True
-    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
