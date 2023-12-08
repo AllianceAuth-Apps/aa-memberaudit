@@ -94,7 +94,7 @@ class Command(BaseCommand):
                     model_class.objects.filter(character=character).delete()
 
         if options["reload"]:
-            update_all_characters.delay()
+            update_all_characters.delay(force_update=True, ignore_stale=True)
             self.stdout.write("Started task to reload all character data")
 
         self.stdout.write(self.style.SUCCESS("Done"))

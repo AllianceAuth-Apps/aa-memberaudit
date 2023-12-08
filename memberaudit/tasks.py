@@ -79,11 +79,16 @@ def run_regular_updates() -> None:
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @when_esi_is_available
-def update_all_characters(self, force_update: bool = False) -> None:
+def update_all_characters(
+    self, force_update: bool = False, ignore_stale: bool = False
+) -> None:
     """Update all enabled characters from ESI and disable update for orphans.
 
     Args:
-        - force_update: When set to True will always update regardless of stale status
+    - force_update: When set to True will always refresh from data from ESI,
+        even if it has not changed
+    - ignore_stale: When True, will start updating all sections regardless
+        of it's stale status
     """
     Character.objects.disable_characters_with_no_owner()
 
@@ -92,18 +97,18 @@ def update_all_characters(self, force_update: bool = False) -> None:
         Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
     )
     if enabled_characters:
-        update_type = "forced" if force_update else "normal"
-        logger.info(
-            "Starting %s updates for %d characters",
-            update_type,
-            len(enabled_characters),
-        )
         priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for character_pk in enabled_characters:
             update_character.apply_async(
-                kwargs={"character_pk": character_pk, "force_update": force_update},
+                kwargs={
+                    "character_pk": character_pk,
+                    "force_update": force_update,
+                    "ignore_stale": ignore_stale,
+                },
                 priority=priority,
             )
+        logger.info("Started updates for %d characters", len(enabled_characters))
+
     else:
         logger.info("No enabled characters found for update.")
 
@@ -120,7 +125,7 @@ def update_character(
     Args:
     - character_pk: PL of character to update
     - force_update: When set to True will always refresh from data from ESI,
-        even if it has not changed. And also ignore stale status.
+        even if it has not changed
     - ignore_stale: When True, will start updating all sections regardless
         of it's stale status
 
@@ -137,7 +142,7 @@ def update_character(
     character.clear_cache()
 
     character_needs_update = character.calc_update_needed()
-    if not force_update and not ignore_stale and not character_needs_update:
+    if not ignore_stale and not character_needs_update:
         logger.info("%s: No update required", character)
         return False
 
@@ -146,7 +151,7 @@ def update_character(
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
     for section in enabled_sections_by_stale_minutes():
-        if force_update or ignore_stale or character_needs_update.for_section(section):
+        if ignore_stale or character_needs_update.for_section(section):
             task_name = f"update_character_{section.value}"
             task = globals()[task_name]
             task.apply_async(

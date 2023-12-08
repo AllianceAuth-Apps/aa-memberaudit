@@ -49,11 +49,15 @@ class Command(BaseCommand):
 
             if user_input.lower() == "y":
                 logger.info(
-                    "Running command update_all_characters for %s characters.",
+                    "Running command update_all_characters for %d characters.",
                     character_count,
                 )
-                self.stdout.write("Starting task to update all characters...")
-                update_all_characters.delay(force_update=options["force"])
+                update_all_characters.delay(
+                    force_update=options["force"], ignore_stale=True
+                )
+                self.stdout.write(
+                    "Started task to update %d characters...", character_count
+                )
                 self.stdout.write(self.style.SUCCESS("Done"))
 
         else:

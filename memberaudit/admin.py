@@ -442,7 +442,11 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
-                kwargs={"character_pk": obj.pk, "force_update": True},
+                kwargs={
+                    "character_pk": obj.pk,
+                    "force_update": True,
+                    "ignore_stale": True,
+                },
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
 

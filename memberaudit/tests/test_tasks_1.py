@@ -193,7 +193,9 @@ class TestUpdateCharacter(TestCase):
         )
         last_finished = status.finished_at
         # when
-        tasks.update_character(self.character_1001.pk, force_update=True)
+        tasks.update_character(
+            self.character_1001.pk, force_update=True, ignore_stale=True
+        )
         # then
         status.refresh_from_db()
         self.assertGreater(status.finished_at, last_finished)
