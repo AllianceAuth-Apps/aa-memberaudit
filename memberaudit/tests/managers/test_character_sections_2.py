@@ -965,6 +965,34 @@ class TestUpdateCharacterMailBody(NoSocketsTestCase):
         obj = self.character_1001.mails.get(mail_id=1)
         self.assertEqual(obj.body, "blah blah blah 😓")
 
+    def test_should_update_when_body_has_not_changed_but_forced(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        sender = create_mail_entity_from_eve_entity(1002)
+        mail = create_character_mail(
+            character=self.character_1001,
+            mail_id=1,
+            sender=sender,
+            subject="Mail 1",
+            body="blah blah blah 😓",
+            is_read=False,
+            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        )
+        recipient_1001 = create_mail_entity_from_eve_entity(1001)
+        recipient_9001 = create_mailing_list(
+            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
+        )
+        mail.recipients.add(recipient_1001, recipient_9001)
+
+        # when
+        result = self.character_1001.update_mail_body(mail, force_update=True)
+
+        # then
+        self.assertFalse(result.is_changed)
+        self.assertTrue(result.is_updated)
+        obj = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(obj.body, "blah blah blah 😓")
+
     @patch(MODULE_PATH + ".eve_xml_to_html")
     def test_should_update_mail_body_from_scratch(self, mock_eve_xml_to_html, mock_esi):
         # given

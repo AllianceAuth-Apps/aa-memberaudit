@@ -655,9 +655,8 @@ class CharacterMailManager(models.Manager):
 
         self.bulk_update(mails.values(), ["is_read"])
 
-    # TODO: Add forced feature
     def update_or_create_body_esi(
-        self, character: Character, mail: CharacterMail
+        self, character: Character, mail: CharacterMail, force_update: bool = False
     ) -> UpdateSectionResult:
         """Update or create mail body for a character from ESI."""
         try:
@@ -671,14 +670,13 @@ class CharacterMailManager(models.Manager):
             mail.delete()
             return UpdateSectionResult(is_changed=True, is_updated=True)
 
-        if mail.body != mail_body:
-            is_changed = True
+        is_changed = mail.body != mail_body
+        if is_changed or force_update:
             mail.body = mail_body
             mail.save()
             is_updated = True
             eve_xml_to_html(mail.body)  # resolve names early
         else:
-            is_changed = False
             is_updated = False
 
         if MEMBERAUDIT_DEVELOPER_MODE:

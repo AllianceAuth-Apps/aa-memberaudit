@@ -723,7 +723,9 @@ def update_character_mails(self, character_pk: int, force_update: bool) -> None:
         update_character_mail_headers.si(character.pk, force_update=force_update).set(
             priority=priority
         ),
-        update_character_mail_bodies.si(character.pk).set(priority=priority),
+        update_character_mail_bodies.si(character.pk, force_update=force_update).set(
+            priority=priority
+        ),
     ).delay()
 
 
@@ -773,25 +775,15 @@ def update_character_mail_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_mail_body_esi(character_pk: int, mail_pk: int):
-    """Update the body of a character's mail from ESI."""
-    character: Character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
-    mail = CharacterMail.objects.get(pk=mail_pk)
-    character.perform_update_with_error_logging(
-        Character.UpdateSection.MAILS, character.update_mail_body, mail
-    )
-
-
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> None:
+def update_character_mail_bodies(
+    self, character_pk: int, force_update: bool = False
+) -> None:
     """Update mail bodies for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
+    # TODO: Consider using the received mail IDs instead
     mails_without_body_qs = character.mails.filter(body="")
     mails_without_body_count = mails_without_body_qs.count()
 
@@ -800,13 +792,33 @@ def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> No
         priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for mail in mails_without_body_qs:
             update_mail_body_esi.apply_async(
-                kwargs={"character_pk": character.pk, "mail_pk": mail.pk},
+                kwargs={
+                    "character_pk": character.pk,
+                    "mail_pk": mail.pk,
+                    "force_update": force_update,
+                },
                 priority=priority,
             )
 
     # the last task in the chain logs success (if any)
     character.update_section_log_result(
         Character.UpdateSection.MAILS, is_success=True, is_updated=True
+    )
+
+
+@shared_task(**TASK_DEFAULTS_ONCE)
+@when_esi_is_available
+def update_mail_body_esi(character_pk: int, mail_pk: int, force_update: bool = False):
+    """Update the body of a character's mail from ESI."""
+    character: Character = Character.objects.get_cached(
+        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
+    )
+    mail = CharacterMail.objects.get(pk=mail_pk)
+    character.perform_update_with_error_logging(
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_body,
+        mail=mail,
+        force_update=force_update,
     )
 
 

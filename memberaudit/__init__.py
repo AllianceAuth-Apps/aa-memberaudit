@@ -7,3 +7,5 @@ default_app_config = "memberaudit.apps.MemberAuditConfig"
 
 __version__ = "3.5.0a7"
 __title__ = "Member Audit"
+
+# [ ] Consolidate migrations

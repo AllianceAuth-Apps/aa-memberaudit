@@ -684,9 +684,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Update the character's mail headers from ESI."""
         return self.mails.update_or_create_headers_esi(self, force_update)
 
-    def update_mail_body(self, mail) -> UpdateSectionResult:
+    def update_mail_body(self, mail, force_update: bool = False) -> UpdateSectionResult:
         """Update the characters's mail body from ESI."""
-        return self.mails.update_or_create_body_esi(self, mail)
+        return self.mails.update_or_create_body_esi(self, mail, force_update)
 
     def update_mining_ledger(self, force_update: bool = False) -> UpdateSectionResult:
         """Update character's mining ledger from ESI."""
