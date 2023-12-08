@@ -4,18 +4,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-    replaces = [
-        ("memberaudit", "0016_remove_characterupdatestatus_parent_task_id_and_more"),
-        (
-            "memberaudit",
-            "0017_rename_finished_at_characterupdatestatus_run_finished_at_and_more",
-        ),
-        (
-            "memberaudit",
-            "0018_rename_last_error_message_characterupdatestatus_error_message",
-        ),
-    ]
-
     dependencies = [
         ("memberaudit", "0015_charactership_item_id"),
     ]
