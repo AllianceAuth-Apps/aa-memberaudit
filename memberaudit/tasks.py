@@ -141,9 +141,8 @@ def update_character(
         logger.info("%s: No update required", character)
         return False
 
-    logger.info(
-        "%s: Starting %s character update", character, "forced" if force_update else ""
-    )
+    msg = f"{character}: Starting character update ({force_update=}, {ignore_stale=})"
+    logger.info(msg)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
     for section in enabled_sections_by_stale_minutes():

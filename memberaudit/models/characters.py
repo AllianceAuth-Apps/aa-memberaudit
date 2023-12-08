@@ -442,6 +442,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 and a flag that is True if data was changed,
                 False when it was not change, else None
         """
+        section = self.UpdateSection(section)
         try:
             data = fetch_func(character=self)
         except HTTPInternalServerError as ex:
@@ -462,7 +463,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             section=section, content=data, hash_num=hash_num
         )
         if not force_update and not is_changed:
-            logger.info("%s: %s has not changed", section, self)
+            logger.info("%s: %s has not changed", self, section.label)
             return UpdateSectionResult(is_changed=is_changed, is_updated=False)
 
         if store_func:
