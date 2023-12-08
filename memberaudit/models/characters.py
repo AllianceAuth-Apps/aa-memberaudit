@@ -493,14 +493,14 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         section: UpdateSection,
         is_success: bool,
         is_updated: bool = False,
-        last_error_message: str = None,
+        error_message: str = None,
     ) -> None:
         """Log update result for a character's section."""
-        last_error_message = last_error_message if last_error_message else ""
+        error_message = error_message if error_message else ""
         defaults = {
             "is_success": is_success,
             "has_token_error": False,
-            "last_error_message": last_error_message,
+            "error_message": error_message,
             "run_finished_at": now(),
         }
         obj: CharacterUpdateStatus = self.update_status_set.update_or_create(
@@ -538,7 +538,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                 defaults={
                     "is_success": False,
                     "has_token_error": is_token_error,
-                    "last_error_message": error_message,
+                    "error_message": error_message,
                     "run_finished_at": now(),
                 },
             )
@@ -880,7 +880,7 @@ class CharacterUpdateStatus(models.Model):
         default=None,
         db_index=True,
     )
-    last_error_message = models.TextField()
+    error_message = models.TextField()
     run_finished_at = models.DateTimeField(
         null=True,
         default=None,
@@ -996,7 +996,7 @@ class CharacterUpdateStatus(models.Model):
     def reset(self) -> None:
         """Reset this update status."""
         self.is_success = None
-        self.last_error_message = ""
+        self.error_message = ""
         self.has_token_error = False
         self.run_started_at = now()
         self.run_finished_at = None

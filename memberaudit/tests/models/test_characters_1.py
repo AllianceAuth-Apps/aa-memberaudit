@@ -341,7 +341,7 @@ class TestCharacterStatus(NoSocketsTestCase):
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertEqual(status.last_error_message, "")
+        self.assertEqual(status.error_message, "")
         self.assertTrue(status.run_finished_at)
 
     def test_should_log_error_for_section(self):
@@ -349,7 +349,7 @@ class TestCharacterStatus(NoSocketsTestCase):
         section = Character.UpdateSection.LOCATION
         # when
         self.character.update_section_log_result(
-            section=section, is_success=False, last_error_message="some issue"
+            section=section, is_success=False, error_message="some issue"
         )
         # then
         status: CharacterUpdateStatus = self.character.update_status_set.get(
@@ -357,7 +357,7 @@ class TestCharacterStatus(NoSocketsTestCase):
         )
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertEqual(status.last_error_message, "some issue")
+        self.assertEqual(status.error_message, "some issue")
         self.assertTrue(status.run_finished_at)
 
 
@@ -432,20 +432,20 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             character=self.character_1001,
             section=self.section,
             is_success=False,
-            last_error_message="abc",
+            error_message="abc",
         )
 
         section = self.character_1001.reset_update_section(self.section)
 
         self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
+        self.assertEqual(section.error_message, "")
 
     def test_reset_2(self):
         """when section does not exist, then create it"""
         section = self.character_1001.reset_update_section(self.section)
 
         self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
+        self.assertEqual(section.error_message, "")
 
     def test_has_changed_1a(self):
         """When section exists, then return result from has_changed"""

@@ -36,26 +36,26 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
     def test_reset_1(self):
         # given
         status = create_character_update_status(
-            character=self.character_1001, is_success=True, last_error_message="abc"
+            character=self.character_1001, is_success=True, error_message="abc"
         )
         # when
         status.reset()
         # then
         status.refresh_from_db()
         self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
+        self.assertEqual(status.error_message, "")
 
     def test_reset_2(self):
         # given
         status = create_character_update_status(
-            character=self.character_1001, is_success=True, last_error_message="abc"
+            character=self.character_1001, is_success=True, error_message="abc"
         )
         # when
         status.reset()
         # then
         status.refresh_from_db()
         self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
+        self.assertEqual(status.error_message, "")
 
     def test_has_changed_1(self):
         """When hash is different, then return True"""

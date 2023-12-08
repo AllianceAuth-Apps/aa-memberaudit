@@ -546,13 +546,13 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError 1",
+            error_message="TokenError 1",
         )
         create_character_update_status(
             character_1002,
             section=Character.UpdateSection.CONTRACTS,
             is_success=False,
-            last_error_message="TokenError 2",
+            error_message="TokenError 2",
         )
         # when
         result = Character.objects.characters_of_user_to_register_count(self.user)
@@ -568,7 +568,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             section=Character.UpdateSection.ROLES,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError 1",
+            error_message="TokenError 1",
         )
         # when
         result = Character.objects.characters_of_user_to_register_count(self.user)
@@ -586,7 +586,7 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError 1",
+            error_message="TokenError 1",
         )
 
         # when

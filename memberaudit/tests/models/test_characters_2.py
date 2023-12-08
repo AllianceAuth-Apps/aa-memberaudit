@@ -679,7 +679,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError",
+            error_message="TokenError",
         )
         # when/then
         self.assertTrue(self.character.has_token_issue())
@@ -691,7 +691,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=False,
-            last_error_message="other error",
+            error_message="other error",
         )
         # when/then
         self.assertFalse(self.character.has_token_issue())
@@ -704,7 +704,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ROLES,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError",
+            error_message="TokenError",
         )
         # when/then
         self.assertFalse(self.character.has_token_issue())
@@ -849,7 +849,7 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertIn("RuntimeError", status.last_error_message)
+        self.assertIn("RuntimeError", status.error_message)
         self.assertTrue(status.run_finished_at)
 
     def test_should_mark_section_as_failed_when_token_error_is_raised(self):
@@ -869,7 +869,7 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertTrue(status.has_token_error)
-        self.assertIn("TokenError", status.last_error_message)
+        self.assertIn("TokenError", status.error_message)
         self.assertTrue(status.run_finished_at)
 
 

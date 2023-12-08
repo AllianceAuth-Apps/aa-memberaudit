@@ -544,7 +544,7 @@ class TestUpdateCharacterSection(TestCase):
             section=Character.UpdateSection.IMPLANTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
         self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
@@ -569,7 +569,7 @@ class TestUpdateCharacterSection(TestCase):
             section=Character.UpdateSection.IMPLANTS
         )
         self.assertFalse(status.is_success)
-        self.assertTrue(status.last_error_message)
+        self.assertTrue(status.error_message)
         self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
@@ -586,7 +586,7 @@ class TestUpdateCharacterSection(TestCase):
             character=character,
             section=Character.UpdateSection.IMPLANTS,
             is_success=False,
-            last_error_message="some error",
+            error_message="some error",
             run_finished_at=run_finished_at,
         )
 
@@ -597,7 +597,7 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(mock_update_implants.called)
         status.refresh_from_db()
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
         self.assertGreater(status.run_finished_at, run_finished_at)
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
@@ -619,7 +619,7 @@ class TestUpdateCharacterSection(TestCase):
             section=Character.UpdateSection.IMPLANTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
         self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
@@ -648,7 +648,7 @@ class TestUpdateCharacterSection(TestCase):
         self.assertTrue(mock_update_implants.called)
         status.refresh_from_db()
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
         self.assertTrue(status.run_finished_at)
         self.assertEqual(status.update_started_at, update_started_at)
         self.assertEqual(status.update_finished_at, update_finished_at)

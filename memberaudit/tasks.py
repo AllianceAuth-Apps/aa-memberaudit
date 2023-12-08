@@ -690,7 +690,7 @@ def assets_create_children(
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS,
                 is_success=False,
-                last_error_message=(
+                error_message=(
                     f"{len(asset_data)} assets could not be added (leftovers)"
                 ),
             )

@@ -11,7 +11,7 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.db.models import Case, Max, Prefetch, QuerySet, TextChoices, Value, When
+from django.db.models import Case, Max, Prefetch, Q, QuerySet, TextChoices, Value, When
 from django.forms.models import BaseInlineFormSet
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
@@ -169,7 +169,7 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "_is_enabled",
         "_is_success",
         "_is_token_ok",
-        "last_error_message",
+        "error_message",
         "run_finished_at",
         "_run_duration",
         "update_finished_at",
@@ -377,7 +377,12 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         qs = super().get_queryset(*args, **kwargs)
         return (
             qs.prefetch_related("update_status_set")
-            .annotate(last_update_at=Max("update_status_set__run_finished_at"))
+            .annotate(
+                last_update_at=Max(
+                    "update_status_set__run_finished_at",
+                    filter=~Q(update_status_set__section="skill_sets"),
+                )
+            )
             .annotate_total_update_status()
         )
 
@@ -461,7 +466,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(ordering="last_update_at", description=__("last update run"))
     def _last_update_at(self, obj: Character):
-        return naturaltime(obj.last_update_at)
+        return naturaltime(obj.last_update_at) if obj.last_update_at else "-"
 
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}

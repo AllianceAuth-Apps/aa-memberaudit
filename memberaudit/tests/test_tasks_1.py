@@ -279,9 +279,7 @@ class TestUpdateCharacterErrorReporting(TestCase):
         status = self.character_1001.update_status_set.filter(
             character=self.character_1001, is_success=False
         ).first()
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
         self.assertTrue(status.run_finished_at)
 
 
@@ -483,7 +481,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
 
     def test_should_report_the_error_when_update_failed(self, mock_esi):
         # given
@@ -501,9 +499,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_report_error_when_preload_objects_failed(self, mock_esi):
         # given
@@ -524,9 +520,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_report_the_error_when_building_the_asset_tree_failed(
         self, mock_esi
@@ -546,9 +540,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
         self, mock_esi
@@ -626,7 +618,7 @@ class TestUpdateCharacterContacts(TestCase):
             section=Character.UpdateSection.CONTACTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
@@ -642,9 +634,7 @@ class TestUpdateCharacterContacts(TestCase):
             section=Character.UpdateSection.CONTACTS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
 
 @override_settings(
@@ -677,7 +667,7 @@ class TestUpdateCharacterContracts(TestCase):
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
@@ -693,9 +683,7 @@ class TestUpdateCharacterContracts(TestCase):
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
 
 @override_settings(
@@ -734,7 +722,7 @@ class TestUpdateCharacterMails(TestCase):
             section=Character.UpdateSection.MAILS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
         self.assertTrue(status.run_started_at)
         self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_started_at)
@@ -767,9 +755,7 @@ class TestUpdateCharacterMails(TestCase):
             section=Character.UpdateSection.MAILS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
         self.assertTrue(status.run_started_at)
         self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
