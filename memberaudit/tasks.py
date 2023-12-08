@@ -3,7 +3,7 @@
 
 import inspect
 import random
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, List, Optional
 
 from celery import chain, shared_task
 
@@ -37,7 +37,6 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,
-    CharacterMail,
     ComplianceGroupDesignation,
     General,
     Location,
@@ -714,18 +713,18 @@ def update_character_mails(self, character_pk: int, force_update: bool) -> None:
     character.reset_update_section(section=section)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
-        update_character_mailing_lists.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_labels.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_headers.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_bodies.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
+        update_character_mailing_lists.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
+        update_character_mail_labels.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
+        update_character_mails_headers_and_bodies.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
     ).delay()
 
 
@@ -759,61 +758,50 @@ def update_character_mail_labels(character_pk: int, force_update: bool = False) 
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @when_esi_is_available
-def update_character_mail_headers(
-    character_pk: int, force_update: bool = False
-) -> None:
-    """Update mail headers for a character from ESI."""
+def update_character_mails_headers_and_bodies(
+    self, character_pk: int, force_update: bool = False
+) -> List[int]:
+    """Update mail headers & bodies for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.MAILS,
         method=character.update_mail_headers,
         force_update=force_update,
     )
-
-
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_mail_bodies(
-    self, character_pk: int, force_update: bool = False
-) -> None:
-    """Update mail bodies for a character from ESI."""
-    character: Character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
-    # TODO: Consider using the received mail IDs instead
-    mails_without_body_qs = character.mails.filter(body="")
-    mails_without_body_count = mails_without_body_qs.count()
-
-    if mails_without_body_count > 0:
-        logger.info("%s: Loading %s mail bodies", character, mails_without_body_count)
+    if result.is_changed or force_update:
         priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-        for mail in mails_without_body_qs:
+        mail_ids = result.data.keys()
+        for mail_id in mail_ids:
             update_mail_body_esi.apply_async(
                 kwargs={
                     "character_pk": character.pk,
-                    "mail_pk": mail.pk,
+                    "mail_id": mail_id,
                     "force_update": force_update,
                 },
                 priority=priority,
             )
+        logger.info(
+            "%s: Started loading %s mail bodies from ESI", character, len(mail_ids)
+        )
 
     # the last task in the chain logs success (if any)
     character.update_section_log_result(
-        Character.UpdateSection.MAILS, is_success=True, is_updated=True
+        Character.UpdateSection.MAILS, is_success=True, is_updated=result.is_updated
     )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_mail_body_esi(character_pk: int, mail_pk: int, force_update: bool = False):
+def update_mail_body_esi(character_pk: int, mail_id: int, force_update: bool = False):
     """Update the body of a character's mail from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    mail = CharacterMail.objects.get(pk=mail_pk)
+    mail = character.mails.get(mail_id=mail_id)
     character.perform_update_with_error_logging(
         section=Character.UpdateSection.MAILS,
         method=character.update_mail_body,

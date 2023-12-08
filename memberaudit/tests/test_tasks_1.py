@@ -502,6 +502,7 @@ class TestUpdateCharacterContracts(TestCase):
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
@@ -517,21 +518,38 @@ class TestUpdateCharacterMails(TestCase):
         )
         reset_celery_once_locks()
 
-    def test_update_ok(self, mock_esi_character, mock_esi_sections):
-        """when update succeeded then report update success"""
+    def test_should_report_success_when_update_is_completed_successfully(
+        self, mock_esi_character, mock_esi_sections
+    ):
+        # given
         mock_esi_character.client = esi_client_stub
         mock_esi_sections.client = esi_client_stub
 
-        tasks.update_character_mails(self.character_1001.pk, True)
+        # when
+        tasks.update_character_mails.delay(self.character_1001.pk, True)
 
-        status = self.character_1001.update_status_set.get(
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.MAILS
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
+        self.assertTrue(status.started_at)
+        self.assertTrue(status.finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+        self.assertSetEqual(mail_ids, {1, 2, 3})
+        mail = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(mail.subject, "Mail 1")
+        self.assertEqual(mail.body, "blah blah blah 😓")
 
-    def test_detect_error(self, mock_esi_character, mock_esi_sections):
-        """when update failed then report the error"""
+    # TODO: Add test to check force update works
+
+    def test_should_report_error_when_update_failed(
+        self, mock_esi_character, mock_esi_sections
+    ):
+        # given
         exception = build_http_error(502, "Test exception")
         mock_esi_character.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
@@ -539,16 +557,22 @@ class TestUpdateCharacterMails(TestCase):
         mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
+        # when
         with self.assertRaises(HTTPError):
             tasks.update_character_mails(self.character_1001.pk, True)
 
-        status = self.character_1001.update_status_set.get(
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.MAILS
         )
         self.assertFalse(status.is_success)
         self.assertEqual(
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
+        self.assertTrue(status.started_at)
+        self.assertTrue(status.finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
