@@ -102,16 +102,16 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
         self.assertFalse(status.has_changed(content=self.content, hash_num=3))
 
     def test_is_updating_1(self):
-        """When started_at exist and finished_at does not exist, return True"""
+        """When run_started_at exist and run_finished_at does not exist, return True"""
         status = create_character_update_status(
-            character=self.character_1001, started_at=now(), finished_at=None
+            character=self.character_1001, run_started_at=now(), run_finished_at=None
         )
         self.assertTrue(status.is_updating)
 
     def test_is_updating_2(self):
-        """When started_at and finished_at does not exist, return False"""
+        """When run_started_at and run_finished_at does not exist, return False"""
         status = create_character_update_status(
-            character=self.character_1001, started_at=None, finished_at=None
+            character=self.character_1001, run_started_at=None, run_finished_at=None
         )
         self.assertFalse(status.is_updating)
 

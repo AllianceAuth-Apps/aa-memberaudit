@@ -122,14 +122,14 @@ class TestUpdateCharacter(TestCase):
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given
-        started_at = now() - dt.timedelta(hours=24)
+        run_started_at = now() - dt.timedelta(hours=24)
         for section in Character.UpdateSection:
             create_character_update_status(
                 character=self.character_1001,
                 section=section,
                 is_success=True,
-                started_at=started_at,
-                finished_at=started_at,
+                run_started_at=run_started_at,
+                run_finished_at=run_started_at,
             )
 
         # when
@@ -157,8 +157,8 @@ class TestUpdateCharacter(TestCase):
             character=self.character_1001,
             section=Character.UpdateSection.LOYALTY,
             is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
         )
         # when
         tasks.update_character(self.character_1001.pk)
@@ -174,8 +174,8 @@ class TestUpdateCharacter(TestCase):
             character=self.character_1001,
             section=Character.UpdateSection.MAILS,
             is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
         )
         # when
         tasks.update_character(self.character_1001.pk)
@@ -188,17 +188,17 @@ class TestUpdateCharacter(TestCase):
             character=self.character_1001,
             section=Character.UpdateSection.SKILLS.value,
             is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
         )
-        last_finished = status.finished_at
+        last_finished = status.run_finished_at
         # when
         tasks.update_character(
             self.character_1001.pk, force_update=True, ignore_stale=True
         )
         # then
         status.refresh_from_db()
-        self.assertGreater(status.finished_at, last_finished)
+        self.assertGreater(status.run_finished_at, last_finished)
         self.assertTrue(status.update_finished_at)
 
     def test_should_update_section_when_not_stale_but_ignore_stale(self):
@@ -220,8 +220,8 @@ class TestUpdateCharacter(TestCase):
                 character=self.character_1001,
                 section=section,
                 is_success=True,
-                started_at=now() - dt.timedelta(seconds=30),
-                finished_at=now(),
+                run_started_at=now() - dt.timedelta(seconds=30),
+                run_finished_at=now(),
             )
         # when
         result = tasks.update_character(self.character_1001.pk)
@@ -282,7 +282,7 @@ class TestUpdateCharacterErrorReporting(TestCase):
         self.assertEqual(
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
 
 
 @override_settings(
@@ -735,8 +735,8 @@ class TestUpdateCharacterMails(TestCase):
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
-        self.assertTrue(status.started_at)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
         mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
@@ -770,8 +770,8 @@ class TestUpdateCharacterMails(TestCase):
         self.assertEqual(
             status.last_error_message, "HTTPBadGateway: 502 Test exception"
         )
-        self.assertTrue(status.started_at)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
 

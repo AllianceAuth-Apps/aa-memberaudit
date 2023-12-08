@@ -162,8 +162,8 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "_is_success",
         "_is_token_ok",
         "last_error_message",
-        "started_at",
-        "finished_at",
+        "run_started_at",
+        "run_finished_at",
     )
     readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
     ordering = ["section"]
@@ -344,7 +344,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         qs = super().get_queryset(*args, **kwargs)
         return (
             qs.prefetch_related("update_status_set")
-            .annotate(last_update_at=Max("update_status_set__finished_at"))
+            .annotate(last_update_at=Max("update_status_set__run_finished_at"))
             .annotate_total_update_status()
         )
 

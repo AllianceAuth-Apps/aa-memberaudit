@@ -2,7 +2,7 @@
 {% load humanize %}
 
 <p class="text-muted">
-    {% translate 'Last update' %}: {{ update_section.finished_at|naturaltime|default:"(No data)" }} |
+    {% translate 'Last update' %}: {{ update_section.run_finished_at|naturaltime|default:"(No data)" }} |
     {% translate 'Status' %}:
     {% if not update_section %}
         <span class="text-warning">{% translate 'missing' %}</span>

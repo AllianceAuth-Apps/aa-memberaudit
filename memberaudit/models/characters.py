@@ -501,13 +501,13 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             "is_success": is_success,
             "has_token_error": False,
             "last_error_message": last_error_message,
-            "finished_at": now(),
+            "run_finished_at": now(),
         }
         obj: CharacterUpdateStatus = self.update_status_set.update_or_create(
             section=section, defaults=defaults
         )[0]
         if is_updated:
-            obj.update_started_at = obj.started_at
+            obj.update_started_at = obj.run_started_at
             obj.update_finished_at = now()
             obj.save()
 
@@ -539,7 +539,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
                     "is_success": False,
                     "has_token_error": is_token_error,
                     "last_error_message": error_message,
-                    "finished_at": now(),
+                    "run_finished_at": now(),
                 },
             )
             raise ex
@@ -875,19 +875,19 @@ class CharacterUpdateStatus(models.Model):
     has_token_error = models.BooleanField(
         default=False, help_text="Whether this section has a token error."
     )
-    finished_at = models.DateTimeField(
-        null=True,
-        default=None,
-        db_index=True,
-        help_text="Finish time of an update attempt",
-    )
     is_success = models.BooleanField(
         null=True,
         default=None,
         db_index=True,
     )
     last_error_message = models.TextField()
-    started_at = models.DateTimeField(
+    run_finished_at = models.DateTimeField(
+        null=True,
+        default=None,
+        db_index=True,
+        help_text="Finish time of an update attempt",
+    )
+    run_started_at = models.DateTimeField(
         null=True,
         default=None,
         db_index=True,
@@ -930,10 +930,10 @@ class CharacterUpdateStatus(models.Model):
     @property
     def is_updating(self) -> bool:
         """Return True if this section is currently being updated."""
-        if not self.started_at and not self.finished_at:
+        if not self.run_started_at and not self.run_finished_at:
             return False
 
-        return self.started_at is not None and self.finished_at is None
+        return self.run_started_at is not None and self.run_finished_at is None
 
     def has_changed(self, content: Any, hash_num: int = 1) -> bool:
         """Return True when given content is not the same as previous one, else False.
@@ -970,12 +970,12 @@ class CharacterUpdateStatus(models.Model):
         But never report sections with token error as stale.
         """
         section = Character.UpdateSection(self.section)
-        if not self.is_success or not self.finished_at:
+        if not self.is_success or not self.run_finished_at:
             needs_update = True
         else:
             minutes = section_time_until_stale[section]
             deadline = now() - dt.timedelta(minutes=minutes)
-            needs_update = self.finished_at <= deadline
+            needs_update = self.run_finished_at <= deadline
 
         if needs_update and self.has_token_error:
             logger.warning(
@@ -998,8 +998,8 @@ class CharacterUpdateStatus(models.Model):
         self.is_success = None
         self.last_error_message = ""
         self.has_token_error = False
-        self.started_at = now()
-        self.finished_at = None
+        self.run_started_at = now()
+        self.run_finished_at = None
         self.save()
         # TODO: Check if the hash also needs to be reset?
 

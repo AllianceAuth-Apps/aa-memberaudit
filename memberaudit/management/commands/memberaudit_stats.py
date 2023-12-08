@@ -217,9 +217,11 @@ def _calc_sections():
 
     durations = (
         CharacterUpdateStatus.objects.filter(
-            is_success=True, started_at__isnull=False, finished_at__isnull=False
+            is_success=True,
+            update_started_at__isnull=False,
+            update_finished_at__isnull=False,
         )
-        .annotate(duration=F("finished_at") - F("started_at"))
+        .annotate(duration=F("update_finished_at") - F("update_started_at"))
         .values("section")
         .annotate(duration_min=Min("duration"))
         .annotate(duration_avg=Avg("duration"))

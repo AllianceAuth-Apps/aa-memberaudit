@@ -512,8 +512,8 @@ def create_character_update_status(
         "character": character,
         "section": Character.UpdateSection.ASSETS,
         "is_success": True,
-        "started_at": now() - dt.timedelta(minutes=5),
-        "finished_at": now(),
+        "run_started_at": now() - dt.timedelta(minutes=5),
+        "run_finished_at": now(),
     }
     params.update(kwargs)
     return CharacterUpdateStatus.objects.create(**params)

@@ -850,7 +850,7 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
         self.assertIn("RuntimeError", status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
 
     def test_should_mark_section_as_failed_when_token_error_is_raised(self):
         # given
@@ -870,7 +870,7 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         self.assertFalse(status.is_success)
         self.assertTrue(status.has_token_error)
         self.assertIn("TokenError", status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
 
 
 class TestCharacterUpdateStatusAsDict(TestCase):
@@ -912,8 +912,8 @@ class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
             character=self.character,
             section=self.section,
             is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
         )
         # when/then
         self.assertFalse(status.is_update_needed())
@@ -928,26 +928,26 @@ class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
 
     def test_should_report_true_when_section_is_stale(self):
         # given
-        started_at = now() - dt.timedelta(hours=12)
-        finished_at = started_at + dt.timedelta(minutes=10)
+        run_started_at = now() - dt.timedelta(hours=12)
+        run_finished_at = run_started_at + dt.timedelta(minutes=10)
         status = create_character_update_status(
             character=self.character,
             section=self.section,
             is_success=True,
-            started_at=started_at,
-            finished_at=finished_at,
+            run_started_at=run_started_at,
+            run_finished_at=run_finished_at,
         )
         # when/then
         self.assertTrue(status.is_update_needed())
 
     def test_should_report_false_when_section_has_token_error_and_stale(self):
         # given
-        started_at = now() - dt.timedelta(hours=12)
+        run_started_at = now() - dt.timedelta(hours=12)
         status = create_character_update_status(
             character=self.character,
             section=self.section,
             is_success=False,
-            started_at=started_at,
+            run_started_at=run_started_at,
             has_token_error=True,
         )
         # when/then

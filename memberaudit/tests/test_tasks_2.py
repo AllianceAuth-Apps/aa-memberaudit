@@ -368,7 +368,7 @@ class TestUpdateCharacterAssets2(TestCase):
             Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
-        self.assertGreater(status.finished_at, status.update_finished_at)
+        self.assertGreater(status.run_finished_at, status.update_finished_at)
 
     @patch(TASKS_PATH + ".logger", wraps=tasks.logger)
     def test_log_warning_when_there_are_leftovers_1(self, mock_logger, mock_esi):
@@ -545,7 +545,7 @@ class TestUpdateCharacterSection(TestCase):
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
 
@@ -570,7 +570,7 @@ class TestUpdateCharacterSection(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertTrue(status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
 
@@ -581,13 +581,13 @@ class TestUpdateCharacterSection(TestCase):
         mock_update_implants.return_value = UpdateSectionResult(True, True)
         character = create_character_from_user(self.user)
         character.clear_cache()
-        finished_at = now() - dt.timedelta(hours=4)
+        run_finished_at = now() - dt.timedelta(hours=4)
         status = create_character_update_status(
             character=character,
             section=Character.UpdateSection.IMPLANTS,
             is_success=False,
             last_error_message="some error",
-            finished_at=finished_at,
+            run_finished_at=run_finished_at,
         )
 
         # when
@@ -598,7 +598,7 @@ class TestUpdateCharacterSection(TestCase):
         status.refresh_from_db()
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
-        self.assertGreater(status.finished_at, finished_at)
+        self.assertGreater(status.run_finished_at, run_finished_at)
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
 
@@ -620,7 +620,7 @@ class TestUpdateCharacterSection(TestCase):
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
 
@@ -649,6 +649,6 @@ class TestUpdateCharacterSection(TestCase):
         status.refresh_from_db()
         self.assertTrue(status.is_success)
         self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
         self.assertEqual(status.update_started_at, update_started_at)
         self.assertEqual(status.update_finished_at, update_finished_at)

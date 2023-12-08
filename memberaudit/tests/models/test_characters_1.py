@@ -342,7 +342,7 @@ class TestCharacterStatus(NoSocketsTestCase):
         self.assertTrue(status.is_success)
         self.assertFalse(status.has_token_error)
         self.assertEqual(status.last_error_message, "")
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
 
     def test_should_log_error_for_section(self):
         # given
@@ -358,7 +358,7 @@ class TestCharacterStatus(NoSocketsTestCase):
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
         self.assertEqual(status.last_error_message, "some issue")
-        self.assertTrue(status.finished_at)
+        self.assertTrue(status.run_finished_at)
 
 
 class TestCharacterUpdateSection(TestCase):
@@ -556,13 +556,13 @@ class TestCharacterCalcUpdateNeeded(TestCase):
         for section in current_sections:
             create_character_update_status(self.character, section=section)
 
-        started_at = now() - dt.timedelta(hours=24)
-        finished_at = started_at + dt.timedelta(minutes=5)
+        run_started_at = now() - dt.timedelta(hours=24)
+        run_finished_at = run_started_at + dt.timedelta(minutes=5)
         create_character_update_status(
             self.character,
             section=Character.UpdateSection.ASSETS,
-            started_at=started_at,
-            finished_at=finished_at,
+            run_started_at=run_started_at,
+            run_finished_at=run_finished_at,
         )
 
         # when
@@ -580,7 +580,7 @@ class TestCharacterCalcUpdateNeeded(TestCase):
         create_character_update_status(
             self.character,
             section=Character.UpdateSection.ROLES,
-            started_at=now() - dt.timedelta(hours=24),
+            run_started_at=now() - dt.timedelta(hours=24),
         )
 
         # when
