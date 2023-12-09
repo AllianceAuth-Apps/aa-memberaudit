@@ -2,41 +2,35 @@
 
 import datetime as dt
 import logging
-from enum import Enum
-from typing import Any, Dict, List, Tuple, Union
 
 from django.contrib.auth.models import User
-from django.core.cache import cache
-from django.core.management.base import BaseCommand, OutputWrapper
+from django.core.management.base import BaseCommand
 from django.db.models import Avg, Count, F, Max, Min
 
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
 from memberaudit.helpers import character_section_models
+from memberaudit.management.commands._helpers import Table
 from memberaudit.models import Character, CharacterUpdateStatus, characters
 
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
-
-_CACHE_TIMEOUT = 3600
-_CACHE_KEY = "memberaudit-stats"
 
 
 class Command(BaseCommand):
     help = str(__doc__)
 
-    def add_arguments(self, parser):
-        parser.add_argument(
-            "--clear-cache",
-            action="store_true",
-            help="Clear the cache for this command",
-        )
-
     def handle(self, *args, **options):
-        if options["clear_cache"]:
-            clear_cache()
-
         stats = self._calc_statistics()
+        self._output_section(stats["settings"], "settings")
+        self.stdout.write("")
+
+        self._output_section(stats["object_counts"], "object counts")
+        self.stdout.write("")
+        self.stdout.write("")
+
+        self._output_section(stats["stale_minutes"], "stale minutes")
+        self.stdout.write("")
 
         self._write_title("sections")
         table = Table(default_alignment=Table.Alignment.RIGHT)
@@ -46,32 +40,22 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write("")
 
-        self._output_section(stats["object_counts"], "object counts")
-        self.stdout.write("")
-        self.stdout.write("")
-
-        self._output_section(stats["settings"], "settings")
-        self.stdout.write("")
-
     def _calc_statistics(self) -> dict:
         """Return detailed statistics about Member Audit."""
 
         work = [
             ("settings", _fetch_settings, False),
-            ("sections", _calc_sections, True),
+            ("stale_minutes", _fetch_stale_minutes, False),
             ("object_counts", _calc_object_counts, True),
+            ("sections", _calc_sections, True),
         ]
 
         data = {}
-        for key, func, can_cache in work:
-            if can_cache:
+        for key, func, is_slow in work:
+            if is_slow:
                 self.stdout.write(f"Calculating {key.replace('_', ' ')}...")
-                cache_key = f"{_CACHE_KEY}-{key}"
-                data[key] = cache.get_or_set(
-                    key=cache_key, default=func, timeout=_CACHE_TIMEOUT
-                )
-            else:
-                data[key] = func()
+
+            data[key] = func()
 
         return data
 
@@ -88,103 +72,8 @@ class Command(BaseCommand):
             self.stdout.write(f"  {label: <{max_width}}: {value_str}")
 
 
-class Table:
-    """A class for rendering a table on the terminal."""
-
-    class Alignment(str, Enum):
-        """An alignment of a column."""
-
-        LEFT = "left"
-        RIGHT = "right"
-
-        @property
-        def to_f(self) -> str:
-            """Return as symbol for f-strings"""
-            if self is self.LEFT:
-                return "<"
-
-            if self is self.RIGHT:
-                return ">"
-
-            raise NotImplementedError("Invalid alignment")
-
-    def __init__(self, default_alignment="left") -> None:
-        self._rows: List[Tuple[str, ...]] = []
-        self._column_width: Tuple[int, ...] = tuple()
-        self._alignment: List[Table.Alignment] = []
-        self._default_alignment = self.Alignment(default_alignment)
-
-    def set_data(self, data: List[Dict[str, Any]]):
-        """Set data of this table."""
-        self._rows = self._convert_to_table(data)
-        self._column_widths = self._calculate_column_width()
-        self._reset_alignment()
-
-    @property
-    def columns_count(self) -> int:
-        """Return number of columns."""
-        return len(self._rows[0])
-
-    def _convert_to_table(self, data: List[dict]) -> List[Tuple[str, ...]]:
-        table = [tuple(self._format_head(v) for v in data[0].keys())]
-        table += [tuple(self._format_value(v) for v in o.values()) for o in data]
-        return table
-
-    def _format_head(self, value: str) -> str:
-        return value.replace("_", " ").capitalize()
-
-    def _format_value(self, value) -> str:
-        if value is None:
-            return "?"
-
-        if isinstance(value, float):
-            return f"{value:,.1f}"
-
-        if isinstance(value, int):
-            return f"{value:,}"
-
-        return str(value)
-
-    def _calculate_column_width(self) -> Tuple[int, ...]:
-        widths = [[] for _ in self._rows[0]]
-        for row in self._rows:
-            for col_num, column in enumerate(row):
-                widths[col_num].append(len(column))
-
-        max_width = tuple(max(column) for column in widths)
-        return max_width
-
-    def _reset_alignment(self):
-        self._alignment = [self._default_alignment for _ in range(self.columns_count)]
-
-    def set_alignment(self, column: int, alignment: Union[Alignment, str]):
-        """Set alignment for a column."""
-        self._alignment[column] = alignment
-
-    def write(self, stdout: OutputWrapper, indentation: int = 2, margin: int = 2):
-        """Write table to output."""
-        self._write_table(stdout, indentation, margin)
-
-    def _write_table(self, stdout: OutputWrapper, indentation: int, margin: int):
-        columns_count = self.columns_count
-        for row_num, row in enumerate(self._rows):
-            output_row = " " * indentation
-            for col_num, column in enumerate(row):
-                width = self._column_widths[col_num]
-                alignment = self._alignment[col_num]
-                output_row += f"{column:{alignment.to_f}{width}}"
-
-                if col_num < columns_count - 1:
-                    output_row += " " * margin
-
-            stdout.write(output_row)
-
-            if row_num == 0:
-                output_row = " " * indentation
-                for col_num, _ in enumerate(row):
-                    width = self._column_widths[col_num]
-                    output_row += "-" * width + " " * margin
-                stdout.write(output_row)
+def _fetch_stale_minutes():
+    return dict(characters.section_time_until_stale)
 
 
 def _calc_object_counts():
@@ -206,11 +95,7 @@ def _calc_object_counts():
 
 
 def _calc_sections():
-    stale_minutes = dict(characters.section_time_until_stale)
-    sections = {
-        section: {"section": section, "stale_minutes": minutes}
-        for section, minutes in stale_minutes.items()
-    }
+    sections = {section: {"section": section} for section in Character.UpdateSection}
 
     durations = (
         CharacterUpdateStatus.objects.filter(
@@ -266,8 +151,3 @@ def _fetch_settings():
         }
     }
     return settings
-
-
-def clear_cache():
-    """Delete the cache used by this command."""
-    cache.delete_pattern(f"{_CACHE_KEY}*")
