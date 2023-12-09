@@ -22,7 +22,11 @@ This release makes changes to the task structure. To avoid generating many faile
   - Stale update time now calculated from when an update finished, instead of when it started
 
 - Removed task statistics from **memberaudit_stats** command incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics for Member Audit
-- **memberaudit_stats** now shows the current objects counts for all sections, the current Member Audit settings and the current configuration for section stale minutes (i.e. how often sections are updated)
+- **memberaudit_stats** has been fixed and reworked. It now shows the following:
+  - current objects counts for all sections
+  - current Member Audit settings
+  - current configuration for section stale minutes (i.e. how often sections are updated)
+  - update statics (e.g. duration for updating each section)
 - Fixed and improved **memberaudit_reset_characters** command
 - Added "ignore_stale" feature to update_character tasks
 - "Force update" now means "updating despite no change" only and no longer ignores stale status

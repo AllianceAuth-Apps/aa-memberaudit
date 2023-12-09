@@ -14,6 +14,8 @@ from memberaudit.helpers import character_section_models
 from memberaudit.management.commands._helpers import Table
 from memberaudit.models import Character, CharacterUpdateStatus, characters
 
+from . import get_input
+
 logger = LoggerAddTag(logging.getLogger(__name__), __title__)
 
 
@@ -21,46 +23,41 @@ class Command(BaseCommand):
     help = str(__doc__)
 
     def handle(self, *args, **options):
-        stats = self._calc_statistics()
-        self._output_section(stats["settings"], "settings")
+        self.stdout.write("1 - Settings")
+        self.stdout.write("2 - Object counts")
+        self.stdout.write("3 - Stale minutes")
+        self.stdout.write("4 - Update statistics")
+
+        result = get_input("Enter 1 - 4 to choose a menu or any other input to exit? ")
         self.stdout.write("")
+        self.stdout.write("Calculating...\r", ending="")
 
-        self._output_section(stats["stale_minutes"], "stale minutes", "right")
-        self.stdout.write("")
+        if result not in ["1", "2", "3", "4"]:
+            self.stdout.write(self.style.WARNING("Aborted"))
 
-        self._output_section(stats["object_counts"], "object counts", "right")
-        self.stdout.write("")
-        self.stdout.write("")
+        if result == "1":
+            data = _fetch_settings()
+            self._output_section(data, "settings")
 
-        self._write_title("update statistics")
-        table = Table(default_alignment=Table.Alignment.RIGHT)
-        table.set_data(stats["update_statistics"])
-        table.set_alignment(0, Table.Alignment.LEFT)
-        table.write(self.stdout)
-        self.stdout.write("")
-        self.stdout.write("")
+        elif result == "2":
+            data = _calc_object_counts()
+            self._output_section(data, "object counts", "right")
 
-    def _calc_statistics(self) -> dict:
-        """Return detailed statistics about Member Audit."""
+        elif result == "3":
+            data = _fetch_stale_minutes()
+            self._output_section(data, "stale minutes", "right")
 
-        work = [
-            ("settings", _fetch_settings, False),
-            ("stale_minutes", _fetch_stale_minutes, False),
-            ("object_counts", _calc_object_counts, True),
-            ("update_statistics", _calc_sections, True),
-        ]
-
-        data = {}
-        for key, func, is_slow in work:
-            if is_slow:
-                self.stdout.write(f"Calculating {key.replace('_', ' ')}...")
-
-            data[key] = func()
-
-        return data
+        elif result == "4":
+            self._write_title("update statistics")
+            table = Table(default_alignment=Table.Alignment.RIGHT)
+            data = _calc_sections()
+            table.set_data(data)
+            table.set_alignment(0, Table.Alignment.LEFT)
+            table.write(self.stdout)
 
     def _write_title(self, text: str):
-        self.stdout.write(self.style.SUCCESS(f"{text.title()}:"))
+        output = text.title()
+        self.stdout.write(self.style.SUCCESS(f"{output:<20}"))
         self.stdout.write("")
 
     def _output_section(self, data: dict, title: str, alignment: str = "left"):
