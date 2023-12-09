@@ -7,26 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.5.0] - TBD
+## [3.5.0] - 2023-12-09
 
 ### Update notes
 
-This release makes changes to the task structure. To avoid generating many failed tasks (which can happen when celery tries to run an old task from the queue against the new version), we recommend waiting until all Member Audit tasks in the queue are processed, before installing this update.
+>**Important**: We recommend waiting until all Member Audit tasks in the queue are processed and then installing this update while AA is shut down.
 
 ### Changed
 
-- Major changes to the character update tasks:
-  - Ability to define how often each and every section is updates (this replaces the former rings approach)
-  - We now have one main task for updating each section to make it easier to monitor what is happening (this replaces the previous character_update_section task, which did most of the work)
-  - Many performance improvements (e.g. Only updating changes, instead of recreating all objects every time). Effected sections are: contact labels, loyalty points, planets, standings, titles
-  - Stale update time now calculated from when an update finished, instead of when it started
+- Changes to the character update tasks:
+  - You can now define for each character section how it is updated (replaces the former rings approach)
+  - The former generic update task (update_character_section task) has been replace by individual update tasks for each section, which should make monitoring and trouble shooting much easier
+  - Performance has been improved for many update tasks: contact labels, loyalty, mail, points, planets, standings, titles
+  - Now also records start and finish time for when sections where actually updated, due to changes
 
-- Removed task statistics from **memberaudit_stats** command incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics for Member Audit
 - **memberaudit_stats** has been fixed and reworked. It now shows the following:
   - current objects counts for all sections
   - current Member Audit settings
   - current configuration for section stale minutes (i.e. how often sections are updated)
-  - update statics (e.g. duration for updating each section)
+  - update static (e.g. average duration for updating a specific section)
+  - Task statistics have been removed incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics
+
 - Fixed and improved **memberaudit_reset_characters** command
 - Added "ignore_stale" feature to update_character tasks
 - "Force update" now means "updating despite no change" only and no longer ignores stale status
