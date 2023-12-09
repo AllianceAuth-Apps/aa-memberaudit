@@ -1,13 +1,14 @@
 """Return current statistics about Member Audit."""
 
+import datetime as dt
 import logging
 from enum import Enum
-from typing import Any, Dict, List, Sequence, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 
 from django.contrib.auth.models import User
 from django.core.cache import cache
 from django.core.management.base import BaseCommand, OutputWrapper
-from django.db.models import Avg, F, Max, Min
+from django.db.models import Avg, Count, F, Max, Min
 
 from app_utils.logging import LoggerAddTag
 
@@ -38,9 +39,9 @@ class Command(BaseCommand):
         stats = self._calc_statistics()
 
         self._write_title("sections")
-        table = Table()
+        table = Table(default_alignment=Table.Alignment.RIGHT)
         table.set_data(stats["sections"])
-        table.set_alignments(["left", "right", "right", "right", "right"])
+        table.set_alignment(0, Table.Alignment.LEFT)
         table.write(self.stdout)
         self.stdout.write("")
         self.stdout.write("")
@@ -107,10 +108,11 @@ class Table:
 
             raise NotImplementedError("Invalid alignment")
 
-    def __init__(self) -> None:
+    def __init__(self, default_alignment="left") -> None:
         self._rows: List[Tuple[str, ...]] = []
         self._column_width: Tuple[int, ...] = tuple()
-        self._alignment: Tuple[Table.Alignment, ...] = tuple()
+        self._alignment: List[Table.Alignment] = []
+        self._default_alignment = self.Alignment(default_alignment)
 
     def set_data(self, data: List[Dict[str, Any]]):
         """Set data of this table."""
@@ -153,16 +155,11 @@ class Table:
         return max_width
 
     def _reset_alignment(self):
-        self._alignment = tuple(self.Alignment.LEFT for _ in range(self.columns_count))
+        self._alignment = [self._default_alignment for _ in range(self.columns_count)]
 
-    def set_alignments(self, alignments: Sequence[Union[Alignment, str]]):
-        """Set alignments for all existing columns."""
-        if len(alignments) != self.columns_count:
-            raise ValueError(
-                f"Must contain alignments for exactly {self.columns_count} columns."
-            )
-
-        self._alignment = tuple(self.Alignment(value) for value in alignments)
+    def set_alignment(self, column: int, alignment: Union[Alignment, str]):
+        """Set alignment for a column."""
+        self._alignment[column] = alignment
 
     def write(self, stdout: OutputWrapper, indentation: int = 2, margin: int = 2):
         """Write table to output."""
@@ -226,24 +223,35 @@ def _calc_sections():
         .annotate(duration_min=Min("duration"))
         .annotate(duration_avg=Avg("duration"))
         .annotate(duration_max=Max("duration"))
-        .values("section", "duration_min", "duration_avg", "duration_max")
+        .annotate(sample_size=Count("pk"))
+        .values(
+            "section", "duration_min", "duration_avg", "duration_max", "sample_size"
+        )
     )
     durations_mapped = {
         Character.UpdateSection(obj["section"]): obj for obj in durations
     }
 
-    fields = ("duration_min", "duration_avg", "duration_max")
+    duration_fields = ("duration_min", "duration_avg", "duration_max", "sample_size")
     for section in sections:
         try:
             obj = durations_mapped[section]
         except KeyError:
-            section_durations = {field: None for field in fields}
+            section_durations = {field: None for field in duration_fields}
         else:
-            section_durations = {field: obj[field].total_seconds() for field in fields}
+            section_durations = {
+                field: _convert_timedelta(obj[field]) for field in duration_fields
+            }
 
         sections[section].update(section_durations)
 
     return list(sections.values())
+
+
+def _convert_timedelta(value):
+    if isinstance(value, dt.timedelta):
+        return value.total_seconds()
+    return value
 
 
 def _fetch_settings():
