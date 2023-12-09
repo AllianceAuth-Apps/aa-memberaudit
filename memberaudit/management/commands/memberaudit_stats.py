@@ -138,7 +138,7 @@ class Table:
             return "?"
 
         if isinstance(value, float):
-            return f"{value:,.2f}"
+            return f"{value:,.1f}"
 
         if isinstance(value, int):
             return f"{value:,}"
