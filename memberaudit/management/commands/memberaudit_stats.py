@@ -32,9 +32,9 @@ class Command(BaseCommand):
         self.stdout.write("")
         self.stdout.write("")
 
-        self._write_title("sections")
+        self._write_title("update statistics")
         table = Table(default_alignment=Table.Alignment.RIGHT)
-        table.set_data(stats["sections"])
+        table.set_data(stats["update_statistics"])
         table.set_alignment(0, Table.Alignment.LEFT)
         table.write(self.stdout)
         self.stdout.write("")
@@ -47,7 +47,7 @@ class Command(BaseCommand):
             ("settings", _fetch_settings, False),
             ("stale_minutes", _fetch_stale_minutes, False),
             ("object_counts", _calc_object_counts, True),
-            ("sections", _calc_sections, True),
+            ("update_statistics", _calc_sections, True),
         ]
 
         data = {}
