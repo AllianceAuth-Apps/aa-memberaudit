@@ -3,7 +3,7 @@
 
 import inspect
 import random
-from typing import Callable, Iterable, Optional
+from typing import Callable, Iterable, List, Optional
 
 from celery import chain, shared_task
 
@@ -23,13 +23,12 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_LOG_UPDATE_STATS,
+    MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
     MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS,
     MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
     MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT,
     MEMBERAUDIT_TASKS_TIME_LIMIT,
-    MEMBERAUDIT_UPDATE_STALE_RING_2,
 )
 from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
@@ -38,12 +37,11 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterContract,
-    CharacterMail,
-    CharacterUpdateStatus,
     ComplianceGroupDesignation,
     General,
     Location,
     MailEntity,
+    enabled_sections_by_stale_minutes,
 )
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -81,16 +79,17 @@ def run_regular_updates() -> None:
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @when_esi_is_available
-def update_all_characters(self, force_update: bool = False) -> None:
+def update_all_characters(
+    self, force_update: bool = False, ignore_stale: bool = False
+) -> None:
     """Update all enabled characters from ESI and disable update for orphans.
 
     Args:
-        - force_update: When set to True will always update regardless of stale status
+    - force_update: When set to True will always refresh from data from ESI,
+        even if it has not changed
+    - ignore_stale: When True, will start updating all sections regardless
+        of it's stale status
     """
-    if MEMBERAUDIT_LOG_UPDATE_STATS:
-        stats = CharacterUpdateStatus.objects.statistics()
-        logger.info(f"Update statistics: {stats}")
-
     Character.objects.disable_characters_with_no_owner()
 
     # start sync for all enabled characters
@@ -98,18 +97,18 @@ def update_all_characters(self, force_update: bool = False) -> None:
         Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
     )
     if enabled_characters:
-        update_type = "forced" if force_update else "normal"
-        logger.info(
-            "Starting %s updates for %d characters",
-            update_type,
-            len(enabled_characters),
-        )
         priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for character_pk in enabled_characters:
             update_character.apply_async(
-                kwargs={"character_pk": character_pk, "force_update": force_update},
+                kwargs={
+                    "character_pk": character_pk,
+                    "force_update": force_update,
+                    "ignore_stale": ignore_stale,
+                },
                 priority=priority,
             )
+        logger.info("Started updates for %d characters", len(enabled_characters))
+
     else:
         logger.info("No enabled characters found for update.")
 
@@ -118,123 +117,47 @@ def update_all_characters(self, force_update: bool = False) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character(self, character_pk: int, force_update: bool = False) -> bool:
+def update_character(
+    self, character_pk: int, force_update: bool = False, ignore_stale: bool = False
+) -> bool:
     """Update all sections of a character from ESI.
 
     Args:
     - character_pk: PL of character to update
-    - force_update: When set to True will always update regardless of stale status
+    - force_update: When set to True will always refresh from data from ESI,
+        even if it has not changed
+    - ignore_stale: When True, will start updating all sections regardless
+        of it's stale status
 
-    Returns:
-    - True when update was conducted
-    - False when no updated was needed
+    Return True when update of sections was started, else False.
     """
-    character: Character = Character.objects.get(pk=character_pk)
+    character: Character = Character.objects.prefetch_related("update_status_set").get(
+        pk=character_pk
+    )
     if character.is_orphan:
         logger.info("%s: Skipping update for orphaned character", character)
         return False
 
     character.reset_token_error_notified_if_status_ok()
+    character.clear_cache()
 
-    needs_update = force_update | character.is_update_needed()
-    if not needs_update:
+    character_needs_update = character.calc_update_needed()
+    if not ignore_stale and not character_needs_update:
         logger.info("%s: No update required", character)
         return False
 
-    logger.info(
-        "%s: Starting %s character update", character, "forced" if force_update else ""
-    )
-    character.clear_cache()
-
+    msg = f"{character}: Starting character update ({force_update=}, {ignore_stale=})"
+    logger.info(msg)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-    sections_to_update_in_loop = list(
-        Character.UpdateSection.enabled_sections_for_simple_update_tasks()
-    )
-    for section in sorted(sections_to_update_in_loop):
-        if force_update or character.is_update_needed_for_section(section):
-            update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character.pk,
-                    "section": section,
-                    "force_update": force_update,
-                    "root_task_id": self.request.parent_id,
-                    "parent_task_id": self.request.id,
-                },
+
+    for section in enabled_sections_by_stale_minutes():
+        if ignore_stale or character_needs_update.for_section(section):
+            task_name = f"update_character_{section.value}"
+            task = globals()[task_name]
+            task.apply_async(
+                kwargs={"character_pk": character.pk, "force_update": force_update},
                 priority=priority,
             )
-
-    if force_update or character.is_update_needed_for_section(
-        Character.UpdateSection.MAILS
-    ):
-        update_character_mails.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
-            priority=priority,
-        )
-
-    if force_update or character.is_update_needed_for_section(
-        Character.UpdateSection.CONTACTS
-    ):
-        update_character_contacts.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
-            priority=priority,
-        )
-
-    if force_update or character.is_update_needed_for_section(
-        Character.UpdateSection.CONTRACTS
-    ):
-        update_character_contracts.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
-            priority=priority,
-        )
-    if force_update or character.is_update_needed_for_section(
-        Character.UpdateSection.ASSETS
-    ):
-        update_character_assets.apply_async(
-            kwargs={
-                "character_pk": character.pk,
-                "force_update": force_update,
-                "root_task_id": self.request.parent_id,
-                "parent_task_id": self.request.id,
-            },
-            priority=priority,
-        )
-
-    if (
-        force_update
-        or character.is_update_needed_for_section(Character.UpdateSection.SKILLS)
-        or character.is_update_needed_for_section(Character.UpdateSection.SKILL_SETS)
-    ):
-        chain(
-            update_character_section.si(
-                character.pk,
-                Character.UpdateSection.SKILLS,
-                force_update,
-                self.request.parent_id,
-                self.request.id,
-            ).set(priority=priority),
-            update_character_section.si(
-                character.pk,
-                Character.UpdateSection.SKILL_SETS,
-                force_update,
-                self.request.parent_id,
-                self.request.id,
-            ).set(priority=priority),
-        ).delay()
 
     if character.is_shared:
         check_character_consistency.apply_async(
@@ -244,34 +167,255 @@ def update_character(self, character_pk: int, force_update: bool = False) -> boo
     return True
 
 
-# Update sections
+# Updating sections with simple update logic
 
 
-@shared_task(
-    **{
-        **TASK_DEFAULTS_ONCE,
-        **{
-            "once": {
-                "keys": ["character_pk", "section", "force_update"],
-                "graceful": True,
-            }
-        },
-    }
-)
+_update_character_params = {
+    **TASK_DEFAULTS_ONCE,
+    **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
+}
+
+
+@shared_task(**_update_character_params)
 @when_esi_is_available
-def update_character_section(
-    character_pk: int,
-    section: str,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
+def update_character_attributes(character_pk: int, force_update: bool) -> None:
+    """Update attributes for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.ATTRIBUTES,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_character_details(character_pk: int, force_update: bool) -> None:
+    """Update character_details for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.CHARACTER_DETAILS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_corporation_history(character_pk: int, force_update: bool) -> None:
+    """Update corporation_history for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.CORPORATION_HISTORY,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
+    """Update fw_stats for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.FW_STATS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_implants(character_pk: int, force_update: bool) -> None:
+    """Update implants for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.IMPLANTS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
+    """Update jump_clones for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.JUMP_CLONES,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_location(character_pk: int, force_update: bool) -> None:
+    """Update location for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.LOCATION,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_loyalty(character_pk: int, force_update: bool) -> None:
+    """Update loyalty for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.LOYALTY,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_mining_ledger(character_pk: int, force_update: bool) -> None:
+    """Update mining_ledger for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.MINING_LEDGER,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_online_status(character_pk: int, force_update: bool) -> None:
+    """Update online_status for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.ONLINE_STATUS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_planets(character_pk: int, force_update: bool) -> None:
+    """Update planets for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.PLANETS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_roles(character_pk: int, force_update: bool) -> None:
+    """Update roles for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.ROLES,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_ship(character_pk: int, force_update: bool) -> None:
+    """Update ship for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.SHIP,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
+    """Update skill_queue for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.SKILL_QUEUE,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
+    """Update skill_sets for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.SKILL_SETS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_skills(character_pk: int, force_update: bool) -> None:
+    """Update skills for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.SKILLS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_standings(character_pk: int, force_update: bool) -> None:
+    """Update standings for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.STANDINGS,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_titles(character_pk: int, force_update: bool) -> None:
+    """Update titles for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.TITLES,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_wallet_balance(character_pk: int, force_update: bool) -> None:
+    """Update wallet_balance for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.WALLET_BALLANCE,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_wallet_journal(character_pk: int, force_update: bool) -> None:
+    """Update wallet_journal for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.WALLET_JOURNAL,
+        force_update=force_update,
+    )
+
+
+@shared_task(**_update_character_params)
+@when_esi_is_available
+def update_character_wallet_transactions(character_pk: int, force_update: bool) -> None:
+    """Update wallet_transactions for a character from ESI."""
+    _update_character_section(
+        character_pk=character_pk,
+        section=Character.UpdateSection.WALLET_TRANSACTIONS,
+        force_update=force_update,
+    )
+
+
+def _update_character_section(
+    character_pk: int, section: str, force_update: bool
 ) -> None:
     """Update a section for a character from ESI."""
     section = Character.UpdateSection(section)
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.reset_update_section(section, root_task_id, parent_task_id)
+    character.reset_update_section(section)
     logger.info("%s: Updating %s", character, section.label)
 
     method: Callable = getattr(character, section.method_name)
@@ -281,10 +425,12 @@ def update_character_section(
     else:
         kwargs = {}
 
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=section, method=method, **kwargs
     )
-    character.update_section_log_result(section, is_success=True)
+    character.update_section_log_result(
+        section, is_success=True, is_updated=result.is_updated
+    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -305,30 +451,21 @@ def update_unresolved_eve_entities() -> None:
 # Special tasks for updating assets
 
 
-@shared_task(
-    **{
-        **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-    }
-)
-def update_character_assets(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+_update_task_params_with_bind = {
+    **TASK_DEFAULTS_BIND_ONCE,
+    **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
+}
+
+
+@shared_task(**_update_task_params_with_bind)
+def update_character_assets(self, character_pk: int, force_update: bool) -> None:
     """Update the assets of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.ASSETS
     logger.info("%s: Updating %s", character, section.label)
-    character.reset_update_section(
-        section=section,
-        root_task_id=root_task_id,
-        parent_task_id=parent_task_id,
-    )
+    character.reset_update_section(section=section)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
         assets_build_list_from_esi.s(character.pk, force_update).set(priority=priority),
@@ -348,12 +485,16 @@ def assets_build_list_from_esi(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    asset_list: list = character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.ASSETS,
         method=character.assets_build_list_from_esi,
         force_update=force_update,
     )
-    if asset_list is not None:
+    if not result.is_changed and not force_update:
+        return None
+
+    asset_list = result.data
+    if asset_list:
         ship_asset_record = character.generate_asset_from_current_ship_and_location()
         if ship_asset_record:
             ship_item_id = ship_asset_record["item_id"]
@@ -399,7 +540,7 @@ def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -
     )
     if asset_list is None:
         character.update_section_log_result(
-            Character.UpdateSection.ASSETS, is_success=True
+            Character.UpdateSection.ASSETS, is_success=True, is_updated=False
         )
         return
 
@@ -420,7 +561,7 @@ def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -
         )
     else:
         character.update_section_log_result(
-            Character.UpdateSection.ASSETS, is_success=True
+            Character.UpdateSection.ASSETS, is_success=True, is_updated=True
         )
 
 
@@ -549,7 +690,7 @@ def assets_create_children(
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS,
                 is_success=False,
-                last_error_message=(
+                error_message=(
                     f"{len(asset_data)} assets could not be added (leftovers)"
                 ),
             )
@@ -561,47 +702,36 @@ def assets_create_children(
             )
         else:
             character.update_section_log_result(
-                Character.UpdateSection.ASSETS, is_success=True
+                Character.UpdateSection.ASSETS, is_success=True, is_updated=True
             )
 
 
 # Special tasks for updating mail section
 
 
-@shared_task(
-    **{
-        **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-    }
-)
-def update_character_mails(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+@shared_task(**_update_task_params_with_bind)
+def update_character_mails(self, character_pk: int, force_update: bool) -> None:
     """Update mails of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.MAILS
     logger.info("%s: Updating %s", character, section.label)
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
-        update_character_mailing_lists.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_labels.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_headers.si(character.pk, force_update=force_update).set(
-            priority=priority
-        ),
-        update_character_mail_bodies.si(character.pk).set(priority=priority),
+        update_character_mailing_lists.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
+        update_character_mail_labels.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
+        update_character_mails_headers_and_bodies.si(
+            character.pk,
+            force_update=force_update,
+        ).set(priority=priority),
     ).delay()
 
 
@@ -635,81 +765,69 @@ def update_character_mail_labels(character_pk: int, force_update: bool = False) 
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @when_esi_is_available
-def update_character_mail_headers(
-    character_pk: int, force_update: bool = False
-) -> None:
-    """Update mail headers for a character from ESI."""
+def update_character_mails_headers_and_bodies(
+    self, character_pk: int, force_update: bool = False
+) -> List[int]:
+    """Update mail headers & bodies for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.MAILS,
         method=character.update_mail_headers,
         force_update=force_update,
     )
+    if result.is_changed or force_update:
+        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+        mail_ids = result.data.keys()
+        for mail_id in mail_ids:
+            update_mail_body_esi.apply_async(
+                kwargs={
+                    "character_pk": character.pk,
+                    "mail_id": mail_id,
+                    "force_update": force_update,
+                },
+                priority=priority,
+            )
+        logger.info(
+            "%s: Started loading %s mail bodies from ESI", character, len(mail_ids)
+        )
+
+    # the last task in the chain logs success (if any)
+    character.update_section_log_result(
+        Character.UpdateSection.MAILS, is_success=True, is_updated=result.is_updated
+    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 @when_esi_is_available
-def update_mail_body_esi(character_pk: int, mail_pk: int):
+def update_mail_body_esi(character_pk: int, mail_id: int, force_update: bool = False):
     """Update the body of a character's mail from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    mail = CharacterMail.objects.get(pk=mail_pk)
+    mail = character.mails.get(mail_id=mail_id)
     character.perform_update_with_error_logging(
-        Character.UpdateSection.MAILS, character.update_mail_body, mail
+        section=Character.UpdateSection.MAILS,
+        method=character.update_mail_body,
+        mail=mail,
+        force_update=force_update,
     )
-
-
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_mail_bodies(self, character_pk: int, *args, **kwargs) -> None:
-    """Update mail bodies for a character from ESI."""
-    character: Character = Character.objects.get_cached(
-        pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
-    )
-    mails_without_body_qs = character.mails.filter(body="")
-    mails_without_body_count = mails_without_body_qs.count()
-
-    if mails_without_body_count > 0:
-        logger.info("%s: Loading %s mail bodies", character, mails_without_body_count)
-        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
-        for mail in mails_without_body_qs:
-            update_mail_body_esi.apply_async(
-                kwargs={"character_pk": character.pk, "mail_pk": mail.pk},
-                priority=priority,
-            )
-
-    # the last task in the chain logs success (if any)
-    character.update_section_log_result(Character.UpdateSection.MAILS, is_success=True)
 
 
 # special tasks for updating contacts
 
 
-@shared_task(
-    **{
-        **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-    }
-)
-def update_character_contacts(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+@shared_task(**_update_task_params_with_bind)
+def update_character_contacts(self, character_pk: int, force_update: bool) -> None:
     """Update contacts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTACTS
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
@@ -745,40 +863,27 @@ def update_character_contacts_2(character_pk: int, force_update: bool = False) -
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.CONTACTS,
         method=character.update_contacts,
         force_update=force_update,
     )
     character.update_section_log_result(
-        Character.UpdateSection.CONTACTS, is_success=True
+        Character.UpdateSection.CONTACTS, is_success=True, is_updated=result.is_updated
     )
 
 
 # special tasks for updating contracts
 
 
-@shared_task(
-    **{
-        **TASK_DEFAULTS_BIND_ONCE,
-        **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-    }
-)
-def update_character_contracts(
-    self,
-    character_pk: int,
-    force_update: bool,
-    root_task_id: Optional[str] = None,
-    parent_task_id: Optional[str] = None,
-) -> None:
+@shared_task(**_update_task_params_with_bind)
+def update_character_contracts(self, character_pk: int, force_update: bool) -> None:
     """Update contracts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     section = Character.UpdateSection.CONTRACTS
-    character.reset_update_section(
-        section=section, root_task_id=root_task_id, parent_task_id=parent_task_id
-    )
+    character.reset_update_section(section=section)
     logger.info("%s: Updating %s", character, section.label)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
@@ -797,10 +902,13 @@ def update_character_contract_headers(character_pk: int, force_update: bool = Fa
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
+    result = character.perform_update_with_error_logging(
         section=Character.UpdateSection.CONTRACTS,
         method=character.update_contract_headers,
         force_update=force_update,
+    )
+    character.update_section_log_result(
+        Character.UpdateSection.CONTRACTS, is_success=True, is_updated=result.is_updated
     )
 
 
@@ -870,9 +978,6 @@ def update_character_contracts_bids(self, character_pk: int):
 
     else:
         logger.info("%s: No bids to update", character)
-    character.update_section_log_result(
-        Character.UpdateSection.CONTRACTS, is_success=True
-    )
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
@@ -894,7 +999,7 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 def update_market_prices():
     """Update market prices from ESI."""
     EveMarketPrice.objects.update_from_esi(
-        minutes_until_stale=MEMBERAUDIT_UPDATE_STALE_RING_2
+        minutes_until_stale=MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
     )
 
 
@@ -962,16 +1067,13 @@ def update_characters_skill_checks(self, force_update: bool = False) -> None:
     Args:
         - force_update: When set to True will always update regardless of stale status
     """
-    section = Character.UpdateSection.SKILL_SETS
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     for character in Character.objects.all():
-        if force_update or character.is_update_needed_for_section(section):
-            update_character_section.apply_async(
-                kwargs={
-                    "character_pk": character.pk,
-                    "section": section,
-                    "force_update": force_update,
-                },
+        if force_update or character.is_update_needed_for_section(
+            Character.UpdateSection.SKILL_SETS
+        ):
+            update_character_skill_sets.apply_async(
+                kwargs={"character_pk": character.pk, "force_update": force_update},
                 priority=priority,
             )
 

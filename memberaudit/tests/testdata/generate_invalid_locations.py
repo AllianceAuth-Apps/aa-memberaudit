@@ -130,6 +130,8 @@ for section in [
     Character.UpdateSection.JUMP_CLONES,
     Character.UpdateSection.WALLET_TRANSACTIONS,
 ]:
-    character.update_section_log_result(section=section, is_success=True)
+    character.update_section_log_result(
+        section=section, is_success=True, is_updated=True
+    )
 
 print("DONE!")

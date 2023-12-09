@@ -26,7 +26,8 @@ MODULE_PATH = "memberaudit.views.character_finder"
 
 class TestCharacterFinderViews(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()

@@ -8,8 +8,9 @@ from esi.errors import TokenError
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import create_user_from_evecharacter
+from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import Character, CharacterUpdateStatus
 from memberaudit.tests.testdata.factories import (
     create_character,
@@ -28,7 +29,8 @@ MODULE_PATH = "memberaudit.models.characters"
 
 class TestCharacterUserHasAccess(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -310,7 +312,8 @@ class TestCharacterUserHasAccess(TestCase):
 
 class TestCharacterUserHasScope(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -452,7 +455,8 @@ class TestCharacterUserHasScope(TestCase):
 @patch(MODULE_PATH + ".Character.has_section_changed")
 class TestCharacterUpdateDataIfChangedOrForced(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1002 = create_memberaudit_character(1002)
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
@@ -474,7 +478,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
         # when
-        result, changed = character.update_section_if_changed(
+        result = character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -488,8 +492,9 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(mock_update_section_content_hash.called)
         _, kwargs = mock_update_section_content_hash.call_args
         self.assertEqual(kwargs["content"], ["alpha"])
-        self.assertListEqual(result, ["alpha"])
-        self.assertTrue(changed)
+        self.assertListEqual(result.data, ["alpha"])
+        self.assertTrue(result.is_changed)
+        self.assertTrue(result.is_updated)
 
     def test_should_not_store_data_when_not_changed(
         self, mock_has_section_changed, mock_update_section_content_hash
@@ -500,7 +505,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
         # when
-        result, changed = character.update_section_if_changed(
+        result = character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -510,8 +515,9 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(store_func_mock.called)
         self.assertFalse(mock_update_section_content_hash.called)
-        self.assertIsNone(result)
-        self.assertFalse(changed)
+        self.assertIsNone(result.data)
+        self.assertFalse(result.is_changed)
+        self.assertFalse(result.is_updated)
 
     def test_should_always_store_data_when_forced(
         self, mock_has_section_changed, mock_update_section_content_hash
@@ -522,7 +528,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
         # when
-        result, changed = character.update_section_if_changed(
+        result = character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -532,8 +538,9 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(fetch_func_mock.called)
         self.assertTrue(store_func_mock.called)
         self.assertTrue(mock_update_section_content_hash.called)
-        self.assertListEqual(result, ["alpha"])
-        self.assertTrue(changed)
+        self.assertListEqual(result.data, ["alpha"])
+        self.assertFalse(result.is_changed)
+        self.assertTrue(result.is_updated)
 
     def test_should_not_store_anything_when_esi_returns_http_500_and_return_none(
         self, mock_has_section_changed, mock_update_section_content_hash
@@ -544,7 +551,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when
-        result, changed = character.update_section_if_changed(
+        result = character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=store_func_mock,
@@ -554,8 +561,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertTrue(fetch_func_mock.called)
         self.assertFalse(store_func_mock.called)
         self.assertFalse(mock_update_section_content_hash.called)
-        self.assertIsNone(result)
-        self.assertIsNone(changed)
+        self.assertIsNone(result.is_changed)
+        self.assertFalse(result.is_updated)
 
     def test_should_store_data_when_changed_and_use_hash_num(
         self, mock_has_section_changed, mock_update_section_content_hash
@@ -591,7 +598,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
-        result, changed = character.update_section_if_changed(
+        result = character.update_section_if_changed(
             section=character.UpdateSection.LOCATION,
             fetch_func=fetch_func_mock,
             store_func=None,
@@ -599,8 +606,9 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertTrue(mock_update_section_content_hash.called)
-        self.assertListEqual(result, ["alpha"])
-        self.assertTrue(changed)
+        self.assertListEqual(result.data, ["alpha"])
+        self.assertTrue(result.is_changed)
+        self.assertFalse(result.is_updated)
 
     @patch(MODULE_PATH + ".EveEntity.objects.bulk_resolve_ids")
     def test_should_resolve_eve_entity_ids_when_provided(
@@ -655,7 +663,8 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
 
 class TestCharacterHasTokenError(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -670,7 +679,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError",
+            error_message="TokenError",
         )
         # when/then
         self.assertTrue(self.character.has_token_issue())
@@ -682,7 +691,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=False,
-            last_error_message="other error",
+            error_message="other error",
         )
         # when/then
         self.assertFalse(self.character.has_token_issue())
@@ -695,7 +704,7 @@ class TestCharacterHasTokenError(TestCase):
             section=Character.UpdateSection.ROLES,
             is_success=False,
             has_token_error=True,
-            last_error_message="TokenError",
+            error_message="TokenError",
         )
         # when/then
         self.assertFalse(self.character.has_token_issue())
@@ -703,7 +712,8 @@ class TestCharacterHasTokenError(TestCase):
 
 class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -747,54 +757,6 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
         # then
         character.refresh_from_db()
         self.assertIsNone(character.token_error_notified_at)
-
-
-class TestCharacterIsUpdateNeeded(TestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_false_when_all_sections_are_current(self):
-        # given
-        for section in Character.UpdateSection:
-            create_character_update_status(self.character, section=section)
-
-        # when/then
-        self.assertFalse(self.character.is_update_needed())
-
-    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_return_true_when_one_section_is_outdated(self):
-        # given
-        current_sections = set(Character.UpdateSection) - {
-            Character.UpdateSection.ASSETS
-        }
-        for section in current_sections:
-            create_character_update_status(self.character, section=section)
-
-        create_character_update_status(
-            self.character,
-            section=Character.UpdateSection.ASSETS,
-            started_at=now() - dt.timedelta(hours=24),
-        )
-
-        # when/then
-        self.assertTrue(self.character.is_update_needed())
-
-    @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    def test_should_return_false_when_all_enabled_sections_are_current(self):
-        # given
-        for section in Character.UpdateSection.enabled_sections():
-            create_character_update_status(self.character, section=section)
-
-        create_character_update_status(
-            self.character,
-            section=Character.UpdateSection.ROLES,
-            started_at=now() - dt.timedelta(hours=24),
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed())
 
 
 class TestCharacterGetEsiScopes(TestCase):
@@ -846,7 +808,8 @@ class TestCharacterGetEsiScopes(TestCase):
 
 class TestCharacterPerformUpdateWithErrorLogging(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -856,17 +819,18 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
     def test_should_execute_method_and_return_value(self):
         # given
         def my_method(dummy):
-            return f"return-value-{dummy}"
+            return UpdateSectionResult(
+                data=f"return-value-{dummy}", is_changed=True, is_updated=True
+            )
 
         section = Character.UpdateSection.LOCATION
         # when
         result = self.character.perform_update_with_error_logging(
-            section=section,
-            method=my_method,
-            dummy="alpha",
+            section=section, method=my_method, dummy="alpha"
         )
         # then
-        self.assertEqual(result, "return-value-alpha")
+        self.assertEqual(result.data, "return-value-alpha")
+        self.assertTrue(result.is_updated)
 
     def test_should_mark_section_as_failed_when_general_exception_is_raised(self):
         # given
@@ -885,8 +849,8 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertIn("RuntimeError", status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertIn("RuntimeError", status.error_message)
+        self.assertTrue(status.run_finished_at)
 
     def test_should_mark_section_as_failed_when_token_error_is_raised(self):
         # given
@@ -905,13 +869,14 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertTrue(status.has_token_error)
-        self.assertIn("TokenError", status.last_error_message)
-        self.assertTrue(status.finished_at)
+        self.assertIn("TokenError", status.error_message)
+        self.assertTrue(status.run_finished_at)
 
 
 class TestCharacterUpdateStatusAsDict(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -930,3 +895,71 @@ class TestCharacterUpdateStatusAsDict(TestCase):
         result = self.character.update_status_as_dict()
         # then
         self.assertDictEqual(result, {})
+
+
+@patch(MODULE_PATH + ".section_time_until_stale", {"assets": 640})
+class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_entities()
+        cls.section = Character.UpdateSection.ASSETS
+        cls.character = create_memberaudit_character(1001)
+
+    def test_should_report_false_when_section_not_stale(self):
+        # given
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())
+
+    def test_should_report_true_when_section_has_error(self):
+        # given
+        status = create_character_update_status(
+            character=self.character, section=self.section, is_success=False
+        )
+        # when/then
+        self.assertTrue(status.is_update_needed())
+
+    def test_should_report_true_when_section_is_stale(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=12)
+        run_finished_at = run_started_at + dt.timedelta(minutes=10)
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=True,
+            run_started_at=run_started_at,
+            run_finished_at=run_finished_at,
+        )
+        # when/then
+        self.assertTrue(status.is_update_needed())
+
+    def test_should_report_false_when_section_has_token_error_and_stale(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=12)
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            run_started_at=run_started_at,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())
+
+    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
+        # given
+        status = create_character_update_status(
+            character=self.character,
+            section=self.section,
+            is_success=False,
+            has_token_error=True,
+        )
+        # when/then
+        self.assertFalse(status.is_update_needed())

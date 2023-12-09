@@ -5,6 +5,7 @@ from django.test import TestCase
 from eveuniverse.models import EveType
 
 from memberaudit.helpers import (
+    arabic_number_to_roman,
     data_retention_cutoff,
     determine_task_priority,
     eve_entity_ids_from_objs,
@@ -42,7 +43,8 @@ class TestDataRetentionCutoff(TestCase):
 
 class TestImplantSlotNum(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
 
     def test_should_return_slot_num(self):
@@ -74,7 +76,8 @@ class TestDetermineTaskPriority(TestCase):
 
 class TestEveEntityIdsFromObjs(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -99,3 +102,23 @@ class TestEveEntityIdsFromObjs(TestCase):
         # then
         expected = set()
         self.assertSetEqual(result, expected)
+
+
+class TestArabicNumberToRoman(TestCase):
+    def test_should_convert_correctly(self):
+        # given
+        cases = [
+            (0, "-"),
+            (1, "I"),
+            (2, "II"),
+            (3, "III"),
+            (4, "IV"),
+            (5, "V"),
+            (99, "-"),
+            (-1, "-"),
+            ("wrong", "-"),
+        ]
+        for input, expected_result in cases:
+            with self.subTest(input=input):
+                # when/then
+                self.assertEqual(arabic_number_to_roman(input), expected_result)

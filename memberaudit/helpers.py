@@ -4,10 +4,11 @@ import datetime as dt
 import itertools
 import json
 import os
-from typing import Any, Iterable, Optional, Set
+from typing import Any, Iterable, NamedTuple, Optional, Set
 
 from celery import Task
 
+from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
@@ -90,3 +91,32 @@ def determine_task_priority(task_obj: Task) -> Optional[int]:
     """Return priority of give task or None if not defined."""
     properties = task_obj.request.get("properties") or {}
     return properties.get("priority")
+
+
+def arabic_number_to_roman(value) -> str:
+    """Map to convert arabic to roman numbers (1 to 5 only)"""
+    my_map = {0: "-", 1: "I", 2: "II", 3: "III", 4: "IV", 5: "V"}
+    try:
+        return my_map[value]
+    except KeyError:
+        return "-"
+
+
+class UpdateSectionResult(NamedTuple):
+    """A result of an attempted section update."""
+
+    is_changed: Optional[bool]
+    is_updated: bool
+    data: Any = None
+
+
+def character_section_models():
+    """Return all character section models."""
+    my_app = apps.get_app_config("memberaudit")
+    my_character_models = [
+        model_class
+        for model_class in my_app.get_models()
+        if model_class.__name__.startswith("Character")
+    ]
+
+    return my_character_models

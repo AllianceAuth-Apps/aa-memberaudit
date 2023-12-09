@@ -59,7 +59,8 @@ MODULE_PATH = "memberaudit.views.character_viewer_1"
 
 class TestCharacterViewer(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -119,7 +120,8 @@ class TestCharacterViewer(TestCase):
 
 class TestCharacterFwStats(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -152,7 +154,8 @@ class TestCharacterFwStats(TestCase):
 
 class TestCharacterAssets(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -392,7 +395,8 @@ class TestCharacterAssets(TestCase):
 
 class TestCharacterDataViewsOther(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()
@@ -524,7 +528,8 @@ class TestCharacterDataViewsOther(TestCase):
 
 class TestCharacterContracts(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         cls.factory = RequestFactory()
         load_eveuniverse()
         load_entities()

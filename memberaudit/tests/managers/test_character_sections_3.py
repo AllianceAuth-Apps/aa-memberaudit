@@ -4,7 +4,7 @@ from unittest.mock import patch
 from django.test import override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
+from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from app_utils.esi_testing import (
     BravadoOperationStub,
@@ -29,6 +29,7 @@ from memberaudit.models import (
     CharacterWalletTransaction,
     Location,
 )
+from memberaudit.tests.constants import EvePlanetIds, EveSolarSystemIds
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
@@ -42,6 +43,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_title,
     create_character_wallet_journal_entry,
     create_skill_set,
+    create_skill_set_group,
     create_skill_set_skill,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
@@ -49,7 +51,7 @@ from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import create_memberaudit_character
 
-MODELS_PATH = "memberaudit.models.characters"
+MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers.character_sections_3"
 
 
@@ -127,7 +129,8 @@ class TestCharacterMiningLedgerManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterOnlineStatusManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -168,43 +171,127 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
                             "last_update": "2016-11-28T16:42:51Z",
                             "num_pins": 1,
                             "owner_id": 1001,
-                            "planet_id": 40161463,
+                            "planet_id": EvePlanetIds.AMAMAKE_I.value,
                             "planet_type": "barren",
-                            "solar_system_id": 30002537,
+                            "solar_system_id": EveSolarSystemIds.AMAMAKE.value,
                             "upgrade_level": 0,
-                        }
+                        },
+                        {
+                            "last_update": "2016-10-29T15:41:21Z",
+                            "num_pins": 3,
+                            "owner_id": 1001,
+                            "planet_id": EvePlanetIds.AMAMAKE_II.value,
+                            "planet_type": "barren",
+                            "solar_system_id": EveSolarSystemIds.AMAMAKE.value,
+                            "upgrade_level": 2,
+                        },
                     ]
                 },
             ),
         ]
         cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
 
-    def test_should_add_new_planet(self, mock_esi):
+    def test_should_create_new_planets_from_scratch(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
+
         # when
         self.character_1001.update_planets()
+
         # then
-        self.assertEqual(self.character_1001.planets.count(), 1)
-        obj: CharacterPlanet = self.character_1001.planets.first()
+        self.assertEqual(self.character_1001.planets.count(), 2)
+
+        obj: CharacterPlanet = self.character_1001.planets.get(
+            eve_planet_id=EvePlanetIds.AMAMAKE_I
+        )
         self.assertIsInstance(obj.last_update_at, dt.datetime)
-        self.assertEqual(obj.eve_planet, EvePlanet.objects.get(id=40161463))
         self.assertEqual(obj.num_pins, 1)
         self.assertEqual(obj.upgrade_level, 0)
 
-    def test_should_update_existing_entries(self, mock_esi):
+        obj: CharacterPlanet = self.character_1001.planets.get(
+            eve_planet_id=EvePlanetIds.AMAMAKE_II
+        )
+        self.assertIsInstance(obj.last_update_at, dt.datetime)
+        self.assertEqual(obj.num_pins, 3)
+        self.assertEqual(obj.upgrade_level, 2)
+
+    def test_should_update_existing_planets(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        create_character_planet(character=self.character_1001)
+        obj_1 = create_character_planet(
+            character=self.character_1001,
+            eve_planet_id=EvePlanetIds.AMAMAKE_I,
+            num_pins=2,
+            upgrade_level=3,
+        )
+        create_character_planet(
+            character=self.character_1001,
+            eve_planet_id=EvePlanetIds.AMAMAKE_II,
+            num_pins=3,
+            upgrade_level=2,
+            last_update_at=parse_datetime("2016-10-29T15:41:21Z"),
+        )
+
+        with patch(
+            MANAGERS_PATH + ".CharacterPlanetManager.bulk_update",
+            wraps=CharacterPlanet.objects.filter(
+                character=self.character_1001
+            ).bulk_update,
+        ) as mock_bulk_update:
+            # when
+            self.character_1001.update_planets()
+
+            # then
+            self.assertEqual(self.character_1001.planets.count(), 2)
+
+            obj_1.refresh_from_db()
+            self.assertIsInstance(obj_1.last_update_at, dt.datetime)
+            self.assertEqual(obj_1.num_pins, 1)
+            self.assertEqual(obj_1.upgrade_level, 0)
+
+            # then only the modified planet was updated
+            updated_obj_ids = {o.id for o in mock_bulk_update.call_args.kwargs["objs"]}
+            self.assertSetEqual(updated_obj_ids, {obj_1.id})
+
+    def test_should_remove_obsolete_planets(self, mock_esi):
+        # given
+        mock_esi.client = self.esi_client_stub
+        create_character_planet(
+            character=self.character_1001, eve_planet_id=EvePlanetIds.AMAMAKE_IV
+        )
+
         # when
         self.character_1001.update_planets()
+
         # then
-        self.assertEqual(self.character_1001.planets.count(), 1)
-        obj: CharacterPlanet = self.character_1001.planets.first()
-        self.assertIsInstance(obj.last_update_at, dt.datetime)
-        self.assertEqual(obj.eve_planet, EvePlanet.objects.get(id=40161463))
-        self.assertEqual(obj.num_pins, 1)
-        self.assertEqual(obj.upgrade_level, 0)
+        current_planet_ids = set(
+            self.character_1001.planets.values_list("eve_planet_id", flat=True)
+        )
+        self.assertSetEqual(
+            current_planet_ids, {EvePlanetIds.AMAMAKE_I, EvePlanetIds.AMAMAKE_II}
+        )
+
+    def test_should_remove_all_when_no_esi_data(self, mock_esi):
+        # given
+        create_character_planet(
+            character=self.character_1001, eve_planet_id=EvePlanetIds.AMAMAKE_IV
+        )
+        endpoints = [
+            EsiEndpoint(
+                "Planetary_Interaction",
+                "get_characters_character_id_planets",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+
+        # when
+        self.character_1001.update_planets()
+
+        # then
+        self.assertEqual(self.character_1001.planets.count(), 0)
 
 
 @patch(MANAGERS_PATH + ".esi")
@@ -214,7 +301,7 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        with patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True):
+        with patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True):
             cls.character_1001 = create_memberaudit_character(1001)
 
     def test_should_add_new_role(self, mock_esi):
@@ -297,7 +384,8 @@ class TestCharacterRolesManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterShipManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -351,7 +439,8 @@ class TestCharacterShipManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterSkillManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -447,9 +536,10 @@ class TestCharacterSkillManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterSkillQueueManager(NoSocketsTestCase):
+class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -565,7 +655,8 @@ class TestCharacterSkillQueueManager(NoSocketsTestCase):
 
 class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character = create_memberaudit_character(1001)
@@ -662,10 +753,263 @@ class TestCharacterSkillSetCheckManager(NoSocketsTestCase):
         self.assertFalse(obj.can_fly)
 
 
+class TestCharacterUpdateSkillSets(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+
+    def test_has_all_skills(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character,
+            eve_type=self.caldari_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        self.assertEqual(first.failed_required_skills.count(), 0)
+
+    def test_one_skill_below(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        create_character_skill(
+            character=self.character,
+            eve_type=self.caldari_carrier_skill_type,
+            active_skill_level=2,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertEqual(required_skill_pks, {skill_2.pk})
+
+    def test_misses_one_skill(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=5,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+        skill_set = create_skill_set()
+        create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, {skill_2.pk})
+
+    def test_passed_required_and_misses_recommended_skill(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=4,
+            skillpoints_in_skill=10,
+            trained_skill_level=4,
+        )
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, set())
+        recommended_skill_pks = {
+            obj.pk for obj in first.failed_recommended_skills.all()
+        }
+        self.assertSetEqual(recommended_skill_pks, {skill_1.pk})
+
+    def test_misses_recommended_skill_only(self):
+        # given
+        create_character_skill(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=4,
+            skillpoints_in_skill=10,
+            trained_skill_level=4,
+        )
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            recommended_level=5,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        required_skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(required_skill_pks, set())
+        recommended_skill_pks = {
+            obj.pk for obj in first.failed_recommended_skills.all()
+        }
+        self.assertSetEqual(recommended_skill_pks, {skill_1.pk})
+
+    def test_misses_all_skills(self):
+        # given
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+        skill_set_group = create_skill_set_group()
+        skill_set_group.skill_sets.add(skill_set)
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(skill_pks, {skill_1.pk, skill_2.pk})
+
+    def test_does_not_require_doctrine_definition(self):
+        # given
+        skill_set = create_skill_set()
+        skill_1 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=5,
+        )
+        skill_2 = create_skill_set_skill(
+            skill_set=skill_set,
+            eve_type=self.caldari_carrier_skill_type,
+            required_level=3,
+        )
+
+        # when
+        result = self.character.update_skill_sets()
+
+        # then
+        self.assertTrue(result.is_updated)
+
+        self.assertEqual(self.character.skill_set_checks.count(), 1)
+        first = self.character.skill_set_checks.first()
+        self.assertEqual(first.skill_set.pk, skill_set.pk)
+        skill_pks = {obj.pk for obj in first.failed_required_skills.all()}
+        self.assertSetEqual(skill_pks, {skill_1.pk, skill_2.pk})
+
+    def test_should_handle_no_skills(self):
+        # when
+        result = self.character.update_skill_sets()
+        # then
+        self.assertTrue(result.is_updated)
+
+
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterStandingManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -714,6 +1058,33 @@ class TestCharacterStandingManager(NoSocketsTestCase):
         CharacterStanding.objects.update_or_create_esi(self.character_1002)
         # then
         self.assertEqual(self.character_1002.standings.count(), 0)
+
+    def test_can_remove_obsolete_standings(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        obsolete_standing = create_character_standing(
+            self.character_1001, EveEntity.objects.get(id=1101), standing=-5
+        )
+        # when
+        CharacterStanding.objects.update_or_create_esi(self.character_1001)
+
+        # then
+        self.assertEqual(self.character_1001.standings.count(), 3)
+
+        entry = self.character_1001.standings.get(eve_entity_id=1901)
+        self.assertEqual(entry.standing, 0.1)
+
+        entry = self.character_1001.standings.get(eve_entity_id=2901)
+        self.assertEqual(entry.standing, 0)
+
+        entry = self.character_1001.standings.get(eve_entity_id=500001)
+        self.assertEqual(entry.standing, -1)
+
+        self.assertFalse(
+            self.character_1001.standings.filter(
+                eve_entity_id=obsolete_standing.eve_entity.id
+            ).exists()
+        )
 
 
 @patch(MANAGERS_PATH + ".esi")
@@ -836,7 +1207,8 @@ class TestCharacterTitleManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletBalanceManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -853,7 +1225,8 @@ class TestCharacterWalletBalanceManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletJournalManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -998,7 +1371,8 @@ class TestCharacterWalletJournalManager(NoSocketsTestCase):
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterWalletTransactionManager(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls):
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

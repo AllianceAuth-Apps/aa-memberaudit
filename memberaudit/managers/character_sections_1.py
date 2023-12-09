@@ -1,7 +1,9 @@
 """Managers for character section models (1/3)."""
 # pylint: disable=missing-class-docstring
 
-from typing import Optional, Set
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, List, Set
 
 from django.db import models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
@@ -19,6 +21,7 @@ from memberaudit.app_settings import (
 )
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
+    UpdateSectionResult,
     data_retention_cutoff,
     eve_entity_ids_from_objs,
     store_debug_data_to_disk,
@@ -29,6 +32,12 @@ from memberaudit.utils import (
     get_or_create_or_none,
     get_or_none,
 )
+
+from ._common import GenericUpdateSimpleObjMixin
+
+if TYPE_CHECKING:
+    from memberaudit.models import Character
+
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -67,21 +76,17 @@ class CharacterAssetQuerySet(models.QuerySet):
 
 
 class CharacterAssetManagerBase(models.Manager):
-    def fetch_from_esi(self, character, force_update: bool = False) -> Optional[list]:
+    def fetch_from_esi(self, character: Character, force_update: bool = False):
         """Fetch assets from ESI and preload related objects from ESI."""
-        asset_list, changed = character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.ASSETS,
             fetch_func=self._fetch_data_from_esi,
             store_func=None,
             force_update=force_update,
         )
-        if changed:
-            return asset_list
-
-        return None
 
     @fetch_token_for_character("esi-assets.read_assets.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> list:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> list:
         """Fetch character assets with names from ESI and return it."""
         logger.info("%s: Fetching assets from ESI", character)
         asset_list = esi.client.Assets.get_characters_character_id_assets(
@@ -109,25 +114,38 @@ class CharacterAssetManagerBase(models.Manager):
 
         return list(asset_data.values())
 
-    @fetch_token_for_character("esi-universe.read_structures.v1")
     def preload_objects_from_esi(
-        self, character, token: Token, asset_list: list
-    ) -> None:
+        self, character: Character, asset_list: list
+    ) -> UpdateSectionResult:
         """Preloads objects needed to build the asset tree."""
-        from memberaudit.models import Location
-
-        if not asset_list:
-            return
 
         logger.info("%s: Preloading objects for asset tree", character)
+
+        if not asset_list:
+            return UpdateSectionResult(is_changed=None, is_updated=False)
+
+        is_updated = self._fetch_missing_types_from_esi(character, asset_list)
+        is_updated |= self._create_missing_locations(character, asset_list)
+
+        return UpdateSectionResult(is_changed=None, is_updated=is_updated)
+
+    def _fetch_missing_types_from_esi(
+        self, character: Character, asset_list: list
+    ) -> bool:
         required_ids = {item["type_id"] for item in asset_list if "type_id" in item}
         existing_ids = set(EveType.objects.values_list("id", flat=True))
         missing_ids = required_ids.difference(existing_ids)
-        if missing_ids:
-            logger.info(
-                "%s: Loading %s missing types from ESI", character, len(missing_ids)
-            )
-            EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+        if not missing_ids:
+            return False
+
+        EveType.objects.bulk_get_or_create_esi(ids=list(missing_ids))
+        logger.info(
+            "%s: Fetched %s missing types from ESI", character, len(missing_ids)
+        )
+        return True
+
+    def _create_missing_locations(self, character: Character, asset_list: list) -> bool:
+        from memberaudit.models import Location
 
         asset_item_ids = {asset["item_id"] for asset in asset_list}
         incoming_location_ids = {
@@ -135,18 +153,30 @@ class CharacterAssetManagerBase(models.Manager):
             for item in asset_list
             if "location_id" in item and item["location_id"] not in asset_item_ids
         }
+        if not incoming_location_ids:
+            return False
+
+        current_location_ids = set(Location.objects.values_list("id", flat=True))
+        missing_location_ids = incoming_location_ids - current_location_ids
+        if not missing_location_ids:
+            return False
+
+        token = character.fetch_token("esi-universe.read_structures.v1")
         Location.objects.create_missing_esi(
-            location_ids=incoming_location_ids, token=token
+            location_ids=missing_location_ids, token=token
         )
+        return True
 
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)
 
 
 class CharacterAttributesManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create attributes for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.ATTRIBUTES,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -154,7 +184,7 @@ class CharacterAttributesManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-skills.read_skills.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching attributes from ESI", character)
         attribute_data = esi.client.Skills.get_characters_character_id_attributes(
             character_id=character.eve_character.character_id,
@@ -162,7 +192,7 @@ class CharacterAttributesManager(models.Manager):
         ).results()
         return attribute_data
 
-    def _update_or_create_objs(self, character, attribute_data):
+    def _update_or_create_objs(self, character: Character, attribute_data):
         self.update_or_create(
             character=character,
             defaults={
@@ -180,11 +210,13 @@ class CharacterAttributesManager(models.Manager):
         )
 
 
-class CharacterContactLabelManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create assets for a character from ESI."""
 
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -193,7 +225,7 @@ class CharacterContactLabelManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token) -> List[dict]:
         logger.info("%s: Fetching contact labels from ESI", character)
         labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
             character_id=character.eve_character.character_id,
@@ -201,38 +233,28 @@ class CharacterContactLabelManager(models.Manager):
         ).results()
         return labels
 
-    @transaction.atomic()
-    def _update_or_create_objs(self, character, labels):
-        # TODO: replace with bulk methods to optimize
-        if labels:
-            incoming_ids = {label["label_id"] for label in labels}
-        else:
-            incoming_ids = set()
-        existing_ids = set(
-            self.filter(character=character).values_list("label_id", flat=True)
+    def _update_or_create_objs(
+        self, character: Character, esi_data: List[dict]
+    ) -> Set[int]:
+        def make_obj_from_esi_entry(character, key, value):
+            obj = self.model(character=character, label_id=key, name=value)
+            return obj
+
+        self._update_or_create_objs_generic(
+            character,
+            esi_data,
+            esi_fields=("label_id", "label_name"),
+            model_fields=("label_id", "name"),
+            make_obj_from_esi_entry=make_obj_from_esi_entry,
         )
-        obsolete_ids = existing_ids.difference(incoming_ids)
-        if obsolete_ids:
-            logger.info("%s: Removing %s obsolete skills", character, len(obsolete_ids))
-            self.filter(character=character, label_id__in=obsolete_ids).delete()
-        if incoming_ids:
-            logger.info("%s: Storing %s contact labels", character, len(incoming_ids))
-            for label in labels:
-                self.update_or_create(
-                    character=character,
-                    label_id=label.get("label_id"),
-                    defaults={
-                        "name": label.get("label_name"),
-                    },
-                )
-        else:
-            logger.info("%s: No contact labels", character)
 
 
 class CharacterContactManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create assets for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -240,7 +262,7 @@ class CharacterContactManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def _fetch_data_from_esi(self, character, token):
+    def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching contacts from ESI", character)
         contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
             character_id=character.eve_character.character_id,
@@ -249,7 +271,7 @@ class CharacterContactManager(models.Manager):
         return contacts_data
 
     @transaction.atomic()
-    def _update_or_create_objs(self, character, contacts_data) -> Set[int]:
+    def _update_or_create_objs(self, character: Character, contacts_data) -> Set[int]:
         """Update or create new contact objects from provided data.
 
         Return EveEntity IDs in newly created contacts.
@@ -291,7 +313,9 @@ class CharacterContactManager(models.Manager):
 
         return create_ids
 
-    def _create_new_contacts(self, character, contacts_list: dict, contact_ids: list):
+    def _create_new_contacts(
+        self, character: Character, contacts_list: dict, contact_ids: list
+    ):
         logger.info("%s: Storing %s new contacts", character, len(contact_ids))
         new_contacts_list = {
             contact_id: obj
@@ -317,7 +341,7 @@ class CharacterContactManager(models.Manager):
         )
 
     def _update_contact_contact_labels(
-        self, character, contacts_list: dict, contact_ids: list, is_new=False
+        self, character: Character, contacts_list: dict, contact_ids: list, is_new=False
     ):
         from memberaudit.models import CharacterContactLabel
 
@@ -347,7 +371,7 @@ class CharacterContactManager(models.Manager):
                     character_contact.labels.add(*labels)
 
     def _update_existing_contacts(
-        self, character, contacts_list: dict, contact_ids: list
+        self, character: Character, contacts_list: dict, contact_ids: list
     ):
         logger.info("%s: Updating %s contacts", character, len(contact_ids))
         update_contact_pks = list(
@@ -374,9 +398,11 @@ class CharacterContactManager(models.Manager):
 
 
 class CharacterContractManager(models.Manager):
-    def update_or_create_esi(self, character, force_update: bool = False):
+    def update_or_create_esi(
+        self, character: Character, force_update: bool = False
+    ) -> UpdateSectionResult:
         """Update or create contracts for a character from ESI."""
-        character.update_section_if_changed(
+        return character.update_section_if_changed(
             section=character.UpdateSection.CONTRACTS,
             fetch_func=self._fetch_data_from_esi,
             store_func=self._update_or_create_objs,
@@ -384,7 +410,7 @@ class CharacterContractManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def _fetch_data_from_esi(self, character, token: Token) -> dict:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         logger.info("%s: Fetching contracts from ESI", character)
         contracts_data = esi.client.Contracts.get_characters_character_id_contracts(
             character_id=character.eve_character.character_id,
@@ -404,7 +430,7 @@ class CharacterContractManager(models.Manager):
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def _update_or_create_objs(
-        self, character, token: Token, contracts_list
+        self, character: Character, token: Token, contracts_list
     ) -> Set[int]:
         """Update or create new contract objects from provided data.
 
@@ -451,7 +477,7 @@ class CharacterContractManager(models.Manager):
             return new_entity_ids
 
     def _create_new_contracts(
-        self, character, contracts_list: dict, contract_ids: Set[int]
+        self, character: Character, contracts_list: dict, contract_ids: Set[int]
     ) -> Set[int]:
         from memberaudit.models import Location
 
@@ -509,7 +535,7 @@ class CharacterContractManager(models.Manager):
         return eve_entity_ids_from_objs(new_contracts)
 
     def _update_existing_contracts(
-        self, character, contracts_list: dict, contract_ids: set
+        self, character: Character, contracts_list: dict, contract_ids: set
     ) -> None:
         logger.info("%s: Updating %s contracts", character, len(contract_ids))
         update_contract_pks = list(
@@ -546,7 +572,7 @@ class CharacterContractManager(models.Manager):
 
 class CharacterContractBidManager(models.Manager):
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_or_create_esi(self, character, token: Token, contract):
+    def update_or_create_esi(self, character: Character, token: Token, contract):
         """Update or create contract bids for a contract from ESI."""
         if contract.contract_type != contract.TYPE_AUCTION:
             logger.warning(
@@ -641,7 +667,7 @@ class CharacterContractItemQuerySet(models.QuerySet):
 
 class CharacterContractItemManagerBase(models.Manager):
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
-    def update_or_create_esi(self, character, token: Token, contract):
+    def update_or_create_esi(self, character: Character, token: Token, contract):
         """Update or create contract items for a contract from ESI."""
         if contract.contract_type not in [
             contract.TYPE_ITEM_EXCHANGE,
@@ -657,7 +683,7 @@ class CharacterContractItemManagerBase(models.Manager):
         items_data = self._fetch_data_from_esi(character, token, contract)
         self._update_or_create_objs(contract, items_data)
 
-    def _fetch_data_from_esi(self, character, token: Token, contract):
+    def _fetch_data_from_esi(self, character: Character, token: Token, contract):
         logger.info(
             "%s, %s: Fetching contract items from ESI", character, contract.contract_id
         )
@@ -690,6 +716,7 @@ class CharacterContractItemManagerBase(models.Manager):
             for item in items_data
             if "record_id" in item
         ]
+        # delete & create is fine here, since contracts items are never updated
         with transaction.atomic():
             self.filter(contract=contract).delete()
             self.bulk_create(items, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)

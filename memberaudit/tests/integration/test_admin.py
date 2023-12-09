@@ -38,7 +38,8 @@ class TestAdminSite(TestCase):
     fixtures = ["disable_analytics.json"]
 
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
@@ -128,21 +129,3 @@ class TestAdminSite(TestCase):
 
         # then character is updated
         self.assertEqual(character_1001.location.location.eve_solar_system.name, "Jita")
-
-    def test_should_update_assets_for_characters(self):
-        # given 2 characters
-        character_1001 = create_memberaudit_character(1001)
-        self.client.force_login(self.user)
-
-        # when user starts action
-        self.client.post(
-            "/admin/memberaudit/character/",
-            data={
-                "action": "update_assets",
-                "_selected_action": [character_1001.pk],
-            },
-        )
-
-        # then character is updated
-        character_1001.refresh_from_db()
-        self.assertTrue(character_1001.assets.exists())

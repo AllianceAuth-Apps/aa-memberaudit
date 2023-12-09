@@ -46,7 +46,8 @@ TASKS_PATH = "memberaudit.tasks"
 
 class TestMailEntity(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
 
     def test_str(self):
@@ -111,7 +112,8 @@ class TestMailEntity(NoSocketsTestCase):
 
 class TestGeneralOther(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
 
     def test_should_return_compliant_users_only(self):
@@ -155,7 +157,8 @@ class TestGeneralOther(NoSocketsTestCase):
 
 class TestGeneralUserHasAccess(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         character_1002 = create_memberaudit_character(1002)
@@ -222,7 +225,8 @@ class TestGeneralUserHasAccess(NoSocketsTestCase):
 
 class TestLocation(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -321,7 +325,8 @@ class TestLocation(NoSocketsTestCase):
 
 class TestComplianceGroupDesignation(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
 
     def test_should_ensure_new_compliance_groups_are_internal(self):
@@ -336,7 +341,8 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
 class TestSkillSet(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         cls.user = AuthUtils.create_user("Bruce Wayne")
 
@@ -376,3 +382,59 @@ class TestPermissions(NoSocketsTestCase):
             with self.subTest(model=model_class.__name__):
                 # when/then
                 self.assertTrue(permissions_for_model(model_class).exists())
+
+
+class TestSkillSetSkill(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        cls.skill_set = create_skill_set()
+
+    def test_should_return_str(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set)
+        # when/then
+        self.assertIn(obj.eve_type.name, str(obj))
+
+    def test_should_return_str_when_required_skill(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, required_level=1)
+        # when/then
+        self.assertIn(obj.eve_type.name, obj.required_skill_str)
+
+    def test_should_return_empty_string_when_not_required_skill(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, required_level=None)
+        # when/then
+        self.assertEqual(obj.required_skill_str, "")
+
+    def test_should_return_str_when_recommended_skill(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, recommended_level=1)
+        # when/then
+        self.assertIn(obj.eve_type.name, obj.recommended_skill_str)
+
+    def test_should_return_empty_string_when_not_recommended_skill(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, recommended_level=None)
+        # when/then
+        self.assertEqual(obj.recommended_skill_str, "")
+
+    def test_should_return_true_when_skill_is_required(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, required_level=1)
+        # when/then
+        self.assertTrue(obj.is_required)
+
+    def test_should_return_false_when_skill_is_not_required(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, required_level=None)
+        # when/then
+        self.assertFalse(obj.is_required)
+
+    def test_should_return_maximum_skill_str(self):
+        # given
+        obj = create_skill_set_skill(self.skill_set, recommended_level=1)
+        # when/then
+        self.assertIn(obj.eve_type.name, obj.maximum_skill_str)

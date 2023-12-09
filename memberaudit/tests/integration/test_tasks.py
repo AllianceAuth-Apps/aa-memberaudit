@@ -20,7 +20,6 @@ TASKS_PATH = "memberaudit.tasks"
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(TASKS_PATH + ".MEMBERAUDIT_LOG_UPDATE_STATS", False)
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
@@ -37,7 +36,8 @@ class TestTasksIntegration(TestCase):
     fixtures = ["disable_analytics.json"]
 
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

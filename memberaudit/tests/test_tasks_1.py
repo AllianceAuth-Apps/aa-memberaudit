@@ -1,6 +1,7 @@
 """Old style asset tests."""
 
 import datetime as dt
+from typing import Dict
 from unittest.mock import patch
 
 from bravado.exception import HTTPError
@@ -22,24 +23,20 @@ from app_utils.testing import (
 )
 
 from memberaudit import tasks
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import Character, CharacterUpdateStatus, Location
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
     create_character_asset,
-    create_character_from_user,
     create_character_update_status,
     create_compliance_group_designation,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
-from .utils import (
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-    reset_celery_once_locks,
-)
+from .utils import create_memberaudit_character, reset_celery_once_locks
 
 MODELS_PATH = "memberaudit.models"
 MANAGERS_PATH = "memberaudit.managers"
@@ -80,11 +77,210 @@ class TestRegularUpdates(TestCase):
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
 
 
-class TestOtherTasks(TestCase):
-    @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
-    def test_update_market_prices(self, mock_update_from_esi):
-        tasks.update_market_prices()
-        self.assertTrue(mock_update_from_esi.called)
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
+@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
+@patch(MANAGERS_PATH + ".general.esi", esi_stub)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestUpdateCharacter(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        reset_celery_once_locks()
+
+    def setUp(self) -> None:
+        self.character_1001 = create_memberaudit_character(1001)
+
+    @tag("breaks_with_tox")  # FIXME: Find solution
+    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_update_all_sections_from_scratch(self):
+        # when
+        result = tasks.update_character(self.character_1001.pk)
+
+        # then
+        self.assertTrue(result)
+
+        status_all: Dict[str, CharacterUpdateStatus] = {
+            obj.section: obj for obj in self.character_1001.update_status_set.all()
+        }
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertTrue(status_all[section].is_success)
+
+    @tag("breaks_with_tox")  # FXME: Find solution
+    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_update_enabled_sections_only(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                run_started_at=run_started_at,
+                run_finished_at=run_started_at,
+            )
+
+        # when
+        result = tasks.update_character(self.character_1001.pk)
+
+        # then
+        self.assertTrue(result)
+
+        for section in Character.UpdateSection.enabled_sections():
+            with self.subTest(section=section):
+                self.assertFalse(
+                    self.character_1001.is_update_needed_for_section(section=section)
+                )
+
+        self.assertTrue(
+            self.character_1001.is_update_needed_for_section(
+                section=Character.UpdateSection.ROLES
+            )
+        )
+
+    @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
+    def test_should_update_normal_section_only_when_stale(self, update_loyalty):
+        # given
+        create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.LOYALTY,
+            is_success=True,
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
+        )
+        # when
+        tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertFalse(update_loyalty.called)
+
+    @patch(TASKS_PATH + ".update_character_mails", spec=True)
+    def test_should_update_special_section_only_when_stale(
+        self, mock_update_character_mails
+    ):
+        # given
+        create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.MAILS,
+            is_success=True,
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
+        )
+        # when
+        tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertFalse(mock_update_character_mails.apply_async.called)
+
+    def test_should_update_section_when_not_stale_but_force_update_requested(self):
+        # given
+        status = create_character_update_status(
+            character=self.character_1001,
+            section=Character.UpdateSection.SKILLS.value,
+            is_success=True,
+            run_started_at=now() - dt.timedelta(seconds=30),
+            run_finished_at=now(),
+        )
+        last_finished = status.run_finished_at
+        # when
+        tasks.update_character(
+            self.character_1001.pk, force_update=True, ignore_stale=True
+        )
+        # then
+        status.refresh_from_db()
+        self.assertGreater(status.run_finished_at, last_finished)
+        self.assertTrue(status.update_finished_at)
+
+    def test_should_update_section_when_not_stale_but_ignore_stale(self):
+        # given
+        tasks.update_character_skills(self.character_1001.pk, force_update=True)
+        status = self.character_1001.update_status_for_section("skills")
+        status.update_finished_at = None
+        status.save()
+        # when
+        tasks.update_character(self.character_1001.pk, ignore_stale=True)
+        # then
+        status.refresh_from_db()
+        self.assertIsNone(status.update_finished_at)
+
+    def test_should_do_nothing_when_not_required(self):
+        # given
+        for section in Character.UpdateSection.values:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                run_started_at=now() - dt.timedelta(seconds=30),
+                run_finished_at=now(),
+            )
+        # when
+        result = tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertFalse(result)
+
+    def test_can_do_forced_update(self):
+        # when
+        result = tasks.update_character(self.character_1001.pk, force_update=True)
+        # then
+        self.assertTrue(result)
+        self.assertTrue(self.character_1001.is_update_status_ok())
+
+    def test_skip_update_for_orphans(self):
+        # given
+        character = create_character(EveCharacter.objects.get(character_id=1121))
+        # when
+        result = tasks.update_character(character.pk)
+        # then
+        self.assertFalse(result)
+        self.assertIsNone(character.is_update_status_ok())
+
+
+@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
+@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
+@patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
+@override_settings(
+    CELERY_ALWAYS_EAGER=True,
+    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
+    APP_UTILS_OBJECT_CACHE_DISABLED=True,
+)
+class TestUpdateCharacterErrorReporting(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        reset_celery_once_locks()
+
+    def setUp(self) -> None:
+        self.character_1001 = create_memberaudit_character(1001)
+
+    def test_should_report_errors_during_updates(self):
+        # when
+        with self.assertRaises(HTTPError):  # raised when trying to fetch attributes
+            tasks.update_character(self.character_1001.pk)
+        # then
+        self.assertFalse(self.character_1001.is_update_status_ok())
+        status = self.character_1001.update_status_set.filter(
+            character=self.character_1001, is_success=False
+        ).first()
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
+        self.assertTrue(status.run_finished_at)
 
 
 @override_settings(
@@ -95,7 +291,8 @@ class TestOtherTasks(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterAssets(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -284,7 +481,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
 
     def test_should_report_the_error_when_update_failed(self, mock_esi):
         # given
@@ -302,9 +499,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_report_error_when_preload_objects_failed(self, mock_esi):
         # given
@@ -325,9 +520,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_report_the_error_when_building_the_asset_tree_failed(
         self, mock_esi
@@ -347,9 +540,7 @@ class TestUpdateCharacterAssets(TestCase):
             section=Character.UpdateSection.ASSETS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
         self, mock_esi
@@ -407,7 +598,8 @@ class TestUpdateCharacterAssets(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContacts(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -426,7 +618,7 @@ class TestUpdateCharacterContacts(TestCase):
             section=Character.UpdateSection.CONTACTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
 
     def test_detect_error(self, mock_esi):
         """when update failed then report the error"""
@@ -442,9 +634,7 @@ class TestUpdateCharacterContacts(TestCase):
             section=Character.UpdateSection.CONTACTS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
 
 @override_settings(
@@ -456,7 +646,8 @@ class TestUpdateCharacterContacts(TestCase):
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContracts(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -466,35 +657,39 @@ class TestUpdateCharacterContracts(TestCase):
         )
         reset_celery_once_locks()
 
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
+    def test_should_record_success_when_update_completed_successfully(self, mock_esi):
+        # given
         mock_esi.client = esi_client_stub
 
+        # when
         tasks.update_character_contracts(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertTrue(status.update_finished_at)
 
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
+    def test_should_record_error_when_update_failed(self, mock_esi):
+        # given
         exception = build_http_error(502, "Test exception")
         mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
             exception
         )
 
+        # when
         with self.assertRaises(HTTPError):
             tasks.update_character_contracts(self.character_1001.pk, True)
 
+        # then
         status = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
 
 @override_settings(
@@ -502,12 +697,14 @@ class TestUpdateCharacterContracts(TestCase):
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
+@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
 class TestUpdateCharacterMails(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
@@ -516,21 +713,38 @@ class TestUpdateCharacterMails(TestCase):
         )
         reset_celery_once_locks()
 
-    def test_update_ok(self, mock_esi_character, mock_esi_sections):
-        """when update succeeded then report update success"""
+    def test_should_report_success_when_update_is_completed_successfully(
+        self, mock_esi_character, mock_esi_sections
+    ):
+        # given
         mock_esi_character.client = esi_client_stub
         mock_esi_sections.client = esi_client_stub
 
-        tasks.update_character_mails(self.character_1001.pk, True)
+        # when
+        tasks.update_character_mails.delay(self.character_1001.pk, True)
 
-        status = self.character_1001.update_status_set.get(
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.MAILS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+        self.assertSetEqual(mail_ids, {1, 2, 3})
+        mail = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(mail.subject, "Mail 1")
+        self.assertEqual(mail.body, "blah blah blah 😓")
 
-    def test_detect_error(self, mock_esi_character, mock_esi_sections):
-        """when update failed then report the error"""
+    # TODO: Add test to check force update works
+
+    def test_should_report_error_when_update_failed(
+        self, mock_esi_character, mock_esi_sections
+    ):
+        # given
         exception = build_http_error(502, "Test exception")
         mock_esi_character.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
@@ -538,206 +752,28 @@ class TestUpdateCharacterMails(TestCase):
         mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
+        # when
         with self.assertRaises(HTTPError):
             tasks.update_character_mails(self.character_1001.pk, True)
 
-        status = self.character_1001.update_status_set.get(
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
             section=Character.UpdateSection.MAILS
         )
         self.assertFalse(status.is_success)
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
-
-
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
-@patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestCharacterUpdateFull(TestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        reset_celery_once_locks()
-
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
-
-    @tag("breaks_with_tox")  # TODO: Find solution
-    def test_should_update_all_sections_from_scratch(self):
-        # when
-        result = tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertTrue(result)
-        self.assertTrue(self.character_1001.is_update_status_ok())
-
-    @tag("breaks_with_tox")  # TODO: Find solution
-    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
-    def test_should_update_enabled_sections_only(self):
-        # given
-        started_at = now() - dt.timedelta(hours=24)
-        for section in Character.UpdateSection:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                started_at=started_at,
-                finished_at=started_at,
-            )
-
-        # when
-        result = tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertTrue(result)
-        for section in Character.UpdateSection.enabled_sections():
-            with self.subTest(section=section):
-                self.assertFalse(
-                    self.character_1001.is_update_needed_for_section(section=section)
-                )
-        self.assertTrue(
-            self.character_1001.is_update_needed_for_section(
-                section=Character.UpdateSection.ROLES
-            )
-        )
-
-    @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
-    def test_should_update_normal_section_only_when_stale(self, update_loyalty):
-        # given
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.LOYALTY,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        # when
-        tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(update_loyalty.called)
-
-    @patch(TASKS_PATH + ".update_character_mails", spec=True)
-    def test_should_update_special_section_only_when_stale(
-        self, mock_update_character_mails
-    ):
-        # given
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.MAILS,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        # when
-        tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(mock_update_character_mails.apply_async.called)
-
-    def test_should_update_stale_sections_only_3(self):
-        """When generic section has recently been updated and force_update is called
-        then update again
-        """
-        # given
-        section = create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.SKILLS.value,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        last_finished = section.finished_at
-        # when
-        tasks.update_character(self.character_1001.pk, force_update=True)
-        # then
-        section.refresh_from_db()
-        self.assertGreater(section.finished_at, last_finished)
-
-    def test_should_do_nothing_when_not_required(self):
-        # given
-        for section in Character.UpdateSection.values:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                started_at=now() - dt.timedelta(seconds=30),
-                finished_at=now(),
-            )
-        # when
-        result = tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(result)
-
-    def test_can_do_forced_update(self):
-        # when
-        result = tasks.update_character(self.character_1001.pk, force_update=True)
-        # then
-        self.assertTrue(result)
-        self.assertTrue(self.character_1001.is_update_status_ok())
-
-    def test_skip_update_for_orphans(self):
-        # given
-        character = create_character(EveCharacter.objects.get(character_id=1121))
-        # when
-        result = tasks.update_character(character.pk)
-        # then
-        self.assertFalse(result)
-        self.assertIsNone(character.is_update_status_ok())
-
-
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestCharacterUpdateErrorReporting(TestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        reset_celery_once_locks()
-
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
-
-    def test_should_report_errors_during_updates(self):
-        # when
-        with self.assertRaises(HTTPError):  # raised when trying to fetch attributes
-            tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(self.character_1001.is_update_status_ok())
-        status = self.character_1001.update_status_set.filter(
-            character=self.character_1001, is_success=False
-        ).first()
-        self.assertEqual(
-            status.last_error_message, "HTTPBadGateway: 502 Test exception"
-        )
-        self.assertTrue(status.finished_at)
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
 class TestUpdateStructureEsi(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
         cls.token = (
@@ -810,22 +846,30 @@ class TestUpdateMailEntityEsi(TestCase):
 )
 class TestUpdateCharactersDoctrines(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         reset_celery_once_locks()
 
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
-
     @patch(MODELS_PATH + ".characters.Character.update_skill_sets")
     def test_normal(self, mock_update_skill_sets):
+        # given
+        mock_update_skill_sets.return_value = UpdateSectionResult(
+            is_changed=True, is_updated=True
+        )
+        create_memberaudit_character(1001)
+
+        # when
         tasks.update_characters_skill_checks()
+
+        # then
         self.assertTrue(mock_update_skill_sets.called)
 
 
 class TestDeleteCharacters(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         Character.objects.all().delete()
 
@@ -851,7 +895,8 @@ class TestDeleteCharacters(TestCase):
 )
 class TestExportData(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
         reset_celery_once_locks()
@@ -883,7 +928,8 @@ class TestExportData(TestCase):
 
 class TestUpdateComplianceGroupDesignations(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
 
     @patch(TASKS_PATH + ".ComplianceGroupDesignation.objects.update_user", spec=True)
@@ -903,7 +949,8 @@ class TestUpdateComplianceGroupDesignations(TestCase):
 @patch(TASKS_PATH + ".update_character", spec=True)
 class TestUpdateAllCharacters(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -974,72 +1021,8 @@ class TestCheckCharacterConsistency(TestCase):
         self.assertTrue(mock_check_character_consistency.called)
 
 
-@patch(TASKS_PATH + ".Character.update_location")
-class TestUpdateCharacterSection(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def test_should_update_normally(self, mock_update_location):
-        # given
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        section = Character.UpdateSection.LOCATION
-        # when
-        tasks.update_character_section(
-            character_pk=character.pk, section=section.value, force_update=False
-        )
-        # then
-        self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-        self.assertTrue(status.finished_at)
-
-    def test_should_pass_though_exceptions_from_update_method(
-        self, mock_update_location
-    ):
-        # given
-        mock_update_location.side_effect = RuntimeError
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        section = Character.UpdateSection.LOCATION
-        # when
-        with self.assertRaises(RuntimeError):
-            tasks.update_character_section(
-                character_pk=character.pk, section=section.value, force_update=False
-            )
-        # then
-        self.assertTrue(mock_update_location.called)
-        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
-        self.assertFalse(status.is_success)
-        self.assertTrue(status.last_error_message)
-        self.assertTrue(status.finished_at)
-
-    def test_should_clear_previous_errors_when_update_succeeded(
-        self, mock_update_location
-    ):
-        # given
-        character = create_character_from_user(self.user)
-        character.clear_cache()
-        section = Character.UpdateSection.LOCATION
-        finished_at = now() - dt.timedelta(hours=4)
-        status = create_character_update_status(
-            character=character,
-            section=section,
-            is_success=False,
-            last_error_message="some error",
-            finished_at=finished_at,
-        )
-        # when
-        tasks.update_character_section(
-            character_pk=character.pk, section=section.value, force_update=False
-        )
-        # then
-        self.assertTrue(mock_update_location.called)
-        status.refresh_from_db()
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.last_error_message)
-        self.assertGreater(status.finished_at, finished_at)
+class TestUpdateMarketPrices(TestCase):
+    @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
+    def test_update_market_prices(self, mock_update_from_esi):
+        tasks.update_market_prices()
+        self.assertTrue(mock_update_from_esi.called)

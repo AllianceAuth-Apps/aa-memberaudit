@@ -7,25 +7,27 @@ from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 from esi.models import Token
-from eveuniverse.models import EveSolarSystem, EveType
+from eveuniverse.models import EveSolarSystem
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
 
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.models import Character, CharacterUpdateStatus, Location
+from memberaudit.models import (
+    Character,
+    CharacterUpdateStatus,
+    Location,
+    characters,
+    enabled_sections_by_stale_minutes,
+)
 from memberaudit.tests.testdata.constants import EveTypeId
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_from_user,
     create_character_location,
     create_character_ship,
-    create_character_skill,
     create_character_update_status,
     create_location_eve_solar_system,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -44,7 +46,8 @@ TASKS_PATH = "memberaudit.tasks"
 
 class TestCharacter(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
 
@@ -196,7 +199,8 @@ class TestCharacter(TestCase):
 
 class TestCharacterFetchToken(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.user, _ = create_user_from_evecharacter_with_access(1001)
 
@@ -272,7 +276,8 @@ class TestCharacterFetchToken(TestCase):
 
 class TestCharacterStatus(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
 
@@ -336,15 +341,15 @@ class TestCharacterStatus(NoSocketsTestCase):
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertEqual(status.last_error_message, "")
-        self.assertTrue(status.finished_at)
+        self.assertEqual(status.error_message, "")
+        self.assertTrue(status.run_finished_at)
 
     def test_should_log_error_for_section(self):
         # given
         section = Character.UpdateSection.LOCATION
         # when
         self.character.update_section_log_result(
-            section=section, is_success=False, last_error_message="some issue"
+            section=section, is_success=False, error_message="some issue"
         )
         # then
         status: CharacterUpdateStatus = self.character.update_status_set.get(
@@ -352,16 +357,46 @@ class TestCharacterStatus(NoSocketsTestCase):
         )
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
-        self.assertEqual(status.last_error_message, "some issue")
-        self.assertTrue(status.finished_at)
+        self.assertEqual(status.error_message, "some issue")
+        self.assertTrue(status.run_finished_at)
 
 
-class TestCharacterUpdateSection(NoSocketsTestCase):
+class TestCharacterUpdateSection(TestCase):
     def test_method_name(self):
         # given
         section = Character.UpdateSection.CORPORATION_HISTORY
         # when/then
         self.assertEqual(section.method_name, "update_corporation_history")
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG", {"titles": 98})
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 42)
+    def test_should_return_correct_map(self):
+        # when
+        result = Character.UpdateSection.time_until_section_updates_are_stale()
+        # then
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertIn(section, result)
+
+        self.assertEqual(result[Character.UpdateSection.MAILS], 42)  # global default
+        self.assertEqual(
+            result[Character.UpdateSection.ASSETS], 480
+        )  # section defaults
+        self.assertEqual(result[Character.UpdateSection.TITLES], 98)  # custom setting
+
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG", {"invalid": 98})
+    @patch(MODELS_PATH + ".MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 42)
+    @patch(MODELS_PATH + ".logger", wraps=characters.logger)
+    def test_should_ignore_invalid_config(self, spy_logger):
+        # when
+        result = Character.UpdateSection.time_until_section_updates_are_stale()
+
+        # then
+        for section in Character.UpdateSection:
+            with self.subTest(section=section):
+                self.assertIn(section, result)
+
+        self.assertTrue(spy_logger.warning.called)
 
 
 class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
@@ -384,7 +419,8 @@ class TestCharacterUpdateSectionEnabledSections(NoSocketsTestCase):
 
 class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.section = Character.UpdateSection.ASSETS
@@ -396,20 +432,20 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             character=self.character_1001,
             section=self.section,
             is_success=False,
-            last_error_message="abc",
+            error_message="abc",
         )
 
         section = self.character_1001.reset_update_section(self.section)
 
         self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
+        self.assertEqual(section.error_message, "")
 
     def test_reset_2(self):
         """when section does not exist, then create it"""
         section = self.character_1001.reset_update_section(self.section)
 
         self.assertIsNone(section.is_success)
-        self.assertEqual(section.last_error_message, "")
+        self.assertEqual(section.error_message, "")
 
     def test_has_changed_1a(self):
         """When section exists, then return result from has_changed"""
@@ -492,273 +528,72 @@ class TestCharacterUpdateSectionMethods(NoSocketsTestCase):
             self.character_1001.update_status_for_section("invalid")
 
 
-@patch(MODELS_PATH + ".MEMBERAUDIT_UPDATE_STALE_RING_3", 640)
-class TestCharacterIsUpdateNeededForSection(NoSocketsTestCase):
+class TestCharacterCalcUpdateNeeded(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
-        load_entities()
-        cls.section = Character.UpdateSection.ASSETS
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def setUp(self) -> None:
-        self.character = create_character_from_user(self.user)
-
-    def test_should_report_false_when_section_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=now() - dt.timedelta(seconds=30),
-            finished_at=now(),
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_has_error(self):
-        # given
-        create_character_update_status(
-            character=self.character, section=self.section, is_success=False
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_true_when_section_is_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=True,
-            started_at=started_at,
-        )
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_return_true_when_section_does_not_exist(self):
-        # when/then
-        self.assertTrue(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_stale(self):
-        # given
-        started_at = now() - dt.timedelta(hours=12)
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            started_at=started_at,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-    def test_should_report_false_when_section_has_token_error_and_not_stale(self):
-        # given
-        create_character_update_status(
-            character=self.character,
-            section=self.section,
-            is_success=False,
-            has_token_error=True,
-        )
-        # when/then
-        self.assertFalse(self.character.is_update_needed_for_section(self.section))
-
-
-class TestCharacterUpdateSkillSets(NoSocketsTestCase):
-    @classmethod
-    def setUpTestData(cls) -> None:
-        load_eveuniverse()
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character = create_memberaudit_character(1001)
-        cls.skill_type_1 = EveType.objects.get(id=24311)
-        cls.skill_type_2 = EveType.objects.get(id=24312)
 
-    def test_has_all_skills(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_2,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_false_when_all_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection:
+            create_character_update_status(self.character, section=section)
 
-        self.character.update_skill_sets()
+        # when
+        update_needed = self.character.calc_update_needed()
 
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(first.failed_required_skills.count(), 0)
+        # then
+        self.assertFalse(update_needed)
 
-    def test_one_skill_below(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_2,
-            active_skill_level=2,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+    def test_should_return_true_when_one_section_is_outdated(self):
+        # given
+        current_sections = set(Character.UpdateSection) - {
+            Character.UpdateSection.ASSETS
+        }
+        for section in current_sections:
+            create_character_update_status(self.character, section=section)
 
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
+        run_started_at = now() - dt.timedelta(hours=24)
+        run_finished_at = run_started_at + dt.timedelta(minutes=5)
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ASSETS,
+            run_started_at=run_started_at,
+            run_finished_at=run_finished_at,
         )
 
-    def test_misses_one_skill(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=5,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
-        )
-        skill_set = create_skill_set()
-        create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
+        # when
+        update_needed = self.character.calc_update_needed()
 
-        self.character.update_skill_sets()
+        # then
+        self.assertTrue(update_needed)
 
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()}, {skill_2.pk}
+    @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+    def test_should_return_false_when_all_enabled_sections_are_current(self):
+        # given
+        for section in Character.UpdateSection.enabled_sections():
+            create_character_update_status(self.character, section=section)
+
+        create_character_update_status(
+            self.character,
+            section=Character.UpdateSection.ROLES,
+            run_started_at=now() - dt.timedelta(hours=24),
         )
 
-    def test_passed_required_and_misses_recommended_skill(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
-        )
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set,
-            eve_type=self.skill_type_1,
-            required_level=3,
-            recommended_level=5,
-        )
-        self.character.update_skill_sets()
+        # when
+        update_needed = self.character.calc_update_needed()
 
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual({obj.pk for obj in first.failed_required_skills.all()}, set())
-        self.assertEqual(
-            {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
-        )
-
-    def test_misses_recommended_skill_only(self):
-        create_character_skill(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
-        )
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set,
-            eve_type=self.skill_type_1,
-            recommended_level=5,
-        )
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual({obj.pk for obj in first.failed_required_skills.all()}, set())
-        self.assertEqual(
-            {obj.pk for obj in first.failed_recommended_skills.all()}, {skill_1.pk}
-        )
-
-    def test_misses_all_skills(self):
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-        skill_set_group = create_skill_set_group()
-        skill_set_group.skill_sets.add(skill_set)
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()},
-            {skill_1.pk, skill_2.pk},
-        )
-
-    def test_does_not_require_doctrine_definition(self):
-        skill_set = create_skill_set()
-        skill_1 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_1, required_level=5
-        )
-        skill_2 = create_skill_set_skill(
-            skill_set=skill_set, eve_type=self.skill_type_2, required_level=3
-        )
-
-        self.character.update_skill_sets()
-
-        self.assertEqual(self.character.skill_set_checks.count(), 1)
-        first = self.character.skill_set_checks.first()
-        self.assertEqual(first.skill_set.pk, skill_set.pk)
-        self.assertEqual(
-            {obj.pk for obj in first.failed_required_skills.all()},
-            {skill_1.pk, skill_2.pk},
-        )
+        # then
+        self.assertFalse(update_needed)
 
 
 class TestCharacterGenerateShipAsset(TestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -939,3 +774,30 @@ class TestCharacterGenerateShipAsset(TestCase):
 
         # then
         self.assertIsNone(obj)
+
+
+class TestEnabledSectionsByStaleMinutes(TestCase):
+    def test_should_order_correctly(self):
+        # when
+        with patch(
+            MODELS_PATH + ".section_time_until_stale",
+            {
+                Character.UpdateSection.MAILS: 10,
+                Character.UpdateSection.ASSETS: 5,
+                Character.UpdateSection.LOCATION: 7,
+            },
+        ):
+            result = enabled_sections_by_stale_minutes()
+        # then
+        excepted_result = [
+            Character.UpdateSection.ASSETS,
+            Character.UpdateSection.LOCATION,
+            Character.UpdateSection.MAILS,
+        ]
+        self.assertListEqual(result, excepted_result)
+
+    def test_should_include_enabled_sections_only(self):
+        # when
+        result = enabled_sections_by_stale_minutes()
+        # then
+        self.assertEqual(set(result), Character.UpdateSection.enabled_sections())

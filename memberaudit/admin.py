@@ -1,14 +1,17 @@
 """Define admin site for Member Audit."""
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
+import datetime as dt
 import functools
 from typing import Any, List, Optional
+
+from humanize.time import naturaldelta, naturaltime
 
 from django import forms
 from django.contrib import admin
 from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
-from django.db.models import Case, Max, Prefetch, QuerySet, TextChoices, Value, When
+from django.db.models import Case, Max, Prefetch, Q, QuerySet, TextChoices, Value, When
 from django.forms.models import BaseInlineFormSet
 from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
@@ -161,13 +164,29 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
         "_is_enabled",
         "_is_success",
         "_is_token_ok",
-        "last_error_message",
-        "started_at",
-        "finished_at",
-        "root_task_id",
+        "error_message",
+        "run_finished_at",
+        "_run_duration",
+        "update_finished_at",
+        "_update_duration",
     )
-    readonly_fields = ("_is_enabled", "_is_success", "_is_token_ok")
+    readonly_fields = (
+        "_is_enabled",
+        "_is_success",
+        "_is_token_ok",
+        "_run_duration",
+        "_update_duration",
+    )
     ordering = ["section"]
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
     @admin.display(boolean=True)
     def _is_enabled(self, obj: CharacterUpdateStatus) -> bool:
@@ -183,14 +202,22 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
     def _is_token_ok(self, obj: CharacterUpdateStatus) -> bool:
         return not obj.has_token_error
 
-    def has_add_permission(self, request, obj=None):
-        return False
+    @admin.display
+    def _run_duration(self, obj: CharacterUpdateStatus) -> float:
+        return self._calc_duration(obj.run_started_at, obj.run_finished_at)
 
-    def has_change_permission(self, request, obj=None):
-        return False
+    @admin.display
+    def _update_duration(self, obj: CharacterUpdateStatus) -> float:
+        return self._calc_duration(obj.update_started_at, obj.update_finished_at)
 
-    def has_delete_permission(self, request, obj=None):
-        return False
+    @staticmethod
+    def _calc_duration(
+        started_at: dt.datetime, finished_at: dt.datetime
+    ) -> dt.timedelta:
+        if not started_at or not finished_at:
+            return "-"
+
+        return naturaldelta(finished_at - started_at)
 
 
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
@@ -268,12 +295,9 @@ def generic_action_update_section(
 ):
     """Update a section for the selected characters as generic action."""
     for obj in queryset:
-        tasks.update_character_section.apply_async(
-            kwargs={
-                "character_pk": obj.pk,
-                "section": section,
-                "force_update": True,
-            },
+        task = getattr(tasks, f"update_character_{section.value}")
+        task.apply_async(
+            kwargs={"character_pk": obj.pk, "force_update": True},
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
         )  # type: ignore
 
@@ -348,24 +372,27 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         qs = super().get_queryset(*args, **kwargs)
         return (
             qs.prefetch_related("update_status_set")
-            .annotate(last_update_at=Max("update_status_set__finished_at"))
+            .annotate(
+                last_update_at=Max(
+                    "update_status_set__run_finished_at",
+                    filter=~Q(update_status_set__section="skill_sets"),
+                )
+            )
             .annotate_total_update_status()
         )
 
     def get_actions(self, request):
         """Generate and add generated actions for all sections
-        which can be updated through ``update_character_section`` task.
+        which can be updated through single task.
         """
         actions: dict = super().get_actions(request)
-        sections = (
-            Character.UpdateSection.enabled_sections_for_simple_update_tasks()
-            | {Character.UpdateSection.SKILLS, Character.UpdateSection.SKILL_SETS}
-        )
-        for section in sorted(list(sections)):
+        sections = sorted(list(Character.UpdateSection.enabled_sections()))
+        for section in sections:
             action_name = f"update_section_{section}"
             func = functools.partial(generic_action_update_section, section=section)
             description = f"Update {section.label} for selected characters"
             actions[action_name] = (func, action_name, description)
+
         return dict(sorted(actions.items(), key=lambda item: item[1][2]))
 
     @admin.display(description="")
@@ -432,9 +459,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def _created_at(self, obj: Character):
         return obj.created_at
 
-    @admin.display(ordering="last_update_at", description=__("last update"))
+    @admin.display(ordering="last_update_at", description=__("last update run"))
     def _last_update_at(self, obj: Character):
-        return obj.last_update_at
+        return naturaltime(obj.last_update_at) if obj.last_update_at else "-"
 
     def _missing_sections(self, obj):
         existing = {status.section for status in obj.update_status_set.all()}
@@ -448,24 +475,16 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
-                kwargs={"character_pk": obj.pk, "force_update": True},
+                kwargs={
+                    "character_pk": obj.pk,
+                    "force_update": True,
+                    "ignore_stale": True,
+                },
                 priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
             )  # type: ignore
 
         self.message_user(
             request, __("Started updating %d characters.") % queryset.count()
-        )
-
-    @admin.action(description=__("Update assets for selected characters"))
-    def update_assets(self, request, queryset):
-        for obj in queryset:
-            tasks.update_character_assets.apply_async(
-                kwargs={"character_pk": obj.pk, "force_update": True},
-                priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
-            )  # type: ignore
-
-        self.message_user(
-            request, __("Started updating assets for %d character.") % queryset.count()
         )
 
     @admin.action(

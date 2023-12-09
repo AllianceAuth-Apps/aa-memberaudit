@@ -46,11 +46,6 @@ MEMBERAUDIT_LOCATION_STALE_HOURS = clean_setting("MEMBERAUDIT_LOCATION_STALE_HOU
 e.g. for name changes of structures.
 """
 
-MEMBERAUDIT_LOG_UPDATE_STATS = clean_setting("MEMBERAUDIT_LOG_UPDATE_STATS", False)
-"""When set True will log the update stats at the start of every run
-The update stats include the measures durations from the last run per round and section.
-"""
-
 MEMBERAUDIT_MAX_MAILS = clean_setting("MEMBERAUDIT_MAX_MAILS", 250)
 """Maximum amount of mails fetched from ESI for each character."""
 
@@ -60,27 +55,43 @@ But only once per character until the character is re-registered or this notific
 is reset manually by admins.
 """
 
-MEMBERAUDIT_UPDATE_STALE_RING_1 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_1", 60)
-"""Character sections are updated on different schedules, called rings.
-Ring 1 is the quickest, Ring 3 is the slowest
-Settings define after how many minutes a section is considered stale.
+MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT = clean_setting(
+    "MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 240
+)
+"""Default time in minutes after the last successful update at which a section
+is considered stale and therefore needs to be updated.
+All sections, which do not have a specific default value
+and are not configured differently will use this value.
 
-Minutes after which sections belonging to ring 1 are considered stale:
-location, online status
+Tip: Please run the command ``memberaudit_stats`` to see the
+currently effective configuration.
 """
 
-MEMBERAUDIT_UPDATE_STALE_RING_2 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_2", 240)
-"""Minutes after which sections belonging to ring 2 are considered stale,
-all except those in ring 1 & 3.
+MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG = clean_setting(
+    "MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG", {}
+)
+"""Custom configuration of stale minutes for each section,
+which will override the respective defaults.
+
+Tip: Please run the command ``memberaudit_stats`` to see the
+currently effective configuration.
 """
 
-MEMBERAUDIT_UPDATE_STALE_RING_3 = clean_setting("MEMBERAUDIT_UPDATE_STALE_RING_3", 480)
-"""Minutes after which sections belonging to ring 3 are considered stale, assets."""
-
-MEMBERAUDIT_UPDATE_STALE_OFFSET = clean_setting("MEMBERAUDIT_UPDATE_STALE_OFFSET", 5)
-"""Actual value for considering staleness of a ring will be the above value
-minus this offset. Required to avoid time synchronization issues.
-"""
+MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS = {
+    # former ring 1
+    "location": 60,
+    "online_status": 60,
+    "ship": 60,
+    "skill_queue": 60,
+    # former ring 3
+    "assets": 480,
+    "attributes": 480,
+    "corporation_history": 480,
+    "fw_stats": 480,
+    "loyalty": 480,
+    "titles": 480,
+}
+"""Default values for stale minutes of specific sections."""
 
 MEMBERAUDIT_TASKS_HIGH_PRIORITY = clean_setting(
     "MEMBERAUDIT_TASKS_HIGH_PRIORITY", default_value=3, min_value=1, max_value=9

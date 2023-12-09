@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.5.0] - 2023-12-09
+
+### Update notes
+
+>**Important**: We recommend waiting until all Member Audit tasks in the queue are processed and then installing this update while AA is shut down.
+
+### Changed
+
+- Changes to the character update tasks:
+  - You can now define for each character section how it is updated (replaces the former rings approach)
+  - The former generic update task (update_character_section task) has been replace by individual update tasks for each section, which should make monitoring and trouble shooting much easier
+  - Performance has been improved for many update tasks: contact labels, loyalty, mail, points, planets, standings, titles
+  - Now also records start and finish time for when sections where actually updated, due to changes
+
+- **memberaudit_stats** has been fixed and reworked. It now shows the following:
+  - current objects counts for all sections
+  - current Member Audit settings
+  - current configuration for section stale minutes (i.e. how often sections are updated)
+  - update static (e.g. average duration for updating a specific section)
+  - Task statistics have been removed incl. the related setting ``MEMBERAUDIT_LOG_UPDATE_STATS``. We recommend using [Task Monitor](https://apps.allianceauth.org/apps/detail/aa-taskmonitor) for gathering task statistics
+
+- Fixed and improved **memberaudit_reset_characters** command
+- Added "ignore_stale" feature to update_character tasks
+- "Force update" now means "updating despite no change" only and no longer ignores stale status
+- Refactoring
+- Improved test suite
+
 ## [3.4.4] - 2023-12-01
 
 >**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!

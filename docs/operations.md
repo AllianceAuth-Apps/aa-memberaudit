@@ -192,26 +192,6 @@ Alliance Auditor | Can search for and access all characters of his alliance  | `
 Naturally, superusers will have access to everything, without requiring permissions to be assigned.
 ```
 
-## Settings
-
-Name | Description | Default
--- | -- | --
-`APPUTILS_ESI_ERROR_LIMIT_THRESHOLD`| ESI error limit remain threshold. The number of remaining errors is counted down from 100 as errors occur. Because multiple tasks may request the value simultaneously and get the same response, the threshold must be above 0 to prevent the API from shutting down with a 420 error | `25`
-`MEMBERAUDIT_APP_NAME`| Name of this app as shown in the Auth sidebar. | `'Member Audit'`
-`MEMBERAUDIT_FEATURE_ROLES_ENABLED`| Feature flag to enable or disable the corporation roles feature. | `False`
-`MEMBERAUDIT_BULK_METHODS_BATCH_SIZE`| Technical parameter defining the maximum number of objects processed per run of Django batch methods, e.g. bulk_create and bulk_update | `500`
-`MEMBERAUDIT_DATA_RETENTION_LIMIT`| Maximum number of days to keep historical data for mails, contracts and wallets. Minimum is 7 day. `None` will turn it off. | `360`
-`MEMBERAUDIT_LOCATION_STALE_HOURS`| Hours after a existing location (e.g. structure) becomes stale and gets updated. e.g. for name changes of structures | `24`
-`MEMBERAUDIT_LOG_UPDATE_STATS`| When set True will log the statistics of the latests uns at the start of every new run. The stats show the max, avg, min durations from the last run for each round and each section in seconds. Note that the durations are not 100% exact, because some updates happen in parallel the the main process and may take longer to complete (e.g. loading mail bodies, contract items) | `24`
-`MEMBERAUDIT_MAX_MAILS`| Maximum amount of mails fetched from ESI for each character | `250`
-`MEMBERAUDIT_NOTIFY_TOKEN_ERRORS`| When enabled will automatically notify users when their character has a token error. But only once per character until the character is re-registered or this notification
-is reset manually by admins. | `True`
-`MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS`| Technical parameter defining the maximum number of asset items processed in each pass when updating character assets. A higher value reduces overall duration, but also increases task queue congestion. | `2500`
-`MEMBERAUDIT_TASKS_TIME_LIMIT`| Global timeout for tasks in seconds to reduce task accumulation during outages | `7200`
-`MEMBERAUDIT_UPDATE_STALE_RING_1`| Minutes after which sections belonging to ring 1 are considered stale: location, online status | `55`
-`MEMBERAUDIT_UPDATE_STALE_RING_2`| Minutes after which sections belonging to ring 2 are considered stale: all except those in ring 1 & 3 | `235`
-`MEMBERAUDIT_UPDATE_STALE_RING_3`| Minutes after which sections belonging to ring 3 are considered stale: assets | `475`
-
 ## Management Commands
 
 The following management commands are available to perform administrative tasks:
@@ -242,12 +222,9 @@ Make sure to stop all supervisors before using this command.
 
 This command returns current statistics as JSON, i.e. current update statistics and app totals. This includes:
 
-- App totals with number of active users and characters
-- List of periodic celery tasks
-- Statistics about last update per ring, including:
-  - total duration
-  - est. throughput in characters per hour
-  - indicator if update was completed within time boundaries
+- Object counts for all character sections (e.g. asset items)
+- Current Member Audit settings
+- Current stale minutes configuration
 
 ### memberaudit_update_characters
 
@@ -327,7 +304,9 @@ If you have more than 10 worker threads you also need to increase the connection
 ESI_CONNECTION_POOL_MAXSIZE = 20
 ```
 
+```{seealso}
 See [here](https://gitlab.com/allianceauth/django-esi/-/blob/master/esi/app_settings.py#L36) for the corresponding setting in django-esi.
+```
 
 ### Step 5 - Enable changes
 
@@ -360,29 +339,61 @@ In case you encounter any issues you can find the relevant logs here:
 - memmon: `memmon.log` in `myauth/log`
 - gunicorn: `gunicorn.log` in `myauth/log`
 
-### Celery priorities
+## Configuring update frequency
 
-Last, but not least, please make sure your Celery is configured to run with priorities. This should be the default for all current Auth installation, but if you have an older installation you may have missed this change. Please see [these release notes](https://gitlab.com/allianceauth/allianceauth/-/releases/v2.6.3) for details.
-
-### Member Audit configuration
-
-The goal of an optimal configuration for Member Audit is that your system can complete all update tasks for your character within the respective update cycle.
-
-For this you need to consider the following three factors:
-
-- Number of characters to update
-- Task throughput
-- Update frequency
-
-The number of characters depend on your organization. You an usually not influence this factor much and want to make sure that your system has sufficient room for that growth.
-
-Your task throughout is defined by the number of celery workers. The more workers you have, the higher your potential throughput, so you may want to maximize that number for your system.
-
-You can adjust the update frequency to meet your needs. For example if you have a lot of characters and your update tasks can not (or only barely) complete within the update cycle, then you can lengthen your update cycles to compensate. There are 3 update cycles called rings, which can be configured individually. See `MEMBERAUDIT_UPDATE_STALE_RING_x` in [settings](#settings) for details.
+In general most character sections are updated every 4 hours, with some heavy sections like assets updated every 6 hours, and some sections where more current information is needed, like location, updated every hour.
 
 ```{hint}
-You can use the management command **memberaudit_stats** to get current data about the last update runs, which can be very helpful to find the optimal configuration. See [memberaudit_stats](#memberaudit_stats) for details.
+You can see the current stale minutes configuration for all sections by running the **memberaudit_stats** command.
 ```
+
+If you have different requirements, you can change the update frequency for each and every section. E.g. decreasing the update frequency will help with reducing the overall task load.
+
+How often a section is updated is determined by their "stale minutes" value. That value defines how long it takes for a section to "turn" stale after it's last successful update was completed. Stale sections will be updated with the next run of the periodic update task, which normally runs every 15 minutes.
+
+To set a custom stale minutes values for a sections add the name of the section and the new value to the `MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG` setting. That setting is a dict and expects the name of the section as key.
+
+For example let's set the stale minutes for the asset section to 12 hours:
+
+```python
+MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG = {"assets": 720}
+```
+
+Multiple entries need to be separated with a comma. For example if we also want to set the stale minutes for the contacts section to 6 hours we get:
+
+```python
+MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG = {"assets": 720, "contacts": 360}
+```
+
+```{note}
+Sections, which are not defined here will use their default.
+```
+
+```{hint}
+You can see the current stale minutes configuration for all sections by running the **memberaudit_stats** command.
+```
+
+## Settings
+
+Name|Description|Default
+--|--|--
+`MEMBERAUDIT_APP_NAME`|Name of this app as shown in the Auth sidebar and page titles.|`Member Audit`
+`MEMBERAUDIT_BULK_METHODS_BATCH_SIZE`|Technical parameter defining the maximum number of objects processed per run of Django batch methods, e.g. bulk_create and bulk_update.|`500`
+`MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE`|Minimum age of existing export file before next update can be started in minutes.|`60`
+`MEMBERAUDIT_DATA_RETENTION_LIMIT`|Maximum number of days to keep historical data for mails, contracts and wallets. Minimum is 7 day.|`360`
+`MEMBERAUDIT_DEVELOPER_MODE`||`False`
+`MEMBERAUDIT_FEATURE_ROLES_ENABLED`|Feature flag to enable or disable the corporation roles feature.|`False`
+`MEMBERAUDIT_LOCATION_STALE_HOURS`|Hours after a existing location (e.g. structure) becomes stale and gets updated e.g. for name changes of structures.|`24`
+`MEMBERAUDIT_MAX_MAILS`|Maximum amount of mails fetched from ESI for each character.|`250`
+`MEMBERAUDIT_NOTIFY_TOKEN_ERRORS`|When enabled will automatically notify users when their character has a token error. But only once per character until the character is re-registered or this notification is reset manually by admins.|`True`
+`MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG`|Custom configuration of stale minutes for each section, which will override the respective defaults.  Tip: Please run the command ``memberaudit_stats`` to see the currently effective configuration.|`{}`
+`MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT`|Default time in minutes after the last successful update at which a section is considered stale and therefore needs to be updated. All sections, which do not have a specific default value and are not configured differently will use this value.  Tip: Please run the command ``memberaudit_stats`` to see the currently effective configuration.|`240`
+`MEMBERAUDIT_TASKS_HIGH_PRIORITY`|Priority for high priority tasks, e.g. user requests an action.|`3`
+`MEMBERAUDIT_TASKS_LOW_PRIORITY`|Priority for low priority tasks, e.g. updating characters.|`7`
+`MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS`|Technical parameter defining the maximum number of asset items processed in each pass when updating character assets. A higher value reduces duration, but also increases task queue congestion.|`2500`
+`MEMBERAUDIT_TASKS_NORMAL_PRIORITY`|Priority for normal tasks, e.g. updating characters.|`5`
+`MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT`||`600`
+`MEMBERAUDIT_TASKS_TIME_LIMIT`|Global timeout for tasks in seconds to reduce task accumulation during outages.|`7200`
 
 ## Uninstalling
 

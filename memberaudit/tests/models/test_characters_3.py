@@ -19,7 +19,8 @@ from memberaudit.tests.utils import create_memberaudit_character
 
 class TestCharacterUpdateStatus(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.content = {"alpha": 1, "bravo": 2}
@@ -35,38 +36,26 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
     def test_reset_1(self):
         # given
         status = create_character_update_status(
-            character=self.character_1001,
-            is_success=True,
-            last_error_message="abc",
-            root_task_id="a",
-            parent_task_id="b",
+            character=self.character_1001, is_success=True, error_message="abc"
         )
         # when
         status.reset()
         # then
         status.refresh_from_db()
         self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
-        self.assertEqual(status.root_task_id, "")
-        self.assertEqual(status.parent_task_id, "")
+        self.assertEqual(status.error_message, "")
 
     def test_reset_2(self):
         # given
         status = create_character_update_status(
-            character=self.character_1001,
-            is_success=True,
-            last_error_message="abc",
-            root_task_id="a",
-            parent_task_id="b",
+            character=self.character_1001, is_success=True, error_message="abc"
         )
         # when
-        status.reset(root_task_id="1", parent_task_id="2")
+        status.reset()
         # then
         status.refresh_from_db()
         self.assertIsNone(status.is_success)
-        self.assertEqual(status.last_error_message, "")
-        self.assertEqual(status.root_task_id, "1")
-        self.assertEqual(status.parent_task_id, "2")
+        self.assertEqual(status.error_message, "")
 
     def test_has_changed_1(self):
         """When hash is different, then return True"""
@@ -113,23 +102,24 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
         self.assertFalse(status.has_changed(content=self.content, hash_num=3))
 
     def test_is_updating_1(self):
-        """When started_at exist and finished_at does not exist, return True"""
+        """When run_started_at exist and run_finished_at does not exist, return True"""
         status = create_character_update_status(
-            character=self.character_1001, started_at=now(), finished_at=None
+            character=self.character_1001, run_started_at=now(), run_finished_at=None
         )
         self.assertTrue(status.is_updating)
 
     def test_is_updating_2(self):
-        """When started_at and finished_at does not exist, return False"""
+        """When run_started_at and run_finished_at does not exist, return False"""
         status = create_character_update_status(
-            character=self.character_1001, started_at=None, finished_at=None
+            character=self.character_1001, run_started_at=None, run_finished_at=None
         )
         self.assertFalse(status.is_updating)
 
 
 class TestCharacterLocation(NoSocketsTestCase):
     @classmethod
-    def setUpTestData(cls) -> None:
+    def setUpClass(cls):
+        super().setUpClass()
         load_eveuniverse()
         load_entities()
         load_locations()

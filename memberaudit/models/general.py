@@ -17,7 +17,7 @@ from app_utils.django import users_with_permission
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.constants import MAP_ARABIC_TO_ROMAN_NUMBERS
+from memberaudit.helpers import arabic_number_to_roman
 from memberaudit.managers.general import (
     ComplianceGroupDesignationManager,
     EveShipTypeManger,
@@ -466,20 +466,20 @@ class SkillSetSkill(models.Model):
 
     def __str__(self) -> str:
         if self.recommended_level:
-            recommended_level_str = (
-                " / " + MAP_ARABIC_TO_ROMAN_NUMBERS[self.recommended_level]
+            recommended_level_str = " / " + arabic_number_to_roman(
+                self.recommended_level
             )
         else:
             recommended_level_str = ""
         return f"{self.skill_set}: {self.required_skill_str}{recommended_level_str}"
 
     @property
-    def is_required(self) -> bool:  # TODO: Add test
+    def is_required(self) -> bool:
         """Return True when skill is required, else False."""
         return bool(self.required_level)
 
     @property
-    def required_skill_str(self) -> str:  # TODO: Add test
+    def required_skill_str(self) -> str:
         """Return required skill with level in roman numbers."""
         return (
             self._skill_with_roman_level(self.required_level)
@@ -488,7 +488,7 @@ class SkillSetSkill(models.Model):
         )
 
     @property
-    def recommended_skill_str(self) -> str:  # TODO: Add test
+    def recommended_skill_str(self) -> str:
         """Return recommended skill with level in roman numbers."""
         return (
             self._skill_with_roman_level(self.recommended_level)
@@ -497,7 +497,7 @@ class SkillSetSkill(models.Model):
         )
 
     @property
-    def maximum_level(self) -> int:  # TODO: Add test
+    def maximum_level(self) -> int:
         """Maximum level of this skill."""
         levels = [1]
         if self.recommended_level:
@@ -507,13 +507,13 @@ class SkillSetSkill(models.Model):
         return max(levels)
 
     @property
-    def maximum_skill_str(self) -> str:  # TODO: Add test
+    def maximum_skill_str(self) -> str:
         """Skill with maximum level as string."""
         return self._skill_with_roman_level(self.maximum_level)
 
     def _skill_with_roman_level(self, level) -> str:
         """Return skill with level in roman numbers."""
-        level_str = MAP_ARABIC_TO_ROMAN_NUMBERS[level]
+        level_str = arabic_number_to_roman(level)
         return f"{self.eve_type.name} {level_str}"
 
 
