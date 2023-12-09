@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Changes to the character update tasks:
-  - You can now define for each character section how it is updated (replaces the former rings approach)
+  - You can now define for each character section how it is updated (replaces the former rings approach). For details please see [Configuring update frequency](https://aa-memberaudit.readthedocs.io/en/latest/operations.html#configuring-update-frequency) in the docs.
   - The former generic update task (update_character_section task) has been replace by individual update tasks for each section, which should make monitoring and trouble shooting much easier
   - Performance has been improved for many update tasks: contact labels, loyalty, mail, points, planets, standings, titles
   - Now also records start and finish time for when sections where actually updated, due to changes
