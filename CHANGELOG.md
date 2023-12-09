@@ -11,7 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Update notes
 
->**Important**: We recommend waiting until all Member Audit tasks in the queue are processed and then installing this update while AA is shut down.
+>**Note**: We recommend waiting until all Member Audit tasks in the queue are processed and then installing this update while AA is shut down.
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
 
 ### Changed
 
