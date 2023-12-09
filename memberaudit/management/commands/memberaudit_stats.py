@@ -25,11 +25,11 @@ class Command(BaseCommand):
         self._output_section(stats["settings"], "settings")
         self.stdout.write("")
 
-        self._output_section(stats["object_counts"], "object counts")
-        self.stdout.write("")
+        self._output_section(stats["stale_minutes"], "stale minutes", "right")
         self.stdout.write("")
 
-        self._output_section(stats["stale_minutes"], "stale minutes")
+        self._output_section(stats["object_counts"], "object counts", "right")
+        self.stdout.write("")
         self.stdout.write("")
 
         self._write_title("sections")
@@ -63,13 +63,30 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(f"{text.title()}:"))
         self.stdout.write("")
 
-    def _output_section(self, data: dict, title: str):
+    def _output_section(self, data: dict, title: str, alignment: str = "left"):
         self._write_title(title)
-        max_width = max(len(label) for label in data) + 1
+
+        if alignment == "left":
+            alignment_symbol = "<"
+        elif alignment == "right":
+            alignment_symbol = ">"
+        else:
+            raise NotImplementedError(f"Unknown alignment: {alignment}")
+
         data_sorted = dict(sorted(data.items()))
-        for label, value in data_sorted.items():
-            value_str = f"{value:,}" if isinstance(value, (int, float)) else value
-            self.stdout.write(f"  {label: <{max_width}}: {value_str}")
+        data_formatted = {
+            label: self._format_value(value) for label, value in data_sorted.items()
+        }
+        label_width = max(len(label) for label in data_formatted) + 1
+        value_width = max(len(value) for value in data_formatted.values()) + 1
+
+        for label, value in data_formatted.items():
+            self.stdout.write(
+                f"  {label:<{label_width}}: {value:{alignment_symbol}{value_width}}"
+            )
+
+    def _format_value(self, value):
+        return f"{value:,}" if isinstance(value, (int, float)) else str(value)
 
 
 def _fetch_stale_minutes():

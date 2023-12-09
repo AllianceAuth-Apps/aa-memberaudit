@@ -1,7 +1,11 @@
+"""Helpers for commands."""
+
 from enum import Enum
 from typing import Any, Dict, List, Tuple, Union
 
 from django.core.management.base import OutputWrapper
+
+# TODO: Add tests for this class
 
 
 class Table:
@@ -75,7 +79,7 @@ class Table:
 
     def set_alignment(self, column: int, alignment: Union[Alignment, str]):
         """Set alignment for a column."""
-        self._alignment[column] = alignment
+        self._alignment[column] = self.Alignment(alignment)
 
     def write(self, stdout: OutputWrapper, indentation: int = 2, margin: int = 2):
         """Write table to output."""
