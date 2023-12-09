@@ -3,6 +3,8 @@
 import datetime as dt
 import logging
 
+from tqdm import tqdm
+
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db.models import Avg, Count, F, Max, Min
@@ -10,6 +12,7 @@ from django.db.models import Avg, Count, F, Max, Min
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, app_settings
+from memberaudit.constants import IS_TESTING
 from memberaudit.helpers import character_section_models
 from memberaudit.management.commands._helpers import Table
 from memberaudit.models import Character, CharacterUpdateStatus, characters
@@ -30,7 +33,6 @@ class Command(BaseCommand):
 
         result = get_input("Enter 1 - 4 to choose a menu or any other input to exit? ")
         self.stdout.write("")
-        self.stdout.write("Calculating...\r", ending="")
 
         if result not in ["1", "2", "3", "4"]:
             self.stdout.write(self.style.WARNING("Aborted"))
@@ -48,9 +50,11 @@ class Command(BaseCommand):
             self._output_section(data, "stale minutes", "right")
 
         elif result == "4":
-            self._write_title("update statistics")
+            self.stdout.write("Calculating...\r", ending="")
+            data = _calc_update_stats()
+
+            self._write_title("update statistic")
             table = Table(default_alignment=Table.Alignment.RIGHT)
-            data = _calc_sections()
             table.set_data(data)
             table.set_alignment(0, Table.Alignment.LEFT)
             table.write(self.stdout)
@@ -91,24 +95,30 @@ def _fetch_stale_minutes():
 
 
 def _calc_object_counts():
-    object_counts = {}
+    work = []
     for model_class in character_section_models():
         name = str(model_class._meta.verbose_name_plural)
-        count = model_class.objects.count()
-        object_counts[name] = count
+        query = model_class.objects.all()
+        work.append((name, query))
 
-    user_count = (
-        User.objects.filter(
-            character_ownerships__character__memberaudit_character__isnull=False
+    characters_enabled = Character.objects.filter(is_disabled=False)
+    work.append(("characters enabled", characters_enabled))
+
+    user_query = User.objects.filter(
+        character_ownerships__character__memberaudit_character__isnull=False
+    ).distinct()
+    work.append(("users with access", user_query))
+
+    object_counts = {
+        name: query.count()
+        for name, query, in tqdm(
+            work, desc="Calculating object counts", leave=False, disable=IS_TESTING
         )
-        .distinct()
-        .count()
-    )
-    object_counts["users with access"] = user_count
+    }
     return object_counts
 
 
-def _calc_sections():
+def _calc_update_stats():
     sections = {section: {"section": section} for section in Character.UpdateSection}
 
     durations = (
