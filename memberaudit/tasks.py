@@ -577,8 +577,7 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
         parent_asset_ids = {
             item_id
             for item_id, asset_info in asset_data.items()
-            if asset_info.get("location_id")
-            and asset_info["location_id"] in known_location_ids
+            if asset_info["location_id"] in known_location_ids
         }
         for item_id in parent_asset_ids:
             item = asset_data[item_id]
@@ -587,12 +586,12 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
                     character=character,
                     item_id=item_id,
                     location_id=item["location_id"],
-                    eve_type_id=item.get("type_id"),
-                    name=item.get("name"),
+                    eve_type_id=item["type_id"],
+                    name=item["name"],
                     is_blueprint_copy=item.get("is_blueprint_copy"),
-                    is_singleton=item.get("is_singleton"),
-                    location_flag=item.get("location_flag"),
-                    quantity=item.get("quantity"),
+                    is_singleton=item["is_singleton"],
+                    location_flag=item["location_flag"],
+                    quantity=item["quantity"],
                 )
             )
             asset_data.pop(item_id)
@@ -644,7 +643,7 @@ def assets_create_children(
         child_asset_ids = {
             item_id
             for item_id, item in asset_data.items()
-            if item.get("location_id") and item["location_id"] in parent_asset_ids
+            if item["location_id"] in parent_asset_ids
         }
         for item_id in child_asset_ids:
             item = asset_data[item_id]
@@ -653,12 +652,12 @@ def assets_create_children(
                     character=character,
                     item_id=item_id,
                     parent=character.assets.get(item_id=item["location_id"]),
-                    eve_type_id=item.get("type_id"),
-                    name=item.get("name"),
+                    eve_type_id=item["type_id"],
+                    name=item["name"],
                     is_blueprint_copy=item.get("is_blueprint_copy"),
-                    is_singleton=item.get("is_singleton"),
-                    location_flag=item.get("location_flag"),
-                    quantity=item.get("quantity"),
+                    is_singleton=item["is_singleton"],
+                    location_flag=item["location_flag"],
+                    quantity=item["quantity"],
                 )
             )
             asset_data.pop(item_id)
