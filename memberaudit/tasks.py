@@ -596,7 +596,6 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
         if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
             break
 
-    logger.info("%s: Writing %s parent assets", character, len(new_assets))
     # TODO: `ignore_conflicts=True` needed as workaround to compensate for
     # occasional duplicate FK constraint errors. Needs to be investigated
     CharacterAsset.objects.bulk_create(
@@ -604,6 +603,7 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
         batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
         ignore_conflicts=True,
     )
+    logger.info("%s: Created %s parent assets", character, len(new_assets))
 
     if len(parent_asset_ids) > len(new_assets):
         # there are more parent assets to create
@@ -662,7 +662,6 @@ def assets_create_children(
             break
 
     if new_assets:
-        logger.info("%s: Writing %s child assets", character, len(new_assets))
         # TODO: `ignore_conflicts=True` needed as workaround to compensate for
         # occasional duplicate FK constraint errors. Needs to be investigated
         CharacterAsset.objects.bulk_create(
@@ -670,6 +669,7 @@ def assets_create_children(
             batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
             ignore_conflicts=True,
         )
+        logger.info("%s: Created %s child assets", character, len(new_assets))
 
     if new_assets and asset_data:
         # there are more child assets to create
@@ -682,20 +682,23 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        if len(asset_data) > 0:
+        if asset_count := len(asset_data) > 0:
+            error_text = "child assets could not be added (orphans)"
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS,
                 is_success=False,
-                error_message=(
-                    f"{len(asset_data)} assets could not be added (leftovers)"
-                ),
+                error_message=(f"{asset_count} {error_text}"),
             )
-            logger.warning(
-                "%s: %s assets could not be added (leftovers): %s",
-                character,
-                len(asset_data),
-                asset_data.keys(),
+            logger.warning("%s: %d %s", character, asset_count, error_text)
+
+            # additional infos for analyzing issues #152
+            logger.debug("Item IDs of orphans: %s", sorted(asset_data.keys()))
+            orphan_location_ids = sorted(
+                {item["location_id"] for item in asset_data.values()}
             )
+            logger.debug("Location IDs of orphans: %s", orphan_location_ids)
+            logger.debug("Parent asset items IDs: %s", sorted(parent_asset_ids))
+
         else:
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS, is_success=True, is_updated=True
