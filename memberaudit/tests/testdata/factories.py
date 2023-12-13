@@ -760,4 +760,4 @@ def _set_missing_foreign_keys(params: dict, **kwargs):
     for key_id, value in kwargs.items():
         key = key_id.replace("_id", "")
         if key not in params and key_id not in params:
-            params[key_id] = value
+            params[key_id] = int(value)

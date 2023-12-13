@@ -24,6 +24,7 @@ from memberaudit.helpers import (
     UpdateSectionResult,
     data_retention_cutoff,
     eve_entity_ids_from_objs,
+    model_to_dict_safely,
     store_debug_data_to_disk,
 )
 from memberaudit.providers import esi
@@ -199,8 +200,11 @@ class CharacterAssetManagerBase(models.Manager):
                 try:
                     obj.save(force_insert=True)
                 except DatabaseError:
+                    obj_as_dict = model_to_dict_safely(obj)
                     logger.exception(
-                        "Failed to create %s", self.model._meta.verbose_name
+                        "Failed to create %s: %s",
+                        self.model._meta.verbose_name,
+                        obj_as_dict,
                     )
                 else:
                     added_objs.append(obj)

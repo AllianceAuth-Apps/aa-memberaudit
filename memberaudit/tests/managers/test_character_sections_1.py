@@ -135,7 +135,7 @@ class TestCharacterAssetManagerBulkCreate2(TestCase):
 
     def test_should_create_assets_in_bulk(self):
         # given
-        objs = [create_character_asset(self.character) for _ in range(5)]
+        objs = [build_character_asset(self.character) for _ in range(5)]
 
         # when
         new_objs = CharacterAsset.objects.bulk_create_with_fallback(objs)

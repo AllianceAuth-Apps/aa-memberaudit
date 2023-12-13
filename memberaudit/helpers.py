@@ -10,6 +10,7 @@ from celery import Task
 
 from django.apps import apps
 from django.core.serializers.json import DjangoJSONEncoder
+from django.forms.models import model_to_dict
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
@@ -120,3 +121,10 @@ def character_section_models():
     ]
 
     return my_character_models
+
+
+def model_to_dict_safely(obj) -> dict:
+    """Convert a model ot dict in a safe manner."""
+    fields = [field.name for field in obj._meta.fields]
+    result = model_to_dict(obj, fields=fields)
+    return result
