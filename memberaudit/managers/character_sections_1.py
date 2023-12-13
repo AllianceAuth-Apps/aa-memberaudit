@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING, Iterable, List, Set
 
-from django.db import models, transaction
+from django.db import DatabaseError, models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveType
@@ -36,7 +36,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, CharacterAsset
 
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -179,6 +179,33 @@ class CharacterAssetManagerBase(models.Manager):
             location_ids=missing_location_ids, token=token
         )
         return True
+
+    def bulk_create_with_fallback(
+        self, objs: Iterable[CharacterAsset], batch_size: int = None
+    ) -> List[CharacterAsset]:
+        """Create objs in bulk safely and return newly created objs."""
+        try:
+            added_objs = self.bulk_create(objs, batch_size=batch_size)
+        except DatabaseError:
+            logger.warning(
+                "Bulk create with %d %s failed. "
+                "Falling back on creating them one by one.",
+                len(objs),
+                self.model._meta.verbose_name_plural,
+                exc_info=True,
+            )
+            added_objs = []
+            for obj in objs:
+                try:
+                    obj.save(force_insert=True)
+                except DatabaseError:
+                    logger.exception(
+                        "Failed to create %s", self.model._meta.verbose_name
+                    )
+                else:
+                    added_objs.append(obj)
+
+        return added_objs
 
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)

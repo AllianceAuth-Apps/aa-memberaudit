@@ -596,14 +596,10 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
         if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
             break
 
-    # TODO: `ignore_conflicts=True` needed as workaround to compensate for
-    # occasional duplicate FK constraint errors. Needs to be investigated
-    CharacterAsset.objects.bulk_create(
-        new_assets,
-        batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-        ignore_conflicts=True,
+    created_objs = CharacterAsset.objects.bulk_create_with_fallback(
+        new_assets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
     )
-    logger.info("%s: Created %s parent assets", character, len(new_assets))
+    logger.info("%s: Created %s parent assets", character, len(created_objs))
 
     if len(parent_asset_ids) > len(new_assets):
         # there are more parent assets to create
@@ -662,14 +658,10 @@ def assets_create_children(
             break
 
     if new_assets:
-        # TODO: `ignore_conflicts=True` needed as workaround to compensate for
-        # occasional duplicate FK constraint errors. Needs to be investigated
-        CharacterAsset.objects.bulk_create(
-            new_assets,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-            ignore_conflicts=True,
+        created_objs = CharacterAsset.objects.bulk_create_with_fallback(
+            new_assets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
         )
-        logger.info("%s: Created %s child assets", character, len(new_assets))
+        logger.info("%s: Created %s child assets", character, len(created_objs))
 
     if new_assets and asset_data:
         # there are more child assets to create

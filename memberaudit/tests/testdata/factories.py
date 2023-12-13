@@ -94,7 +94,7 @@ def create_character_from_user(user: User, **kwargs):
     return create_character(**kwargs)
 
 
-def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
+def build_character_asset(character: Character, **kwargs) -> CharacterAsset:
     item_id = kwargs.get("item_id") or next_number("asset_item_id") + 1_200_000_000_000
     params = {
         "character": character,
@@ -107,7 +107,13 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     _set_missing_foreign_keys(params, eve_type_id=EveTypeId.VELDSPAR)
     if params["is_singleton"] and not params.get("name"):
         params["name"] = (f"Generated asset #{item_id}",)
-    return CharacterAsset.objects.create(**params)
+    return CharacterAsset(**params)
+
+
+def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
+    obj = build_character_asset(character, **kwargs)
+    obj.save()
+    return obj
 
 
 def create_character_attributes(character: Character, **kwargs) -> CharacterAttributes:

@@ -1,7 +1,8 @@
 import datetime as dt
 from unittest.mock import patch
 
-from django.test import override_settings
+from django.db import IntegrityError
+from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
@@ -21,6 +22,7 @@ from memberaudit.models import (
 from memberaudit.tests.testdata.constants import EveStationId, EveTypeId
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
+    build_character_asset,
     create_character_asset,
     create_character_attributes,
     create_character_contact,
@@ -118,6 +120,62 @@ class TestCharacterAssetManager(NoSocketsTestCase):
         asset = CharacterAsset.objects.annotate_pricing().first()
         self.assertIsNone(asset.price)
         self.assertIsNone(asset.total)
+
+
+class TestCharacterAssetManagerBulkCreate2(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        load_locations()
+        cls.character = create_memberaudit_character(1001)
+        cls.jita_44 = Location.objects.get(id=60003760)
+        cls.merlin = EveType.objects.get(id=603)
+
+    def test_should_create_assets_in_bulk(self):
+        # given
+        objs = [create_character_asset(self.character) for _ in range(5)]
+
+        # when
+        new_objs = CharacterAsset.objects.bulk_create_with_fallback(objs)
+
+        # then
+        expected_ids = _extract_item_ids(objs)
+        existing_item_ids = set(self.character.assets.values_list("item_id", flat=True))
+        self.assertSetEqual(existing_item_ids, expected_ids)
+        self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
+
+    def test_should_create_all_assets_and_ignore_the_problem_obj(self):
+        # given
+        objs = [build_character_asset(self.character) for _ in range(5)]
+        problem_item_id = objs[3].item_id
+
+        def my_save(obj: CharacterAsset, *args, **kwargs):
+            if int(obj.item_id) == problem_item_id:
+                raise IntegrityError("Test exception")
+            super(CharacterAsset, obj).save(*args, **kwargs)
+
+        # when
+        with patch.object(
+            CharacterAsset.objects, "bulk_create"
+        ) as mock_bulk_create, patch(
+            "memberaudit.models.character_sections_1.CharacterAsset.save", my_save
+        ):
+            mock_bulk_create.side_effect = IntegrityError("Test exception")
+
+            new_objs = CharacterAsset.objects.bulk_create_with_fallback(objs)
+
+        # then
+        expected_ids = _extract_item_ids(objs) - {problem_item_id}
+        self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
+
+        existing_item_ids = set(self.character.assets.values_list("item_id", flat=True))
+        self.assertSetEqual(existing_item_ids, expected_ids)
+
+
+def _extract_item_ids(objs) -> set:
+    return {obj.item_id for obj in objs}
 
 
 @patch(MODULE_PATH + ".esi")
