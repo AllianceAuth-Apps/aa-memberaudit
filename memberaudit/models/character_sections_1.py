@@ -33,6 +33,8 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 class CharacterAsset(models.Model):
     """An Eve Online asset belonging to a character."""
 
+    id = models.BigAutoField(primary_key=True)
+
     character = models.ForeignKey(
         Character, on_delete=models.CASCADE, related_name="assets"
     )
