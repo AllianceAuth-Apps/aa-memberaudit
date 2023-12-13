@@ -33,7 +33,8 @@ from memberaudit.core.fittings import Fitting
 from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import UpdateSectionResult, store_debug_data_to_disk
+from memberaudit.helpers import UpdateSectionResult
+from memberaudit.models._helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 

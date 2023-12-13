@@ -39,11 +39,12 @@ from memberaudit.app_settings import (
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
-from memberaudit.helpers import UpdateSectionResult, store_debug_data_to_disk
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
+from memberaudit.models._helpers import store_debug_data_to_disk
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -948,7 +949,8 @@ class CharacterUpdateStatus(models.Model):
         else:
             content_hash = self.content_hash_1
 
-        return new_hash != content_hash
+        result = new_hash != content_hash
+        return result
 
     def update_content_hash(self, content: Any, hash_num: int = 1):
         """Update content hash for this update status.

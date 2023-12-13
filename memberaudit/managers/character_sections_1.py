@@ -25,8 +25,8 @@ from memberaudit.helpers import (
     data_retention_cutoff,
     eve_entity_ids_from_objs,
     model_to_dict_safely,
-    store_debug_data_to_disk,
 )
+from memberaudit.models._helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
