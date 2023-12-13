@@ -682,14 +682,14 @@ def assets_create_children(
             priority=priority,
         )
     else:
-        if asset_count := len(asset_data) > 0:
+        if len(asset_data) > 0:
             error_text = "child assets could not be added (orphans)"
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS,
                 is_success=False,
-                error_message=(f"{asset_count} {error_text}"),
+                error_message=(f"{len(asset_data)} {error_text}"),
             )
-            logger.warning("%s: %d %s", character, asset_count, error_text)
+            logger.warning("%s: %d %s", character, len(asset_data), error_text)
 
             # additional infos for analyzing issues #152
             logger.debug("Item IDs of orphans: %s", sorted(asset_data.keys()))
