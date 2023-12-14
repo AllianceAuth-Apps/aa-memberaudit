@@ -36,7 +36,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then
@@ -47,22 +47,6 @@ class TestStoreCharacterData(TestCase):
 
         self.assertEqual(data, data_2)
 
-    def test_should_not_store_when_disabled(self, mock_settings):
-        # given
-        mock_settings.BASE_DIR = self.root_path
-        data = [{"dummy": 1}]
-
-        # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", False):
-            result = _helpers.store_character_data_to_disk_when_enabled(
-                character=self.character,
-                data=data,
-                section=Character.UpdateSection.ASSETS,
-            )
-
-        # then
-        self.assertIsNone(result)
-
     def test_should_store_when_section_enabled(self, mock_settings):
         # given
         mock_settings.BASE_DIR = self.root_path
@@ -72,6 +56,22 @@ class TestStoreCharacterData(TestCase):
         with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
             MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]
         ):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section="assets",
+            )
+
+        # then
+        self.assertTrue(result.exists())
+
+    def test_should_also_accept_section_obj(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
@@ -93,7 +93,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then
@@ -111,7 +111,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then
@@ -129,7 +129,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then
@@ -145,7 +145,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
                 suffix="special",
             )
 
@@ -182,7 +182,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then
@@ -201,7 +201,7 @@ class TestStoreCharacterData(TestCase):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
                 data=data,
-                section=Character.UpdateSection.ASSETS,
+                section="assets",
             )
 
         # then

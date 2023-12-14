@@ -33,13 +33,20 @@ def store_character_data_to_disk_when_enabled(
 
     Returns path to created data file.
     """
+    from memberaudit.models import Character
 
     if not MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
         return None
 
+    try:
+        section_obj = Character.UpdateSection(section)
+    except ValueError:
+        logger.exception("%s: Failed to write debug data: %s", character, section)
+        return None
+
     if (
         MEMBERAUDIT_STORE_ESI_DATA_SECTIONS
-        and section.value not in MEMBERAUDIT_STORE_ESI_DATA_SECTIONS
+        and section_obj.value not in MEMBERAUDIT_STORE_ESI_DATA_SECTIONS
     ):
         return None
 
@@ -49,22 +56,7 @@ def store_character_data_to_disk_when_enabled(
     ):
         return None
 
-    file_path = _write_data_to_disk(character, data, section, suffix)
-    return file_path
-
-
-def _write_data_to_disk(
-    character: Character, data: Any, section: Character.UpdateSection, suffix: str
-) -> Path:
-    from memberaudit.models import Character
-
     path = _create_path_if_it_not_exists()
-    try:
-        section_obj = Character.UpdateSection(section)
-    except ValueError:
-        logger.exception("%s: Failed to write debug data: %s", character, section)
-        return None
-
     file_path = _generate_file_path(character, section_obj, suffix, path)
     success = _write_data(data, file_path)
     if not success:
