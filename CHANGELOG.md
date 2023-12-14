@@ -11,11 +11,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Changed
 
-- Improved instrumentation for storing data received from ESI for debugging
+- Improved instrumentation for storing data received from ESI for debugging. Please see new setting `MEMBERAUDIT_STORE_ESI_DATA_ENABLED` in documentation for details.
 
 ## Fixed
 
-- Assets sometimes wrongly classified as changed
+- Assets sometimes wrongly classified as changed. This change will reduce the number of asset updates.
 
 ## [3.5.1] - 2023-12-14
 
