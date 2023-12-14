@@ -35,7 +35,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
     MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS,
-    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
+    MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
@@ -44,7 +44,7 @@ from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.models._helpers import store_debug_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -459,9 +459,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             return UpdateSectionResult(is_changed=None, is_updated=False)
 
-        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
+        if MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
             suffix = hash_num if hash_num > 1 else ""
-            store_debug_data_to_disk(
+            store_character_data_to_disk(
                 character=self, data=data, section=section, suffix=suffix
             )
 

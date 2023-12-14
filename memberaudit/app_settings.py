@@ -91,23 +91,25 @@ MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS = {
 }
 """Default values for stale minutes of specific sections."""
 
-MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED = clean_setting(
-    "MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED", False
+MEMBERAUDIT_STORE_ESI_DATA_ENABLED = clean_setting(
+    "MEMBERAUDIT_STORE_ESI_DATA_ENABLED", False
 )
-"""Set to true to store all incoming ESI data to disk for debugging.
+"""Set to true to store incoming data from the ESI API to disk for debugging.
 
-Warning: Storing debug data can quickly occupy a lot of disk space.
+The data will be stored in JSON files under: `~/myauth/temp/memberaudit_log`.
+
+Warning: Storing this data can quickly occupy a lot of disk space.
 We strongly recommend to also define filters for sections and/or characters
 to limit what data is stored.
 """
 
-MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS = clean_setting(
-    "MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS", []
+MEMBERAUDIT_STORE_ESI_DATA_SECTIONS = clean_setting(
+    "MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", []
 )
 """List sections to filter storing debug data for. An empty list means all sections."""
 
-MEMBERAUDIT_STORE_DEBUG_DATA_CHARACTERS = clean_setting(
-    "MEMBERAUDIT_STORE_DEBUG_DATA_CHARACTERS", []
+MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS = clean_setting(
+    "MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", []
 )
 """List character IDs to filter storing debug data for.
 An empty list means all characters.

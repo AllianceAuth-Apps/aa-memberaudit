@@ -17,7 +17,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
+    MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
 )
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -26,7 +26,7 @@ from memberaudit.helpers import (
     eve_entity_ids_from_objs,
     model_to_dict_safely,
 )
-from memberaudit.models._helpers import store_debug_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -461,8 +461,8 @@ class CharacterContractManager(models.Manager):
             token=token.valid_access_token(),
         ).results()
 
-        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
-            store_debug_data_to_disk(
+        if MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
+            store_character_data_to_disk(
                 character=character, data=contracts_data, section="contracts"
             )
 

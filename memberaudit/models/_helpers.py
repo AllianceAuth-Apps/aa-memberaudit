@@ -15,8 +15,8 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
-    MEMBERAUDIT_STORE_DEBUG_DATA_CHARACTERS,
-    MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS,
+    MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS,
+    MEMBERAUDIT_STORE_ESI_DATA_SECTIONS,
 )
 
 if TYPE_CHECKING:
@@ -25,29 +25,28 @@ if TYPE_CHECKING:
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-def store_debug_data_to_disk(
+def store_character_data_to_disk(
     character: Character, data: Any, section: Character.UpdateSection, suffix: str = ""
-):
-    """Store character data as JSON file to disk (for debugging).
+) -> Path:
+    """Store character data to disk in JSON files for debugging.
 
-    Will store under:
-    `temp/memberaudit_logs/{DATE}/character_{CHARACTER_PK}_{NAME}.json`
+    Returns path to created data file.
     """
     from memberaudit.models import Character
 
     if (
-        MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS
-        and section.value not in MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS
+        MEMBERAUDIT_STORE_ESI_DATA_SECTIONS
+        and section.value not in MEMBERAUDIT_STORE_ESI_DATA_SECTIONS
     ):
         return
 
     if (
-        MEMBERAUDIT_STORE_DEBUG_DATA_CHARACTERS
-        and character.id not in MEMBERAUDIT_STORE_DEBUG_DATA_CHARACTERS
+        MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS
+        and character.id not in MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS
     ):
         return
 
-    path = _create_path_if_not_exists()
+    path = _create_path_if_it_not_exists()
     try:
         section_obj = Character.UpdateSection(section)
     except TypeError:
@@ -56,9 +55,10 @@ def store_debug_data_to_disk(
 
     file_path = _generate_file_path(character, section_obj, suffix, path)
     _write_data(data, file_path)
+    return file_path
 
 
-def _create_path_if_not_exists() -> Path:
+def _create_path_if_it_not_exists() -> Path:
     today_str = now().strftime("%Y%m%d")
     path = Path(settings.BASE_DIR) / "temp" / "memberaudit_log" / today_str
     path.mkdir(parents=True, exist_ok=True)
