@@ -25,7 +25,6 @@ from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
-    MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
 from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
@@ -34,7 +33,7 @@ from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import UpdateSectionResult
-from memberaudit.models._helpers import store_character_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
@@ -547,13 +546,12 @@ class MailEntityManager(models.Manager):
         else:
             mailing_lists = {}
 
-        if MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
-            store_character_data_to_disk(
-                character=character,
-                data=mailing_lists,
-                section="mails",
-                suffix="mailing_lists",
-            )
+        store_character_data_to_disk_when_enabled(
+            character=character,
+            data=mailing_lists,
+            section="mails",
+            suffix="mailing_lists",
+        )
 
         # TODO: Replace delete & create with update
 

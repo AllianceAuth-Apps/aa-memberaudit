@@ -27,12 +27,11 @@ from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_MAX_MAILS,
-    MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import UpdateSectionResult, data_retention_cutoff
-from memberaudit.models._helpers import store_character_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -676,13 +675,12 @@ class CharacterMailManager(models.Manager):
         else:
             is_updated = False
 
-        if MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
-            store_character_data_to_disk(
-                character=character,
-                data=mail_body,
-                section="mails",
-                suffix=f"body-{mail.mail_id}",
-            )
+        store_character_data_to_disk_when_enabled(
+            character=character,
+            data=mail_body,
+            section="mails",
+            suffix=f"body-{mail.mail_id}",
+        )
 
         return UpdateSectionResult(is_changed=is_changed, is_updated=is_updated)
 

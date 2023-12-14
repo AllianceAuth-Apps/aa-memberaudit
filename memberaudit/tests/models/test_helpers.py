@@ -26,33 +26,183 @@ class TestStoreCharacterData(TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.root_path)
 
-    def test_should_store_given_data(self, mock_settings):
+    def test_should_store_when_enabled(self, mock_settings):
         # given
         mock_settings.BASE_DIR = self.root_path
         data = [{"dummy": 1}]
 
         # when
-        path = _helpers.store_character_data_to_disk(
-            character=self.character, data=data, section=Character.UpdateSection.ASSETS
-        )
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
 
         # then
-        self.assertTrue(path.exists())
+        self.assertTrue(result.exists())
 
-        with path.open("r") as file:
+        with result.open("r") as file:
             data_2 = json.load(file)
 
         self.assertEqual(data, data_2)
 
-    # def test_should_store_when_enabled(self):
-    #     ...
+    def test_should_not_store_when_disabled(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
 
-    # def test_should_not_store_when_disabled(self,mock_settings):
-    #     # given
-    #     mock_settings.BASE_DIR = self.root_path
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", False):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
 
-    # def test_should_store_selected_sections_only(self):
-    #     ...
+        # then
+        self.assertIsNone(result)
 
-    # def test_should_store_selected_characters_only(self):
-    #     ...
+    def test_should_store_when_section_enabled(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]
+        ):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertTrue(result.exists())
+
+    def test_should_not_store_when_section_not_enabled(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["other_section"]
+        ):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_store_when_character_enabled(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [self.character.id]
+        ):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertTrue(result.exists())
+
+    def test_should_not_store_when_character_not_enabled(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [-1]
+        ):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_allow_optional_suffix(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+                suffix="special",
+            )
+
+        # then
+        self.assertTrue(result.exists())
+        self.assertIn("special", result.name)
+
+    def test_should_not_break_when_section_name_is_wrong(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True):
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section="invalid",
+            )
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_not_break_when_json_serialization_fails(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".json.dump"
+        ) as mock:
+            mock.side_effect = TypeError
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertIsNone(result)
+
+    def test_should_not_break_when_write_failed(self, mock_settings):
+        # given
+        mock_settings.BASE_DIR = self.root_path
+        data = [{"dummy": 1}]
+
+        # when
+        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
+            MODULE_PATH + ".json.dump"
+        ) as mock:
+            mock.side_effect = OSError
+            result = _helpers.store_character_data_to_disk_when_enabled(
+                character=self.character,
+                data=data,
+                section=Character.UpdateSection.ASSETS,
+            )
+
+        # then
+        self.assertIsNone(result)

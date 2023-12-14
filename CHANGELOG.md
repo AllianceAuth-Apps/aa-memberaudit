@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.5.2] - 2023-12-14
+
+## Changed
+
+- Improved instrumentation for storing data received from ESI for debugging
+
+## Fixed
+
+- Assets sometimes wrongly classified as changed
+
 ## [3.5.1] - 2023-12-14
 
 ### Update notes

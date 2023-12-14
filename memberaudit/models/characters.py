@@ -35,7 +35,6 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
     MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS,
-    MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
@@ -44,7 +43,7 @@ from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.models._helpers import store_character_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -459,11 +458,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             return UpdateSectionResult(is_changed=None, is_updated=False)
 
-        if MEMBERAUDIT_STORE_ESI_DATA_ENABLED:
-            suffix = hash_num if hash_num > 1 else ""
-            store_character_data_to_disk(
-                character=self, data=data, section=section, suffix=suffix
-            )
+        store_character_data_to_disk_when_enabled(
+            character=self,
+            data=data,
+            section=section,
+            suffix=hash_num if hash_num > 1 else "",
+        )
 
         is_changed = self.has_section_changed(
             section=section, content=data, hash_num=hash_num
