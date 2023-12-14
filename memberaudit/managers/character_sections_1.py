@@ -3,9 +3,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Set
+from typing import TYPE_CHECKING, Iterable, List, Set
 
-from django.db import models, transaction
+from django.db import DatabaseError, models, transaction
 from django.db.models import Case, ExpressionWrapper, F, Value, When
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveType
@@ -24,8 +24,9 @@ from memberaudit.helpers import (
     UpdateSectionResult,
     data_retention_cutoff,
     eve_entity_ids_from_objs,
-    store_debug_data_to_disk,
+    model_to_dict_safely,
 )
+from memberaudit.models._helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -36,7 +37,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, CharacterAsset
 
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -88,16 +89,31 @@ class CharacterAssetManagerBase(models.Manager):
     @fetch_token_for_character("esi-assets.read_assets.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> list:
         """Fetch character assets with names from ESI and return it."""
+        asset_data = self._fetching_assets_from_esi(character, token)
+
+        # add names to assets
+        item_ids = list(asset_data.keys())
+        asset_names = self._fetching_asset_names_from_esi(character, token, item_ids)
+        for item_id in item_ids:
+            asset_data[item_id]["name"] = asset_names.get(item_id, "")
+
+        return list(asset_data.values())
+
+    def _fetching_assets_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching assets from ESI", character)
         asset_list = esi.client.Assets.get_characters_character_id_assets(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
         asset_data = {int(item["item_id"]): item for item in asset_list}
+        return asset_data
 
+    def _fetching_asset_names_from_esi(
+        self, character: Character, token: Token, item_ids: List[int]
+    ):
         logger.info("%s: Fetching asset names from ESI", character)
         names = []
-        for asset_ids_chunk in chunks(list(asset_data.keys()), 999):
+        for asset_ids_chunk in chunks(item_ids, 999):
             names += esi.client.Assets.post_characters_character_id_assets_names(
                 character_id=character.eve_character.character_id,
                 token=token.valid_access_token(),
@@ -109,10 +125,8 @@ class CharacterAssetManagerBase(models.Manager):
             for item in names
             if item["name"] != "None"
         }
-        for item_id in asset_data.keys():
-            asset_data[item_id]["name"] = asset_names.get(item_id, "")
 
-        return list(asset_data.values())
+        return asset_names
 
     def preload_objects_from_esi(
         self, character: Character, asset_list: list
@@ -166,6 +180,36 @@ class CharacterAssetManagerBase(models.Manager):
             location_ids=missing_location_ids, token=token
         )
         return True
+
+    def bulk_create_with_fallback(
+        self, objs: Iterable[CharacterAsset], batch_size: int = None
+    ) -> List[CharacterAsset]:
+        """Create objs in bulk safely and return newly created objs."""
+        try:
+            added_objs = self.bulk_create(objs, batch_size=batch_size)
+        except DatabaseError:
+            logger.warning(
+                "Bulk create with %d %s failed. "
+                "Falling back on creating them one by one.",
+                len(objs),
+                self.model._meta.verbose_name_plural,
+                exc_info=True,
+            )
+            added_objs = []
+            for obj in objs:
+                try:
+                    obj.save(force_insert=True)
+                except DatabaseError:
+                    obj_as_dict = model_to_dict_safely(obj)
+                    logger.exception(
+                        "Failed to create %s: %s",
+                        self.model._meta.verbose_name,
+                        obj_as_dict,
+                    )
+                else:
+                    added_objs.append(obj)
+
+        return added_objs
 
 
 CharacterAssetManager = CharacterAssetManagerBase.from_queryset(CharacterAssetQuerySet)

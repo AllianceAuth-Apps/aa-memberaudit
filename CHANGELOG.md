@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.5.1] - 2023-12-14
+
+### Update notes
+
+Please note that this patch contains a migration, which can potentially take 10 minutes or more to complete on larger installations. Please be patient.
+
+### Fixed
+
+- Some child assets are not created (#152)
+
 ## [3.5.0] - 2023-12-09
 
 ### Update notes

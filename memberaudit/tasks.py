@@ -9,7 +9,6 @@ from celery import chain, shared_task
 
 from django.apps import apps
 from django.contrib.auth.models import Group, User
-from django.db import transaction
 from esi.models import Token
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
 from eveuniverse.models import EveEntity, EveMarketPrice
@@ -569,44 +568,38 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
     """Create chunk of parent assets for a character."""
     logger.info("%s: Creating parent assets - pass %s", character, cycle)
     new_assets = []
-    with transaction.atomic():
-        if cycle == 1:
-            character.assets.all().delete()
+    if cycle == 1:
+        character.assets.all().delete()
 
-        known_location_ids = set(Location.objects.values_list("id", flat=True))
-        parent_asset_ids = {
-            item_id
-            for item_id, asset_info in asset_data.items()
-            if asset_info.get("location_id")
-            and asset_info["location_id"] in known_location_ids
-        }
-        for item_id in parent_asset_ids:
-            item = asset_data[item_id]
-            new_assets.append(
-                CharacterAsset(
-                    character=character,
-                    item_id=item_id,
-                    location_id=item["location_id"],
-                    eve_type_id=item.get("type_id"),
-                    name=item.get("name"),
-                    is_blueprint_copy=item.get("is_blueprint_copy"),
-                    is_singleton=item.get("is_singleton"),
-                    location_flag=item.get("location_flag"),
-                    quantity=item.get("quantity"),
-                )
+    known_location_ids = set(Location.objects.values_list("id", flat=True))
+    parent_asset_ids = {
+        item_id
+        for item_id, asset_info in asset_data.items()
+        if asset_info["location_id"] in known_location_ids
+    }
+    for item_id in parent_asset_ids:
+        item = asset_data[item_id]
+        new_assets.append(
+            CharacterAsset(
+                character=character,
+                item_id=item_id,
+                location_id=item["location_id"],
+                eve_type_id=item["type_id"],
+                name=item["name"],
+                is_blueprint_copy=item.get("is_blueprint_copy"),
+                is_singleton=item["is_singleton"],
+                location_flag=item["location_flag"],
+                quantity=item["quantity"],
             )
-            asset_data.pop(item_id)
-            if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
-                break
-
-        logger.info("%s: Writing %s parent assets", character, len(new_assets))
-        # TODO: `ignore_conflicts=True` needed as workaround to compensate for
-        # occasional duplicate FK constraint errors. Needs to be investigated
-        CharacterAsset.objects.bulk_create(
-            new_assets,
-            batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-            ignore_conflicts=True,
         )
+        asset_data.pop(item_id)
+        if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
+            break
+
+    created_objs = CharacterAsset.objects.bulk_create_with_fallback(
+        new_assets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+    )
+    logger.info("%s: Created %s parent assets", character, len(created_objs))
 
     if len(parent_asset_ids) > len(new_assets):
         # there are more parent assets to create
@@ -639,41 +632,36 @@ def assets_create_children(
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     asset_data = {asset["item_id"]: asset for asset in asset_list}
     new_assets = []
-    with transaction.atomic():
-        parent_asset_ids = set(character.assets.values_list("item_id", flat=True))
-        child_asset_ids = {
-            item_id
-            for item_id, item in asset_data.items()
-            if item.get("location_id") and item["location_id"] in parent_asset_ids
-        }
-        for item_id in child_asset_ids:
-            item = asset_data[item_id]
-            new_assets.append(
-                CharacterAsset(
-                    character=character,
-                    item_id=item_id,
-                    parent=character.assets.get(item_id=item["location_id"]),
-                    eve_type_id=item.get("type_id"),
-                    name=item.get("name"),
-                    is_blueprint_copy=item.get("is_blueprint_copy"),
-                    is_singleton=item.get("is_singleton"),
-                    location_flag=item.get("location_flag"),
-                    quantity=item.get("quantity"),
-                )
+    parent_asset_ids = set(character.assets.values_list("item_id", flat=True))
+    child_asset_ids = {
+        item_id
+        for item_id, item in asset_data.items()
+        if item["location_id"] in parent_asset_ids
+    }
+    for item_id in child_asset_ids:
+        item = asset_data[item_id]
+        new_assets.append(
+            CharacterAsset(
+                character=character,
+                item_id=item_id,
+                parent=character.assets.get(item_id=item["location_id"]),
+                eve_type_id=item["type_id"],
+                name=item["name"],
+                is_blueprint_copy=item.get("is_blueprint_copy"),
+                is_singleton=item["is_singleton"],
+                location_flag=item["location_flag"],
+                quantity=item["quantity"],
             )
-            asset_data.pop(item_id)
-            if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
-                break
+        )
+        asset_data.pop(item_id)
+        if len(new_assets) >= MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS:
+            break
 
-        if new_assets:
-            logger.info("%s: Writing %s child assets", character, len(new_assets))
-            # TODO: `ignore_conflicts=True` needed as workaround to compensate for
-            # occasional duplicate FK constraint errors. Needs to be investigated
-            CharacterAsset.objects.bulk_create(
-                new_assets,
-                batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-                ignore_conflicts=True,
-            )
+    if new_assets:
+        created_objs = CharacterAsset.objects.bulk_create_with_fallback(
+            new_assets, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
+        )
+        logger.info("%s: Created %s child assets", character, len(created_objs))
 
     if new_assets and asset_data:
         # there are more child assets to create
@@ -687,19 +675,22 @@ def assets_create_children(
         )
     else:
         if len(asset_data) > 0:
+            error_text = "child assets could not be added (orphans)"
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS,
                 is_success=False,
-                error_message=(
-                    f"{len(asset_data)} assets could not be added (leftovers)"
-                ),
+                error_message=(f"{len(asset_data)} {error_text}"),
             )
-            logger.warning(
-                "%s: %s assets could not be added (leftovers): %s",
-                character,
-                len(asset_data),
-                asset_data.keys(),
+            logger.warning("%s: %d %s", character, len(asset_data), error_text)
+
+            # additional infos for analyzing issues #152
+            logger.debug("Item IDs of orphans: %s", sorted(asset_data.keys()))
+            orphan_location_ids = sorted(
+                {item["location_id"] for item in asset_data.values()}
             )
+            logger.debug("Location IDs of orphans: %s", orphan_location_ids)
+            logger.debug("Parent asset items IDs: %s", sorted(parent_asset_ids))
+
         else:
             character.update_section_log_result(
                 Character.UpdateSection.ASSETS, is_success=True, is_updated=True

@@ -31,11 +31,8 @@ from memberaudit.app_settings import (
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
-from memberaudit.helpers import (
-    UpdateSectionResult,
-    data_retention_cutoff,
-    store_debug_data_to_disk,
-)
+from memberaudit.helpers import UpdateSectionResult, data_retention_cutoff
+from memberaudit.models._helpers import store_debug_data_to_disk
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
