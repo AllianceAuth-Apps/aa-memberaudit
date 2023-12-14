@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.5.3] - 2023-12-14
+
+### Fixed
+
+- When storing of esi data is enabled character updates break with: `AttributeError: 'str' object has no attribute 'value'`
+
 ## [3.5.2] - 2023-12-14
 
-## Changed
+### Changed
 
 - Improved instrumentation for storing data received from ESI for debugging. Please see new setting `MEMBERAUDIT_STORE_ESI_DATA_ENABLED` in documentation for details.
 
-## Fixed
+### Fixed
 
 - Assets sometimes wrongly classified as changed. This change will reduce the number of asset updates.
 
