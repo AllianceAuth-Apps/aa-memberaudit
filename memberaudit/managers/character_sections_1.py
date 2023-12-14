@@ -17,7 +17,7 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
+    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
 )
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -461,8 +461,12 @@ class CharacterContractManager(models.Manager):
             token=token.valid_access_token(),
         ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, contracts_data, "contracts")
+        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
+            store_debug_data_to_disk(
+                character=character,
+                data=contracts_data,
+                section=Character.UpdateSection.CONTRACTS,
+            )
 
         cutoff_datetime = data_retention_cutoff()
         contracts_list = {

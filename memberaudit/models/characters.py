@@ -30,12 +30,12 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_FEATURE_ROLES_ENABLED,
     MEMBERAUDIT_NOTIFY_TOKEN_ERRORS,
     MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
     MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
     MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS,
+    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
 )
 from memberaudit.constants import EveGroupId
 from memberaudit.errors import TokenDoesNotExist
@@ -457,8 +457,11 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             return UpdateSectionResult(is_changed=None, is_updated=False)
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
+        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
+            suffix = hash_num if hash_num > 1 else ""
+            store_debug_data_to_disk(
+                character=self, data=data, section=section, suffix=suffix
+            )
 
         is_changed = self.has_section_changed(
             section=section, content=data, hash_num=hash_num

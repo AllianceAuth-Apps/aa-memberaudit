@@ -26,8 +26,8 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_MAX_MAILS,
+    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
 )
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
@@ -676,8 +676,13 @@ class CharacterMailManager(models.Manager):
         else:
             is_updated = False
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mail_body, "mail_body")
+        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
+            store_debug_data_to_disk(
+                character=character,
+                data=mail_body,
+                section=Character.UpdateSection.MAILS,
+                suffix=f"body-{mail.mail_id}",
+            )
 
         return UpdateSectionResult(is_changed=is_changed, is_updated=is_updated)
 

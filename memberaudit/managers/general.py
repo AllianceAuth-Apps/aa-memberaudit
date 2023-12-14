@@ -24,8 +24,8 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
+    MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
 from memberaudit.constants import DATETIME_FORMAT, EveCategoryId, EveTypeId
@@ -547,8 +547,13 @@ class MailEntityManager(models.Manager):
         else:
             mailing_lists = {}
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mailing_lists, "mailing_lists")
+        if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
+            store_debug_data_to_disk(
+                character=character,
+                data=mailing_lists,
+                section=Character.UpdateSection.MAILS,
+                suffix="mailing_lists",
+            )
 
         # TODO: Replace delete & create with update
 
