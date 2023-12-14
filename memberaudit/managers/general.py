@@ -528,7 +528,7 @@ class MailEntityManager(models.Manager):
     def update_or_create_mailing_lists_esi(
         self, character: Character, token: Token, force_update: bool
     ) -> UpdateSectionResult:
-        """Update or create wallet balance for a character from ESI.
+        """Update or create mailing list for a character from ESI.
 
         Note: Obsolete mailing lists must not be removed,
         since they might still be referenced by older mails.
@@ -551,7 +551,7 @@ class MailEntityManager(models.Manager):
             store_debug_data_to_disk(
                 character=character,
                 data=mailing_lists,
-                section=Character.UpdateSection.MAILS,
+                section="mails",
                 suffix="mailing_lists",
             )
 

@@ -463,9 +463,7 @@ class CharacterContractManager(models.Manager):
 
         if MEMBERAUDIT_STORE_DEBUG_DATA_ENABLED:
             store_debug_data_to_disk(
-                character=character,
-                data=contracts_data,
-                section=Character.UpdateSection.CONTRACTS,
+                character=character, data=contracts_data, section="contracts"
             )
 
         cutoff_datetime = data_retention_cutoff()

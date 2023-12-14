@@ -33,6 +33,8 @@ def store_debug_data_to_disk(
     Will store under:
     `temp/memberaudit_logs/{DATE}/character_{CHARACTER_PK}_{NAME}.json`
     """
+    from memberaudit.models import Character
+
     if (
         MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS
         and section.value not in MEMBERAUDIT_STORE_DEBUG_DATA_SECTIONS
@@ -46,7 +48,13 @@ def store_debug_data_to_disk(
         return
 
     path = _create_path_if_not_exists()
-    file_path = _generate_file_path(character, section, suffix, path)
+    try:
+        section_obj = Character.UpdateSection(section)
+    except TypeError:
+        logger.exception("Failed to write debug data")
+        return
+
+    file_path = _generate_file_path(character, section_obj, suffix, path)
     _write_data(data, file_path)
 
 

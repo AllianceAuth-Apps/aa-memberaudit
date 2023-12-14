@@ -68,6 +68,8 @@ class _CharacterNeedsUpdate:
 class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character in Eve Online managed by Member Audit."""
 
+    # TODO: Maybe move this enum to outside, so it can be imported more easily
+    # by other modules
     class UpdateSection(models.TextChoices):
         """A section of content for a character that can be updated separately."""
 

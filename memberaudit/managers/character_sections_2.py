@@ -680,7 +680,7 @@ class CharacterMailManager(models.Manager):
             store_debug_data_to_disk(
                 character=character,
                 data=mail_body,
-                section=Character.UpdateSection.MAILS,
+                section="mails",
                 suffix=f"body-{mail.mail_id}",
             )
 
