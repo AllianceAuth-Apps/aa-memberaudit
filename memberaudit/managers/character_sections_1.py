@@ -97,7 +97,7 @@ class CharacterAssetManagerBase(models.Manager):
         for item_id in item_ids:
             asset_data[item_id]["name"] = asset_names.get(item_id, "")
 
-        return list(asset_data.values())
+        return sorted(asset_data.values(), key=lambda o: o["item_id"])
 
     def _fetching_assets_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching assets from ESI", character)
