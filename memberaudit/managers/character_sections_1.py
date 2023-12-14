@@ -15,10 +15,7 @@ from app_utils.helpers import chunks
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
-from memberaudit.app_settings import (
-    MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
-)
+from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
     UpdateSectionResult,
@@ -26,7 +23,7 @@ from memberaudit.helpers import (
     eve_entity_ids_from_objs,
     model_to_dict_safely,
 )
-from memberaudit.models._helpers import store_debug_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
@@ -97,7 +94,7 @@ class CharacterAssetManagerBase(models.Manager):
         for item_id in item_ids:
             asset_data[item_id]["name"] = asset_names.get(item_id, "")
 
-        return list(asset_data.values())
+        return sorted(asset_data.values(), key=lambda o: o["item_id"])
 
     def _fetching_assets_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching assets from ESI", character)
@@ -461,8 +458,9 @@ class CharacterContractManager(models.Manager):
             token=token.valid_access_token(),
         ).results()
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, contracts_data, "contracts")
+        store_character_data_to_disk_when_enabled(
+            character=character, data=contracts_data, section="contracts"
+        )
 
         cutoff_datetime = data_retention_cutoff()
         contracts_list = {

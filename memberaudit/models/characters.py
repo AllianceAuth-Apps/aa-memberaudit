@@ -30,7 +30,6 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_APP_NAME,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_FEATURE_ROLES_ENABLED,
     MEMBERAUDIT_NOTIFY_TOKEN_ERRORS,
     MEMBERAUDIT_SECTION_STALE_MINUTES_CONFIG,
@@ -44,7 +43,7 @@ from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.models._helpers import store_debug_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -68,6 +67,8 @@ class _CharacterNeedsUpdate:
 class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character in Eve Online managed by Member Audit."""
 
+    # TODO: Maybe move this enum to outside, so it can be imported more easily
+    # by other modules
     class UpdateSection(models.TextChoices):
         """A section of content for a character that can be updated separately."""
 
@@ -457,8 +458,12 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
             )
             return UpdateSectionResult(is_changed=None, is_updated=False)
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(self, data, f"{section}_{hash_num}")
+        store_character_data_to_disk_when_enabled(
+            character=self,
+            data=data,
+            section=section,
+            suffix=hash_num if hash_num > 1 else "",
+        )
 
         is_changed = self.has_section_changed(
             section=section, content=data, hash_num=hash_num

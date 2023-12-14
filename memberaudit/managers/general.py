@@ -24,7 +24,6 @@ from app_utils.logging import LoggerAddTag
 from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
-    MEMBERAUDIT_DEVELOPER_MODE,
     MEMBERAUDIT_LOCATION_STALE_HOURS,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
 )
@@ -34,7 +33,7 @@ from memberaudit.core.skill_plans import SkillPlan
 from memberaudit.core.skills import Skill
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import UpdateSectionResult
-from memberaudit.models._helpers import store_debug_data_to_disk
+from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
@@ -528,7 +527,7 @@ class MailEntityManager(models.Manager):
     def update_or_create_mailing_lists_esi(
         self, character: Character, token: Token, force_update: bool
     ) -> UpdateSectionResult:
-        """Update or create wallet balance for a character from ESI.
+        """Update or create mailing list for a character from ESI.
 
         Note: Obsolete mailing lists must not be removed,
         since they might still be referenced by older mails.
@@ -547,8 +546,12 @@ class MailEntityManager(models.Manager):
         else:
             mailing_lists = {}
 
-        if MEMBERAUDIT_DEVELOPER_MODE:
-            store_debug_data_to_disk(character, mailing_lists, "mailing_lists")
+        store_character_data_to_disk_when_enabled(
+            character=character,
+            data=mailing_lists,
+            section="mails",
+            suffix="mailing_lists",
+        )
 
         # TODO: Replace delete & create with update
 
