@@ -1,6 +1,4 @@
-# sphinx
-sphinx_rtd_theme
+sphinx
 myst_parser
-sphinxcontrib-django2
+sphinx_rtd_theme
 sphinx-copybutton
-Django>=4.0,<4.1  # for AA 3

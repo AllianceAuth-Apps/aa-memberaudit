@@ -378,6 +378,7 @@ You can see the current stale minutes configuration for all sections by running 
 ```{eval-rst}
 .. automodule:: memberaudit.app_settings
     :members:
+    :exclude-members: MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS
 ```
 
 ## Uninstalling

@@ -70,8 +70,10 @@ test-py311-dj40:
   - bash <(curl -s https://codecov.io/bash)
 
 test-docs:
-  extends: .tox_setup
-  image: python:3.11-bullseye
+ stage: test
+  image: python:3.10-bullseye
+  before_script:
+  - pip install tox
   script:
     - tox -e docs
 

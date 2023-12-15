@@ -11,11 +11,8 @@ import sys
 
 import sphinx_rtd_theme  # noqa
 
-import django
-
 sys.path.insert(0, os.path.abspath(".."))
 os.environ["DJANGO_SETTINGS_MODULE"] = "testauth.settings"
-django.setup()
 
 
 # -- Project information -----------------------------------------------------
@@ -27,17 +24,13 @@ author = "Erik Kalkoken, Myrhea, Rounon Dax"
 
 # -- General configuration ---------------------------------------------------
 
-on_rtd = os.environ.get("READTHEDOCS", None) == "True"
-
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
-    "sphinx.ext.napoleon",
     "sphinx_rtd_theme",
-    "sphinxcontrib_django2",
     "sphinx_copybutton",
 ]
 
@@ -48,8 +41,6 @@ templates_path = ["_templates"]
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
 exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
-
-autodoc_mock_imports = ["allianceauth.authentication.task_statistics.signals"]
 
 # -- Options for HTML output -------------------------------------------------
 
