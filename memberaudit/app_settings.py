@@ -23,7 +23,6 @@ MEMBERAUDIT_DATA_RETENTION_LIMIT = clean_setting(
 Minimum is 7 day.
 """
 
-
 MEMBERAUDIT_FEATURE_ROLES_ENABLED = clean_setting(
     "MEMBERAUDIT_FEATURE_ROLES_ENABLED", False
 )
@@ -84,7 +83,10 @@ MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS = {
     "loyalty": 480,
     "titles": 480,
 }
-"""Default values for stale minutes of specific sections."""
+"""Default values for stale minutes of specific sections.
+
+:meta private:
+"""
 
 MEMBERAUDIT_STORE_ESI_DATA_ENABLED = clean_setting(
     "MEMBERAUDIT_STORE_ESI_DATA_ENABLED", False

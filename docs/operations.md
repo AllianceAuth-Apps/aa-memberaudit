@@ -377,12 +377,13 @@ You can see the current stale minutes configuration for all sections by running 
 
 Here is a list of available settings for this app. They can be configured by adding them to your AA settings file (`local.py`).
 
-Note that all settings are optional and the app will use the documented default settings if they are not used.
+```{note}
+All settings are optional and the app will use the documented default settings if they are not used.
+```
 
 ```{eval-rst}
 .. automodule:: memberaudit.app_settings
     :members:
-    :exclude-members: MEMBERAUDIT_SECTION_STALE_MINUTES_SECTION_DEFAULTS
 ```
 
 ## Uninstalling
