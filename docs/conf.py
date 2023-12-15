@@ -9,6 +9,8 @@
 import os
 import sys
 
+import sphinx_rtd_theme  # noqa
+
 import django
 
 sys.path.insert(0, os.path.abspath(".."))
@@ -24,6 +26,8 @@ author = "Erik Kalkoken, Myrhea, Rounon Dax"
 
 
 # -- General configuration ---------------------------------------------------
+
+on_rtd = os.environ.get("READTHEDOCS", None) == "True"
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
