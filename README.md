@@ -18,9 +18,7 @@ An Alliance Auth app that provides full access to Eve characters and related rep
 - [Overview](#overview)
 - [Features](#features)
 - [Highlights](#highlights)
-- [Documentation](https://aa-memberaudit.readthedocs.io/en/latest/)
-- [Authors](#authors)
-- [Change Log](CHANGELOG.md)
+- [Documentation](#documentation)
 
 ## Overview
 
@@ -29,8 +27,6 @@ Member Audit is an Alliance Auth app that provides full access to Eve characters
 Users can monitor their characters, recruiters can vet the characters of applicants and leadership can audit the characters of their members to ensure compliance and find spies.
 
 In addition character based reports gives leadership another valuable tool for managing their respective organization.
-
-For details on how to install and use Member Audit please see the [documentation](https://aa-memberaudit.readthedocs.io/en/latest/).
 
 ## Features
 
@@ -106,10 +102,6 @@ On this page recruiters and leadership can look for other characters to view (as
 
 ![finder](https://i.imgur.com/4sDnBcz.png)
 
-## Authors
+## Documentation
 
-The main authors (in alphabetical order):
-
-- [Erik Kalkoken](https://gitlab.com/ErikKalkoken)
-- [Rebecca Claire Murphy](https://gitlab.com/rcmurphy), aka Myrhea
-- [Peter Pfeufer](https://gitlab.com/ppfeufer), aka Rounon Dax
+Link to [documentation](https://aa-memberaudit.readthedocs.io/en/latest/).
