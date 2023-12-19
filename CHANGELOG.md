@@ -23,7 +23,7 @@ python manage.py memberaudit_update_characters jump_clones
 
 ### Added
 
-- Home location now shown for every character on the character viewer
+- Home location now shown for every character on the character viewer (#155)
 
 ### Changed
 

@@ -1,4 +1,4 @@
-"""Update characters."""
+"""Start update for updateable characters."""
 
 
 from tqdm import tqdm
@@ -59,11 +59,16 @@ class Command(BaseCommand):
             sorted(str(section.label) for section in selected_sections)
         )
         updatable_count = updateable_characters.count()
+        all_count = Character.objects.count()
         self.stdout.write(
-            "Are you sure you want to start updating the following sections"
-            f" for {updatable_count} characters: {sections_text}? ",
-            ending="",
+            f"{updatable_count} of {all_count} character are currently updateable "
+            "(i.e. are not disabled or orphans)."
         )
+        self.stdout.write(
+            "Are you sure you want to start updating the following sections "
+            "for these characters: "
+        )
+        self.stdout.write(f"{sections_text}? ", ending="")
         answer = input("[Y/n]") if not options["noinput"] else "y"
         if answer.lower() == "n":
             self.stdout.write(self.style.WARNING("Aborted"))
@@ -71,10 +76,11 @@ class Command(BaseCommand):
 
         for character in tqdm(
             updateable_characters,
-            desc="Start update tasks",
+            desc="Starting update tasks",
             total=updatable_count,
             leave=False,
             disable=IS_TESTING,
+            unit="character",
         ):
             for section in selected_sections:
                 task_name = f"update_character_{section.value}"
