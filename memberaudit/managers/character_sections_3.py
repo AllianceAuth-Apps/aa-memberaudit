@@ -420,7 +420,7 @@ class CharacterSkillManager(models.Manager):
             new_ids = incoming_ids.difference(existing_ids)
             EveType.objects.bulk_get_or_create_esi(ids=list(new_ids))
 
-    def _update_or_create_objs(self, character: Character, skills_info):
+    def _update_or_create_objs(self, character: Character, skills_info: dict):
         from memberaudit.models import CharacterSkillpoints
 
         CharacterSkillpoints.objects.update_or_create(

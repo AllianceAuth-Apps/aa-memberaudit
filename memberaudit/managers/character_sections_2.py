@@ -282,21 +282,11 @@ class CharacterJumpCloneManager(models.Manager):
     ):
         from memberaudit.models import CharacterJumpCloneImplant, Location
 
-        jump_clones_list = jump_clones_info.get("jump_clones")
-        # fetch related objects ahead of transaction
-        if jump_clones_list:
-            incoming_location_ids = {
-                record["location_id"]
-                for record in jump_clones_info["jump_clones"]
-                if "location_id" in record
-            }
-            Location.objects.create_missing_esi(incoming_location_ids, token)
+        self._update_or_create_clone_info(character, token, jump_clones_info)
 
-            for jump_clone_info in jump_clones_list:
-                if jump_clone_info.get("implants"):
-                    EveType.objects.bulk_get_or_create_esi(
-                        ids=jump_clone_info.get("implants", [])
-                    )
+        jump_clones_list = jump_clones_info.get("jump_clones")
+        if jump_clones_list:
+            self._prefetch_locations(token, jump_clones_list)
 
         with transaction.atomic():
             self.filter(character=character).delete()
@@ -334,6 +324,50 @@ class CharacterJumpCloneManager(models.Manager):
             CharacterJumpCloneImplant.objects.bulk_create(
                 implants, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
             )
+
+    def _update_or_create_clone_info(
+        self, character: Character, token: Token, jump_clones_info: dict
+    ):
+        from memberaudit.models import CharacterCloneInfo, Location
+
+        home_location_data = jump_clones_info.get("home_location")
+        if home_location_data and (
+            home_location_id := home_location_data.get("location_id")
+        ):
+            home_location, _ = Location.objects.get_or_create_esi_async(
+                id=home_location_id, token=token
+            )
+        else:
+            home_location = None
+
+        return CharacterCloneInfo.objects.update_or_create(
+            character=character,
+            defaults={
+                "home_location": home_location,
+                "last_clone_jump_date": jump_clones_info.get("last_clone_jump_date"),
+                "last_station_change_date": jump_clones_info.get(
+                    "last_station_change_date"
+                ),
+            },
+        )
+
+    def _prefetch_locations(self, token, jump_clones_list):
+        """Prefetch related objects ahead of transaction."""
+
+        from memberaudit.models import Location
+
+        incoming_location_ids = {
+            record["location_id"]
+            for record in jump_clones_list
+            if "location_id" in record
+        }
+        Location.objects.create_missing_esi(incoming_location_ids, token)
+
+        for jump_clone_info in jump_clones_list:
+            if jump_clone_info.get("implants"):
+                EveType.objects.bulk_get_or_create_esi(
+                    ids=jump_clone_info.get("implants", [])
+                )
 
 
 class CharacterLocationManager(models.Manager):

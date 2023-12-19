@@ -3,6 +3,7 @@
 from .character_sections_1 import (
     CharacterAsset,
     CharacterAttributes,
+    CharacterCloneInfo,
     CharacterContact,
     CharacterContactLabel,
     CharacterContract,

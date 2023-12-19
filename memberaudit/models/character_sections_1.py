@@ -120,6 +120,29 @@ class CharacterAttributes(models.Model):
         return str(self.character)
 
 
+class CharacterCloneInfo(models.Model):
+    """General clone infos for this character."""
+
+    character = models.OneToOneField(
+        Character, on_delete=models.CASCADE, related_name="clone_info"
+    )
+
+    home_location = models.ForeignKey(
+        Location, on_delete=models.CASCADE, null=True, default=None
+    )
+    last_clone_jump_date = models.DateTimeField(default=None, null=True)
+    last_station_change_date = models.DateTimeField(default=None, null=True)
+
+    class Meta:
+        default_permissions = ()
+
+    def __str__(self) -> str:
+        return str(self.character)
+
+    def __repr__(self) -> str:
+        return f"CharacterCloneInfo(pk={self.pk}, character='{self.character}')"
+
+
 class CharacterContactLabel(models.Model):
     """An Eve Online contact label belonging to a Character."""
 
