@@ -16,7 +16,7 @@ from eveuniverse.tests.testdata.factories import create_eve_entity
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import (
+from app_utils.testing import (  # NoSocketsTestCase,
     create_authgroup,
     create_user_from_evecharacter,
     generate_invalid_pk,
@@ -707,6 +707,7 @@ class TestUpdateCharacterMails(TestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
+        load_locations()
         cls.character_1001 = create_memberaudit_character(1001)
         cls.token = (
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
