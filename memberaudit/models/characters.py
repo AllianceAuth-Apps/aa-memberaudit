@@ -43,7 +43,10 @@ from memberaudit.managers.characters import (
     CharacterManager,
     CharacterUpdateStatusManager,
 )
-from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
+from memberaudit.models._helpers import (
+    AddGenericReprMixin,
+    store_character_data_to_disk_when_enabled,
+)
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -64,7 +67,9 @@ class _CharacterNeedsUpdate:
         return self.section_map[Character.UpdateSection(section)]
 
 
-class Character(models.Model):  # pylint: disable=too-many-public-methods
+class Character(
+    AddGenericReprMixin, models.Model
+):  # pylint: disable=too-many-public-methods
     """A character in Eve Online managed by Member Audit."""
 
     # TODO: Maybe move this enum to outside, so it can be imported more easily
@@ -229,8 +234,8 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         except EveCharacter.DoesNotExist:
             return f"Character ID {self.id}"
 
-    def __repr__(self) -> str:
-        return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
+    # def __repr__(self) -> str:
+    #     return f"Character(pk={self.pk}, eve_character='{self.eve_character}')"
 
     def save(self, *args, **kwargs: dict):
         ignore_cache = kwargs.pop("ignore_cache", False)  # needed for NoSocketsTestCase
@@ -865,7 +870,7 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         return sorted(scopes)
 
 
-class CharacterUpdateStatus(models.Model):
+class CharacterUpdateStatus(AddGenericReprMixin, models.Model):
     """An object for tracking the update status of a character's section."""
 
     character = models.ForeignKey(

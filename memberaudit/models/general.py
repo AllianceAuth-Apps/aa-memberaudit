@@ -27,6 +27,7 @@ from memberaudit.managers.general import (
     SkillSetManager,
 )
 
+from ._helpers import AddGenericReprMixin
 from .constants import NAMES_MAX_LENGTH
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -109,7 +110,7 @@ class General(models.Model):
             user.groups.add(group)
 
 
-class ComplianceGroupDesignation(models.Model):
+class ComplianceGroupDesignation(AddGenericReprMixin, models.Model):
     """A designation defining a group as compliance group.
 
     Note that compliance groups are fully managed by the app.
@@ -138,7 +139,7 @@ class ComplianceGroupDesignation(models.Model):
             self.group.authgroup.save()
 
 
-class Location(models.Model):
+class Location(AddGenericReprMixin, models.Model):
     """An Eve Online location: Station or Upwell Structure or Solar System."""
 
     LOCATION_UNKNOWN_ID = 888  # custom ID to signify a location that is not known
@@ -196,12 +197,6 @@ class Location(models.Model):
 
     def __str__(self) -> str:
         return self.name
-
-    def __repr__(self) -> str:
-        return (
-            f"{self.__class__.__name__}(id={self.id}, name='{self.name}', "
-            f"eve_type={self.eve_type}, eve_solar_system={self.eve_solar_system})"
-        )
 
     @property
     def name_plus(self) -> str:
@@ -301,7 +296,7 @@ class EveSkillType(EveType):
     objects = EveSkillTypeManger()
 
 
-class SkillSetGroup(models.Model):
+class SkillSetGroup(AddGenericReprMixin, models.Model):
     """A group of SkillSets, e.g. for defining a doctrine."""
 
     description = models.TextField(blank=True, verbose_name=_("description"))
@@ -347,7 +342,7 @@ class SkillSetGroup(models.Model):
         return f"{prefix}{self.name}"
 
 
-class SkillSet(models.Model):
+class SkillSet(AddGenericReprMixin, models.Model):
     """A set of required and recommended skills needed to perform
     a particular task like flying a doctrine ships.
     """
@@ -422,7 +417,7 @@ class SkillSet(models.Model):
         return new_instance
 
 
-class SkillSetSkill(models.Model):
+class SkillSetSkill(AddGenericReprMixin, models.Model):
     """A specific skill within a skill set."""
 
     skill_set = models.ForeignKey(
@@ -517,7 +512,7 @@ class SkillSetSkill(models.Model):
         return f"{self.eve_type.name} {level_str}"
 
 
-class MailEntity(models.Model):
+class MailEntity(AddGenericReprMixin, models.Model):
     """A sender or recipient in a mail."""
 
     class Category(models.TextChoices):
@@ -547,12 +542,6 @@ class MailEntity(models.Model):
 
     def __str__(self) -> str:
         return self.name
-
-    def __repr__(self) -> str:
-        return (
-            f"{type(self).__name__}(id={self.id}, category={self.category}, "
-            f"name='{self.name}')"
-        )
 
     @property
     def name_plus(self) -> str:

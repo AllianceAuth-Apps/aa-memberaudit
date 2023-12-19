@@ -23,6 +23,7 @@ from memberaudit.managers.character_sections_1 import (
     CharacterContractManager,
 )
 
+from ._helpers import AddGenericReprMixin
 from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
@@ -30,7 +31,7 @@ from .general import Location
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterAsset(models.Model):
+class CharacterAsset(AddGenericReprMixin, models.Model):
     """An Eve Online asset belonging to a character."""
 
     id = models.BigAutoField(primary_key=True)
@@ -92,7 +93,7 @@ class CharacterAsset(models.Model):
         return self.eve_type.name if self.name else self.eve_type.eve_group.name
 
 
-class CharacterAttributes(models.Model):
+class CharacterAttributes(AddGenericReprMixin, models.Model):
     """The training attributes of a character."""
 
     character = models.OneToOneField(
@@ -120,7 +121,7 @@ class CharacterAttributes(models.Model):
         return str(self.character)
 
 
-class CharacterCloneInfo(models.Model):
+class CharacterCloneInfo(AddGenericReprMixin, models.Model):
     """General clone infos for this character."""
 
     character = models.OneToOneField(
@@ -139,11 +140,8 @@ class CharacterCloneInfo(models.Model):
     def __str__(self) -> str:
         return str(self.character)
 
-    def __repr__(self) -> str:
-        return f"CharacterCloneInfo(pk={self.pk}, character='{self.character}')"
 
-
-class CharacterContactLabel(models.Model):
+class CharacterContactLabel(AddGenericReprMixin, models.Model):
     """An Eve Online contact label belonging to a Character."""
 
     character = models.ForeignKey(
@@ -166,7 +164,7 @@ class CharacterContactLabel(models.Model):
         return f"{self.character}-{self.name}"
 
 
-class CharacterContact(models.Model):
+class CharacterContact(AddGenericReprMixin, models.Model):
     """An Eve Online contact belonging to a Character."""
 
     character = models.ForeignKey(
@@ -196,7 +194,7 @@ class CharacterContact(models.Model):
         return f"{self.character}-{self.eve_entity.name}"
 
 
-class CharacterContract(EveEntityIdsMixin, models.Model):
+class CharacterContract(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """An Eve Online contract belonging to a Character"""
 
     AVAILABILITY_ALLIANCE = "AL"
@@ -450,7 +448,7 @@ class CharacterContractBid(models.Model):
         return f"{self.contract}-{self.bid_id}"
 
 
-class CharacterContractItem(models.Model):
+class CharacterContractItem(AddGenericReprMixin, models.Model):
     """An item belonging to a character contract."""
 
     contract = models.ForeignKey(

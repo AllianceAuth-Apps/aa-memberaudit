@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Optional
@@ -93,3 +94,28 @@ def _write_data(data, file_path: Path) -> bool:
 
     logger.info("Wrote debug data to: %s", file_path)
     return True
+
+
+class AddGenericReprMixin:
+    """Mixin adds a generic repr to a Django model."""
+
+    def __repr__(self) -> str:
+        fields = {}
+        for field in self._meta.get_fields():
+            if field.one_to_many or field.many_to_many:
+                continue
+
+            try:
+                value = getattr(self, field.attname)
+            except AttributeError:
+                continue
+
+            if isinstance(value, dt.datetime):
+                value = f"<{value}>"
+
+            fields[field.attname] = value
+
+        fields_2 = dict(sorted(fields.items()))
+        fields_str = ", ".join([f"{key}={value}" for key, value in fields_2.items()])
+        class_name = type(self).__name__
+        return f"{class_name}({fields_str})"

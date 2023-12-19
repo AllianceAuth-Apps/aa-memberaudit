@@ -27,6 +27,7 @@ from memberaudit.managers.character_sections_3 import (
     CharacterWalletTransactionManager,
 )
 
+from ._helpers import AddGenericReprMixin
 from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
@@ -34,7 +35,7 @@ from .general import Location
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterMiningLedgerEntry(models.Model):
+class CharacterMiningLedgerEntry(AddGenericReprMixin, models.Model):
     """Mining ledger entry of a character."""
 
     character = models.ForeignKey(
@@ -62,7 +63,7 @@ class CharacterMiningLedgerEntry(models.Model):
         return f"{self.character} {self.id}"
 
 
-class CharacterOnlineStatus(models.Model):
+class CharacterOnlineStatus(AddGenericReprMixin, models.Model):
     """Online Status of a character."""
 
     character = models.OneToOneField(
@@ -85,7 +86,7 @@ class CharacterOnlineStatus(models.Model):
         return str(self.character)
 
 
-class CharacterPlanet(models.Model):
+class CharacterPlanet(AddGenericReprMixin, models.Model):
     """A planetary colony belonging to a character."""
 
     character = models.ForeignKey(
@@ -117,7 +118,7 @@ class CharacterPlanet(models.Model):
         return self.eve_planet.eve_type.name
 
 
-class CharacterRole(models.Model):
+class CharacterRole(AddGenericReprMixin, models.Model):
     """A character's corporation role."""
 
     class Location(models.TextChoices):
@@ -309,7 +310,7 @@ class CharacterRole(models.Model):
         ]
 
 
-class CharacterShip(models.Model):
+class CharacterShip(AddGenericReprMixin, models.Model):
     """The current ship of a character."""
 
     character = models.OneToOneField(
@@ -329,7 +330,7 @@ class CharacterShip(models.Model):
         return str(f"{self.character}-{self.eve_type.name}")
 
 
-class CharacterSkill(models.Model):
+class CharacterSkill(AddGenericReprMixin, models.Model):
     """A trained skill of a character."""
 
     character = models.ForeignKey(
@@ -359,7 +360,7 @@ class CharacterSkill(models.Model):
         return f"{self.character}-{self.eve_type.name}"
 
 
-class CharacterSkillpoints(models.Model):
+class CharacterSkillpoints(AddGenericReprMixin, models.Model):
     """The skill points of a character."""
 
     character = models.OneToOneField(
@@ -374,8 +375,11 @@ class CharacterSkillpoints(models.Model):
     class Meta:
         default_permissions = ()
 
+    def __str__(self):
+        return str(self.character)
 
-class CharacterSkillqueueEntry(models.Model):
+
+class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
     """An entry in the skillqueue of a character."""
 
     character = models.ForeignKey(
@@ -415,7 +419,7 @@ class CharacterSkillqueueEntry(models.Model):
         return bool(self.finish_date) and self.queue_position == 0
 
 
-class CharacterSkillSetCheck(models.Model):
+class CharacterSkillSetCheck(AddGenericReprMixin, models.Model):
     """The result of a skill check of a character against a skill set."""
 
     character = models.ForeignKey(
@@ -452,7 +456,7 @@ class CharacterSkillSetCheck(models.Model):
         return not self.failed_required_skills.exists()
 
 
-class CharacterStanding(models.Model):
+class CharacterStanding(AddGenericReprMixin, models.Model):
     """Standing of a character with an NPC entity in Eve Online."""
 
     character = models.ForeignKey(
@@ -501,7 +505,7 @@ class CharacterStanding(models.Model):
         return effective_standing
 
 
-class CharacterTitle(models.Model):
+class CharacterTitle(AddGenericReprMixin, models.Model):
     """Title of a character."""
 
     character = models.ForeignKey(
@@ -526,7 +530,7 @@ class CharacterTitle(models.Model):
         return f"{self.character}-{self.name}"
 
 
-class CharacterWalletBalance(models.Model):
+class CharacterWalletBalance(AddGenericReprMixin, models.Model):
     """A wallet balance of a character."""
 
     character = models.OneToOneField(
@@ -544,8 +548,11 @@ class CharacterWalletBalance(models.Model):
     class Meta:
         default_permissions = ()
 
+    def __str__(self):
+        return str(self.character)
 
-class CharacterWalletJournalEntry(EveEntityIdsMixin, models.Model):
+
+class CharacterWalletJournalEntry(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """A wallet journal entry of a character in Eve Online."""
 
     CONTEXT_ID_TYPE_UNDEFINED = "NON"
@@ -671,7 +678,7 @@ class CharacterWalletJournalEntry(EveEntityIdsMixin, models.Model):
         return cls.CONTEXT_ID_TYPE_UNDEFINED
 
 
-class CharacterWalletTransaction(EveEntityIdsMixin, models.Model):
+class CharacterWalletTransaction(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """A wallet transaction of a character in Eve Online."""
 
     character = models.ForeignKey(

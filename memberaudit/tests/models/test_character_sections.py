@@ -14,6 +14,7 @@ from memberaudit.models import (
     Location,
 )
 from memberaudit.tests.testdata.factories import (
+    create_character_clone_info,
     create_character_contract,
     create_character_contract_item,
     create_character_fw_stats,
@@ -29,25 +30,21 @@ from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import create_memberaudit_character
 
 
-class TestCharacterShip(NoSocketsTestCase):
+class TestCharacterCloneInfo(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
+        load_locations()
         cls.character_1001 = create_memberaudit_character(1001)
-        cls.user = cls.character_1001.eve_character.character_ownership.user
 
     def test_str(self):
         # given
-        create_character_ship(
-            character=self.character_1001, eve_type=EveType.objects.get(id=603)
-        )
-        # when
-        result = str(self.character_1001.ship)
-        # then
-        self.assertIn("Bruce Wayne", result)
-        self.assertIn("Merlin", result)
+        obj = create_character_clone_info(self.character_1001)
+
+        # when/then
+        self.assertTrue(repr(obj))
 
 
 class TestCharacterContract(NoSocketsTestCase):
@@ -238,6 +235,27 @@ class TestCharacterFwStatsRankNameObject(TestCase):
         obj = create_character_fw_stats(character=self.character, faction=None)
         # when/then
         self.assertEqual(obj.current_rank_name(), "")
+
+
+class TestCharacterShip(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character_1001 = create_memberaudit_character(1001)
+        cls.user = cls.character_1001.eve_character.character_ownership.user
+
+    def test_str(self):
+        # given
+        create_character_ship(
+            character=self.character_1001, eve_type=EveType.objects.get(id=603)
+        )
+        # when
+        result = str(self.character_1001.ship)
+        # then
+        self.assertIn("Bruce Wayne", result)
+        self.assertIn("Merlin", result)
 
 
 class TestCharacterStanding(TestCase):
