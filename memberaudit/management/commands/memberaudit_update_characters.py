@@ -1,64 +1,92 @@
-import logging
+"""Update characters."""
 
-from django.core.management.base import BaseCommand
 
+from tqdm import tqdm
+
+from django.core.management.base import BaseCommand, CommandError
+
+from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
+from memberaudit import __title__, tasks
+from memberaudit.constants import IS_TESTING
 from memberaudit.models import Character
-from memberaudit.tasks import update_all_characters
 
-from . import get_input
-
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class Command(BaseCommand):
-    help = "Updates all characters from ESI"
+    help = str(__doc__)
 
     def add_arguments(self, parser):
+        parser.add_argument("sections", nargs="*", help="sections to update")
         parser.add_argument(
-            "--force",
+            "--all",
             action="store_true",
-            help="Forced update also updates non-stale data",
+            help="Update all sections",
         )
+
         parser.add_argument(
             "--noinput",
             "--no-input",
             action="store_true",
-            help="Do NOT prompt the user for input of any kind.",
+            help="Do NOT prompt the user for input of any kind",
         )
 
     def handle(self, *args, **options):
-        self.stdout.write("Member Audit - Update all characters")
-        self.stdout.write("=====================================")
-
-        self.stdout.write(
-            "Forced update: {}".format("yes" if options["force"] else "no")
+        updateable_characters = Character.objects.filter(
+            is_disabled=False,
+            eve_character__character_ownership__isnull=False,
         )
 
-        character_count = Character.objects.count()
-        if character_count > 0:
-            if not options["noinput"]:
-                user_input = get_input(
-                    f"Are you sure you want to proceed for {character_count} "
-                    "character(s)? (y/N)?"
-                )
-            else:
-                user_input = "y"
+        if options["all"]:
+            selected_sections = Character.UpdateSection.enabled_sections()
 
-            if user_input.lower() == "y":
-                logger.info(
-                    "Running command update_all_characters for %d characters.",
-                    character_count,
-                )
-                update_all_characters.delay(
-                    force_update=options["force"], ignore_stale=True
-                )
-                self.stdout.write(
-                    "Started task to update %d characters...", character_count
-                )
-                self.stdout.write(self.style.SUCCESS("Done"))
+        elif options["sections"]:
+            selected_sections = []
+            for section_name in options["sections"]:
+                try:
+                    selected_sections.append(Character.UpdateSection(section_name))
+                except ValueError:
+                    raise CommandError(
+                        f"'{section_name}' is not a valid section"
+                    ) from None
 
         else:
-            self.stdout.write(self.style.WARNING("No characters found"))
+            raise CommandError("You must specify which sections to update.")
+
+        sections_text = ", ".join(
+            sorted(str(section.label) for section in selected_sections)
+        )
+        updatable_count = updateable_characters.count()
+        self.stdout.write(
+            "Are you sure you want to start updating the following sections"
+            f" for {updatable_count} characters: {sections_text}? ",
+            ending="",
+        )
+        answer = input("[Y/n]") if not options["noinput"] else "y"
+        if answer.lower() == "n":
+            self.stdout.write(self.style.WARNING("Aborted"))
+            return
+
+        for character in tqdm(
+            updateable_characters,
+            desc="Start update tasks",
+            total=updatable_count,
+            leave=False,
+            disable=IS_TESTING,
+        ):
+            for section in selected_sections:
+                task_name = f"update_character_{section.value}"
+                task = getattr(tasks, task_name)
+                task.apply_async(
+                    kwargs={"character_pk": character.pk, "force_update": True},
+                    priority=tasks.MEMBERAUDIT_TASKS_LOW_PRIORITY,
+                )
+
+        msg = (
+            f"Started forced update of {sections_text} for {updatable_count} characters"
+        )
+        logger.info(msg)
+        self.stdout.write(msg)
+        self.stdout.write(self.style.SUCCESS("Done"))
