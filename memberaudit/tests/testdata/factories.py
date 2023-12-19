@@ -27,6 +27,7 @@ from memberaudit.models import (
     Character,
     CharacterAsset,
     CharacterAttributes,
+    CharacterCloneInfo,
     CharacterContact,
     CharacterContactLabel,
     CharacterContract,
@@ -128,6 +129,17 @@ def create_character_attributes(character: Character, **kwargs) -> CharacterAttr
     }
     params.update(kwargs)
     return CharacterAttributes.objects.create(**params)
+
+
+def create_character_clone_info(character: Character, **kwargs) -> CharacterCloneInfo:
+    params = {
+        "character": character,
+        "last_clone_jump_date": now() - dt.timedelta(days=7),
+        "last_station_change_date": now() - dt.timedelta(days=90),
+    }
+    params.update(kwargs)
+    _set_missing_foreign_keys(params, home_location_id=1000000000001)
+    return CharacterCloneInfo.objects.create(**params)
 
 
 def create_character_contact(

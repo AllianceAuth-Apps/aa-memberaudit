@@ -33,6 +33,7 @@ from memberaudit.managers.character_sections_2 import (
     CharacterMailManager,
 )
 
+from ._helpers import AddGenericReprMixin
 from .characters import Character
 from .constants import NAMES_MAX_LENGTH
 from .general import Location
@@ -40,7 +41,7 @@ from .general import Location
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
-class CharacterCorporationHistory(EveEntityIdsMixin, models.Model):
+class CharacterCorporationHistory(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """A corporation history entry for a character."""
 
     character = models.ForeignKey(
@@ -69,7 +70,7 @@ class CharacterCorporationHistory(EveEntityIdsMixin, models.Model):
         return str(f"{self.character}-{self.record_id}")
 
 
-class CharacterDetails(EveEntityIdsMixin, models.Model):
+class CharacterDetails(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """Details for a character"""
 
     GENDER_MALE = "m"
@@ -140,7 +141,7 @@ class CharacterDetails(EveEntityIdsMixin, models.Model):
         return mark_safe(eve_xml_to_html(self.description, add_default_style=True))
 
 
-class CharacterFwStats(models.Model):
+class CharacterFwStats(AddGenericReprMixin, models.Model):
     """The faction Warfare statistics of a character."""
 
     RANKS = {
@@ -245,7 +246,7 @@ class CharacterFwStats(models.Model):
             raise ValueError("Invalid rank") from None
 
 
-class CharacterImplant(models.Model):
+class CharacterImplant(AddGenericReprMixin, models.Model):
     """An implant of a character."""
 
     character = models.ForeignKey(
@@ -268,7 +269,7 @@ class CharacterImplant(models.Model):
         return str(f"{self.character}-{self.eve_type}")
 
 
-class CharacterLocation(models.Model):
+class CharacterLocation(AddGenericReprMixin, models.Model):
     """The location of a character."""
 
     character = models.OneToOneField(
@@ -301,7 +302,7 @@ class CharacterLocation(models.Model):
         return location
 
 
-class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
+class CharacterLoyaltyEntry(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
     """Loyalty entry for a character"""
 
     character = models.ForeignKey(
@@ -330,7 +331,7 @@ class CharacterLoyaltyEntry(EveEntityIdsMixin, models.Model):
         return f"{self.character}-{self.corporation}"
 
 
-class CharacterJumpClone(models.Model):
+class CharacterJumpClone(AddGenericReprMixin, models.Model):
     """A character's jump clone."""
 
     character = models.ForeignKey(
@@ -356,7 +357,7 @@ class CharacterJumpClone(models.Model):
         return str(f"{self.character}-{self.jump_clone_id}")
 
 
-class CharacterJumpCloneImplant(models.Model):
+class CharacterJumpCloneImplant(AddGenericReprMixin, models.Model):
     """An jump clone implant."""
 
     jump_clone = models.ForeignKey(
@@ -371,7 +372,7 @@ class CharacterJumpCloneImplant(models.Model):
         return str(f"{self.jump_clone}-{self.eve_type}")
 
 
-class CharacterMail(models.Model):
+class CharacterMail(AddGenericReprMixin, models.Model):
     """Mail of a character"""
 
     character = models.ForeignKey(
@@ -416,7 +417,7 @@ class CharacterMail(models.Model):
         return mark_safe(eve_xml_to_html(self.body, add_default_style=True))
 
 
-class CharacterMailLabel(models.Model):
+class CharacterMailLabel(AddGenericReprMixin, models.Model):
     """A mail labels of a character."""
 
     character = models.ForeignKey(
@@ -443,7 +444,7 @@ class CharacterMailLabel(models.Model):
         return self.name
 
 
-class CharacterMailUnreadCount(models.Model):
+class CharacterMailUnreadCount(AddGenericReprMixin, models.Model):
     """The mail unread count of a character."""
 
     character = models.OneToOneField(
@@ -456,3 +457,6 @@ class CharacterMailUnreadCount(models.Model):
 
     class Meta:
         default_permissions = ()
+
+    def __str__(self):
+        return str(self.character)

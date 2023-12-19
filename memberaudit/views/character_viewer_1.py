@@ -89,6 +89,8 @@ def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
     "online_status",
     "ship",
     "ship__eve_type",
+    "clone_info__home_location",
+    "clone_info__home_location__eve_solar_system",
 )
 def character_viewer(request, character_pk: int, character: Character) -> HttpResponse:
     """Main view for showing a character with all details.

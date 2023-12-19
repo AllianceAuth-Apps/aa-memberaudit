@@ -611,13 +611,11 @@
                         "location_type": "station",
                         "name": null
                     }
-                ]
+                ],
+                "last_clone_jump_date": "2017-01-01T10:10:10Z",
+                "last_station_change_date": "2017-01-02T11:10:10Z"
             },
             "1002": {
-                "home_location": {
-                    "location_id": 1000000000001,
-                    "location_type": "structure"
-                },
                 "jump_clones": [
                     {
                         "implants": null,

@@ -220,7 +220,7 @@ Make sure to stop all supervisors before using this command.
 
 ### memberaudit_stats
 
-This command returns current statistics as JSON, i.e. current update statistics and app totals. This includes:
+This command returns current statistics:
 
 - Object counts for all character sections (e.g. asset items)
 - Current Member Audit settings
@@ -228,7 +228,7 @@ This command returns current statistics as JSON, i.e. current update statistics 
 
 ### memberaudit_update_characters
 
-Start the process of force updating all characters from ESI.
+Start updating characters from ESI. You can choose to update all or specific sections.
 
 ## Configuring celery workers
 
