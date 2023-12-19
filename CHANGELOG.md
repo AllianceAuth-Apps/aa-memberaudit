@@ -7,13 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.6.0] - TBD
+## [3.6.0] - 2023-12-19
 
 >**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
 
 >**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
 
-After updating to this new version and completed restarting your Alliance Auth server, please run the following command to ensure the new home location is properly updated for all characters:
+After updating to this new version and completing the restart of your Alliance Auth server, please run the following command to ensure the new home location is properly updated for all characters:
 
 ```sh
 python manage.py memberaudit_update_characters jump_clones
