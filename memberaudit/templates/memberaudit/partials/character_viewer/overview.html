@@ -146,6 +146,9 @@
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
 
+                            <dt>{% translate 'System:' %}</dt>
+                            <dd>{% include 'memberaudit/partials/solar_system.html' with character=character only %}</dd>
+
                             <dt>{% translate 'Ship:' %}</dt>
                             {% if character.ship %}
                                 <dd>{{ character.ship.eve_type.name }}</dd>
@@ -153,8 +156,12 @@
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
 
-                            <dt>{% translate 'System:' %}</dt>
-                            <dd>{% include 'memberaudit/partials/solar_system.html' with character=character only %}</dd>
+                            <dt>{% translate 'Home:' %}</dt>
+                            {% if character.clone_info and character.clone_info.home_location %}
+                                <dd>{{ character.clone_info.home_location.name_plus }}</dd>
+                            {% else %}
+                                <dd class="text-muted">{{no_data}}</dd>
+                            {% endif %}
 
                             <dt>{% translate 'Last Login:' %}</dt>
                             {% if character.online_status.last_login %}
