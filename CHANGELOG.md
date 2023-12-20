@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.7.0] - 2023-12-21
+
+>**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
+
+>**IMPORTANT**: When updating from a version prior to 3.0.0, please see the important update notes for 3.0.0 first!
+
+### Changed
+
+- Added support for AA4
+
 ## [3.6.0] - 2023-12-19
 
 >**IMPORTANT**: When updating from a version prior to 3.4.0, please see the important update notes for 3.4.0 first!
