@@ -1,17 +1,15 @@
 """
 Test auth_hooks
 """
-
-# Standard Library
 from http import HTTPStatus
 
-# Django
-from django.test import TestCase
+from django.test import TestCase, tag
 from django.urls import reverse
 
 from app_utils.testing import create_fake_user
 
 
+@tag("breaks_with_aa4")  # FIXME: Find solution
 class TestHooks(TestCase):
     """
     Test the app hook into allianceauth
