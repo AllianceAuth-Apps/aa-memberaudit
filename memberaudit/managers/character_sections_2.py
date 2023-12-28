@@ -463,6 +463,7 @@ class CharacterLoyaltyEntryManager(GenericUpdateSimpleObjMixin, models.Manager):
             esi_fields=("corporation_id", "loyalty_points"),
             model_fields=("corporation_id", "loyalty_points"),
             make_obj_from_esi_entry=make_obj_from_esi_entry,
+            return_new_eve_entities=True,
         )
 
 

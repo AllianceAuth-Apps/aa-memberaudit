@@ -639,6 +639,7 @@ class CharacterStandingManager(GenericUpdateSimpleObjMixin, models.Manager):
             esi_fields=("from_id", "standing"),
             model_fields=("eve_entity_id", "standing"),
             make_obj_from_esi_entry=make_obj_from_esi_entry,
+            return_new_eve_entities=True,
         )
 
 
@@ -674,7 +675,7 @@ class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
             obj = self.model(character=character, title_id=key, name=name_sanitized)
             return obj
 
-        return self._update_or_create_objs_generic(
+        self._update_or_create_objs_generic(
             character,
             esi_data,
             esi_fields=("title_id", "name"),

@@ -1,11 +1,10 @@
 """Delete all character section data."""
 
-import logging
-
 from tqdm import tqdm
 
 from django.core.management.base import BaseCommand
 
+from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
@@ -16,7 +15,7 @@ from memberaudit.tasks import update_all_characters
 
 from . import get_input
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class Command(BaseCommand):
