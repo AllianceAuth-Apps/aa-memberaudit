@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.7.1] - 2023-12-27
+
+>**IMPORTANT**: When updating from a version prior to 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Fixed
+
+- Title IDs are wrongly interpreted as EveEntity IDs and create unnecessary ESI errors
+
 ## [3.7.0] - 2023-12-21
 
 >**IMPORTANT**: When updating from a version prior to 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!

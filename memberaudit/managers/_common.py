@@ -32,10 +32,12 @@ class GenericUpdateSimpleObjMixin:
         esi_fields: Sequence[str],
         model_fields: Sequence[str],
         make_obj_from_esi_entry: Callable,
+        return_new_eve_entities: bool = False,
     ) -> Set[int]:
         """Update or create objs from esi data.
 
-        Optionally returns eve_entity_ids from all new objs.
+        Optionally returns EveEntity IDs from new objs,
+        which can then be resolved in bulk.
         """
         if not esi_data:
             self.filter(character=character).delete()
@@ -45,7 +47,7 @@ class GenericUpdateSimpleObjMixin:
         current_entries = {obj[0]: obj[1] for obj in self.values_list(*model_fields)}
         incoming_entries = {obj[esi_fields[0]]: obj[esi_fields[1]] for obj in esi_data}
 
-        new_eve_entity_ids = self._create_new_objs(
+        new_entries_keys = self._create_new_objs(
             character, current_entries, incoming_entries, make_obj_from_esi_entry
         )
         self._update_modified_objs(
@@ -59,7 +61,10 @@ class GenericUpdateSimpleObjMixin:
             character, current_entries, incoming_entries, key_field=model_fields[0]
         )
 
-        return new_eve_entity_ids
+        if return_new_eve_entities:
+            return new_entries_keys
+
+        return set()
 
     def _create_new_objs(
         self,
@@ -68,6 +73,7 @@ class GenericUpdateSimpleObjMixin:
         incoming_entries: dict,
         make_obj_from_esi_entry: Callable,
     ) -> Set[int]:
+        """Create new objects. Returns keys from new objects."""
         new_entries = {
             entity_id: standing
             for entity_id, standing in incoming_entries.items()
