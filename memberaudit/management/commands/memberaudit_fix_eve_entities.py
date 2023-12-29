@@ -33,7 +33,11 @@ class Command(BaseCommand):
         to_delete_count = objs_to_delete.count()
 
         if not to_delete_count:
-            self.stdout.write("No matching entities found. Aborting.")
+            self.stdout.write(
+                self.style.SUCCESS(
+                    "No matching EveEntity objects found. No fix required."
+                )
+            )
             return
 
         response = self._ask_user(options, to_delete_count)
@@ -63,7 +67,7 @@ class Command(BaseCommand):
             f"Found {to_delete_count} unresolved and orphaned EveEntity objects, "
             "which can be safely removed."
         )
-        self.stdout.write("Do you want to delete these objects? ")
+        self.stdout.write("Do you want to delete these objects? ", ending="")
         response = input("(Y/n)")
         return response
 
