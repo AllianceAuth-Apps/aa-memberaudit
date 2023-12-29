@@ -7,7 +7,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.7.1] - 2023-12-27
+## [3.7.2] - 2023-12-29
+
+>**IMPORTANT**: When updating from a version prior to 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Update notes
+
+In version 3.5.0 a bug was introduced, which could cause the creation of invalid EveEntity objects (See also issue #156). These can not be resolved and will remain in your system causing problems. Any other app, which tries to resolve them, will run into exceptions.
+
+To remedy this situation we are providing a tool, which allows you to safely remove these invalid EveEntity objects. The bug itself was fixed with 3.7.1.
+
+Please run the following command after installing this update and follow the onscreen instructions:
+
+```sh
+python manage.py memberaudit_fix_eve_entities
+```
+
+### Added
+
+- Tool for removing invalid EveEntity objects which were created by issue #156
+
+## [3.7.1] - 2023-12-28
 
 >**IMPORTANT**: When updating from a version prior to 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
 

@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Tuple
+from typing import Any, Tuple
 
 from django.contrib.auth.models import Permission, User
 from django.db.models import QuerySet
@@ -85,7 +85,7 @@ def scope_names_set(token: Token) -> set:
     return set(token.scopes.values_list("name", flat=True))
 
 
-def json_response_to_python_2(response: JsonResponse, data_key="data") -> object:
+def json_response_to_python_2(response: JsonResponse, data_key="data") -> Any:
     """Convert JSON response into Python object."""
     data = json.loads(response_text(response))
     return data[data_key]
