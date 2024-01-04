@@ -777,6 +777,9 @@ def update_character_mails_headers_and_bodies(
             mails_to_fetch = mails_to_fetch.filter(body="")
 
         priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+        logger.info(
+            "%s: Loading %d mail bodies from ESI", character, mails_to_fetch.count()
+        )
         for mail_id in mails_to_fetch.values_list("mail_id", flat=True):
             update_mail_body_esi.apply_async(
                 kwargs={
@@ -786,9 +789,6 @@ def update_character_mails_headers_and_bodies(
                 },
                 priority=priority,
             )
-        logger.info(
-            "%s: Started loading %s mail bodies from ESI", character, len(mail_ids)
-        )
 
     # the last task in the chain logs success (if any)
     character.update_section_log_result(
