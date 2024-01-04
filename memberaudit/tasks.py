@@ -771,9 +771,13 @@ def update_character_mails_headers_and_bodies(
         force_update=force_update,
     )
     if result.is_changed or force_update:
-        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         mail_ids = result.data.keys()
-        for mail_id in mail_ids:
+        mails_to_fetch = character.mails.filter(mail_id__in=mail_ids)
+        if not force_update:
+            mails_to_fetch = mails_to_fetch.filter(body="")
+
+        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+        for mail_id in mails_to_fetch.values_list("mail_id", flat=True):
             update_mail_body_esi.apply_async(
                 kwargs={
                     "character_pk": character.pk,

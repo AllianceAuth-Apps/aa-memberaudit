@@ -711,79 +711,20 @@ class TestUpdateCharacterMails(TestCase):
         cls.character_1001 = create_memberaudit_character(1001)
         reset_celery_once_locks()
 
-    def test_should_update_mails_from_scratch_and_report_success(
-        self, mock_esi_general, mock_esi_sections
-    ):
-        # given
-        mock_esi_general.client = esi_client_stub
-        mock_esi_sections.client = esi_client_stub
-
-        # when
-        tasks.update_character_mails.delay(self.character_1001.pk, True)
-
-        # then
-        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.MAILS
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.error_message)
-        self.assertTrue(status.run_started_at)
-        self.assertTrue(status.run_finished_at)
-        self.assertTrue(status.update_started_at)
-        self.assertTrue(status.update_finished_at)
-        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
-        self.assertSetEqual(mail_ids, {1, 2, 3})
-        mail = self.character_1001.mails.get(mail_id=1)
-        self.assertEqual(mail.subject, "Mail 1")
-        self.assertEqual(mail.body, "blah blah blah 😓")
-
-    # TODO: Add test to check force update works
-
-    def test_should_report_error_when_update_failed(
-        self, mock_esi_general, mock_esi_sections
-    ):
-        # given
-        exception = build_http_error(502, "Test exception")
-        mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
-            exception
-        )
-        # when
-        with self.assertRaises(HTTPError):
-            tasks.update_character_mails(self.character_1001.pk, True)
-
-        # then
-        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.MAILS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-        self.assertTrue(status.run_started_at)
-        self.assertTrue(status.run_finished_at)
-        self.assertIsNone(status.update_started_at)
-        self.assertIsNone(status.update_finished_at)
-
-    def test_should_only_fetch_body_for_new_mails(
-        self, mock_esi_general, mock_esi_sections
-    ):
-        # given
-        sender = create_mail_entity_from_eve_entity(1002)
-        recipient = create_mail_entity_from_eve_entity(1001)
-        create_character_mail(
-            character=self.character_1001,
-            recipients=[recipient],
-            mail_id=1,
-            sender=sender,
-            subject="subject 1",
-            body="body 1",
-            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
-        )
         endpoints = [
             EsiEndpoint(
                 "Mail",
                 "get_characters_character_id_mail_lists",
                 "character_id",
                 needs_token=True,
-                data={"1001": []},
+                data={
+                    "1001": [
+                        {
+                            "mailing_list_id": 9001,
+                            "name": "Dummy 1",
+                        }
+                    ]
+                },
             ),
             EsiEndpoint(
                 "Mail",
@@ -792,7 +733,14 @@ class TestUpdateCharacterMails(TestCase):
                 needs_token=True,
                 data={
                     "1001": {
-                        "labels": [],
+                        "labels": [
+                            {
+                                "color": "#660066",
+                                "label_id": 1,
+                                "name": "PINK",
+                                "unread_count": 7,
+                            }
+                        ],
                         "total_unread_count": 1,
                     }
                 },
@@ -815,8 +763,8 @@ class TestUpdateCharacterMails(TestCase):
                             "timestamp": "2015-09-30T18:07:00Z",
                         },
                         {
-                            "from": 1002,
-                            "labels": None,
+                            "from": 9001,
+                            "labels": [1],
                             "mail_id": 2,
                             "recipients": [
                                 {"recipient_id": 1001, "recipient_type": "character"}
@@ -843,8 +791,8 @@ class TestUpdateCharacterMails(TestCase):
                     },
                     "2": {
                         "body": "body 2",
-                        "from": 1002,
-                        "labels": None,
+                        "from": 9001,
+                        "labels": [1],
                         "read": False,
                         "subject": "subject 2",
                         "timestamp": "2015-09-30T18:07:00Z",
@@ -852,15 +800,94 @@ class TestUpdateCharacterMails(TestCase):
                 },
             ),
         ]
-        esi_client_stub = EsiClientStub.create_from_endpoints(endpoints)
-        mock_esi_general.client = esi_client_stub
-        mock_esi_sections.client = esi_client_stub
+        cls.esi_client_stub = EsiClientStub.create_from_endpoints(endpoints)
+
+    def test_should_update_mails_from_scratch_and_report_success(
+        self, mock_esi_general, mock_esi_sections
+    ):
+        # given
+        mock_esi_general.client = self.esi_client_stub
+        mock_esi_sections.client = self.esi_client_stub
+
+        # when
+        tasks.update_character_mails.delay(self.character_1001.pk, True)
+
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.MAILS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+
+        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+        self.assertSetEqual(mail_ids, {1, 2})
+
+        mail = self.character_1001.mails.get(mail_id=1)
+        self.assertEqual(mail.subject, "subject 1")
+        self.assertEqual(mail.body, "body 1")
+
+        mail = self.character_1001.mails.get(mail_id=2)
+        self.assertEqual(mail.subject, "subject 2")
+        self.assertEqual(mail.body, "body 2")
+        label_ids = set(mail.labels.values_list("label_id", flat=True))
+        self.assertEqual(label_ids, {1})
+
+    # TODO: Add test to check force update works
+
+    def test_should_report_error_when_update_failed(
+        self, mock_esi_general, mock_esi_sections
+    ):
+        # given
+        mock_esi_general.client = self.esi_client_stub
+        exception = build_http_error(502, "Test exception")
+        mock_esi_sections.client.Mail.get_characters_character_id_mail_labels.side_effect = (
+            exception
+        )
+        # when
+        with self.assertRaises(HTTPError):
+            tasks.update_character_mails(self.character_1001.pk, True)
+
+        # then
+        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
+            section=Character.UpdateSection.MAILS
+        )
+        self.assertFalse(status.is_success)
+        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
+        self.assertTrue(status.run_started_at)
+        self.assertTrue(status.run_finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
+
+    def test_should_only_fetch_body_for_new_mails(
+        self, mock_esi_general, mock_esi_sections
+    ):
+        # given
+        mock_esi_general.client = self.esi_client_stub
+        mock_esi_sections.client = self.esi_client_stub
+
+        sender = create_mail_entity_from_eve_entity(1002)
+        recipient = create_mail_entity_from_eve_entity(1001)
+        create_character_mail(
+            character=self.character_1001,
+            recipients=[recipient],
+            mail_id=1,
+            sender=sender,
+            subject="subject 1",
+            body="body 1",
+            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
+        )
 
         # when
         with patch(
             TASKS_PATH + ".update_mail_body_esi", wraps=tasks.update_mail_body_esi
         ) as spy_update_mail_body_esi:
-            tasks.update_character_mails.delay(self.character_1001.pk, False)
+            tasks.update_character_mails.delay(
+                self.character_1001.pk, force_update=False
+            )
 
             # then
             mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
@@ -875,6 +902,47 @@ class TestUpdateCharacterMails(TestCase):
             self.assertEqual(mail.body, "body 2")
 
             self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 1)
+
+    def test_should_fetch_body_for_all_mails_from_header_when_forced(
+        self, mock_esi_general, mock_esi_sections
+    ):
+        # given
+        mock_esi_general.client = self.esi_client_stub
+        mock_esi_sections.client = self.esi_client_stub
+
+        sender = create_mail_entity_from_eve_entity(1002)
+        recipient = create_mail_entity_from_eve_entity(1001)
+        create_character_mail(
+            character=self.character_1001,
+            recipients=[recipient],
+            mail_id=1,
+            sender=sender,
+            subject="subject 1",
+            body="body 1",
+            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
+        )
+
+        # when
+        with patch(
+            TASKS_PATH + ".update_mail_body_esi", wraps=tasks.update_mail_body_esi
+        ) as spy_update_mail_body_esi:
+            tasks.update_character_mails.delay(
+                self.character_1001.pk, force_update=True
+            )
+
+            # then
+            mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+            self.assertSetEqual(mail_ids, {1, 2})
+
+            mail = self.character_1001.mails.get(mail_id=1)
+            self.assertEqual(mail.subject, "subject 1")
+            self.assertEqual(mail.body, "body 1")
+
+            mail = self.character_1001.mails.get(mail_id=2)
+            self.assertEqual(mail.subject, "subject 2")
+            self.assertEqual(mail.body, "body 2")
+
+            self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 2)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
