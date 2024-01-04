@@ -1,5 +1,3 @@
-"""Old style asset tests."""
-
 import datetime as dt
 from typing import Dict
 from unittest.mock import patch
@@ -8,6 +6,7 @@ from bravado.exception import HTTPError
 from celery.exceptions import Retry as CeleryRetry
 
 from django.test import TestCase, override_settings, tag
+from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveSolarSystem, EveType
@@ -15,7 +14,7 @@ from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
-from app_utils.esi_testing import build_http_error
+from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import (  # NoSocketsTestCase,
     create_authgroup,
     create_user_from_evecharacter,
@@ -30,8 +29,10 @@ from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
     create_character_asset,
+    create_character_mail,
     create_character_update_status,
     create_compliance_group_designation,
+    create_mail_entity_from_eve_entity,
 )
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
@@ -707,18 +708,14 @@ class TestUpdateCharacterMails(TestCase):
         super().setUpClass()
         load_eveuniverse()
         load_entities()
-        load_locations()
         cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
-        )
         reset_celery_once_locks()
 
-    def test_should_report_success_when_update_is_completed_successfully(
-        self, mock_esi_character, mock_esi_sections
+    def test_should_update_mails_from_scratch_and_report_success(
+        self, mock_esi_general, mock_esi_sections
     ):
         # given
-        mock_esi_character.client = esi_client_stub
+        mock_esi_general.client = esi_client_stub
         mock_esi_sections.client = esi_client_stub
 
         # when
@@ -743,13 +740,10 @@ class TestUpdateCharacterMails(TestCase):
     # TODO: Add test to check force update works
 
     def test_should_report_error_when_update_failed(
-        self, mock_esi_character, mock_esi_sections
+        self, mock_esi_general, mock_esi_sections
     ):
         # given
         exception = build_http_error(502, "Test exception")
-        mock_esi_character.client.Mail.get_characters_character_id_mail_lists.side_effect = (
-            exception
-        )
         mock_esi_sections.client.Mail.get_characters_character_id_mail_lists.side_effect = (
             exception
         )
@@ -767,6 +761,120 @@ class TestUpdateCharacterMails(TestCase):
         self.assertTrue(status.run_finished_at)
         self.assertIsNone(status.update_started_at)
         self.assertIsNone(status.update_finished_at)
+
+    def test_should_only_fetch_body_for_new_mails(
+        self, mock_esi_general, mock_esi_sections
+    ):
+        # given
+        sender = create_mail_entity_from_eve_entity(1002)
+        recipient = create_mail_entity_from_eve_entity(1001)
+        create_character_mail(
+            character=self.character_1001,
+            recipients=[recipient],
+            mail_id=1,
+            sender=sender,
+            subject="subject 1",
+            body="body 1",
+            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
+        )
+        endpoints = [
+            EsiEndpoint(
+                "Mail",
+                "get_characters_character_id_mail_lists",
+                "character_id",
+                needs_token=True,
+                data={"1001": []},
+            ),
+            EsiEndpoint(
+                "Mail",
+                "get_characters_character_id_mail_labels",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "labels": [],
+                        "total_unread_count": 1,
+                    }
+                },
+            ),
+            EsiEndpoint(
+                "Mail",
+                "get_characters_character_id_mail",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "from": 1002,
+                            "labels": None,
+                            "mail_id": 1,
+                            "recipients": [
+                                {"recipient_id": 1001, "recipient_type": "character"}
+                            ],
+                            "subject": "subject 1",
+                            "timestamp": "2015-09-30T18:07:00Z",
+                        },
+                        {
+                            "from": 1002,
+                            "labels": None,
+                            "mail_id": 2,
+                            "recipients": [
+                                {"recipient_id": 1001, "recipient_type": "character"}
+                            ],
+                            "subject": "subject 2",
+                            "timestamp": "2015-09-30T19:07:00Z",
+                        },
+                    ]
+                },
+            ),
+            EsiEndpoint(
+                "Mail",
+                "get_characters_character_id_mail_mail_id",
+                "mail_id",
+                needs_token=True,
+                data={
+                    "1": {
+                        "body": "body 1",
+                        "from": 1002,
+                        "labels": None,
+                        "read": True,
+                        "subject": "subject 1",
+                        "timestamp": "2015-09-30T18:07:00Z",
+                    },
+                    "2": {
+                        "body": "body 2",
+                        "from": 1002,
+                        "labels": None,
+                        "read": False,
+                        "subject": "subject 2",
+                        "timestamp": "2015-09-30T18:07:00Z",
+                    },
+                },
+            ),
+        ]
+        esi_client_stub = EsiClientStub.create_from_endpoints(endpoints)
+        mock_esi_general.client = esi_client_stub
+        mock_esi_sections.client = esi_client_stub
+
+        # when
+        with patch(
+            TASKS_PATH + ".update_mail_body_esi", wraps=tasks.update_mail_body_esi
+        ) as spy_update_mail_body_esi:
+            tasks.update_character_mails.delay(self.character_1001.pk, False)
+
+            # then
+            mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+            self.assertSetEqual(mail_ids, {1, 2})
+
+            mail = self.character_1001.mails.get(mail_id=1)
+            self.assertEqual(mail.subject, "subject 1")
+            self.assertEqual(mail.body, "body 1")
+
+            mail = self.character_1001.mails.get(mail_id=2)
+            self.assertEqual(mail.subject, "subject 2")
+            self.assertEqual(mail.body, "body 2")
+
+            self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 1)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
