@@ -454,7 +454,7 @@ class CharacterContractItem(AddGenericReprMixin, models.Model):
     contract = models.ForeignKey(
         CharacterContract, on_delete=models.CASCADE, related_name="items"
     )
-    record_id = models.PositiveIntegerField(db_index=True)
+    record_id = models.PositiveBigIntegerField(db_index=True)
 
     is_included = models.BooleanField(db_index=True)
     is_singleton = models.BooleanField()
