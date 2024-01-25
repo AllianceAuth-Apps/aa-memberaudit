@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.7.5] - 2024-01-25
+
+>**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Fixed
+
+- memberaudit.tasks.update_character_roles KeyError (#159)
+
 ## [3.7.4] - 2024-01-17
 
 >**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
