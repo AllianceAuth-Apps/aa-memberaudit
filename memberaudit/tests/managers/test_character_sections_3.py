@@ -380,6 +380,31 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
         self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
 
+    # this catches #159
+    def test_should_handle_unknown_roles_gracefully(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_roles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "roles": ["Station_Manager", "My_Unknown_Role"],
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        self.character_1001.update_roles()
+        # then
+        self.assertEqual(self.character_1001.roles.count(), 1)
+        obj = self.character_1001.roles.first()
+        self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
+        self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
+
 
 @patch(MANAGERS_PATH + ".esi")
 class TestCharacterShipManager(NoSocketsTestCase):

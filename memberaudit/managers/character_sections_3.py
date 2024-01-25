@@ -229,7 +229,12 @@ class CharacterRoleManager(models.Manager):
         for location_name, roles in roles_data.items():
             location = location_map[location_name]
             for role_name in roles:
-                role = roles_map[role_name]
+                try:
+                    role = roles_map[role_name]
+                except KeyError:
+                    logger.warning("Ignoring unknown role: %s", role_name)
+                    continue
+
                 if (location, role) in to_remove:
                     # if we already have the role, don't remove it
                     to_remove.remove((location, role))
