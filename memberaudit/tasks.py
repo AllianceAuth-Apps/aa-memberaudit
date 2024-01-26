@@ -918,6 +918,7 @@ def update_character_contracts_items(self, character_pk: int):
             contract_type__in=[
                 CharacterContract.TYPE_ITEM_EXCHANGE,
                 CharacterContract.TYPE_AUCTION,
+                # Courier contracts have no items
             ],
             items__isnull=True,
         ).values_list("pk", flat=True)

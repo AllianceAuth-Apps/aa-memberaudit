@@ -745,7 +745,7 @@ class CharacterContractItemManagerBase(models.Manager):
             contract.contract_id,
             len(items_data),
         )
-        items = [
+        items = [  # TODO: Access ESI data with keys, not get for all mandatory fields
             self.model(
                 contract=contract,
                 record_id=item.get("record_id"),
