@@ -17,7 +17,7 @@ from memberaudit.tests.utils import (
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
-from memberaudit.views.characters import (
+from memberaudit.views.launcher import (
     add_character,
     index,
     launcher,
@@ -26,7 +26,7 @@ from memberaudit.views.characters import (
     unshare_character,
 )
 
-MODULE_PATH = "memberaudit.views.characters"
+MODULE_PATH = "memberaudit.views.launcher"
 
 
 class TestCharacterViews(TestCase):

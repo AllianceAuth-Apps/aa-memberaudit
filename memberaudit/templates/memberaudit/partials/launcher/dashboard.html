@@ -1,0 +1,135 @@
+{% load i18n %}
+{% load humanize %}
+
+
+<div id="memberaudit-dashboard">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <div class="panel-title">{% translate 'Dashboard' %}</div>
+        </div>
+
+        <div class="panel-body">
+            <div class="memberaudit-dashboard-panels">
+                <!-- Online Players -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-default memberaudit-dasboard-item-icon">
+                            <i class="fas fa-server"></i>
+                            {% comment %} <i class="fa-solid fa-server"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Online Players" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ player_count|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Registered characters -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-danger memberaudit-dasboard-item-icon">
+                            <i class="fas fa-user-friends"></i>
+                            {% comment %} <i class="fa-solid fa-user-group"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Registered Characters" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ registered_count|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total character ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-info memberaudit-dasboard-item-icon">
+                            <i class="fas fa-wallet"></i>
+                            {% comment %} <i class="fa-solid fa-wallet"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Character ISK" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ total_character_isk|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Mining ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-primary memberaudit-dasboard-item-icon">
+                            <i class="far fa-gem"></i>
+                            {% comment %} <i class="fa-regular fa-gem"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Mined ISK" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ total_mined_isk|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Ratted ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-warning memberaudit-dasboard-item-icon">
+                            <i class="far fa-money-bill-alt"></i>
+                            {% comment %} <i class="fa-regular fa-money-bill-1"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Ratted ISK" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ total_ratted_isk|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Character Skillpoints -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="btn btn-success memberaudit-dasboard-item-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                            {% comment %} <i class="fa-solid fa-graduation-cap"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Character Skillpoints" %}:
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ total_character_skillpoints|intcomma }}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
