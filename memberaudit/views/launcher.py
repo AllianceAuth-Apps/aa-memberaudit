@@ -156,9 +156,9 @@ def add_character(request, token) -> HttpResponse:
     """Render add character view."""
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)
     with transaction.atomic():
-        character, _ = Character.objects.update_or_create(
+        character = Character.objects.update_or_create(
             eve_character=eve_character, defaults={"is_disabled": False}
-        )
+        )[0]
     tasks.update_character.apply_async(
         kwargs={
             "character_pk": character.pk,

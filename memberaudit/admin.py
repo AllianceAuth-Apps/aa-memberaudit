@@ -17,7 +17,7 @@ from django.http.request import HttpRequest
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
 from django.utils.timezone import now
-from django.utils.translation import gettext_lazy as __
+from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveType
 
 from allianceauth.authentication.models import State
@@ -51,7 +51,7 @@ class AddDeleteObjects:
             del actions["delete_selected"]
         return actions
 
-    @admin.action(description=__("Delete selected objects"))
+    @admin.action(description=_("Delete selected objects"))
     def delete_objects(self, request, queryset):
         if "apply" in request.POST:
             pks = list(queryset.values_list("pk", flat=True))
@@ -62,7 +62,7 @@ class AddDeleteObjects:
             )  # type: ignore
             self.message_user(
                 request,
-                __("Started deleting %d %s objects. This can take a minute.")
+                _("Started deleting %d %s objects. This can take a minute.")
                 % (len(pks), model_name),
             )
             return redirect(request.get_full_path())
@@ -71,7 +71,7 @@ class AddDeleteObjects:
             request,
             "admin/memberaudit/confirm_deleting_objects.html",
             {
-                "title": __("Are you sure you want to delete these objects?"),
+                "title": _("Are you sure you want to delete these objects?"),
                 "queryset": queryset.all(),
                 "action": "delete_objects",
             },
@@ -121,7 +121,7 @@ class ComplianceGroupDesignationAdmin(admin.ModelAdmin):
     def _group_name(self, obj) -> str:
         return obj.group.name
 
-    @admin.display(description=__("Restricted to states"))
+    @admin.display(description=_("Restricted to states"))
     def _states(self, obj):
         states = [state.name for state in obj.group.authgroup.states.all()]
         return sorted(states) if states else "-"
@@ -223,7 +223,7 @@ class CharacterUpdateStatusAdminInline(admin.TabularInline):
 class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
     """Custom filter for update status with counts."""
 
-    title = __("update status")
+    title = _("update status")
     parameter_name = "total_update_status"
 
     def lookups(self, request, model_admin):
@@ -249,7 +249,7 @@ class CharacterUpdateStatusListFilter(admin.SimpleListFilter):
 class CharacterStateListFilter(admin.SimpleListFilter):
     """Custom state filter to include filtering of characters without main."""
 
-    title = __("state")
+    title = _("state")
     parameter_name = "state"
     _NO_MAIN_KEY = "_NO_MAIN"
 
@@ -275,7 +275,7 @@ class CharacterStateListFilter(admin.SimpleListFilter):
         count_no_main = qs.filter(
             eve_character__character_ownership__isnull=True
         ).count()
-        result.append((self._NO_MAIN_KEY, __("No main") + f" ({count_no_main:,})"))
+        result.append((self._NO_MAIN_KEY, _("No main") + f" ({count_no_main:,})"))
         return result
 
     def queryset(self, request, queryset):
@@ -303,7 +303,7 @@ def generic_action_update_section(
 
     modeladmin.message_user(
         request,
-        __("Started updating %(section)s for %(count)s characters.")
+        _("Started updating %(section)s for %(count)s characters.")
         % {"section": section.label, "count": queryset.count()},
     )
 
@@ -402,19 +402,17 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             '<img src="{}" class="img-circle">', character.portrait_url(size=32)
         )
 
-    @admin.display(
-        ordering="eve_character__character_name", description=__("character")
-    )
+    @admin.display(ordering="eve_character__character_name", description=_("character"))
     def _character(self, obj: Character) -> str:
         return str(obj.eve_character)
 
-    @admin.display(ordering="is_disabled", boolean=True, description=__("enabled"))
+    @admin.display(ordering="is_disabled", boolean=True, description=_("enabled"))
     def _enabled(self, obj: Character) -> bool:
         return not obj.is_disabled
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character",
-        description=__("main"),
+        description=_("main"),
     )
     def _main(self, obj: Character) -> Optional[str]:
         try:
@@ -425,7 +423,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__state__name",
-        description=__("state"),
+        description=_("state"),
     )
     def _state(self, obj: Character) -> Optional[str]:
         try:
@@ -435,7 +433,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character__corporation_name",
-        description=__("organization"),
+        description=_("organization"),
     )
     def _organization(self, obj: Character) -> Optional[str]:
         if not obj.main_character:
@@ -445,7 +443,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             result += f" [{obj.main_character.alliance_ticker}]"
         return result
 
-    @admin.display(ordering="total_update_status", description=__("update status"))
+    @admin.display(ordering="total_update_status", description=_("update status"))
     def _update_status(self, obj: Character):
         update_status_obj = Character.TotalUpdateStatus(obj.total_update_status)
         label = update_status_obj.label.title()
@@ -455,11 +453,11 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             '<span class="{}" title="{}">{}</span>', css_class, description, label
         )
 
-    @admin.display(ordering="created_at", description=__("created"))
+    @admin.display(ordering="created_at", description=_("created"))
     def _created_at(self, obj: Character):
         return obj.created_at
 
-    @admin.display(ordering="last_update_at", description=__("last update run"))
+    @admin.display(ordering="last_update_at", description=_("last update run"))
     def _last_update_at(self, obj: Character):
         return naturaltime(obj.last_update_at) if obj.last_update_at else "-"
 
@@ -471,7 +469,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             return sorted(obj.label for obj in missing_sections)
         return None
 
-    @admin.action(description=__("Update all for selected characters"))
+    @admin.action(description=_("Update all for selected characters"))
     def update_characters(self, request, queryset):
         for obj in queryset:
             tasks.update_character.apply_async(
@@ -484,24 +482,24 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
             )  # type: ignore
 
         self.message_user(
-            request, __("Started updating %d characters.") % queryset.count()
+            request, _("Started updating %d characters.") % queryset.count()
         )
 
     @admin.action(
-        description=__("Enable selected characters and reset token notifications")
+        description=_("Enable selected characters and reset token notifications")
     )
     def enable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(
             is_disabled=False, token_error_notified_at=None
         )
-        self.message_user(request, __("Enabled %d characters.") % len(pks))
+        self.message_user(request, _("Enabled %d characters.") % len(pks))
 
-    @admin.action(description=__("Disable selected characters"))
+    @admin.action(description=_("Disable selected characters"))
     def disable_characters(self, request, queryset):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
-        self.message_user(request, __("Disabled %d characters.") % len(pks))
+        self.message_user(request, _("Disabled %d characters.") % len(pks))
 
     def has_add_permission(self, request):
         return False
@@ -518,7 +516,7 @@ class LocationCategory(TextChoices):
 
 
 class LocationCategoryListFilter(admin.SimpleListFilter):
-    title = __("category")
+    title = _("category")
     parameter_name = "category"
 
     def lookups(self, request, model_admin):
@@ -578,19 +576,19 @@ class LocationAdmin(admin.ModelAdmin):
     def has_change_permission(self, request, obj=None):
         return False
 
-    @admin.display(ordering="name", description=__("name"))
+    @admin.display(ordering="name", description=_("name"))
     def _name(self, obj):
         return obj.name_plus
 
-    @admin.display(ordering="eve_solar_system__name", description=__("solar system"))
+    @admin.display(ordering="eve_solar_system__name", description=_("solar system"))
     def _solar_system(self, obj):
         return obj.eve_solar_system.name if obj.eve_solar_system else None
 
-    @admin.display(ordering="eve_type__name", description=__("type"))
+    @admin.display(ordering="eve_type__name", description=_("type"))
     def _type(self, obj):
         return obj.eve_type.name if obj.eve_type else None
 
-    @admin.display(ordering="eve_type__eve_group__name", description=__("group"))
+    @admin.display(ordering="eve_type__eve_group__name", description=_("group"))
     def _group(self, obj):
         return obj.eve_type.eve_group.name if obj.eve_type else None
 
@@ -654,7 +652,7 @@ class SkillSetSkillAdminFormSet(BaseInlineFormSet):
                     ):
                         eve_type = row.get("eve_type")
                         raise ValidationError(
-                            __("Skill '%s' must have a level.") % eve_type.name
+                            _("Skill '%s' must have a level.") % eve_type.name
                         )
 
 
@@ -785,9 +783,9 @@ class SkillSetAdmin(AddDeleteObjects, admin.ModelAdmin):
             kwargs={"force_update": True}, priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
         )  # type: ignore
 
-    @admin.action(description=__("Clone selected skill sets"))
+    @admin.action(description=_("Clone selected skill sets"))
     def clone_skill_sets(self, request, queryset):
         for obj in queryset:
             obj.clone(request.user)
 
-        self.message_user(request, __("Cloned %d skill sets.") % queryset.count())
+        self.message_user(request, _("Cloned %d skill sets.") % queryset.count())

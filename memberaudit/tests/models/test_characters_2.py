@@ -633,7 +633,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         # then
         self.assertTrue(fetch_func_mock.called)
         self.assertTrue(mock_bulk_resolve_ids.called)
-        args, __ = mock_bulk_resolve_ids.call_args
+        args, _ = mock_bulk_resolve_ids.call_args
         self.assertListEqual(args[0], [1, 2])
 
     @patch(MODULE_PATH + ".EveEntity.objects.bulk_resolve_ids")
