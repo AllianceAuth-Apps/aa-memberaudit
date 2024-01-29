@@ -25,7 +25,6 @@ pre-commit:
         - pip install pre-commit
     script:
         - pre-commit run --all-files
-    allow_failure: true
 
 .tox_setup:
     stage: test
@@ -42,6 +41,7 @@ pylint:
     image: python:3.10-bullseye
     script:
         - tox -e pylint
+    allow_failure: true
 
 test-py38-dj40:
     extends: .tox_setup
