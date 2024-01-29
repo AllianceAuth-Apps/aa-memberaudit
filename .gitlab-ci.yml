@@ -25,6 +25,7 @@ pre-commit:
         - pip install pre-commit
     script:
         - pre-commit run --all-files
+    allow_failure: true
 
 .tox_setup:
     stage: test

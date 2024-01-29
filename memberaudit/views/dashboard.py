@@ -1,5 +1,7 @@
+"""Dashboard views."""
+
 from django.db.models import Sum
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.shortcuts import render
 from django.utils.translation import gettext_lazy as _
 
@@ -15,7 +17,7 @@ from memberaudit.providers import esi
 from ._common import add_common_context
 
 
-def my_dashboard(request: HttpRequest):
+def my_dashboard(request: HttpRequest) -> HttpResponse:
     result = esi.client.Status.get_status().results()
     characters = list(Character.objects.owned_by_user(request.user))
     total_character_isk = CharacterWalletBalance.objects.filter(
