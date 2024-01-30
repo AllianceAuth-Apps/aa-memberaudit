@@ -1,5 +1,4 @@
 {% load i18n %}
-{% load humanize %}
 
 
 <div id="memberaudit-dashboard">
@@ -24,7 +23,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ player_count|intcomma }}
+                                {{ player_count|floatformat:"0g"|default:"?" }}
                             </span>
                         </span>
                     </div>
@@ -44,7 +43,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ registered_count|intcomma }}
+                                {{ registered_count|floatformat:"0g" }}
                             </span>
                         </span>
                     </div>
@@ -64,7 +63,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ total_character_isk|intcomma }}
+                                {{ total_character_isk|floatformat:"0g" }}
                             </span>
                         </span>
                     </div>
@@ -84,7 +83,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ total_mined_isk|intcomma }}
+                                {{ total_mined_isk|floatformat:"0g" }}
                             </span>
                         </span>
                     </div>
@@ -104,7 +103,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ total_ratted_isk|intcomma }}
+                                {{ total_ratted_isk|floatformat:"0g" }}
                             </span>
                         </span>
                     </div>
@@ -124,7 +123,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ total_character_skillpoints|intcomma }}
+                                {{ total_character_skillpoints|floatformat:"0g" }}
                             </span>
                         </span>
                     </div>

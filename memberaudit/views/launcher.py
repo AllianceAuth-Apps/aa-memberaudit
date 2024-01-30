@@ -1,5 +1,7 @@
 """Launcher views."""
 
+import datetime as dt
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Permission
@@ -13,6 +15,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.decorators import token_required
 
@@ -24,6 +27,7 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
 from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+from memberaudit.core import eve_status
 from memberaudit.models import (
     Character,
     CharacterMiningLedgerEntry,
@@ -32,7 +36,6 @@ from memberaudit.models import (
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
 )
-from memberaudit.providers import esi
 
 from ._common import add_common_context
 
@@ -56,32 +59,35 @@ def launcher(request) -> HttpResponse:
     return render(request, "memberaudit/launcher.html", context)
 
 
+# TODO: Add functional tests for queries
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
-    result = esi.client.Status.get_status().results()
+    cutoff = now() - dt.timedelta(days=30)
     characters = list(Character.objects.owned_by_user(request.user))
     total_character_isk = CharacterWalletBalance.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
     total_mined_isk = (
-        CharacterMiningLedgerEntry.objects.filter(character__in=characters)
+        CharacterMiningLedgerEntry.objects.filter(
+            character__in=characters, date__gt=cutoff
+        )
         .annotate_pricing()
         .aggregate(Sum("total"))["total__sum"]
     )
     total_ratted_isk = CharacterWalletJournalEntry.objects.filter(
-        character__in=characters, ref_type="bounty_prizes"
+        character__in=characters, ref_type="bounty_prizes", date__gt=cutoff
     ).aggregate(Sum("amount"))["amount__sum"]
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
     context = {
         "page_title": _("My Dashboard"),
-        "player_count": result["players"],
+        "player_count": eve_status.player_count(),
         "registered_count": len(characters),
-        "total_character_isk": total_character_isk or 123456789,
-        "total_mined_isk": total_mined_isk or 123456789,
-        "total_ratted_isk": total_ratted_isk or 123456789,
-        "total_character_skillpoints": total_character_skillpoints or 123456789,
+        "total_character_isk": total_character_isk or 0,
+        "total_mined_isk": total_mined_isk or 0,
+        "total_ratted_isk": total_ratted_isk or 0,
+        "total_character_skillpoints": total_character_skillpoints or 0,
     }
     return context
 
