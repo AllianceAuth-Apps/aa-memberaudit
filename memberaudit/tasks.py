@@ -29,7 +29,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT,
     MEMBERAUDIT_TASKS_TIME_LIMIT,
 )
-from memberaudit.core import data_exporters, eve_status
+from memberaudit.core import data_exporters
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
 from memberaudit.models import (
@@ -68,7 +68,6 @@ TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 @shared_task(**TASK_DEFAULTS_ONCE)
 def run_regular_updates() -> None:
     """Run regular updates for Member Audit."""
-    update_eve_status.apply_async(priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY)
     update_market_prices.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     update_all_characters.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     if ComplianceGroupDesignation.objects.exists():
@@ -1172,9 +1171,3 @@ def clear_users_from_group(group_pk: int):
     """Clear all users from given group."""
     group = Group.objects.get(pk=group_pk)
     utils.clear_users_from_group(group)
-
-
-@shared_task(**TASK_DEFAULTS)
-def update_eve_status():
-    """Update cached eve status from ESI."""
-    eve_status.update()

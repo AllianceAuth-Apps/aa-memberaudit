@@ -44,7 +44,6 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(TASKS_PATH + ".update_eve_status", spec=True)
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
 @patch(TASKS_PATH + ".update_all_characters", spec=True)
 @patch(TASKS_PATH + ".update_market_prices", spec=True)
@@ -54,7 +53,6 @@ class TestRegularUpdates(TestCase):
         mock_update_market_prices,
         mock_update_all_characters,
         mock_update_compliance_groups_for_all,
-        mock_update_eve_status,
     ):
         # when
         tasks.run_regular_updates()
@@ -62,14 +60,12 @@ class TestRegularUpdates(TestCase):
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
         self.assertFalse(mock_update_compliance_groups_for_all.apply_async.called)
-        self.assertTrue(mock_update_eve_status.apply_async.called)
 
     def test_should_run_update_for_all_incl_compliance_groups(
         self,
         mock_update_market_prices,
         mock_update_all_characters,
         mock_update_compliance_groups_for_all,
-        mock_update_eve_status,
     ):
         # given
         group = create_authgroup(internal=False)
@@ -80,7 +76,6 @@ class TestRegularUpdates(TestCase):
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
-        self.assertTrue(mock_update_eve_status.apply_async.called)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
@@ -1208,10 +1203,3 @@ class TestUpdateMarketPrices(TestCase):
     def test_update_market_prices(self, mock_update_from_esi):
         tasks.update_market_prices()
         self.assertTrue(mock_update_from_esi.called)
-
-
-class TestUpdateEveStatus(TestCase):
-    @patch(TASKS_PATH + ".eve_status.update", spec=True)
-    def test_update_market_prices(self, mock_update):
-        tasks.update_eve_status()
-        self.assertTrue(mock_update.called)
