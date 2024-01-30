@@ -66,31 +66,25 @@ def _dashboard_panel(request: HttpRequest) -> dict:
     ).aggregate(Sum("total"))["total__sum"]
 
     mining_entries = CharacterMiningLedgerEntry.objects.filter(character__in=characters)
-    if not mining_entries.exists():
-        total_mined_isk = None
-    else:
-        today = dt.date.today()
-        total_mined_isk = (
-            mining_entries.filter(date__year=today.year, date__month=today.month)
-            .annotate_pricing()
-            .aggregate(Sum("total"))["total__sum"]
-        ) or 0
+    today = dt.date.today()
+    total_mined_isk = (
+        mining_entries.filter(date__year=today.year, date__month=today.month)
+        .annotate_pricing()
+        .aggregate(Sum("total"))["total__sum"]
+    ) or 0
 
     wallet_entries = CharacterWalletJournalEntry.objects.filter(
         character__in=characters
     )
-    if not wallet_entries.exists():
-        total_ratted_isk = None
-    else:
-        today = dt.date.today()
-        total_ratted_isk = (
-            wallet_entries.filter(
-                ref_type="bounty_prizes",
-                date__year=today.year,
-                date__month=today.month,
-            ).aggregate(Sum("amount"))["amount__sum"]
-            or 0
-        )
+    today = dt.date.today()
+    total_ratted_isk = (
+        wallet_entries.filter(
+            ref_type="bounty_prizes",
+            date__year=today.year,
+            date__month=today.month,
+        ).aggregate(Sum("amount"))["amount__sum"]
+        or 0
+    )
 
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters

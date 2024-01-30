@@ -408,7 +408,10 @@ class TestDashboardPanel(TestCase):
         ore_type = EveType.objects.get(name="Veldspar")
         create_eve_market_price(eve_type=ore_type, average_price=100)
         create_character_mining_ledger_entry(
-            character_1001, eve_type=ore_type, quantity=4, date=now()
+            character_1001,
+            eve_type=ore_type,
+            quantity=4,
+            date=now() - dt.timedelta(hours=1),
         )
         create_character_mining_ledger_entry(
             character_1001, eve_type=ore_type, quantity=3, date=now()
@@ -471,8 +474,8 @@ class TestDashboardPanel(TestCase):
         self.assertEqual(context["known_characters_count"], 1)
         self.assertEqual(context["registered_percent"], 100)
         self.assertIsNone(context["total_character_isk"])
-        self.assertIsNone(context["total_ratted_isk"])
-        self.assertIsNone(context["total_mined_isk"])
+        self.assertEqual(context["total_ratted_isk"], 0)
+        self.assertEqual(context["total_mined_isk"], 0)
         self.assertIsNone(context["total_character_skillpoints"])
 
     def test_user_with_memberaudit_character_and_no_current_mining_and_ratting_data(
