@@ -23,7 +23,10 @@
                                 {% translate "Online Players" %}
                             </span>
 
-                            <span class="memberaudit-dashboard-item-value" id="dashboard-player-count">
+                            <span
+                                class="memberaudit-dashboard-item-value"
+                                id="dashboard-player-count"
+                                data-url="{% url 'memberaudit:player_count_data' %}">
                                 ?
                             </span>
                         </span>
@@ -131,30 +134,3 @@
         </div>
     </div>
 </div>
-
-<script>
-    "use strict";
-
-    const elemPlayerCount = document.getElementById("dashboard-player-count");
-
-    fetch('{% url "memberaudit:player_count_data" %}')
-        .then((response) => {
-            if (response.ok) {
-                return response.json();
-            }
-            throw new Error("Something went wrong");
-        })
-        .then((responseJson) => {
-            const playerCount = responseJson.data.player_count;
-            if (playerCount == null) {
-                elemPlayerCount.textContent = "?";
-            } else {
-                elemPlayerCount.textContent = playerCount.toLocaleString();
-            }
-        })
-        .catch((error) => {
-            console.log(error);
-            elemPlayerCount.textContent = "ERROR";
-        });
-
-</script>

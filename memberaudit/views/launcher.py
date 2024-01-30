@@ -299,4 +299,4 @@ def player_count_data(request: HttpRequest) -> JsonResponse:
     """Return current Eve player count."""
     player_count = eve_status.player_count()
     data = {"player_count": player_count}
-    return JsonResponse({"data": data})
+    return JsonResponse(data)

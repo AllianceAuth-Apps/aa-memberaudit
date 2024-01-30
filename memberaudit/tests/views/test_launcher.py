@@ -33,6 +33,7 @@ from memberaudit.views.launcher import (
     add_character,
     index,
     launcher,
+    player_count_data,
     remove_character,
     share_character,
     unshare_character,
@@ -381,7 +382,6 @@ class TestUnshareCharacter(TestCase):
         self.assertTrue(Character.objects.get(pk=self.character_1001.pk).is_shared)
 
 
-@patch(MODULE_PATH + ".eve_status.player_count", spec=True)
 class TestDashboardPanel(TestCase):
     @classmethod
     def setUpClass(cls):
@@ -390,10 +390,8 @@ class TestDashboardPanel(TestCase):
         load_entities()
         cls.factory = RequestFactory()
 
-    def test_user_with_complete_data(self, mock_player_count):
+    def test_user_with_complete_data(self):
         # given
-        mock_player_count.return_value = 42
-
         character_1001 = create_memberaudit_character(1001)
         user = character_1001.user
         character_1002 = add_memberaudit_character_to_user(user, 1002)
@@ -456,9 +454,8 @@ class TestDashboardPanel(TestCase):
         self.assertEqual(context["total_mined_isk"], 900)
         self.assertEqual(context["total_character_skillpoints"], 4_000)
 
-    def test_user_with_memberaudit_character_and_no_data(self, mock_player_count):
+    def test_user_with_memberaudit_character_and_no_data(self):
         # given
-        mock_player_count.return_value = None
         character_1001 = create_memberaudit_character(1001)
         user = character_1001.user
         request = self.factory.get("/")
@@ -477,10 +474,9 @@ class TestDashboardPanel(TestCase):
         self.assertIsNone(context["total_character_skillpoints"])
 
     def test_user_with_memberaudit_character_and_no_current_mining_and_ratting_data(
-        self, mock_player_count
+        self,
     ):
         # given
-        mock_player_count.return_value = None
         character_1001 = create_memberaudit_character(1001)
         user = character_1001.user
         not_this_month = now() - dt.timedelta(days=40)
@@ -498,3 +494,27 @@ class TestDashboardPanel(TestCase):
         # then
         self.assertEqual(context["total_ratted_isk"], 0)
         self.assertEqual(context["total_mined_isk"], 0)
+
+
+@patch(MODULE_PATH + ".eve_status.player_count", spec=True)
+class TestPlayerCountData(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_entities()
+        character = create_memberaudit_character(1001)
+        cls.user = character.user
+
+    def test_should_return_player_count(self, mock_player_count):
+        # given
+        mock_player_count.return_value = 42
+        request = self.factory.get("/")
+        request.user = self.user
+
+        # when
+        response = player_count_data(request)
+
+        # then
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content.decode("utf-8"), {"player_count": 42})
