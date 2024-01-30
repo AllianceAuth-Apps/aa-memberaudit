@@ -62,7 +62,7 @@ def launcher(request) -> HttpResponse:
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
     characters = list(Character.objects.owned_by_user(request.user))
-    total_character_isk = CharacterWalletBalance.objects.filter(
+    total_wallet_isk = CharacterWalletBalance.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
 
@@ -104,7 +104,7 @@ def _dashboard_panel(request: HttpRequest) -> dict:
         "registered_count": registered_count,
         "known_characters_count": known_characters_count,
         "registered_percent": registered_percent,
-        "total_character_isk": total_character_isk,
+        "total_wallet_isk": total_wallet_isk,
         "total_mined_isk": total_mined_isk,
         "total_ratted_isk": total_ratted_isk,
         "total_character_skillpoints": total_character_skillpoints,
