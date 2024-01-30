@@ -26,8 +26,8 @@ def player_count() -> Optional[int]:
 
 def update():
     """Update status from ESI."""
-    player_count = _fetch_player_count()
-    cache.set(key=_CACHE_KEY, value=player_count, timeout=_TIMEOUT)
+    current_player_count = _fetch_player_count()
+    cache.set(key=_CACHE_KEY, value=current_player_count, timeout=_TIMEOUT)
     logger.info("Updated player count from ESI")
 
 

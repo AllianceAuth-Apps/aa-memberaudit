@@ -1,8 +1,11 @@
+import datetime as dt
 from unittest.mock import Mock, patch
 
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
+from django.utils.timezone import now
+from eveuniverse.models import EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
@@ -10,14 +13,23 @@ from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
 from memberaudit.models import Character
 from memberaudit.tests.testdata.factories import (
     create_character_from_user,
+    create_character_mining_ledger_entry,
+    create_character_skillpoints,
+    create_character_wallet_balance,
+    create_character_wallet_journal_entry,
     create_compliance_group,
+    create_eve_market_price,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
+from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.utils import (
+    add_auth_character_to_user,
+    add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
 from memberaudit.views.launcher import (
+    _dashboard_panel,
     add_character,
     index,
     launcher,
@@ -367,3 +379,121 @@ class TestUnshareCharacter(TestCase):
         response = unshare_character(request, invalid_character_pk)
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Character.objects.get(pk=self.character_1001.pk).is_shared)
+
+
+@patch(MODULE_PATH + ".eve_status.player_count", spec=True)
+class TestDashboardPanel(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.factory = RequestFactory()
+
+    def test_user_with_complete_data(self, mock_player_count):
+        # given
+        mock_player_count.return_value = 42
+
+        character_1001 = create_memberaudit_character(1001)
+        user = character_1001.user
+        character_1002 = add_memberaudit_character_to_user(user, 1002)
+        add_auth_character_to_user(user, 1003)
+
+        create_character_skillpoints(character_1001, total=1_000)
+        create_character_skillpoints(character_1002, total=3_000)
+
+        create_character_wallet_balance(character_1001, total=10_000)
+        create_character_wallet_balance(character_1002, total=5_000)
+
+        ore_type = EveType.objects.get(name="Veldspar")
+        create_eve_market_price(eve_type=ore_type, average_price=100)
+        create_character_mining_ledger_entry(
+            character_1001, eve_type=ore_type, quantity=4, date=now()
+        )
+        create_character_mining_ledger_entry(
+            character_1001, eve_type=ore_type, quantity=3, date=now()
+        )
+        create_character_mining_ledger_entry(
+            character_1002, eve_type=ore_type, quantity=2, date=now()
+        )
+        not_this_month = now() - dt.timedelta(days=40)
+        create_character_mining_ledger_entry(
+            character_1002, eve_type=ore_type, quantity=2, date=not_this_month
+        )
+
+        create_character_wallet_journal_entry(
+            character_1001, amount=4_000, ref_type="bounty_prizes", date=now()
+        )
+        create_character_wallet_journal_entry(
+            character_1001, amount=3_000, ref_type="bounty_prizes", date=now()
+        )
+        create_character_wallet_journal_entry(
+            character_1002, amount=2_000, ref_type="bounty_prizes", date=now()
+        )
+        not_this_month = now() - dt.timedelta(days=40)
+        create_character_wallet_journal_entry(
+            character_1002,
+            amount=2_000,
+            ref_type="bounty_prizes",
+            date=not_this_month,
+        )
+
+        request = self.factory.get("/")
+        request.user = user
+
+        # when
+        context = _dashboard_panel(request)
+
+        # then
+        self.assertEqual(context["player_count"], 42)
+        self.assertEqual(context["registered_count"], 2)
+        self.assertEqual(context["known_characters_count"], 3)
+        self.assertEqual(context["registered_percent"], 67)
+        self.assertEqual(context["total_character_isk"], 15_000)
+        self.assertEqual(context["total_ratted_isk"], 9_000)
+        self.assertEqual(context["total_mined_isk"], 900)
+        self.assertEqual(context["total_character_skillpoints"], 4_000)
+
+    def test_user_with_memberaudit_character_and_no_data(self, mock_player_count):
+        # given
+        mock_player_count.return_value = None
+        character_1001 = create_memberaudit_character(1001)
+        user = character_1001.user
+        request = self.factory.get("/")
+        request.user = user
+
+        # when
+        context = _dashboard_panel(request)
+
+        # then
+        self.assertIsNone(context["player_count"], None)
+        self.assertEqual(context["registered_count"], 1)
+        self.assertEqual(context["known_characters_count"], 1)
+        self.assertEqual(context["registered_percent"], 100)
+        self.assertIsNone(context["total_character_isk"])
+        self.assertIsNone(context["total_ratted_isk"])
+        self.assertIsNone(context["total_mined_isk"])
+        self.assertIsNone(context["total_character_skillpoints"])
+
+    def test_user_with_memberaudit_character_and_no_current_mining_and_ratting_data(
+        self, mock_player_count
+    ):
+        # given
+        mock_player_count.return_value = None
+        character_1001 = create_memberaudit_character(1001)
+        user = character_1001.user
+        not_this_month = now() - dt.timedelta(days=40)
+        create_character_mining_ledger_entry(character_1001, date=not_this_month)
+        create_character_wallet_journal_entry(
+            character_1001, ref_type="bounty_prizes", date=not_this_month
+        )
+
+        request = self.factory.get("/")
+        request.user = user
+
+        # when
+        context = _dashboard_panel(request)
+
+        # then
+        self.assertEqual(context["total_ratted_isk"], 0)
+        self.assertEqual(context["total_mined_isk"], 0)

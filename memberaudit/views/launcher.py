@@ -58,7 +58,6 @@ def launcher(request) -> HttpResponse:
     return render(request, "memberaudit/launcher.html", context)
 
 
-# TODO: Add functional tests for queries
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
     characters = list(Character.objects.owned_by_user(request.user))
@@ -66,21 +65,31 @@ def _dashboard_panel(request: HttpRequest) -> dict:
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
 
-    today = dt.date.today()
-    total_mined_isk = (
-        CharacterMiningLedgerEntry.objects.filter(
-            character__in=characters, date__year=today.year, date__month=today.month
-        )
-        .annotate_pricing()
-        .aggregate(Sum("total"))["total__sum"]
-    )
+    mining_entries = CharacterMiningLedgerEntry.objects.filter(character__in=characters)
+    if not mining_entries.exists():
+        total_mined_isk = None
+    else:
+        today = dt.date.today()
+        total_mined_isk = (
+            mining_entries.filter(date__year=today.year, date__month=today.month)
+            .annotate_pricing()
+            .aggregate(Sum("total"))["total__sum"]
+        ) or 0
 
-    total_ratted_isk = CharacterWalletJournalEntry.objects.filter(
-        character__in=characters,
-        ref_type="bounty_prizes",
-        date__year=today.year,
-        date__month=today.month,
-    ).aggregate(Sum("amount"))["amount__sum"]
+    wallet_entries = CharacterWalletJournalEntry.objects.filter(
+        character__in=characters
+    )
+    if not wallet_entries.exists():
+        total_ratted_isk = None
+    else:
+        total_ratted_isk = (
+            wallet_entries.filter(
+                ref_type="bounty_prizes",
+                date__year=today.year,
+                date__month=today.month,
+            ).aggregate(Sum("amount"))["amount__sum"]
+            or 0
+        )
 
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters
@@ -90,18 +99,20 @@ def _dashboard_panel(request: HttpRequest) -> dict:
         character_ownership__user=request.user
     ).count()
     registered_count = len(characters)
-    registered_percent = round(registered_count / known_characters_count * 100)
+    try:
+        registered_percent = round(registered_count / known_characters_count * 100)
+    except ZeroDivisionError:
+        registered_percent = None
 
     context = {
-        "page_title": _("My Dashboard"),
         "player_count": eve_status.player_count(),
         "registered_count": registered_count,
         "known_characters_count": known_characters_count,
         "registered_percent": registered_percent,
-        "total_character_isk": total_character_isk or 0,
-        "total_mined_isk": total_mined_isk or 0,
-        "total_ratted_isk": total_ratted_isk or 0,
-        "total_character_skillpoints": total_character_skillpoints or 0,
+        "total_character_isk": total_character_isk,
+        "total_mined_isk": total_mined_isk,
+        "total_ratted_isk": total_ratted_isk,
+        "total_character_skillpoints": total_character_skillpoints,
     }
     return context
 

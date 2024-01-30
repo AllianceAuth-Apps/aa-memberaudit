@@ -24,7 +24,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ player_count|floatformat:"0g"|default:"?" }}
+                                {{ player_count|floatformat:"0g"|default_if_none:"?" }}
                             </span>
                         </span>
                     </div>
@@ -44,7 +44,7 @@
                             </span>
 
                             <span class="memberaudit-dashboard-item-value">
-                                {{ registered_count }} ({{ registered_percent }}%)
+                                {{ registered_count }} ({{ registered_percent|default_if_none:"?" }}%)
                             </span>
                         </span>
                     </div>

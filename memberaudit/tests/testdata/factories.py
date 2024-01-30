@@ -49,11 +49,13 @@ from memberaudit.models import (
     CharacterRole,
     CharacterShip,
     CharacterSkill,
+    CharacterSkillpoints,
     CharacterSkillqueueEntry,
     CharacterSkillSetCheck,
     CharacterStanding,
     CharacterTitle,
     CharacterUpdateStatus,
+    CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
     ComplianceGroupDesignation,
@@ -492,6 +494,14 @@ def create_character_skillqueue_entry(
     return CharacterSkillqueueEntry.objects.create(**params)
 
 
+def create_character_skillpoints(
+    character: Character, **kwargs
+) -> CharacterSkillpoints:
+    params = {"character": character, "total": 10_000_000, "unallocated": 500_000}
+    params.update(kwargs)
+    return CharacterSkillpoints.objects.create(**params)
+
+
 def create_character_skill_set_check(
     character: Character, skill_set: SkillSet, **kwargs
 ) -> CharacterSkillSetCheck:
@@ -537,6 +547,14 @@ def create_character_update_status(
     return CharacterUpdateStatus.objects.create(**params)
 
 
+def create_character_wallet_balance(
+    character: Character, **kwargs
+) -> CharacterWalletBalance:
+    params = {"character": character, "total": 20_000_000.0}
+    params.update(kwargs)
+    return CharacterWalletBalance.objects.create(**params)
+
+
 def create_character_wallet_journal_entry(
     character: Character, **kwargs
 ) -> CharacterWalletJournalEntry:
@@ -544,8 +562,8 @@ def create_character_wallet_journal_entry(
     params = {
         "character": character,
         "entry_id": entry_id,
-        "amount": 1000000.0,
-        "balance": 20000000.0,
+        "amount": 1_000_000.0,
+        "balance": 20_000_000.0,
         "ref_type": "player_donation",
         "context_id_type": CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
         "date": now(),
