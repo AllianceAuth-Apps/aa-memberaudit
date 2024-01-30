@@ -634,6 +634,11 @@ class CharacterContractBidManager(models.Manager):
                 token=token.valid_access_token(),
             ).results()
         )
+
+        store_character_data_to_disk_when_enabled(
+            character=character, data=bids_data, section="contracts", suffix="bids"
+        )
+
         bids_list = {int(obj["bid_id"]): obj for obj in bids_data if "bid_id" in obj}
         self._update_or_create_objs(contract, bids_list)
 
@@ -736,6 +741,10 @@ class CharacterContractItemManagerBase(models.Manager):
             token=token.valid_access_token(),
         ).results()
 
+        store_character_data_to_disk_when_enabled(
+            character=character, data=items_data, section="contracts", suffix="items"
+        )
+
         return items_data
 
     def _update_or_create_objs(self, contract, items_data):
@@ -745,7 +754,7 @@ class CharacterContractItemManagerBase(models.Manager):
             contract.contract_id,
             len(items_data),
         )
-        items = [
+        items = [  # TODO: Access ESI data with keys, not get() for all mandatory fields
             self.model(
                 contract=contract,
                 record_id=item.get("record_id"),
