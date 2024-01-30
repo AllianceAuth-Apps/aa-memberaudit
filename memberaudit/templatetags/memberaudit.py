@@ -54,3 +54,9 @@ def tab_status_indicator(context, *sections) -> dict:
         tab_update_status = Character.TotalUpdateStatus.OK
     result["tab_update_status"] = tab_update_status
     return result
+
+
+@register.inclusion_tag("memberaudit/partials/natural_number.html", takes_context=False)
+def natural_number(value) -> dict:
+    """Render a number humanized and with the exact number as tooltip."""
+    return {"value": value}

@@ -63,6 +63,9 @@ def launcher(request) -> HttpResponse:
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
     today = dt.date.today()
+    known_characters_count = EveCharacter.objects.filter(
+        character_ownership__user=request.user
+    ).count()
     characters = list(Character.objects.owned_by_user(request.user))
     total_character_isk = CharacterWalletBalance.objects.filter(
         character__in=characters
@@ -83,10 +86,14 @@ def _dashboard_panel(request: HttpRequest) -> dict:
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
+    registered_count = len(characters)
+    registered_percent = round(registered_count / known_characters_count * 100)
     context = {
         "page_title": _("My Dashboard"),
         "player_count": eve_status.player_count(),
-        "registered_count": len(characters),
+        "registered_count": registered_count,
+        "known_characters_count": known_characters_count,
+        "registered_percent": registered_percent,
         "total_character_isk": total_character_isk or 0,
         "total_mined_isk": total_mined_isk or 0,
         "total_ratted_isk": total_ratted_isk or 0,
