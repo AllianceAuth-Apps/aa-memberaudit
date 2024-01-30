@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.7.6dev1] - 2024-01-26
+## [3.8.0a1] - TBD
+
+### Added
+
+- New dashboard panel showing interesting KPIs for a users's character, e.g. total wallet ISK or total skillpoints (#154)
 
 ### Changed
 
 - Add optional storing of raw ESI data for contract items and bids
+- Add tests to prove that contract items are only fetched once (see also #60)
 
 ## [3.7.5] - 2024-01-25
 
