@@ -82,6 +82,7 @@ def _dashboard_panel(request: HttpRequest) -> dict:
     if not wallet_entries.exists():
         total_ratted_isk = None
     else:
+        today = dt.date.today()
         total_ratted_isk = (
             wallet_entries.filter(
                 ref_type="bounty_prizes",
