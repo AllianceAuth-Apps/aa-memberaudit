@@ -13,22 +13,19 @@ from memberaudit.providers import esi
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 _CACHE_KEY = "memberaudit-eve-status"
-_TIMEOUT = 30 * 60
+_TIMEOUT = 1 * 60
 
 
 def player_count() -> Optional[int]:
     """Return cached player count from ESI or None if offline."""
-    try:
-        return int(cache.get(_CACHE_KEY))
-    except TypeError:
-        return None
+    return cache.get_or_set(
+        key=_CACHE_KEY, default=_fetch_player_count, timeout=_TIMEOUT
+    )
 
 
-def update():
-    """Update status from ESI."""
-    current_player_count = _fetch_player_count()
-    cache.set(key=_CACHE_KEY, value=current_player_count, timeout=_TIMEOUT)
-    logger.info("Updated player count from ESI")
+def clear_cache():
+    """Clear cache."""
+    cache.delete(_CACHE_KEY)
 
 
 def _fetch_player_count() -> Optional[int]:

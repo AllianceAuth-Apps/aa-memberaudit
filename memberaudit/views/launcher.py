@@ -12,6 +12,7 @@ from django.http import (
     HttpResponse,
     HttpResponseForbidden,
     HttpResponseNotFound,
+    JsonResponse,
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
@@ -100,7 +101,6 @@ def _dashboard_panel(request: HttpRequest) -> dict:
         registered_percent = None
 
     context = {
-        "player_count": eve_status.player_count(),
         "registered_count": registered_count,
         "known_characters_count": known_characters_count,
         "registered_percent": registered_percent,
@@ -291,3 +291,12 @@ def unshare_character(request, character_pk: int) -> HttpResponse:
             f"No permission to remove Character with pk {character_pk}"
         )
     return redirect("memberaudit:launcher")
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+def player_count_data(request: HttpRequest) -> JsonResponse:
+    """Return current Eve player count."""
+    player_count = eve_status.player_count()
+    data = {"player_count": player_count}
+    return JsonResponse({"data": data})

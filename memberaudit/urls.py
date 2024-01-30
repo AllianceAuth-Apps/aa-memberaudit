@@ -34,6 +34,7 @@ urlpatterns = [
         launcher.unshare_character,
         name="unshare_character",
     ),
+    path("player_count_data", launcher.player_count_data, name="player_count_data"),
     # character viewer
     path(
         "character_viewer/<int:character_pk>/",

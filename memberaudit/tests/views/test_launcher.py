@@ -448,7 +448,6 @@ class TestDashboardPanel(TestCase):
         context = _dashboard_panel(request)
 
         # then
-        self.assertEqual(context["player_count"], 42)
         self.assertEqual(context["registered_count"], 2)
         self.assertEqual(context["known_characters_count"], 3)
         self.assertEqual(context["registered_percent"], 67)
@@ -469,7 +468,6 @@ class TestDashboardPanel(TestCase):
         context = _dashboard_panel(request)
 
         # then
-        self.assertIsNone(context["player_count"], None)
         self.assertEqual(context["registered_count"], 1)
         self.assertEqual(context["known_characters_count"], 1)
         self.assertEqual(context["registered_percent"], 100)
