@@ -403,19 +403,20 @@ class TestDashboardPanel(TestCase):
         create_character_wallet_balance(character_1001, total=10_000)
         create_character_wallet_balance(character_1002, total=5_000)
 
+        today = now().date()
         ore_type = EveType.objects.get(name="Veldspar")
         create_eve_market_price(eve_type=ore_type, average_price=100)
         create_character_mining_ledger_entry(
             character_1001,
             eve_type=ore_type,
             quantity=4,
-            date=now() - dt.timedelta(hours=1),
+            date=today - dt.timedelta(days=1),
         )
         create_character_mining_ledger_entry(
-            character_1001, eve_type=ore_type, quantity=3, date=now()
+            character_1001, eve_type=ore_type, quantity=3, date=today
         )
         create_character_mining_ledger_entry(
-            character_1002, eve_type=ore_type, quantity=2, date=now()
+            character_1002, eve_type=ore_type, quantity=2, date=today
         )
         not_this_month = now() - dt.timedelta(days=40)
         create_character_mining_ledger_entry(
@@ -479,7 +480,7 @@ class TestDashboardPanel(TestCase):
         # given
         character_1001 = create_memberaudit_character(1001)
         user = character_1001.user
-        not_this_month = now() - dt.timedelta(days=40)
+        not_this_month = now().date() - dt.timedelta(days=40)
         create_character_mining_ledger_entry(character_1001, date=not_this_month)
         create_character_wallet_journal_entry(
             character_1001, ref_type="bounty_prizes", date=not_this_month
