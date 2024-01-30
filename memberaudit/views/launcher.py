@@ -15,7 +15,6 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
-from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.decorators import token_required
 
@@ -59,23 +58,27 @@ def launcher(request) -> HttpResponse:
     return render(request, "memberaudit/launcher.html", context)
 
 
+# TODO: Do you want to show values humanized or not?
 # TODO: Add functional tests for queries
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
-    cutoff = now() - dt.timedelta(days=30)
+    today = dt.date.today()
     characters = list(Character.objects.owned_by_user(request.user))
     total_character_isk = CharacterWalletBalance.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
     total_mined_isk = (
         CharacterMiningLedgerEntry.objects.filter(
-            character__in=characters, date__gt=cutoff
+            character__in=characters, date__year=today.year, date__month=today.month
         )
         .annotate_pricing()
         .aggregate(Sum("total"))["total__sum"]
     )
     total_ratted_isk = CharacterWalletJournalEntry.objects.filter(
-        character__in=characters, ref_type="bounty_prizes", date__gt=cutoff
+        character__in=characters,
+        ref_type="bounty_prizes",
+        date__year=today.year,
+        date__month=today.month,
     ).aggregate(Sum("amount"))["amount__sum"]
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters
