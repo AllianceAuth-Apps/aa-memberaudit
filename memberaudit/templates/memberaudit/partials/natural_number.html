@@ -1,5 +1,5 @@
 {% load humanize %}
 
 <span class="memberaudit-dashboard-item-value" title="{{ value|intcomma }}">
-    {{ value|intword|default:"?" }}
+    {{ value|intword|default_if_none:"?" }}
 </span>
