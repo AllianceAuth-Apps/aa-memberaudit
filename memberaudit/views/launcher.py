@@ -58,18 +58,15 @@ def launcher(request) -> HttpResponse:
     return render(request, "memberaudit/launcher.html", context)
 
 
-# TODO: Do you want to show values humanized or not?
 # TODO: Add functional tests for queries
 def _dashboard_panel(request: HttpRequest) -> dict:
     """Render context for dashboard panel."""
-    today = dt.date.today()
-    known_characters_count = EveCharacter.objects.filter(
-        character_ownership__user=request.user
-    ).count()
     characters = list(Character.objects.owned_by_user(request.user))
     total_character_isk = CharacterWalletBalance.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
+
+    today = dt.date.today()
     total_mined_isk = (
         CharacterMiningLedgerEntry.objects.filter(
             character__in=characters, date__year=today.year, date__month=today.month
@@ -77,17 +74,24 @@ def _dashboard_panel(request: HttpRequest) -> dict:
         .annotate_pricing()
         .aggregate(Sum("total"))["total__sum"]
     )
+
     total_ratted_isk = CharacterWalletJournalEntry.objects.filter(
         character__in=characters,
         ref_type="bounty_prizes",
         date__year=today.year,
         date__month=today.month,
     ).aggregate(Sum("amount"))["amount__sum"]
+
     total_character_skillpoints = CharacterSkillpoints.objects.filter(
         character__in=characters
     ).aggregate(Sum("total"))["total__sum"]
+
+    known_characters_count = EveCharacter.objects.filter(
+        character_ownership__user=request.user
+    ).count()
     registered_count = len(characters)
     registered_percent = round(registered_count / known_characters_count * 100)
+
     context = {
         "page_title": _("My Dashboard"),
         "player_count": eve_status.player_count(),
