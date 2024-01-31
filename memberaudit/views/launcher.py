@@ -1,13 +1,22 @@
-"""Character views."""
+"""Launcher views."""
+
+import datetime as dt
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Permission
 from django.db import transaction
-from django.http import HttpResponse, HttpResponseForbidden, HttpResponseNotFound
+from django.db.models import Sum
+from django.http import (
+    HttpRequest,
+    HttpResponse,
+    HttpResponseForbidden,
+    HttpResponseNotFound,
+    JsonResponse,
+)
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
-from django.utils.translation import gettext_lazy as __
+from django.utils.translation import gettext_lazy as _
 from esi.decorators import token_required
 
 from allianceauth.eveonline.models import EveCharacter
@@ -18,7 +27,15 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
 from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-from memberaudit.models import Character, ComplianceGroupDesignation
+from memberaudit.core import eve_status
+from memberaudit.models import (
+    Character,
+    CharacterMiningLedgerEntry,
+    CharacterSkillpoints,
+    CharacterWalletBalance,
+    CharacterWalletJournalEntry,
+    ComplianceGroupDesignation,
+)
 
 from ._common import add_common_context
 
@@ -36,6 +53,67 @@ def index(request):
 @permission_required("memberaudit.basic_access")
 def launcher(request) -> HttpResponse:
     """Render launcher view."""
+    context_1 = _dashboard_panel(request)
+    context_2 = _characters_panel(request)
+    context = add_common_context(request, {**context_1, **context_2})
+    return render(request, "memberaudit/launcher.html", context)
+
+
+def _dashboard_panel(request: HttpRequest) -> dict:
+    """Render context for dashboard panel."""
+    characters = list(Character.objects.owned_by_user(request.user))
+    total_wallet_isk = CharacterWalletBalance.objects.filter(
+        character__in=characters
+    ).aggregate(Sum("total"))["total__sum"]
+
+    mining_entries = CharacterMiningLedgerEntry.objects.filter(character__in=characters)
+    today = dt.date.today()
+    total_mined_isk = (
+        mining_entries.filter(date__year=today.year, date__month=today.month)
+        .annotate_pricing()
+        .aggregate(Sum("total"))["total__sum"]
+    ) or 0
+
+    wallet_entries = CharacterWalletJournalEntry.objects.filter(
+        character__in=characters
+    )
+    today = dt.date.today()
+    total_ratted_isk = (
+        wallet_entries.filter(
+            ref_type="bounty_prizes",
+            date__year=today.year,
+            date__month=today.month,
+        ).aggregate(Sum("amount"))["amount__sum"]
+        or 0
+    )
+
+    total_character_skillpoints = CharacterSkillpoints.objects.filter(
+        character__in=characters
+    ).aggregate(Sum("total"))["total__sum"]
+
+    known_characters_count = EveCharacter.objects.filter(
+        character_ownership__user=request.user
+    ).count()
+    registered_count = len(characters)
+    try:
+        registered_percent = round(registered_count / known_characters_count * 100)
+    except ZeroDivisionError:
+        registered_percent = None
+
+    context = {
+        "registered_count": registered_count,
+        "known_characters_count": known_characters_count,
+        "registered_percent": registered_percent,
+        "total_wallet_isk": total_wallet_isk,
+        "total_mined_isk": total_mined_isk,
+        "total_ratted_isk": total_ratted_isk,
+        "total_character_skillpoints": total_character_skillpoints,
+    }
+    return context
+
+
+def _characters_panel(request: HttpRequest) -> dict:
+    """Render context for character panel."""
     owned_chars_query = (
         EveCharacter.objects.filter(character_ownership__user=request.user)
         .select_related(
@@ -85,7 +163,7 @@ def launcher(request) -> HttpResponse:
         main_character_id = None
 
     context = {
-        "page_title": __("My Characters"),
+        "page_title": _("My Characters"),
         "auth_characters": auth_characters,
         "has_auth_characters": has_auth_characters,
         "unregistered_chars": unregistered_chars,
@@ -94,9 +172,7 @@ def launcher(request) -> HttpResponse:
         "characters_need_token_refresh": characters_need_token_refresh,
     }
 
-    return render(
-        request, "memberaudit/launcher.html", add_common_context(request, context)
-    )
+    return context
 
 
 @login_required
@@ -106,9 +182,9 @@ def add_character(request, token) -> HttpResponse:
     """Render add character view."""
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)
     with transaction.atomic():
-        character, _ = Character.objects.update_or_create(
+        character = Character.objects.update_or_create(
             eve_character=eve_character, defaults={"is_disabled": False}
-        )
+        )[0]
     tasks.update_character.apply_async(
         kwargs={
             "character_pk": character.pk,
@@ -122,7 +198,7 @@ def add_character(request, token) -> HttpResponse:
         format_html(
             "<strong>{}</strong> {}",
             eve_character,
-            __(
+            _(
                 "has been registered. "
                 "Note that it can take a minute until all character data is visible."
             ),
@@ -153,8 +229,8 @@ def remove_character(request, character_pk: int) -> HttpResponse:
             content_type__app_label=Character._meta.app_label,
             codename="notified_on_character_removal",
         )
-        title = __("%s: Character has been removed!") % __title__
-        message = __("%(user)s has removed character %(character)s") % {
+        title = _("%s: Character has been removed!") % __title__
+        message = _("%(user)s has removed character %(character)s") % {
             "user": request.user,
             "character": character_name,
         }
@@ -164,7 +240,7 @@ def remove_character(request, character_pk: int) -> HttpResponse:
 
         character.delete()
         messages.success(
-            request, __("Removed character %s as requested.") % character_name
+            request, _("Removed character %s as requested.") % character_name
         )
         if ComplianceGroupDesignation.objects.exists():
             tasks.update_compliance_groups_for_user.apply_async(
@@ -215,3 +291,12 @@ def unshare_character(request, character_pk: int) -> HttpResponse:
             f"No permission to remove Character with pk {character_pk}"
         )
     return redirect("memberaudit:launcher")
+
+
+@login_required
+@permission_required("memberaudit.basic_access")
+def player_count_data(request: HttpRequest) -> JsonResponse:
+    """Return current Eve player count."""
+    player_count = eve_status.player_count()
+    data = {"player_count": player_count}
+    return JsonResponse(data)

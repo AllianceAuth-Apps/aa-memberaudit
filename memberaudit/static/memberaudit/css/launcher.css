@@ -35,6 +35,10 @@
         border-radius: 0.25rem;
     }
 
+    .template-light-mode .card-body {
+        background-color: rgba(0, 0, 0, 0.03);
+    }
+
     .template-dark-mode .cards_container .card {
         background-color: rgb(100, 100, 100);
     }

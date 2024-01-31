@@ -2,6 +2,7 @@
 {% load static %}
 {% load humanize %}
 {% load evelinks %}
+{% load memberaudit %}
 
 <!-- Character summary panel -->
 <div class="panel panel-default">
@@ -104,8 +105,8 @@
                             <dt>{% translate 'Skillpoints:' %}</dt>
                             {% if character.skillpoints %}
                                 <dd>
-                                    {{ character.skillpoints.total|intword }} (allocated)<br>
-                                    {{ character.skillpoints.unallocated|intword|default:"-" }} (unallocated)
+                                    {% natural_number character.skillpoints.total %} (allocated)<br>
+                                    {% natural_number character.skillpoints.unallocated %} (unallocated)
                                 </dd>
                             {% else %}
                                 <dd class="text-muted">{{no_data}}</dd>
@@ -123,14 +124,14 @@
 
                             <dt>{% translate 'Assets:' %}</dt>
                             {% if character_assets_total %}
-                                <dd>{{ character_assets_total|intword }} ISK (est.)</dd>
+                                <dd>{% natural_number character_assets_total %} ISK (est.)</dd>
                             {% else %}
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
 
                             <dt>{% translate 'Wallet:' %}</dt>
                             {% if character.wallet_balance %}
-                                <dd>{{ character.wallet_balance.total|intword }} ISK</dd>
+                                <dd>{% natural_number character.wallet_balance.total %} ISK</dd>
                             {% else %}
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}

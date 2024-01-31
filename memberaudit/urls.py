@@ -7,33 +7,34 @@ from memberaudit.views import (
     character_finder,
     character_viewer_1,
     character_viewer_2,
-    characters,
     data_export,
+    launcher,
     reports,
 )
 
 app_name = "memberaudit"
 
 urlpatterns = [
-    # characters
-    path("", characters.index, name="index"),
-    path("launcher", characters.launcher, name="launcher"),
-    path("add_character", characters.add_character, name="add_character"),
+    # launcher
+    path("", launcher.index, name="index"),
+    path("launcher", launcher.launcher, name="launcher"),
+    path("add_character", launcher.add_character, name="add_character"),
     path(
         "remove_character/<int:character_pk>/",
-        characters.remove_character,
+        launcher.remove_character,
         name="remove_character",
     ),
     path(
         "share_character/<int:character_pk>/",
-        characters.share_character,
+        launcher.share_character,
         name="share_character",
     ),
     path(
         "unshare_character/<int:character_pk>/",
-        characters.unshare_character,
+        launcher.unshare_character,
         name="unshare_character",
     ),
+    path("player_count_data", launcher.player_count_data, name="player_count_data"),
     # character viewer
     path(
         "character_viewer/<int:character_pk>/",

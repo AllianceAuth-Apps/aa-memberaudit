@@ -1,0 +1,136 @@
+{% load i18n %}
+{% load memberaudit %}
+
+
+<div id="memberaudit-dashboard">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <div class="panel-title">{% translate 'Dashboard' %}</div>
+        </div>
+
+        <div class="panel-body">
+            <div class="memberaudit-dashboard-panels">
+                <!-- Online Players -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="fas fa-server"></i>
+                            {% comment %} <i class="fa-solid fa-server"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Online Players" %}
+                            </span>
+
+                            <span
+                                class="memberaudit-dashboard-item-value"
+                                id="dashboard-player-count"
+                                data-url="{% url 'memberaudit:player_count_data' %}">
+                                ?
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Registered characters -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="fas fa-user-friends"></i>
+                            {% comment %} <i class="fa-solid fa-user-group"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Registered Characters" %}
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {{ registered_count }} ({{ registered_percent|default_if_none:"?" }}%)
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total character ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="fas fa-wallet"></i>
+                            {% comment %} <i class="fa-solid fa-wallet"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Wallet ISK" %}
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {% natural_number total_wallet_isk %}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Mining ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="far fa-gem"></i>
+                            {% comment %} <i class="fa-regular fa-gem"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Mined ISK" %} <small>{% translate "(this month)" %}</small>
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {% natural_number total_mined_isk %}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Ratted ISK -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="far fa-money-bill-alt"></i>
+                            {% comment %} <i class="fa-regular fa-money-bill-1"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Ratted ISK" %} <small>{% translate "(this month)" %}</small>
+                            </span>
+
+                            <span class="memberaudit-dashboard-item-value">
+                                {% natural_number total_ratted_isk %}
+                            </span>
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Total Character Skillpoints -->
+                <div class="panel panel-default memberaudit-dashboard-item">
+                    <div class="panel-body">
+                        <span class="memberaudit-dashboard-item-icon">
+                            <i class="fas fa-graduation-cap"></i>
+                            {% comment %} <i class="fa-solid fa-graduation-cap"></i> {% endcomment %}
+                        </span>
+
+                        <span class="memberaudit-dashboard-item-wrapper">
+                            <span class="memberaudit-dashboard-item-title">
+                                {% translate "Total Character Skillpoints" %}
+                            </span>
+
+                            {% natural_number total_character_skillpoints %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

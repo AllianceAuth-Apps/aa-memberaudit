@@ -23,12 +23,19 @@ from app_utils.testing import (  # NoSocketsTestCase,
 
 from memberaudit import tasks
 from memberaudit.helpers import UpdateSectionResult
-from memberaudit.models import Character, CharacterUpdateStatus, Location
+from memberaudit.models import (
+    Character,
+    CharacterContract,
+    CharacterUpdateStatus,
+    Location,
+)
 
 from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
 from .testdata.factories import (
     create_character,
     create_character_asset,
+    create_character_contract,
+    create_character_contract_item,
     create_character_mail,
     create_character_update_status,
     create_compliance_group_designation,
@@ -644,11 +651,13 @@ class TestUpdateCharacterContacts(TestCase):
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContracts(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
+        reset_celery_once_locks()
         load_eveuniverse()
         load_entities()
         load_locations()
@@ -656,7 +665,6 @@ class TestUpdateCharacterContracts(TestCase):
         cls.token = (
             cls.character_1001.eve_character.character_ownership.user.token_set.first()
         )
-        reset_celery_once_locks()
 
     def test_should_record_success_when_update_completed_successfully(self, mock_esi):
         # given
@@ -691,6 +699,225 @@ class TestUpdateCharacterContracts(TestCase):
         )
         self.assertFalse(status.is_success)
         self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
+
+    def test_should_store_new_item_exchange_contract_with_items(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Contracts",
+                "get_characters_character_id_contracts",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "acceptor_id": 1101,
+                            "assignee_id": 2101,
+                            "availability": "personal",
+                            "buyout": None,
+                            "collateral": 0.0,
+                            "contract_id": 100000011,
+                            "date_accepted": "2019-09-13T17:23:44Z",
+                            "date_completed": "2019-09-13T17:23:44Z",
+                            "date_expired": "2019-10-15T23:08:38Z",
+                            "date_issued": "2019-09-12T23:08:38Z",
+                            "days_to_complete": 0,
+                            "end_location_id": 1000000000001,
+                            "for_corporation": False,
+                            "issuer_corporation_id": 2001,
+                            "issuer_id": 1001,
+                            "price": 270000000.0,
+                            "reward": 0.0,
+                            "start_location_id": 1000000000001,
+                            "status": "finished",
+                            "title": "Alpha Contract",
+                            "type": "item_exchange",
+                            "volume": 486000.0,
+                        }
+                    ]
+                },
+            ),
+            EsiEndpoint(
+                "Contracts",
+                "get_characters_character_id_contracts_contract_id_items",
+                ("character_id", "contract_id"),
+                needs_token=True,
+                data={
+                    "1001": {
+                        "100000011": [
+                            {
+                                "is_included": True,
+                                "is_singleton": False,
+                                "quantity": 3,
+                                "record_id": 1,
+                                "type_id": 19540,
+                            }
+                        ]
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+
+        # when
+        tasks.update_character_contracts(self.character_1001.pk, False)
+
+        # then
+        self.assertEqual(self.character_1001.contracts.count(), 1)
+        contract = self.character_1001.contracts.get(contract_id=100000011)
+        self.assertEqual(contract.title, "Alpha Contract")
+        self.assertEqual(contract.items.count(), 1)
+        item = contract.items.get(record_id=1)
+        self.assertEqual(item.quantity, 3)
+
+    def test_should_fetch_items_for_new_contracts_only(self, mock_esi):
+        # given esi has two contracts
+        endpoints = [
+            EsiEndpoint(
+                "Contracts",
+                "get_characters_character_id_contracts",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": [
+                        {
+                            "acceptor_id": 1101,
+                            "assignee_id": 2101,
+                            "availability": "personal",
+                            "buyout": None,
+                            "collateral": 0.0,
+                            "contract_id": 100000011,
+                            "date_accepted": "2019-09-13T17:23:44Z",
+                            "date_completed": "2019-09-13T17:23:44Z",
+                            "date_expired": "2019-10-15T23:08:38Z",
+                            "date_issued": "2019-09-12T23:08:38Z",
+                            "days_to_complete": 0,
+                            "end_location_id": 1000000000001,
+                            "for_corporation": False,
+                            "issuer_corporation_id": 2001,
+                            "issuer_id": 1001,
+                            "price": 1000000.0,
+                            "reward": 0.0,
+                            "start_location_id": 1000000000001,
+                            "status": "finished",
+                            "title": "Alpha Contract",
+                            "type": "item_exchange",
+                            "volume": 486000.0,
+                        },
+                        {
+                            "acceptor_id": 1101,
+                            "assignee_id": 2101,
+                            "availability": "personal",
+                            "buyout": None,
+                            "collateral": 0.0,
+                            "contract_id": 100000012,
+                            "date_accepted": "2019-09-13T17:23:44Z",
+                            "date_completed": "2019-09-13T17:23:44Z",
+                            "date_expired": "2019-10-15T23:08:38Z",
+                            "date_issued": "2019-09-12T23:08:38Z",
+                            "days_to_complete": 0,
+                            "end_location_id": 1000000000001,
+                            "for_corporation": False,
+                            "issuer_corporation_id": 2001,
+                            "issuer_id": 1001,
+                            "price": 2000000.0,
+                            "reward": 0.0,
+                            "start_location_id": 1000000000001,
+                            "status": "finished",
+                            "title": "Bravo Contract",
+                            "type": "item_exchange",
+                            "volume": 486000.0,
+                        },
+                    ]
+                },
+            ),
+            EsiEndpoint(
+                "Contracts",
+                "get_characters_character_id_contracts_contract_id_items",
+                ("character_id", "contract_id"),
+                needs_token=True,
+                data={
+                    "1001": {
+                        "100000011": [
+                            {
+                                "is_included": True,
+                                "is_singleton": False,
+                                "quantity": 3,
+                                "record_id": 1,
+                                "type_id": 19540,
+                            }
+                        ],
+                        "100000012": [
+                            {
+                                "is_included": True,
+                                "is_singleton": False,
+                                "quantity": 5,
+                                "record_id": 1,
+                                "type_id": 19551,
+                            }
+                        ],
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+
+        # and one contract already exists in the database
+        contract_11 = create_character_contract(
+            character=self.character_1001,
+            contract_id=100000011,
+            availability=CharacterContract.AVAILABILITY_PERSONAL,
+            contract_type=CharacterContract.TYPE_ITEM_EXCHANGE,
+            date_accepted=parse_datetime("2019-09-13T17:23:44Z"),
+            date_completed=parse_datetime("2019-09-13T17:23:44Z"),
+            date_expired=parse_datetime("2019-10-15T23:08:38Z"),
+            date_issued=parse_datetime("2019-09-12T23:08:38Z"),
+            for_corporation=False,
+            issuer_id=1001,
+            issuer_corporation_id=2001,
+            status=CharacterContract.STATUS_FINISHED,
+            title="Old Alpha Contract",  # = "Alpha Contract" in esi data
+            end_location_id=1000000000001,
+        )
+        create_character_contract_item(
+            contract=contract_11,
+            record_id=1,
+            is_included=True,
+            is_singleton=False,
+            quantity=1,  # = 3 in esi data
+            eve_type_id=19540,
+        )
+
+        # when contracts are updated
+        with patch(
+            TASKS_PATH + ".update_contract_items_esi",
+            wraps=tasks.update_contract_items_esi,
+        ) as spy_update_contract_items_esi:
+            tasks.update_character_contracts(self.character_1001.pk, False)
+
+            # then we still have two contracts in the database
+            # and contract 11 still has the "old" data (= not updated)
+            self.assertEqual(self.character_1001.contracts.count(), 2)
+
+            contract_11 = self.character_1001.contracts.get(contract_id=100000011)
+            self.assertEqual(contract_11.title, "Old Alpha Contract")
+            self.assertEqual(contract_11.items.count(), 1)
+            item = contract_11.items.get(record_id=1)
+            self.assertEqual(item.quantity, 1)
+
+            contract_12 = self.character_1001.contracts.get(contract_id=100000012)
+            self.assertEqual(contract_12.title, "Bravo Contract")
+            self.assertEqual(contract_12.items.count(), 1)
+            item = contract_12.items.get(record_id=1)
+            self.assertEqual(item.quantity, 5)
+
+            # and the task for fetching contract items has been called
+            # for then new contract (#12) only
+            contract_pks = {
+                o[1]["kwargs"]["contract_pk"]
+                for o in spy_update_contract_items_esi.apply_async.call_args_list
+            }
+            self.assertSetEqual(contract_pks, {contract_12.pk})
 
 
 @override_settings(
