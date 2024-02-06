@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.8.0] - 2024-01-31
 
+>**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
 ### Added
 
 - New dashboard panel showing interesting KPIs for a users's character, e.g. total wallet ISK or total skillpoints (#154)
