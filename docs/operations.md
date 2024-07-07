@@ -407,7 +407,7 @@ Important: You will loose all Member Audit related data. You can not undo this s
 First, fetch the SQL script:
 
 ```bash
-wget https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/memberaudit/tools/drop_tables.sql
+wget https://gitlab.com/ErikKalkoken/aa-memberaudit/-/raw/master/memberaudit/tools/drop_tables.sql
 ```
 
 Next, log into mysql, switch to your database and then and run the script to drop all tables:
