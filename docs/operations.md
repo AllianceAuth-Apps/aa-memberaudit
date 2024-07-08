@@ -434,7 +434,7 @@ rm drop_tables.sql
 Finally, we inform Django that the Member Audit tables have been deleted:
 
 ```bash
-python manage.py migrate zero --fake
+python manage.py migrate memberaudit zero --fake
 ```
 
 ### Step 3 - Remove app from Django
