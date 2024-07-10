@@ -1,4 +1,5 @@
 """Character viewer views (2/2)."""
+
 # pylint: disable=unused-argument
 
 import datetime as dt

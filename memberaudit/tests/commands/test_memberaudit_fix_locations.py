@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.core.management import call_command
 from django.db import IntegrityError
-from django.test import TestCase
+from django.test import TestCase, tag
 
 from allianceauth.eveonline.models import EveCharacter
 
@@ -447,6 +447,7 @@ class TestFixInvalidLocations(TestCase):
         )
         self.assertEqual(called_character_pk_in_task, self.character_1001.pk)
 
+    @tag("breaks_with_py311")  # FIXME: Find solution
     def test_should_ignore_db_issue_when_fixing_section(self, *args, **kwargs):
         # given
         valid_location = create_location()

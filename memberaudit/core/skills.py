@@ -1,4 +1,5 @@
 """Eve Online Skills."""
+
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import DefaultDict, Dict, Iterable, List, Tuple

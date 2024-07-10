@@ -1,6 +1,5 @@
 """Start update for updateable characters."""
 
-
 from tqdm import tqdm
 
 from django.core.management.base import BaseCommand, CommandError
