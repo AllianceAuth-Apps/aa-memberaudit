@@ -1,6 +1,5 @@
 """Shared ESI client for Member Audit."""
 
-
 from esi.clients import EsiClientProvider
 
 from memberaudit import __version__

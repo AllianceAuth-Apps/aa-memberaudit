@@ -1,6 +1,7 @@
 """
 Top level models
 """
+
 from typing import Set
 
 from django.contrib.auth.models import Group, Permission, User

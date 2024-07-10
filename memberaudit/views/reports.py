@@ -302,9 +302,11 @@ def _build_skill_set_report_row(
         organization_html = format_html(
             "{}{}",
             main_corporation,
-            f" [{character.main_character.alliance_ticker}]"
-            if character.main_character.alliance_name
-            else "",
+            (
+                f" [{character.main_character.alliance_ticker}]"
+                if character.main_character.alliance_name
+                else ""
+            ),
         )
     else:
         main_html = main_name = ""
@@ -321,12 +323,14 @@ def _build_skill_set_report_row(
 
     has_required = [
         bootstrap_icon_plus_name_html(
-            obj.ship_type.icon_url(
-                DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
-            )
-            if obj.ship_type
-            else eveimageserver.type_icon_url(
-                SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
+            (
+                obj.ship_type.icon_url(
+                    DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
+                )
+                if obj.ship_type
+                else eveimageserver.type_icon_url(
+                    SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
+                )
             ),
             obj.name,
         )

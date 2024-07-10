@@ -1,4 +1,5 @@
 """Managers for general models."""
+
 # pylint: disable=redefined-builtin,missing-class-docstring
 
 from __future__ import annotations

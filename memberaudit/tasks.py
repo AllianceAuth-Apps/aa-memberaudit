@@ -1,4 +1,5 @@
 """Celery tasks for Member Audit."""
+
 # pylint: disable=redefined-builtin, too-many-lines
 
 import inspect

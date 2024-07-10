@@ -1,4 +1,5 @@
 """Manager for Character model."""
+
 # pylint: disable=missing-class-docstring
 
 from typing import Set

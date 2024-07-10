@@ -1,4 +1,5 @@
 """Define admin site for Member Audit."""
+
 # pylint: disable=missing-class-docstring,missing-function-docstring
 
 import datetime as dt
