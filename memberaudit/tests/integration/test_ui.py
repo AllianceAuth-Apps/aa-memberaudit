@@ -7,7 +7,7 @@ from eveuniverse.models import EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 
-from memberaudit.models import CharacterContract, Location, MailEntity
+from memberaudit.models import Character, CharacterContract, Location, MailEntity
 from memberaudit.tests.testdata.esi_client_stub import esi_stub
 from memberaudit.tests.testdata.factories import (
     create_character_asset,
@@ -112,7 +112,9 @@ class TestUILauncher(WebTest):
         self.assertEqual(launcher.status_code, 200)
 
         # check update went through
-        character_1001 = character_ownership_1001.character.memberaudit_character
+        character_1001: Character = (
+            character_ownership_1001.character.memberaudit_character
+        )
         self.assertTrue(character_1001.is_update_status_ok())
 
         # check added character is now visible in launcher
