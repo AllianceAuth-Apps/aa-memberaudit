@@ -1,6 +1,6 @@
 """Managers for character section models (3/3)."""
 
-# pylint: disable=missing-class-docstring
+# pylint: disable=missing-class-docstring,not-callable
 
 from __future__ import annotations
 
