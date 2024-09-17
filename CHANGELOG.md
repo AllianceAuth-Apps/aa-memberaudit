@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.8.1] - 2024-09-17
+
+>**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Changed
+
+- Added django-esi 5.3 as minimum dependency to address a bug in 5.2, that disabled the ability to add characters
+
 ## [3.8.0] - 2024-01-31
 
 >**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
