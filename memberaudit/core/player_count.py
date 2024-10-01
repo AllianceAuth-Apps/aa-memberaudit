@@ -12,7 +12,7 @@ from memberaudit.providers import esi
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-_CACHE_KEY = "memberaudit-eve-status"
+_CACHE_KEY = "memberaudit-player-count"
 _TIMEOUT = 1 * 60
 
 

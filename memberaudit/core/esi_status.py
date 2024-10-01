@@ -1,4 +1,4 @@
-"""Determine which character sections are currently reported as broken by ESI."""
+"""Determine which character sections are currently reported as unavailable by ESI."""
 
 import random
 from http import HTTPStatus
@@ -8,6 +8,8 @@ from typing import List, Set, Tuple
 import requests
 from requests.exceptions import RequestException
 
+from django.core.cache import cache
+
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
 
@@ -16,9 +18,11 @@ from memberaudit.models import Character
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
+_CACHE_KEY = "memberaudit-esi-status"
+_CACHE_TIMEOUT = 120
 _ESI_STATUS_JSON_URL = "https://esi.evetech.net/status.json?version=latest"
-_TIMEOUT = (5, 30)
 _MAX_RETRIES = 3
+_REQUEST_TIMEOUT = (5, 30)
 
 # TODO: Add endpoints effecting multiple sections, e.g. universe/names
 # TODO: Add all endpoints
@@ -58,11 +62,27 @@ _SECTION_2_ENDPOINTS = {
 
 
 def unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
-    """Returns a set of all sections which endpoints are currently reported
-    as "red" by ESI and reports whether there was an error fetching
-    the current status from ESI.
+    """Returns a set of all sections which endpoints are currently
+    reported as "red" by ESI
+    and reports whether there was an error fetching the current status from ESI.
+
     An empty set means that all sections are available.
+
+    Results are cached.
     """
+    status = cache.get(_CACHE_KEY)
+    if status:
+        return status, True
+
+    status, ok = _unavailable_sections()
+    if not ok:
+        return set(), False
+
+    cache.set(key=_CACHE_KEY, value=status, timeout=_CACHE_TIMEOUT)
+    return status, True
+
+
+def _unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
     status, ok = _fetch_status()
     if not ok or not status:
         return set(), False
@@ -88,7 +108,7 @@ def _get_esi_status() -> requests.Response:
     while True:
         response = requests.get(
             _ESI_STATUS_JSON_URL,
-            timeout=_TIMEOUT,
+            timeout=_REQUEST_TIMEOUT,
             headers={"User-Agent": f"{__package__};{__version__}"},
         )
         if response.status_code not in {
@@ -132,3 +152,8 @@ def _is_section_broken(
             if x["method"] == r["method"] and x["route"] == r["route"]:
                 return True
     return False
+
+
+def clear_cache():
+    """Clear cache."""
+    cache.delete(_CACHE_KEY)

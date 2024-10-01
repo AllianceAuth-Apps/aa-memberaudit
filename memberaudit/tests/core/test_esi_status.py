@@ -37,7 +37,7 @@ class TestUnavailableSections(NoSocketsTestCase):
             ],
         )
         # when
-        got, ok = esi_status.unavailable_sections()
+        got, ok = esi_status._unavailable_sections()
         # then
         self.assertTrue(ok)
         want = {Character.UpdateSection.LOYALTY}
@@ -68,7 +68,7 @@ class TestUnavailableSections(NoSocketsTestCase):
             ],
         )
         # when
-        got, ok = esi_status.unavailable_sections()
+        got, ok = esi_status._unavailable_sections()
         # then
         self.assertTrue(ok)
         want = set()
@@ -82,7 +82,7 @@ class TestUnavailableSections(NoSocketsTestCase):
             status_code=500,
         )
         # when
-        _, ok = esi_status.unavailable_sections()
+        _, ok = esi_status._unavailable_sections()
         # then
         self.assertFalse(ok)
 
@@ -96,7 +96,7 @@ class TestUnavailableSections(NoSocketsTestCase):
             json=[],
         )
         # when
-        _, ok = esi_status.unavailable_sections()
+        _, ok = esi_status._unavailable_sections()
         # then
         self.assertFalse(ok)
 
