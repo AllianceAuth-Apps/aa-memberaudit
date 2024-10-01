@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.9.0] - TBD
+
+>**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Added
+
+- Added protection against broken ESI endpoints. When an endpoints is reported as down by ESI (status=red), Member Audit will skip updating the related section, e.g. mails. This should significantly reduce the number of failed tasks and ESI errors generated while endpoints are down. Currently works for mails and loyalty sections only, but others are planned to be implemented soon.
+
 ## [3.8.1] - 2024-09-17
 
 >**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
