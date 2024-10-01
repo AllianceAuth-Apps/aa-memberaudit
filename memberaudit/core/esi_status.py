@@ -16,13 +16,13 @@ from memberaudit.models import Character
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-ESI_STATUS_JSON_URL = "https://esi.evetech.net/status.json?version=latest"
-TIMEOUT = (5, 30)
-MAX_RETRIES = 3
+_ESI_STATUS_JSON_URL = "https://esi.evetech.net/status.json?version=latest"
+_TIMEOUT = (5, 30)
+_MAX_RETRIES = 3
 
 # TODO: Add endpoints effecting multiple sections, e.g. universe/names
 # TODO: Add all endpoints
-SECTION_2_ENDPOINTS = {
+_SECTION_2_ENDPOINTS = {
     Character.UpdateSection.LOYALTY: [
         {
             "endpoint": "esi-loyalty",
@@ -64,7 +64,7 @@ def unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
     An empty set means that all sections are available.
     """
     status, ok = _fetch_status()
-    if not ok:
+    if not ok or not status:
         return set(), False
 
     sections = _determine_unavailable_sections(status)
@@ -87,8 +87,8 @@ def _get_esi_status() -> requests.Response:
     retry_count = 0
     while True:
         response = requests.get(
-            ESI_STATUS_JSON_URL,
-            timeout=TIMEOUT,
+            _ESI_STATUS_JSON_URL,
+            timeout=_TIMEOUT,
             headers={"User-Agent": f"{__package__};{__version__}"},
         )
         if response.status_code not in {
@@ -99,7 +99,7 @@ def _get_esi_status() -> requests.Response:
             break
 
         retry_count += 1
-        if retry_count == MAX_RETRIES:
+        if retry_count == _MAX_RETRIES:
             break
 
         wait_secs = 0.1 * (random.uniform(2, 4) ** retry_count)
@@ -107,7 +107,7 @@ def _get_esi_status() -> requests.Response:
             "HTTP status code %s - Try %s/%s - Delay %f",
             response.status_code,
             retry_count,
-            MAX_RETRIES,
+            _MAX_RETRIES,
             wait_secs,
         )
         sleep(wait_secs)
@@ -118,7 +118,7 @@ def _get_esi_status() -> requests.Response:
 def _determine_unavailable_sections(status):
     sections = set()
     red_endpoints = [ep for ep in status if ep["status"] == "red"]
-    for section, ep in SECTION_2_ENDPOINTS.items():
+    for section, ep in _SECTION_2_ENDPOINTS.items():
         if _is_section_broken(ep, red_endpoints):
             sections.add(section)
     return sections

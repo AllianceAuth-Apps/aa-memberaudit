@@ -152,7 +152,11 @@ def update_character(
 
     unavailable_sections, ok = esi_status.unavailable_sections()
     if not ok:
-        logger.warning("Failed to determine from ESI which sections are broken.")
+        logger.warning(
+            "%s: Failed to determine from ESI which sections are available. Update aborted.",
+            character,
+        )
+        return False
 
     for section in enabled_sections_by_stale_minutes():
         if section in unavailable_sections:

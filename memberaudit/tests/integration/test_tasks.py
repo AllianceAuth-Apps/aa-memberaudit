@@ -1,8 +1,8 @@
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings
+import requests_mock
 
-from app_utils.esi import EsiStatus
+from django.test import TestCase, override_settings
 
 from memberaudit import tasks
 from memberaudit.tests.testdata.esi_client_stub import esi_stub
@@ -19,8 +19,7 @@ MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: (set(), True))
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+# TODO: Replace esi_stubs with http request mocks
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
@@ -28,6 +27,7 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
 @patch(MANAGERS_PATH + ".general.esi", esi_stub)
+@requests_mock.Mocker()
 @override_settings(
     CELERY_ALWAYS_EAGER=True,
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
@@ -44,9 +44,35 @@ class TestTasksIntegration(TestCase):
         load_locations()
         reset_celery_once_locks()
 
-    def test_should_update_all_characters(self):
+    def test_should_update_all_characters(self, requests_mocker):
         # given
         character_1001 = create_memberaudit_character(1001)
+        requests_mocker.register_uri(
+            "GET",
+            url="https://esi.evetech.net/status.json?version=latest",
+            json=[
+                {
+                    "endpoint": "esi-mail",
+                    "method": "get",
+                    "route": "/characters/{character_id}/mail/",
+                    "status": "green",
+                    "tags": ["Mail"],
+                }
+            ],
+        )
+        requests_mocker.register_uri(
+            "GET",
+            url="https://esi.evetech.net/latest/status/",
+            headers={
+                "X-Esi-Error-Limit-Remain": "40",
+                "X-Esi-Error-Limit-Reset": "30",
+            },
+            json={
+                "players": 12345,
+                "server_version": "1132976",
+                "start_time": "2017-01-02T12:34:56Z",
+            },
+        )
         # when
         tasks.update_all_characters()
         # then

@@ -254,7 +254,6 @@ class TestUpdateCharacter(TestCase):
         self.assertIsNone(character.is_update_status_ok())
 
     @tag("breaks_with_tox")  # FIXME: Find solution
-    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_skip_updating_broken_sections(self):
         # given
         run_started_at = now() - dt.timedelta(hours=24)
@@ -289,6 +288,29 @@ class TestUpdateCharacter(TestCase):
         self.assertTrue(
             self.character_1001.is_update_needed_for_section(section=broken_section)
         )
+
+    @tag("breaks_with_tox")  # FIXME: Find solution
+    def test_should_stop_updating_when_no_esi_status_available(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                run_started_at=run_started_at,
+                run_finished_at=run_started_at,
+            )
+
+        # when
+        with patch(
+            TASKS_PATH + ".esi_status.unavailable_sections",
+            lambda: (set(), False),
+        ):
+            result = tasks.update_character(self.character_1001.pk)
+
+        # then
+        self.assertFalse(result)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))

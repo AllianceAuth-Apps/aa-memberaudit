@@ -86,6 +86,20 @@ class TestUnavailableSections(NoSocketsTestCase):
         # then
         self.assertFalse(ok)
 
+    def test_should_return_as_error_when_no_endpoints_are_returned(
+        self, requests_mocker
+    ):
+        # given
+        requests_mocker.register_uri(
+            "GET",
+            url="https://esi.evetech.net/status.json?version=latest",
+            json=[],
+        )
+        # when
+        _, ok = esi_status.unavailable_sections()
+        # then
+        self.assertFalse(ok)
+
 
 @requests_mock.Mocker()
 class TestFetchStatus(NoSocketsTestCase):
