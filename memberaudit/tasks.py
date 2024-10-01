@@ -30,7 +30,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT,
     MEMBERAUDIT_TASKS_TIME_LIMIT,
 )
-from memberaudit.core import data_exporters
+from memberaudit.core import data_exporters, esi_status
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
 from memberaudit.models import (
@@ -150,14 +150,28 @@ def update_character(
     logger.info(msg)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
+    broken_sections, ok = esi_status.broken_sections()
+    if not ok:
+        logger.warning("Failed to determine from ESI which sections are broken.")
+
     for section in enabled_sections_by_stale_minutes():
-        if ignore_stale or character_needs_update.for_section(section):
-            task_name = f"update_character_{section.value}"
-            task = globals()[task_name]
-            task.apply_async(
-                kwargs={"character_pk": character.pk, "force_update": force_update},
-                priority=priority,
+        if section in broken_sections:
+            logger.warning(
+                "%s: Skipping update for section because ESI reports it as broken: %s",
+                character,
+                section,
             )
+            continue
+
+        if not ignore_stale and not character_needs_update.for_section(section):
+            continue
+
+        task_name = f"update_character_{section.value}"
+        task = globals()[task_name]
+        task.apply_async(
+            kwargs={"character_pk": character.pk, "force_update": force_update},
+            priority=priority,
+        )
 
     if character.is_shared:
         check_character_consistency.apply_async(
