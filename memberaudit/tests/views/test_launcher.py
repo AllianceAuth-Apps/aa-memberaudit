@@ -422,7 +422,6 @@ class TestDashboardPanel(TestCase):
         create_character_mining_ledger_entry(
             character_1002, eve_type=ore_type, quantity=2, date=not_this_month
         )
-
         create_character_wallet_journal_entry(
             character_1001, amount=4_000, ref_type="bounty_prizes", date=now()
         )
@@ -452,7 +451,7 @@ class TestDashboardPanel(TestCase):
         self.assertEqual(context["registered_percent"], 67)
         self.assertEqual(context["total_wallet_isk"], 15_000)
         self.assertEqual(context["total_ratted_isk"], 9_000)
-        self.assertEqual(context["total_mined_isk"], 900)
+        self.assertEqual(context["total_mined_isk"], 500.0)
         self.assertEqual(context["total_character_skillpoints"], 4_000)
 
     def test_user_with_memberaudit_character_and_no_data(self):
@@ -497,7 +496,7 @@ class TestDashboardPanel(TestCase):
         self.assertEqual(context["total_mined_isk"], 0)
 
 
-@patch(MODULE_PATH + ".eve_status.player_count", spec=True)
+@patch(MODULE_PATH + ".player_count.get", spec=True)
 class TestPlayerCountData(TestCase):
     @classmethod
     def setUpClass(cls):

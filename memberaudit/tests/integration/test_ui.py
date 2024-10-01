@@ -1,6 +1,6 @@
 from unittest.mock import patch
 
-from django.test import override_settings
+from django.test import override_settings, tag
 from django.urls import reverse
 from django_webtest import WebTest
 from eveuniverse.models import EveType
@@ -67,6 +67,7 @@ class TestUILauncher(WebTest):
         )
         self.assertEqual(character_viewer.status_code, 200)
 
+    @tag("breaks_with_older_mariadb")  # FIXME
     @patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
     @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
     @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)

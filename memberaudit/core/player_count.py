@@ -16,7 +16,7 @@ _CACHE_KEY = "memberaudit-eve-status"
 _TIMEOUT = 1 * 60
 
 
-def player_count() -> Optional[int]:
+def get() -> Optional[int]:
     """Return cached player count from ESI or None if offline."""
     return cache.get_or_set(
         key=_CACHE_KEY, default=_fetch_player_count, timeout=_TIMEOUT
