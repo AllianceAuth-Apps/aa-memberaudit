@@ -150,12 +150,12 @@ def update_character(
     logger.info(msg)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
-    broken_sections, ok = esi_status.broken_sections()
+    unavailable_sections, ok = esi_status.unavailable_sections()
     if not ok:
         logger.warning("Failed to determine from ESI which sections are broken.")
 
     for section in enabled_sections_by_stale_minutes():
-        if section in broken_sections:
+        if section in unavailable_sections:
             logger.warning(
                 "%s: Skipping update for section because ESI reports it as broken: %s",
                 character,

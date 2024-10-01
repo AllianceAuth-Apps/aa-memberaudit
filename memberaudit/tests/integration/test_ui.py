@@ -68,7 +68,7 @@ class TestUILauncher(WebTest):
         self.assertEqual(character_viewer.status_code, 200)
 
     @tag("breaks_with_older_mariadb")  # FIXME
-    @patch(TASKS_PATH + ".esi_status.broken_sections", lambda: (set(), True))
+    @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: (set(), True))
     @patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
     @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
     @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)

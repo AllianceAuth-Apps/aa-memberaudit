@@ -1,6 +1,7 @@
 """Determine which character sections are currently reported as broken by ESI."""
 
 import random
+from http import HTTPStatus
 from time import sleep
 from typing import List, Set, Tuple
 
@@ -56,7 +57,7 @@ SECTION_2_ENDPOINTS = {
 }
 
 
-def broken_sections() -> Tuple[Set[Character.UpdateSection], bool]:
+def unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
     """Returns a set of all sections which endpoints are currently reported
     as "red" by ESI and reports whether there was an error fetching
     the current status from ESI.
@@ -66,13 +67,13 @@ def broken_sections() -> Tuple[Set[Character.UpdateSection], bool]:
     if not ok:
         return set(), False
 
-    sections = _determine_broken_sections(status)
+    sections = _determine_unavailable_sections(status)
     return sections, True
 
 
 def _fetch_status() -> Tuple[List[dict], bool]:
     try:
-        r = _request_esi_status()
+        r = _get_esi_status()
         r.raise_for_status()
         status = r.json()
     except RequestException as exc:
@@ -81,7 +82,7 @@ def _fetch_status() -> Tuple[List[dict], bool]:
     return status, True
 
 
-def _request_esi_status() -> requests.Response:
+def _get_esi_status() -> requests.Response:
     """Fetch current ESI status. Retry on common HTTP errors."""
     retry_count = 0
     while True:
@@ -91,30 +92,30 @@ def _request_esi_status() -> requests.Response:
             headers={"User-Agent": f"{__package__};{__version__}"},
         )
         if response.status_code not in {
-            502,  # HTTPBadGateway
-            503,  # HTTPServiceUnavailable
-            504,  # HTTPGatewayTimeout
+            HTTPStatus.BAD_GATEWAY,
+            HTTPStatus.SERVICE_UNAVAILABLE,
+            HTTPStatus.GATEWAY_TIMEOUT,
         }:
             break
 
         retry_count += 1
-        if retry_count > MAX_RETRIES:
+        if retry_count == MAX_RETRIES:
             break
 
+        wait_secs = 0.1 * (random.uniform(2, 4) ** retry_count)
         logger.warning(
-            "HTTP status code %s - Try %s/%s",
+            "HTTP status code %s - Try %s/%s - Delay %f",
             response.status_code,
             retry_count,
             MAX_RETRIES,
+            wait_secs,
         )
-
-        wait_secs = 0.1 * (random.uniform(2, 4) ** (retry_count - 1))
         sleep(wait_secs)
 
     return response
 
 
-def _determine_broken_sections(status):
+def _determine_unavailable_sections(status):
     sections = set()
     red_endpoints = [ep for ep in status if ep["status"] == "red"]
     for section, ep in SECTION_2_ENDPOINTS.items():

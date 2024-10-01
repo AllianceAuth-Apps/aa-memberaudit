@@ -85,7 +85,7 @@ class TestRegularUpdates(TestCase):
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
 
 
-@patch(TASKS_PATH + ".esi_status.broken_sections", lambda: (set(), True))
+@patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: (set(), True))
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
@@ -270,7 +270,8 @@ class TestUpdateCharacter(TestCase):
         # when
         broken_section = Character.UpdateSection.LOYALTY
         with patch(
-            TASKS_PATH + ".esi_status.broken_sections", lambda: ({broken_section}, True)
+            TASKS_PATH + ".esi_status.unavailable_sections",
+            lambda: ({broken_section}, True),
         ):
             result = tasks.update_character(self.character_1001.pk)
 
@@ -1387,7 +1388,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
         self.assertTrue(mock_update_user.called)
 
 
-@patch(TASKS_PATH + ".esi_status.broken_sections", lambda: (set(), True))
+@patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: (set(), True))
 @patch(TASKS_PATH + ".update_character", spec=True)
 class TestUpdateAllCharacters(TestCase):
     @classmethod
