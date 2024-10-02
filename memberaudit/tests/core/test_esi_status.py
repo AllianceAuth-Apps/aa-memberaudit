@@ -12,6 +12,33 @@ from memberaudit.models import Character
 MODULE_PATH = "memberaudit.core.esi_status"
 
 
+class TestEndpoint(NoSocketsTestCase):
+    def test_should_not_allow_invalid_creation(self):
+        cases = [
+            ("", ""),
+            ("xxx", "/characters/{character_id}"),
+            ("", "/characters/{character_id}"),
+            ("get", ""),
+        ]
+        for method, route in cases:
+            with self.subTest(method=method, route=route):
+                with self.assertRaises(ValueError):
+                    esi_status._Endpoint(method=method, route=route)
+
+    def test_can_create_from_dict(self):
+        ep = esi_status._Endpoint.from_dict(
+            {
+                "endpoint": "esi-assets",
+                "method": "get",
+                "route": "/characters/{character_id}/assets/",
+                "status": "green",
+                "tags": ["Assets"],
+            },
+        )
+        self.assertEqual(ep.method, "get")
+        self.assertEqual(ep.route, "/characters/{character_id}/assets/")
+
+
 @patch(MODULE_PATH + "._unavailable_sections", spec=True)
 @patch(MODULE_PATH + ".cache.set", spec=True)
 @patch(MODULE_PATH + ".cache.get", spec=True)

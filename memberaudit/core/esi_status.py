@@ -4,7 +4,7 @@ import dataclasses
 import random
 from http import HTTPStatus
 from time import sleep
-from typing import List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set
 
 import requests
 from requests.exceptions import RequestException
@@ -28,12 +28,18 @@ _REQUEST_TIMEOUT = (5, 30)
 
 @dataclasses.dataclass
 class _Endpoint:
+    """A ESI endpoint."""
+
     method: str
     route: str
 
     def __post_init__(self):
         if not self.method or not self.route or self.method not in {"get", "post"}:
-            raise ValueError(f"invalid method: {self}")
+            raise ValueError(f"invalid: {self}")
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "_Endpoint":
+        return cls(method=d["method"], route=d["route"])
 
 
 _REQUIRED_ENDPOINTS_FOR_SECTIONS = {
@@ -119,7 +125,7 @@ _REQUIRED_ENDPOINTS_FOR_SECTIONS = {
 """Endpoints which must be available for an endpoint to function."""
 
 
-def unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
+def unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
     """Returns a set of all sections which endpoints are currently
     reported as "red" by ESI. Returns None if there was a failure.
 
@@ -139,7 +145,7 @@ def unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
     return status
 
 
-def _unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
+def _unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
     status = _fetch_status()
     if not status:
         return None
@@ -148,7 +154,7 @@ def _unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
     return sections
 
 
-def _fetch_status() -> Optional[Tuple[List[dict]]]:
+def _fetch_status() -> Optional[List[Dict[str, Any]]]:
     try:
         r = _get_esi_status()
         r.raise_for_status()
@@ -192,9 +198,11 @@ def _get_esi_status() -> requests.Response:
     return response
 
 
-def _determine_unavailable_sections(status):
-    sections = set()
-    red_endpoints = [ep for ep in status if ep["status"] == "red"]
+def _determine_unavailable_sections(
+    status: List[Dict[str, Any]]
+) -> Set[Character.UpdateSection]:
+    sections: Set[Character.UpdateSection] = set()
+    red_endpoints = [_Endpoint.from_dict(ep) for ep in status if ep["status"] == "red"]
     for section, ep in _REQUIRED_ENDPOINTS_FOR_SECTIONS.items():
         if _is_section_broken(ep, red_endpoints):
             sections.add(section)
@@ -202,11 +210,11 @@ def _determine_unavailable_sections(status):
 
 
 def _is_section_broken(
-    section_endpoints: List[_Endpoint], red_endpoints: List[dict]
+    section_endpoints: List[_Endpoint], red_endpoints: List[_Endpoint]
 ) -> bool:
     for sep in section_endpoints:
         for rep in red_endpoints:
-            if rep["method"] == sep.method and rep["route"] == sep.route:
+            if rep.method == sep.method and rep.route == sep.route:
                 return True
     return False
 
