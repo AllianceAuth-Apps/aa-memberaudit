@@ -1,9 +1,10 @@
 """Determine which character sections are currently reported as unavailable by ESI."""
 
+import dataclasses
 import random
 from http import HTTPStatus
 from time import sleep
-from typing import List, Set, Tuple
+from typing import List, Optional, Set, Tuple
 
 import requests
 from requests.exceptions import RequestException
@@ -24,44 +25,33 @@ _ESI_STATUS_JSON_URL = "https://esi.evetech.net/status.json?version=latest"
 _MAX_RETRIES = 3
 _REQUEST_TIMEOUT = (5, 30)
 
+
+@dataclasses.dataclass
+class _Endpoint:
+    method: str
+    route: str
+
+    def __post_init__(self):
+        if not self.method or not self.route or self.method not in {"get", "post"}:
+            raise ValueError(f"invalid method: {self}")
+
+
 # TODO: Add endpoints effecting multiple sections, e.g. universe/names
 # TODO: Add all endpoints
 _SECTION_2_ENDPOINTS = {
     Character.UpdateSection.LOYALTY: [
-        {
-            "endpoint": "esi-loyalty",
-            "method": "get",
-            "route": "/characters/{character_id}/loyalty/points/",
-            "status": "red",
-            "tags": ["Loyalty"],
-        },
+        _Endpoint("get", "/characters/{character_id}/loyalty/points/")
     ],
     Character.UpdateSection.MAILS: [
-        {
-            "method": "get",
-            "route": "/characters/{character_id}/mail/",
-        },
-        {
-            "method": "get",
-            "route": "/characters/{character_id}/mail/",
-        },
-        {
-            "method": "get",
-            "route": "/characters/{character_id}/mail/labels/",
-        },
-        {
-            "method": "get",
-            "route": "/characters/{character_id}/mail/lists/",
-        },
-        {
-            "method": "get",
-            "route": "/characters/{character_id}/mail/{mail_id}/",
-        },
+        _Endpoint("get", "/characters/{character_id}/mail/"),
+        _Endpoint("get", "/characters/{character_id}/mail/labels/"),
+        _Endpoint("get", "/characters/{character_id}/mail/lists/"),
+        _Endpoint("get", "/characters/{character_id}/mail/{mail_id}/"),
     ],
 }
 
 
-def unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
+def unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
     """Returns a set of all sections which endpoints are currently
     reported as "red" by ESI
     and reports whether there was an error fetching the current status from ESI.
@@ -72,34 +62,34 @@ def unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
     """
     status = cache.get(_CACHE_KEY)
     if status:
-        return status, True
+        return status
 
-    status, ok = _unavailable_sections()
-    if not ok:
-        return set(), False
+    status = _unavailable_sections()
+    if status is None:
+        return None
 
     cache.set(key=_CACHE_KEY, value=status, timeout=_CACHE_TIMEOUT)
-    return status, True
+    return status
 
 
-def _unavailable_sections() -> Tuple[Set[Character.UpdateSection], bool]:
-    status, ok = _fetch_status()
-    if not ok or not status:
-        return set(), False
+def _unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
+    status = _fetch_status()
+    if not status:
+        return None
 
     sections = _determine_unavailable_sections(status)
-    return sections, True
+    return sections
 
 
-def _fetch_status() -> Tuple[List[dict], bool]:
+def _fetch_status() -> Optional[Tuple[List[dict]]]:
     try:
         r = _get_esi_status()
         r.raise_for_status()
         status = r.json()
     except RequestException as exc:
         logger.warning(f"Failed to get ESI status. Error: {exc}")
-        return [], False
-    return status, True
+        return None
+    return status
 
 
 def _get_esi_status() -> requests.Response:
@@ -145,11 +135,11 @@ def _determine_unavailable_sections(status):
 
 
 def _is_section_broken(
-    section_endpoints: List[dict], red_endpoints: List[dict]
+    section_endpoints: List[_Endpoint], red_endpoints: List[dict]
 ) -> bool:
-    for r in section_endpoints:
-        for x in red_endpoints:
-            if x["method"] == r["method"] and x["route"] == r["route"]:
+    for sep in section_endpoints:
+        for rep in red_endpoints:
+            if rep["method"] == sep.method and rep["route"] == sep.route:
                 return True
     return False
 

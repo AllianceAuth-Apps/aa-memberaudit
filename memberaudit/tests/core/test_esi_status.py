@@ -1,3 +1,4 @@
+from unittest import skip
 from unittest.mock import patch
 
 import requests_mock
@@ -10,8 +11,38 @@ from memberaudit.models import Character
 MODULE_PATH = "memberaudit.core.esi_status"
 
 
-@requests_mock.Mocker()
+@patch(MODULE_PATH + "._unavailable_sections", spec=True)
+@patch(MODULE_PATH + ".cache.set", spec=True)
+@patch(MODULE_PATH + ".cache.get", spec=True)
 class TestUnavailableSections(NoSocketsTestCase):
+    def test_should_return_from_cache(
+        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
+    ):
+        mock_cache_get.return_value = {Character.UpdateSection.ASSETS}
+        x = esi_status.unavailable_sections()
+        self.assertSetEqual(x, {Character.UpdateSection.ASSETS})
+
+    def test_should_update_cache_and_return_new_value(
+        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
+    ):
+        mock_cache_get.return_value = None
+        mock_unavailable_sections.return_value = {Character.UpdateSection.ASSETS}
+        x = esi_status.unavailable_sections()
+        self.assertSetEqual(x, {Character.UpdateSection.ASSETS})
+        self.assertTrue(mock_cache_set.called)
+
+    def test_should_none_on_failure(
+        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
+    ):
+        mock_cache_get.return_value = None
+        mock_unavailable_sections.return_value = None
+        x = esi_status.unavailable_sections()
+        self.assertIsNone(x)
+        self.assertFalse(mock_cache_set.called)
+
+
+@requests_mock.Mocker()
+class TestUnavailableSections2(NoSocketsTestCase):
     def test_should_return_unavailable_sections_as_reported_by_ESI(
         self, requests_mocker
     ):
@@ -34,12 +65,18 @@ class TestUnavailableSections(NoSocketsTestCase):
                     "status": "red",
                     "tags": ["Loyalty"],
                 },
+                {
+                    "endpoint": "esi-loyalty",
+                    "method": "get",
+                    "route": "/characters/{character_id}/loyalty/points/xy/",
+                    "status": "green",
+                    "tags": ["Loyalty"],
+                },
             ],
         )
         # when
-        got, ok = esi_status._unavailable_sections()
+        got = esi_status._unavailable_sections()
         # then
-        self.assertTrue(ok)
         want = {Character.UpdateSection.LOYALTY}
         self.assertEqual(want, got)
 
@@ -68,9 +105,8 @@ class TestUnavailableSections(NoSocketsTestCase):
             ],
         )
         # when
-        got, ok = esi_status._unavailable_sections()
+        got = esi_status._unavailable_sections()
         # then
-        self.assertTrue(ok)
         want = set()
         self.assertEqual(want, got)
 
@@ -82,9 +118,9 @@ class TestUnavailableSections(NoSocketsTestCase):
             status_code=500,
         )
         # when
-        _, ok = esi_status._unavailable_sections()
+        got = esi_status._unavailable_sections()
         # then
-        self.assertFalse(ok)
+        self.assertIsNone(got)
 
     def test_should_return_as_error_when_no_endpoints_are_returned(
         self, requests_mocker
@@ -96,9 +132,9 @@ class TestUnavailableSections(NoSocketsTestCase):
             json=[],
         )
         # when
-        _, ok = esi_status._unavailable_sections()
+        got = esi_status._unavailable_sections()
         # then
-        self.assertFalse(ok)
+        self.assertIsNone(got)
 
 
 @requests_mock.Mocker()
@@ -119,9 +155,8 @@ class TestFetchStatus(NoSocketsTestCase):
             ],
         )
         # when
-        got, ok = esi_status._fetch_status()
+        got = esi_status._fetch_status()
         # then
-        self.assertTrue(ok)
         want = [
             {
                 "endpoint": "esi-mail",
@@ -141,9 +176,9 @@ class TestFetchStatus(NoSocketsTestCase):
             status_code=500,
         )
         # when
-        _, ok = esi_status._fetch_status()
+        got = esi_status._fetch_status()
         # then
-        self.assertFalse(ok)
+        self.assertIsNone(got)
 
     def test_should_report_json_error(self, requests_mocker):
         # given
@@ -153,9 +188,9 @@ class TestFetchStatus(NoSocketsTestCase):
             text="this is not json",
         )
         # when
-        _, ok = esi_status._fetch_status()
+        got = esi_status._fetch_status()
         # then
-        self.assertFalse(ok)
+        self.assertIsNone(got)
 
 
 @patch(MODULE_PATH + ".sleep", lambda x: None)
@@ -197,3 +232,13 @@ class TestGetEsiStatus(NoSocketsTestCase):
         # then
         self.assertEqual(got.status_code, 503)
         self.assertEqual(requests_mocker.call_count, 3)
+
+
+@skip("while not complete")  # FIXME
+class TestEnsureAllSectionsAreCovered(NoSocketsTestCase):
+    def test_should_cover_all_sections(self):
+        for s in Character.UpdateSection:
+            if s not in esi_status._SECTION_2_ENDPOINTS:
+                self.fail(f"esi status: does not cover section: {s}")
+            if len(esi_status._SECTION_2_ENDPOINTS[s]) == 0:
+                self.fail(f"esi status: missing endpoints definition for section: {s}")

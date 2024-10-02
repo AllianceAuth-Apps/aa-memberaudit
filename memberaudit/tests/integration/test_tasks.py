@@ -5,6 +5,7 @@ import requests_mock
 from django.test import TestCase, override_settings
 
 from memberaudit import tasks
+from memberaudit.core import esi_status
 from memberaudit.tests.testdata.esi_client_stub import esi_stub
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -43,6 +44,7 @@ class TestTasksIntegration(TestCase):
         load_entities()
         load_locations()
         reset_celery_once_locks()
+        esi_status.clear_cache()
 
     def test_should_update_all_characters(self, requests_mocker):
         # given

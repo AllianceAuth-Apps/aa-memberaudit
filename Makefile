@@ -42,7 +42,7 @@ compilemessages:
 		-l zh_Hans
 
 coverage:
-	coverage run --concurrency=multiprocessing $(myauth_path) test $(package).tests --keepdb --failfast --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --exclude-tag=breaks_with_older_mariadb --timing --parallel && coverage combine && coverage html && coverage report -m
+	coverage run --concurrency=multiprocessing $(myauth_path) test $(package).tests --keepdb --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --exclude-tag=breaks_with_older_mariadb --timing --parallel && coverage combine && coverage html && coverage report -m
 # 	coverage run $(myauth_path) test $(package).tests -v 2 --keepdb --failfast --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --exclude-tag=breaks_with_older_mariadb --timing && coverage html && coverage report -m
 
 coverage_single:
