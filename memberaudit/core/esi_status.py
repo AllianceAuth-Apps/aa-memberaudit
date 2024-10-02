@@ -39,6 +39,7 @@ class _Endpoint:
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "_Endpoint":
+        """Create a new object from a dict."""
         return cls(method=d["method"], route=d["route"])
 
 
