@@ -36,11 +36,42 @@ class _Endpoint:
             raise ValueError(f"invalid method: {self}")
 
 
-# TODO: Add endpoints effecting multiple sections, e.g. universe/names
-# TODO: Add all endpoints
-_SECTION_2_ENDPOINTS = {
+_REQUIRED_ENDPOINTS_FOR_SECTIONS = {
+    Character.UpdateSection.ASSETS: [
+        _Endpoint("get", "/characters/{character_id}/assets/"),
+        _Endpoint("post", "/characters/{character_id}/assets/names/"),
+    ],
+    Character.UpdateSection.ATTRIBUTES: [
+        _Endpoint("get", "/characters/{character_id}/attributes/"),
+    ],
+    Character.UpdateSection.CHARACTER_DETAILS: [
+        _Endpoint("get", "/characters/{character_id}/"),
+    ],
+    Character.UpdateSection.CONTACTS: [
+        _Endpoint("get", "/characters/{character_id}/contacts/"),
+    ],
+    Character.UpdateSection.CONTRACTS: [
+        _Endpoint("get", "/characters/{character_id}/contracts/"),
+        _Endpoint("get", "/characters/{character_id}/contracts/{contract_id}/bids/"),
+        _Endpoint("get", "/characters/{character_id}/contracts/{contract_id}/items/"),
+    ],
+    Character.UpdateSection.CORPORATION_HISTORY: [
+        _Endpoint("get", "/characters/{character_id}/corporationhistory/"),
+    ],
+    Character.UpdateSection.FW_STATS: [
+        _Endpoint("get", "/characters/{character_id}/fw/stats/"),
+    ],
+    Character.UpdateSection.IMPLANTS: [
+        _Endpoint("get", "/characters/{character_id}/implants/"),
+    ],
+    Character.UpdateSection.JUMP_CLONES: [
+        _Endpoint("get", "/characters/{character_id}/clones/"),
+    ],
+    Character.UpdateSection.LOCATION: [
+        _Endpoint("get", "/characters/{character_id}/location/"),
+    ],
     Character.UpdateSection.LOYALTY: [
-        _Endpoint("get", "/characters/{character_id}/loyalty/points/")
+        _Endpoint("get", "/characters/{character_id}/loyalty/points/"),
     ],
     Character.UpdateSection.MAILS: [
         _Endpoint("get", "/characters/{character_id}/mail/"),
@@ -48,13 +79,49 @@ _SECTION_2_ENDPOINTS = {
         _Endpoint("get", "/characters/{character_id}/mail/lists/"),
         _Endpoint("get", "/characters/{character_id}/mail/{mail_id}/"),
     ],
+    Character.UpdateSection.MINING_LEDGER: [
+        _Endpoint("get", "/characters/{character_id}/mining/"),
+    ],
+    Character.UpdateSection.ONLINE_STATUS: [
+        _Endpoint("get", "/characters/{character_id}/online/"),
+    ],
+    Character.UpdateSection.PLANETS: [
+        _Endpoint("get", "/characters/{character_id}/planets/"),
+    ],
+    Character.UpdateSection.ROLES: [
+        _Endpoint("get", "/characters/{character_id}/roles/"),
+    ],
+    Character.UpdateSection.SHIP: [
+        _Endpoint("get", "/characters/{character_id}/ship/"),
+    ],
+    Character.UpdateSection.SKILLS: [
+        _Endpoint("get", "/characters/{character_id}/skills/"),
+    ],
+    Character.UpdateSection.SKILL_QUEUE: [
+        _Endpoint("get", "/characters/{character_id}/skillqueue/"),
+    ],
+    Character.UpdateSection.STANDINGS: [
+        _Endpoint("get", "/characters/{character_id}/standings/"),
+    ],
+    Character.UpdateSection.TITLES: [
+        _Endpoint("get", "/characters/{character_id}/titles/"),
+    ],
+    Character.UpdateSection.WALLET_BALLANCE: [
+        _Endpoint("get", "/characters/{character_id}/wallet/"),
+    ],
+    Character.UpdateSection.WALLET_JOURNAL: [
+        _Endpoint("get", "/characters/{character_id}/wallet/journal/"),
+    ],
+    Character.UpdateSection.WALLET_TRANSACTIONS: [
+        _Endpoint("get", "/characters/{character_id}/wallet/transactions/"),
+    ],
 }
+"""Endpoints which must be available for an endpoint to function."""
 
 
 def unavailable_sections() -> Optional[Tuple[Set[Character.UpdateSection]]]:
     """Returns a set of all sections which endpoints are currently
-    reported as "red" by ESI
-    and reports whether there was an error fetching the current status from ESI.
+    reported as "red" by ESI. Returns None if there was a failure.
 
     An empty set means that all sections are available.
 
@@ -128,7 +195,7 @@ def _get_esi_status() -> requests.Response:
 def _determine_unavailable_sections(status):
     sections = set()
     red_endpoints = [ep for ep in status if ep["status"] == "red"]
-    for section, ep in _SECTION_2_ENDPOINTS.items():
+    for section, ep in _REQUIRED_ENDPOINTS_FOR_SECTIONS.items():
         if _is_section_broken(ep, red_endpoints):
             sections.add(section)
     return sections

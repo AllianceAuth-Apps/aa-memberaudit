@@ -1,4 +1,5 @@
-from unittest import skip
+import json
+from pathlib import Path
 from unittest.mock import patch
 
 import requests_mock
@@ -234,11 +235,25 @@ class TestGetEsiStatus(NoSocketsTestCase):
         self.assertEqual(requests_mocker.call_count, 3)
 
 
-@skip("while not complete")  # FIXME
-class TestEnsureAllSectionsAreCovered(NoSocketsTestCase):
-    def test_should_cover_all_sections(self):
+class TestSectionEndpointsDef(NoSocketsTestCase):
+    def test_all_sections_must_have_endpoints_defined(self):
+        excluded = {Character.UpdateSection.SKILL_SETS}
         for s in Character.UpdateSection:
-            if s not in esi_status._SECTION_2_ENDPOINTS:
-                self.fail(f"esi status: does not cover section: {s}")
-            if len(esi_status._SECTION_2_ENDPOINTS[s]) == 0:
-                self.fail(f"esi status: missing endpoints definition for section: {s}")
+            if s in excluded:
+                continue
+            if s not in esi_status._REQUIRED_ENDPOINTS_FOR_SECTIONS:
+                self.fail(f"does not cover section: {s}")
+            if len(esi_status._REQUIRED_ENDPOINTS_FOR_SECTIONS[s]) == 0:
+                self.fail(f"missing endpoints definition for section: {s}")
+
+    def test_section_endpoints_must_be_valid(self):
+        # given
+        p = Path(__file__).parent / "esi_status_example.json"
+        with p.open("r", encoding="utf8") as f:
+            status = json.load(f)
+        valid_endpoints = {(ep["method"], ep["route"]) for ep in status}
+        for s, endpoints in esi_status._REQUIRED_ENDPOINTS_FOR_SECTIONS.items():
+            endpoints: list[esi_status._Endpoint]
+            for ep in endpoints:
+                if (ep.method, ep.route) not in valid_endpoints:
+                    self.fail(f"{s}: invalid route: {ep}")
