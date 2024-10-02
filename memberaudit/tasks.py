@@ -30,7 +30,7 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT,
     MEMBERAUDIT_TASKS_TIME_LIMIT,
 )
-from memberaudit.core import data_exporters
+from memberaudit.core import data_exporters, esi_status
 from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
 from memberaudit.models import (
@@ -150,14 +150,32 @@ def update_character(
     logger.info(msg)
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
 
+    unavailable_sections = esi_status.unavailable_sections()
+    if unavailable_sections is None:
+        logger.warning(
+            "%s: Failed to determine from ESI which sections are available. Update aborted.",
+            character,
+        )
+        return False
+
     for section in enabled_sections_by_stale_minutes():
-        if ignore_stale or character_needs_update.for_section(section):
-            task_name = f"update_character_{section.value}"
-            task = globals()[task_name]
-            task.apply_async(
-                kwargs={"character_pk": character.pk, "force_update": force_update},
-                priority=priority,
+        if section in unavailable_sections:
+            logger.warning(
+                "%s: Skipping update for this section because ESI reports it as unavailable: %s",
+                character,
+                section,
             )
+            continue
+
+        if not ignore_stale and not character_needs_update.for_section(section):
+            continue
+
+        task_name = f"update_character_{section.value}"
+        task = globals()[task_name]
+        task.apply_async(
+            kwargs={"character_pk": character.pk, "force_update": force_update},
+            priority=priority,
+        )
 
     if character.is_shared:
         check_character_consistency.apply_async(

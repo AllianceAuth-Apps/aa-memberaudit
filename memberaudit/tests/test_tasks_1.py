@@ -85,6 +85,7 @@ class TestRegularUpdates(TestCase):
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
 
 
+@patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
@@ -126,7 +127,7 @@ class TestUpdateCharacter(TestCase):
             with self.subTest(section=section):
                 self.assertTrue(status_all[section].is_success)
 
-    @tag("breaks_with_tox")  # FXME: Find solution
+    @tag("breaks_with_tox")  # FIXME: Find solution
     @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given
@@ -251,6 +252,62 @@ class TestUpdateCharacter(TestCase):
         # then
         self.assertFalse(result)
         self.assertIsNone(character.is_update_status_ok())
+
+    @tag("breaks_with_tox")  # FIXME: Find solution
+    def test_should_skip_updating_broken_sections(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                run_started_at=run_started_at,
+                run_finished_at=run_started_at,
+            )
+
+        # when
+        broken_section = Character.UpdateSection.LOYALTY
+        with patch(
+            TASKS_PATH + ".esi_status.unavailable_sections",
+            lambda: {broken_section},
+        ):
+            result = tasks.update_character(self.character_1001.pk)
+
+        # then
+        self.assertTrue(result)
+
+        sections = Character.UpdateSection.enabled_sections()
+        sections.remove(broken_section)
+        for section in sections:
+            with self.subTest(section=section):
+                self.assertFalse(
+                    self.character_1001.is_update_needed_for_section(section=section)
+                )
+
+        self.assertTrue(
+            self.character_1001.is_update_needed_for_section(section=broken_section)
+        )
+
+    @tag("breaks_with_tox")  # FIXME: Find solution
+    def test_should_stop_updating_when_no_esi_status_available(self):
+        # given
+        run_started_at = now() - dt.timedelta(hours=24)
+        for section in Character.UpdateSection:
+            create_character_update_status(
+                character=self.character_1001,
+                section=section,
+                is_success=True,
+                run_started_at=run_started_at,
+                run_finished_at=run_started_at,
+            )
+
+        # when
+        with patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: None):
+            result = tasks.update_character(self.character_1001.pk)
+
+        # then
+        self.assertFalse(result)
 
 
 @patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
@@ -1350,6 +1407,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
         self.assertTrue(mock_update_user.called)
 
 
+@patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
 @patch(TASKS_PATH + ".update_character", spec=True)
 class TestUpdateAllCharacters(TestCase):
     @classmethod

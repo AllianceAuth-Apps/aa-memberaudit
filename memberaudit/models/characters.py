@@ -1,6 +1,6 @@
 """Character and CharacterUpdateStatus models."""
 
-# pylint: disable = too-many-lines
+# pylint: disable = too-many-lines,too-many-positional-arguments
 
 import datetime as dt
 import hashlib

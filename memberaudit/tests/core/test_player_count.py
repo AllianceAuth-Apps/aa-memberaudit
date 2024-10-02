@@ -4,9 +4,9 @@ from django.test import TestCase
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 
-from memberaudit.core.eve_status import _fetch_player_count, clear_cache, player_count
+from memberaudit.core.player_count import _fetch_player_count, clear_cache, get
 
-MODULE_PATH = "memberaudit.core.eve_status"
+MODULE_PATH = "memberaudit.core.player_count"
 
 
 @patch(MODULE_PATH + ".esi")
@@ -28,7 +28,7 @@ class TestPlayerCount(TestCase):
         clear_cache()
 
         # when
-        result = player_count()
+        result = get()
 
         # then
         self.assertEqual(result, 12345)
@@ -48,13 +48,13 @@ class TestPlayerCount(TestCase):
         ]
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         clear_cache()
-        player_count()
+        get()
 
         # when
         with patch(
             MODULE_PATH + "._fetch_player_count", wraps=_fetch_player_count
         ) as spy:
-            result = player_count()
+            result = get()
 
             # then
             self.assertEqual(result, 12345)
@@ -67,7 +67,7 @@ class TestPlayerCount(TestCase):
         clear_cache()
 
         # when
-        result = player_count()
+        result = get()
 
         # then
         self.assertIsNone(result)

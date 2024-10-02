@@ -27,7 +27,7 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
 from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-from memberaudit.core import eve_status
+from memberaudit.core import player_count
 from memberaudit.models import (
     Character,
     CharacterMiningLedgerEntry,
@@ -297,6 +297,6 @@ def unshare_character(request, character_pk: int) -> HttpResponse:
 @permission_required("memberaudit.basic_access")
 def player_count_data(request: HttpRequest) -> JsonResponse:
     """Return current Eve player count."""
-    player_count = eve_status.player_count()
-    data = {"player_count": player_count}
+    pc = player_count.get()
+    data = {"player_count": pc}
     return JsonResponse(data)

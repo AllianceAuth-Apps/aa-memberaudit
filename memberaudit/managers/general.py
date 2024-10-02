@@ -1,6 +1,6 @@
 """Managers for general models."""
 
-# pylint: disable=redefined-builtin,missing-class-docstring
+# pylint: disable=redefined-builtin,missing-class-docstring,too-many-positional-arguments
 
 from __future__ import annotations
 
