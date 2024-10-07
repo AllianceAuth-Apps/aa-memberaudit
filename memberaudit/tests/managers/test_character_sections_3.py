@@ -295,7 +295,7 @@ class TestCharacterPlanetManager(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-class TestCharacterRolesManager(NoSocketsTestCase):
+class TestCharacterRoleManager(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -404,6 +404,82 @@ class TestCharacterRolesManager(NoSocketsTestCase):
         obj = self.character_1001.roles.first()
         self.assertEqual(obj.role, CharacterRole.Role.STATION_MANAGER)
         self.assertEqual(obj.location, CharacterRole.Location.UNIVERSAL)
+
+    def test_should_support_all_roles(self, mock_esi):
+        # given
+        endpoints = [
+            EsiEndpoint(
+                "Character",
+                "get_characters_character_id_roles",
+                "character_id",
+                needs_token=True,
+                data={
+                    "1001": {
+                        "roles": [
+                            "Account_Take_1",
+                            "Account_Take_2",
+                            "Account_Take_3",
+                            "Account_Take_4",
+                            "Account_Take_5",
+                            "Account_Take_6",
+                            "Account_Take_7",
+                            "Accountant",
+                            "Auditor",
+                            "Brand_Manager",
+                            "Communications_Officer",
+                            "Config_Equipment",
+                            "Config_Starbase_Equipment",
+                            "Container_Take_1",
+                            "Container_Take_2",
+                            "Container_Take_3",
+                            "Container_Take_4",
+                            "Container_Take_5",
+                            "Container_Take_6",
+                            "Container_Take_7",
+                            "Contract_Manager",
+                            "Deliveries_Container_Take",
+                            "Deliveries_Query",
+                            "Deliveries_Take",
+                            "Diplomat",
+                            "Director",
+                            "Factory_Manager",
+                            "Fitting_Manager",
+                            "Hangar_Query_1",
+                            "Hangar_Query_2",
+                            "Hangar_Query_3",
+                            "Hangar_Query_4",
+                            "Hangar_Query_5",
+                            "Hangar_Query_6",
+                            "Hangar_Query_7",
+                            "Hangar_Take_1",
+                            "Hangar_Take_2",
+                            "Hangar_Take_3",
+                            "Hangar_Take_4",
+                            "Hangar_Take_5",
+                            "Hangar_Take_6",
+                            "Hangar_Take_7",
+                            "Junior_Accountant",
+                            "Personnel_Manager",
+                            "Project_Manager",
+                            "Rent_Factory_Facility",
+                            "Rent_Office",
+                            "Rent_Research_Facility",
+                            "Security_Officer",
+                            "Skill_Plan_Manager",
+                            "Starbase_Defense_Operator",
+                            "Starbase_Fuel_Technician",
+                            "Station_Manager",
+                            "Trader",
+                        ],
+                    }
+                },
+            ),
+        ]
+        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+        # when
+        self.character_1001.update_roles()
+        # then
+        self.assertEqual(self.character_1001.roles.count(), 54)
 
 
 @patch(MANAGERS_PATH + ".esi")
