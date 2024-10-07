@@ -175,6 +175,7 @@ class CharacterRoleManager(models.Manager):
             "Account_Take_7": Role.ACCOUNT_TAKE_7,
             "Accountant": Role.ACCOUNTANT,
             "Auditor": Role.AUDITOR,
+            "Brand_Manager": Role.BRAND_MANAGER,
             "Communications_Officer": Role.COMMUNICATIONS_OFFICER,
             "Config_Equipment": Role.CONFIG_EQUIPMENT,
             "Config_Starbase_Equipment": Role.CONFIG_STARBASE_EQUIPMENT,
@@ -186,6 +187,9 @@ class CharacterRoleManager(models.Manager):
             "Container_Take_6": Role.CONTAINER_TAKE_6,
             "Container_Take_7": Role.CONTAINER_TAKE_7,
             "Contract_Manager": Role.CONTRACT_MANAGER,
+            "Deliveries_Container_Take": Role.DELIVERIES_CONTAINER_TAKE,
+            "Deliveries_Query": Role.DELIVERIES_QUERY,
+            "Deliveries_Take": Role.DELIVERIES_TAKE,
             "Diplomat": Role.DIPLOMAT,
             "Director": Role.DIRECTOR,
             "Factory_Manager": Role.FACTORY_MANAGER,
@@ -206,6 +210,7 @@ class CharacterRoleManager(models.Manager):
             "Hangar_Take_7": Role.HANGAR_TAKE_7,
             "Junior_Accountant": Role.JUNIOR_ACCOUNTANT,
             "Personnel_Manager": Role.PERSONNEL_MANAGER,
+            "Project_Manager": Role.PROJECT_MANAGER,
             "Rent_Factory_Facility": Role.RENT_FACTORY_FACILITY,
             "Rent_Office": Role.RENT_OFFICE,
             "Rent_Research_Facility": Role.RENT_RESEARCH_FACILITY,
@@ -214,7 +219,7 @@ class CharacterRoleManager(models.Manager):
             "Starbase_Defense_Operator": Role.STARBASE_DEFENSE_OPERATOR,
             "Starbase_Fuel_Technician": Role.STARBASE_FUEL_TECHNICIAN,
             "Station_Manager": Role.STATION_MANAGER,
-            "Trader": Role.TRADER,
+            "Trader": Role.TRADER,  #
         }
         Location = CharacterRole.Location
         location_map = {

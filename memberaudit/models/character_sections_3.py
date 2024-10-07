@@ -141,6 +141,7 @@ class CharacterRole(AddGenericReprMixin, models.Model):
         ACCOUNT_TAKE_7 = "AT7", _("account take 7")
         ACCOUNTANT = "ACT", _("accountant")
         AUDITOR = "AUD", _("auditor")
+        BRAND_MANAGER = "BMG", _("brand manager")
         COMMUNICATIONS_OFFICER = "COM", _("communications officer")
         CONFIG_EQUIPMENT = "CEQ", _("config equipment")
         CONFIG_STARBASE_EQUIPMENT = "CSE", _("config starbase equipment")
@@ -152,6 +153,9 @@ class CharacterRole(AddGenericReprMixin, models.Model):
         CONTAINER_TAKE_6 = "CT6", _("container take 6")
         CONTAINER_TAKE_7 = "CT7", _("container take 7")
         CONTRACT_MANAGER = "CMG", _("contract manager")
+        DELIVERIES_CONTAINER_TAKE = "DCT", _("deliveries container take")
+        DELIVERIES_QUERY = "DQY", _("deliveries query")
+        DELIVERIES_TAKE = "DTK", _("deliveries take")
         DIPLOMAT = "DPL", _("diplomat")
         DIRECTOR = "DRT", _("director")
         FACTORY_MANAGER = "FCM", _("factory manager")
@@ -172,6 +176,7 @@ class CharacterRole(AddGenericReprMixin, models.Model):
         HANGAR_TAKE_7 = "HT7", _("hangar take 7")
         JUNIOR_ACCOUNTANT = "JAC", _("junior accountant")
         PERSONNEL_MANAGER = "PSM", _("personnel manager")
+        PROJECT_MANAGER = "PMG", _("project manager")
         RENT_FACTORY_FACILITY = "RFF", _("rent factory facility")
         RENT_OFFICE = "RFC", _("rent office")
         RENT_RESEARCH_FACILITY = "RRF", _("rent research facility")
@@ -207,6 +212,11 @@ class CharacterRole(AddGenericReprMixin, models.Model):
         Role.CONTAINER_TAKE_6,
         Role.CONTAINER_TAKE_7,
     }
+    _ROLES_DELIVERIES_ACCESS = {
+        Role.DELIVERIES_CONTAINER_TAKE,
+        Role.DELIVERIES_QUERY,
+        Role.DELIVERIES_TAKE,
+    }
     ROLES_GROUPED = [
         {
             "title": _("general roles"),
@@ -214,6 +224,7 @@ class CharacterRole(AddGenericReprMixin, models.Model):
             "roles": {
                 Role.ACCOUNTANT,
                 Role.AUDITOR,
+                Role.BRAND_MANAGER,
                 Role.COMMUNICATIONS_OFFICER,
                 Role.CONFIG_EQUIPMENT,
                 Role.CONFIG_STARBASE_EQUIPMENT,
@@ -223,6 +234,7 @@ class CharacterRole(AddGenericReprMixin, models.Model):
                 Role.FITTING_MANAGER,
                 Role.JUNIOR_ACCOUNTANT,
                 Role.PERSONNEL_MANAGER,
+                Role.PROJECT_MANAGER,
                 Role.STARBASE_DEFENSE_OPERATOR,
                 Role.STARBASE_FUEL_TECHNICIAN,
             },
@@ -264,9 +276,19 @@ class CharacterRole(AddGenericReprMixin, models.Model):
             "roles": _ROLES_CONTAINER_ACCESS,
         },
         {
-            "title": _("hangar access (based at)"),
+            "title": _("deliveries (headquarters)"),
             "location": Location.HQ,
+            "roles": _ROLES_DELIVERIES_ACCESS,
+        },
+        {
+            "title": _("hangar access (based at)"),
+            "location": Location.BASE,
             "roles": _ROLES_HANGER_ACCESS,
+        },
+        {
+            "title": _("deliveries (based at)"),
+            "location": Location.BASE,
+            "roles": _ROLES_DELIVERIES_ACCESS,
         },
         {
             "title": _("container access (based at)"),
@@ -277,6 +299,11 @@ class CharacterRole(AddGenericReprMixin, models.Model):
             "title": _("hangar access (other)"),
             "location": Location.OTHER,
             "roles": _ROLES_HANGER_ACCESS,
+        },
+        {
+            "title": _("deliveries (other)"),
+            "location": Location.OTHER,
+            "roles": _ROLES_DELIVERIES_ACCESS,
         },
         {
             "title": _("container access (other)"),
