@@ -126,7 +126,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "sections_update_status": character.update_status_as_dict(),
         "character_assets_total": character_assets_total,
         "has_implants": character.implants.exists(),
-        "is_training_active": character.is_training_active(),
+        "skill_in_training": character.skill_in_training(),
         "connection_skills_differ": connection_skills_differ,
         "UpdateSection": Character.UpdateSection,
         "enabled_sections": Character.UpdateSection.enabled_sections(),

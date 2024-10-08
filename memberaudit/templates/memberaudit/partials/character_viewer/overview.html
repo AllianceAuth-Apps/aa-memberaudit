@@ -113,8 +113,8 @@
                             {% endif %}
 
                             <dt>{% translate 'Training:' %}</dt>
-                            {% if is_training_active %}
-                                <dd class="text-success">active</dd>
+                            {% if skill_in_training != None %}
+                                <dd>{{skill_in_training.skill_name}}</dd>
                             {% else %}
                                 <dd class="text-warning">not active</dd>
                             {% endif %}

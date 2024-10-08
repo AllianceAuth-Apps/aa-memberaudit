@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Set
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from django.utils.html import strip_tags
+from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
@@ -352,6 +353,16 @@ class CharacterSkillqueueEntryQuerySet(models.QuerySet):
         return self.filter(
             finish_date__isnull=False,
             start_date__isnull=False,
+        )
+
+    def skill_in_training(self):
+        """Return current skill in training.
+        Returns empty queryset when training is not active.
+        """
+        now_ = now()
+        return self.active_skills().filter(
+            start_date__lt=now_,
+            finish_date__gt=now_,
         )
 
 

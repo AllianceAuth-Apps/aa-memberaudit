@@ -13,7 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Skill queue does not look more similar to the in-game skill queue
+- Reworked skill queue. Does now look more like the in-game skill queue.
+- Current trained skill (if any) now shown in character overview
+- Now shows explicitly if training queue is active or not
 
 ### Fixed
 

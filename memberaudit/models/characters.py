@@ -2,11 +2,13 @@
 
 # pylint: disable = too-many-lines,too-many-positional-arguments
 
+from __future__ import annotations
+
 import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
 from bravado.exception import HTTPInternalServerError
 
@@ -47,6 +49,9 @@ from memberaudit.models._helpers import (
     AddGenericReprMixin,
     store_character_data_to_disk_when_enabled,
 )
+
+if TYPE_CHECKING:
+    from .character_sections_3 import CharacterSkillqueueEntry
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -294,9 +299,9 @@ class Character(
         except ObjectDoesNotExist:
             return None
 
-    def is_training_active(self) -> bool:
-        """Report whether a character has an active training queue."""
-        return self.skillqueue.active_skills().exists()
+    def skill_in_training(self) -> Optional[CharacterSkillqueueEntry]:
+        """Return the current skill in training or None."""
+        return self.skillqueue.skill_in_training().first()
 
     def user_is_owner(self, user: User) -> bool:
         """Return True if the given user is owner of this character"""
