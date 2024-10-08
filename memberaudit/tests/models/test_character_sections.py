@@ -269,84 +269,130 @@ class TestCharacterSkillQueueEntry(TestCase):
         cls.character = create_memberaudit_character(1001)
         cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
 
-    def test_should_report_active_skills(self):
+    def test_should_return_string(self):
         sqe = create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
-            start_date=now() - dt.timedelta(days=3),
-            finish_date=now() + dt.timedelta(days=3),
+            finished_level=5,
         )
-        self.assertTrue(sqe.is_active())
+        self.assertIn("Amarr Carrier V", str(sqe))
 
-    def test_should_report_not_active_skills_1(self):
+    def test_should_return_name(self):
         sqe = create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
-            start_date=now() - dt.timedelta(days=3),
-            finish_date=now() - dt.timedelta(days=2),
+            finished_level=5,
         )
-        self.assertFalse(sqe.is_active())
+        self.assertEqual("Amarr Carrier V", sqe.skill_name())
 
-    def test_should_report_not_active_skills_2(self):
-        sqe = create_character_skillqueue_entry(
-            character=self.character,
-            eve_type=self.amarr_carrier_skill_type,
-            start_date=now() + dt.timedelta(days=1),
-            finish_date=now() + dt.timedelta(days=2),
-        )
-        self.assertFalse(sqe.is_active())
+    def test_can_calculate_is_active(self):
+        class X(NamedTuple):
+            want: Optional[dt.timedelta]
+            start_date: Optional[dt.datetime] = None
+            finish_date: Optional[dt.datetime] = None
+
+        now_ = now()
+        cases = [
+            X(
+                start_date=now_ - dt.timedelta(hours=3),
+                finish_date=now_ + dt.timedelta(hours=3),
+                want=True,
+            ),
+            X(
+                start_date=now_ - dt.timedelta(hours=3),
+                finish_date=now_ - dt.timedelta(hours=1),
+                want=False,
+            ),
+            X(
+                start_date=now_ + dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=3),
+                want=False,
+            ),
+            X(
+                start_date=now_ - dt.timedelta(hours=3),
+                want=False,
+            ),
+            X(
+                finish_date=now_ + dt.timedelta(hours=3),
+                want=False,
+            ),
+            X(
+                want=False,
+            ),
+        ]
+        for i, tc in enumerate(cases, 1):
+            with self.subTest("is active", num=i):
+                sqe = create_character_skillqueue_entry(
+                    character=self.character,
+                    eve_type=self.amarr_carrier_skill_type,
+                    start_date=tc.start_date,
+                    finish_date=tc.finish_date,
+                )
+                got = sqe.is_active()
+                self.assertIs(tc.want, got)
 
     def test_can_calculate_completion(self):
         class X(NamedTuple):
-            start_date: dt.datetime
-            finish_date: dt.datetime
-            want: float
+            want: Optional[float] = None
+            start_date: Optional[dt.datetime] = None
+            finish_date: Optional[dt.datetime] = None
             level_start_sp: int = 0
             level_end_sp: int = 100
             training_start_sp: int = 0
+            exception: Optional[Exception] = None
 
+        now_ = now()
         cases = [
             X(
-                start_date=now() - dt.timedelta(hours=1),
-                finish_date=now() + dt.timedelta(hours=3),
+                start_date=now_ - dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=3),
                 level_start_sp=0,
                 level_end_sp=100,
                 training_start_sp=0,
                 want=0.25,
             ),
             X(
-                start_date=now() - dt.timedelta(hours=1),
-                finish_date=now() + dt.timedelta(hours=1),
+                start_date=now_ - dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=1),
                 level_start_sp=0,
                 level_end_sp=100,
                 training_start_sp=50,
                 want=0.75,
             ),
             X(
-                start_date=now() - dt.timedelta(hours=2),
-                finish_date=now() + dt.timedelta(hours=1),
+                start_date=now_ - dt.timedelta(hours=2),
+                finish_date=now_ + dt.timedelta(hours=1),
                 level_start_sp=0,
                 level_end_sp=100,
                 training_start_sp=25,
                 want=0.75,
             ),
             X(
-                start_date=now() - dt.timedelta(hours=2),
-                finish_date=now() + dt.timedelta(hours=1),
+                start_date=now_ - dt.timedelta(hours=2),
+                finish_date=now_ + dt.timedelta(hours=1),
                 level_start_sp=100,
                 level_end_sp=200,
                 training_start_sp=125,
                 want=0.75,
             ),
             X(
-                start_date=now() + dt.timedelta(hours=1),
-                finish_date=now() + dt.timedelta(hours=3),
+                start_date=now_ + dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=3),
                 want=0,
             ),
             X(
-                start_date=now() - dt.timedelta(hours=3),
-                finish_date=now() - dt.timedelta(hours=1),
+                start_date=now_ - dt.timedelta(hours=3),
+                finish_date=now_ - dt.timedelta(hours=1),
                 want=1,
+            ),
+            X(
+                exception=ValueError,
+            ),
+            X(
+                start_date=now_ - dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=1),
+                training_start_sp=None,
+                exception=ValueError,
             ),
         ]
         for i, tc in enumerate(cases, 1):
@@ -360,8 +406,12 @@ class TestCharacterSkillQueueEntry(TestCase):
                     level_end_sp=tc.level_end_sp,
                     training_start_sp=tc.training_start_sp,
                 )
-                got = sqe.completion_percent()
-                self.assertAlmostEqual(tc.want, got, delta=0.01)
+                if tc.exception:
+                    with self.assertRaises(tc.exception):
+                        sqe.completion_percent()
+                else:
+                    got = sqe.completion_percent()
+                    self.assertAlmostEqual(tc.want, got, delta=0.01)
 
     def test_can_calculate_total_duration(self):
         class X(NamedTuple):
@@ -369,18 +419,19 @@ class TestCharacterSkillQueueEntry(TestCase):
             start_date: Optional[dt.datetime] = None
             finish_date: Optional[dt.datetime] = None
 
+        now_ = now()
         cases = [
             X(
-                start_date=now() + dt.timedelta(hours=1),
-                finish_date=now() + dt.timedelta(hours=3),
+                start_date=now_ + dt.timedelta(hours=1),
+                finish_date=now_ + dt.timedelta(hours=3),
                 want=dt.timedelta(hours=2),
             ),
             X(
-                start_date=now() - dt.timedelta(hours=3),
+                start_date=now_ - dt.timedelta(hours=3),
                 want=None,
             ),
             X(
-                finish_date=now() + dt.timedelta(hours=3),
+                finish_date=now_ + dt.timedelta(hours=3),
                 want=None,
             ),
             X(
@@ -410,23 +461,24 @@ class TestCharacterSkillQueueEntry(TestCase):
             level_end_sp: int = 100
             training_start_sp: int = 0
 
+        now_ = now()
         cases = [
             X(
-                start_date=now(),
-                finish_date=now() + dt.timedelta(hours=3),
+                start_date=now_,
+                finish_date=now_ + dt.timedelta(hours=3),
                 want=dt.timedelta(hours=3),
             ),
             X(
-                start_date=now() - dt.timedelta(hours=3),
-                finish_date=now() - dt.timedelta(hours=2),
+                start_date=now_ - dt.timedelta(hours=3),
+                finish_date=now_ - dt.timedelta(hours=2),
                 want=dt.timedelta(seconds=0),
             ),
             X(
-                start_date=now() - dt.timedelta(hours=3),
+                start_date=now_ - dt.timedelta(hours=3),
                 want=None,
             ),
             X(
-                finish_date=now() + dt.timedelta(hours=3),
+                finish_date=now_ + dt.timedelta(hours=3),
                 want=None,
             ),
             X(

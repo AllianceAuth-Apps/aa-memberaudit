@@ -45,6 +45,7 @@ from memberaudit.models import (
     CharacterMail,
     CharacterPlanet,
     CharacterRole,
+    CharacterSkill,
     CharacterSkillqueueEntry,
     CharacterStanding,
     SkillSet,
@@ -367,11 +368,10 @@ def character_skillqueue_data(
             .order_by("queue_position")
             .select_related("eve_type")
         ):
-            level_roman = arabic_number_to_roman(sqe.finished_level)
             skill_str = format_html(
                 '<span class="text-tooltip" title="{}">{}</span>',
                 sqe.eve_type.description,
-                f"{sqe.eve_type.name} {level_roman}",
+                sqe.skill_name(),
             )
             completion = (
                 f"{sqe.completion_percent() * 100:.0f}%" if sqe.is_active() else None
@@ -662,6 +662,7 @@ def character_skills_data(
     """Render data view for character skills."""
     skills_data = []
     try:
+        skill: CharacterSkill
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
             level_str = arabic_number_to_roman(skill.active_skill_level)
             skill_name = format_html(
