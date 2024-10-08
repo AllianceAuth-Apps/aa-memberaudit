@@ -108,7 +108,6 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     mail_labels = _mail_labels_for_character(character, mailing_lists)
     all_characters = _identify_user_characters(request, character)
     character_assets_total = _asset_total_for_character(character)
-    has_implants = character.implants.exists()
     connection_skills_differ = _connection_skills_differ_for_character(character)
     page_title = _page_title_for_character(request, character)
 
@@ -126,7 +125,8 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
         "show_tab": request.GET.get("tab", ""),
         "sections_update_status": character.update_status_as_dict(),
         "character_assets_total": character_assets_total,
-        "has_implants": has_implants,
+        "has_implants": character.implants.exists(),
+        "is_training_active": character.is_training_active(),
         "connection_skills_differ": connection_skills_differ,
         "UpdateSection": Character.UpdateSection,
         "enabled_sections": Character.UpdateSection.enabled_sections(),

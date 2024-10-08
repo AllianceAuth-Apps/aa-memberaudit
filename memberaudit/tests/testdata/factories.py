@@ -489,6 +489,7 @@ def create_character_skillqueue_entry(
         "level_start_sp": 128,
         "queue_position": queue_position,
         "start_date": now() - dt.timedelta(days=3),
+        "training_start_sp": 0,
     }
     params.update(kwargs)
     _set_missing_foreign_keys(params, eve_type_id=EveTypeId.AMARR_CARRIER)

@@ -2,7 +2,6 @@
 
 # pylint: disable=unused-argument
 
-import datetime as dt
 from collections import defaultdict
 from typing import Optional
 
@@ -15,7 +14,6 @@ from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
@@ -364,43 +362,36 @@ def character_skillqueue_data(
     data = []
     try:
         sqe: CharacterSkillqueueEntry
-        for sqe in character.skillqueue.select_related("eve_type").filter(
-            character_id=character_pk,
-            finish_date__isnull=False,
-            start_date__isnull=False,
+        for sqe in (
+            character.skillqueue.active_skills()
+            .order_by("queue_position")
+            .select_related("eve_type")
         ):
             level_roman = arabic_number_to_roman(sqe.finished_level)
-            skill_str = f"{sqe.eve_type.name}&nbsp;{level_roman}"
-            if sqe.is_active():
-                skill_str += " [ACTIVE]"
-
-            if sqe.finish_date:
-                finish_date_humanized = humanize.naturaltime(
-                    dt.datetime.now()
-                    + dt.timedelta(
-                        seconds=(
-                            sqe.finish_date.timestamp() - dt.datetime.now().timestamp()
-                        )
-                    )
-                )
-                finish_date_str = (
-                    f"{sqe.finish_date.strftime(DATETIME_FORMAT)} "
-                    f"({finish_date_humanized})"
-                )
-                finish_date_sort = sqe.finish_date.isoformat()
+            skill_str = format_html(
+                '<span class="text-tooltip" title="{}">{}</span>',
+                sqe.eve_type.description,
+                f"{sqe.eve_type.name} {level_roman}",
+            )
+            completion = (
+                f"{sqe.completion_percent() * 100:.0f}%" if sqe.is_active() else None
+            )
+            if sqe.is_completed():
+                remaining = "Completed"
             else:
-                finish_date_str = gettext("(training not active)")
-                finish_date_sort = None
-
+                remaining = humanize.naturaldelta(sqe.remaining_duration())
+            remaining = format_html(
+                '<span class="text-tooltip" title="{}">{}</span>',
+                sqe.finish_date,
+                remaining,
+            )
             data.append(
                 {
-                    "position": sqe.queue_position + 1,
-                    "skill": skill_str,
-                    "finished": {
-                        "display": finish_date_str,
-                        "sort": finish_date_sort,
-                    },
+                    "completion": completion,
                     "is_active": sqe.is_active(),
+                    "is_completed": sqe.is_completed(),
+                    "remaining": remaining,
+                    "skill": skill_str,
                 }
             )
     except ObjectDoesNotExist:

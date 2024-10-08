@@ -294,6 +294,10 @@ class Character(
         except ObjectDoesNotExist:
             return None
 
+    def is_training_active(self) -> bool:
+        """Report whether a character has an active training queue."""
+        return self.skillqueue.active_skills().exists()
+
     def user_is_owner(self, user: User) -> bool:
         """Return True if the given user is owner of this character"""
         try:

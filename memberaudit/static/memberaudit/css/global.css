@@ -54,6 +54,10 @@
     .nowrap {
         white-space: nowrap;
     }
+
+    .text-tooltip {
+        text-decoration: underline dotted;
+    }
 }
 
 @media all and (min-width: 768px) {

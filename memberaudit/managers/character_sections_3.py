@@ -344,7 +344,18 @@ class CharacterShipManager(models.Manager):
         )
 
 
-class CharacterSkillqueueEntryManager(models.Manager):
+class CharacterSkillqueueEntryQuerySet(models.QuerySet):
+    def active_skills(self):
+        """Return skills from an active training queue.
+        Returns empty queryset when training is not active.
+        """
+        return self.filter(
+            finish_date__isnull=False,
+            start_date__isnull=False,
+        )
+
+
+class CharacterSkillqueueEntryManagerBase(models.Manager):
     def update_or_create_esi(
         self, character: Character, force_update: bool = False
     ) -> UpdateSectionResult:
@@ -401,6 +412,11 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
         self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
         logger.info("%s: Updated skill queue of size %s", character, len(entries))
+
+
+CharacterSkillqueueEntryManager = CharacterSkillqueueEntryManagerBase.from_queryset(
+    CharacterSkillqueueEntryQuerySet
+)
 
 
 class CharacterSkillManager(models.Manager):

@@ -450,8 +450,7 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
         return (
             bool(self.start_date)
             and bool(self.finish_date)
-            and self.start_date < now_
-            and self.finish_date > now_
+            and self.start_date < now_ < self.finish_date
         )
 
     def is_completed(self) -> bool:
@@ -471,6 +470,12 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
             return 0
         if duration.total_seconds() == 0:
             return 0
+        if (
+            self.level_start_sp is None
+            or self.level_end_sp is None
+            or self.training_start_sp is None
+        ):
+            raise ValueError("SkillqueueEntry is missing data")
         remaining = self.finish_date - now_
         c = remaining.total_seconds() / duration.total_seconds()
         base = (self.level_end_sp - self.training_start_sp) / (

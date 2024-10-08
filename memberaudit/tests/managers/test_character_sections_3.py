@@ -644,6 +644,37 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         load_eveuniverse()
         load_entities()
         cls.character_1001 = create_memberaudit_character(1001)
+        cls.amarr_carrier = EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
+        cls.caldari_carrier = EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
+
+    def test_return_skills_when_training_is_active(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.skillqueue.create(
+            queue_position=0,
+            eve_type=self.amarr_carrier,
+            finish_date=now() + dt.timedelta(days=1),
+            finished_level=4,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        # when
+        got = self.character_1001.skillqueue.active_skills()
+        # then
+        self.assertEqual(got.count(), 1)
+
+    def test_should_return_empty_when_training_not_active(self, mock_esi):
+        # given
+        mock_esi.client = esi_client_stub
+        self.character_1001.skillqueue.create(
+            queue_position=0,
+            eve_type=self.amarr_carrier,
+            finished_level=4,
+            start_date=now() - dt.timedelta(days=1),
+        )
+        # when
+        got = self.character_1001.skillqueue.active_skills()
+        # then
+        self.assertEqual(got.count(), 0)
 
     def test_can_create_from_scratch(self, mock_esi):
         # given
@@ -654,17 +685,13 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(
-            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
-        )
+        self.assertEqual(entry.eve_type, self.amarr_carrier)
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
 
         entry = self.character_1001.skillqueue.get(queue_position=1)
-        self.assertEqual(
-            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
-        )
+        self.assertEqual(entry.eve_type, self.caldari_carrier)
         self.assertEqual(entry.finish_date, parse_datetime("2016-07-15T10:47:00Z"))
         self.assertEqual(entry.finished_level, 4)
         self.assertEqual(entry.level_end_sp, 1000)
@@ -673,9 +700,7 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         self.assertEqual(entry.training_start_sp, 50)
 
         entry = self.character_1001.skillqueue.get(queue_position=2)
-        self.assertEqual(
-            entry.eve_type, EveType.objects.get(id=EveTypeId.CALDARI_CARRIER)
-        )
+        self.assertEqual(entry.eve_type, self.caldari_carrier)
         self.assertEqual(entry.finished_level, 5)
 
     def test_can_update_existing_queue(self, mock_esi):
@@ -683,7 +708,7 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         mock_esi.client = esi_client_stub
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
+            eve_type=self.amarr_carrier,
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
@@ -694,9 +719,7 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         self.assertEqual(self.character_1001.skillqueue.count(), 3)
 
         entry = self.character_1001.skillqueue.get(queue_position=0)
-        self.assertEqual(
-            entry.eve_type, EveType.objects.get(id=EveTypeId.AMARR_CARRIER)
-        )
+        self.assertEqual(entry.eve_type, self.amarr_carrier)
         self.assertEqual(entry.finish_date, parse_datetime("2016-06-29T10:47:00Z"))
         self.assertEqual(entry.finished_level, 3)
         self.assertEqual(entry.start_date, parse_datetime("2016-06-29T10:46:00Z"))
@@ -743,7 +766,7 @@ class TestCharacterSkillqueueEntryManager(NoSocketsTestCase):
         mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
         self.character_1001.skillqueue.create(
             queue_position=0,
-            eve_type=EveType.objects.get(id=EveTypeId.AMARR_CARRIER),
+            eve_type=self.amarr_carrier,
             finish_date=now() + dt.timedelta(days=1),
             finished_level=4,
             start_date=now() - dt.timedelta(days=1),
