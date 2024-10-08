@@ -30,7 +30,6 @@ from memberaudit.tests.testdata.factories import (
     create_character_contract,
     create_character_contract_bid,
     create_character_from_user,
-    create_character_skillqueue_entry,
     create_eve_market_price,
     create_location,
 )
@@ -43,50 +42,6 @@ from memberaudit.tests.utils import (
 )
 
 MODULE_PATH = "memberaudit.managers.character_sections_1"
-
-
-class TestCharacterSkillQueue(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-        cls.skill_type_1 = EveType.objects.get(id=24311)
-        cls.skill_type_2 = EveType.objects.get(id=24312)
-
-    def test_is_active_1(self):
-        """when training is active and skill is in first position then return True"""
-        entry = create_character_skillqueue_entry(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            finish_date=now() + dt.timedelta(days=3),
-            queue_position=0,
-            start_date=now() - dt.timedelta(days=1),
-        )
-        self.assertTrue(entry.is_active)
-
-    def test_is_active_2(self):
-        """when training is active and skill is not in first position then return False"""
-        entry = create_character_skillqueue_entry(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            finish_date=now() + dt.timedelta(days=3),
-            finished_level=5,
-            queue_position=1,
-            start_date=now() - dt.timedelta(days=1),
-        )
-        self.assertFalse(entry.is_active)
-
-    def test_is_active_3(self):
-        """when training is not active and skill is in first position then return False"""
-        entry = create_character_skillqueue_entry(
-            character=self.character,
-            eve_type=self.skill_type_1,
-            finished_level=5,
-            queue_position=0,
-        )
-        self.assertFalse(entry.is_active)
 
 
 class TestCharacterAssetManager(NoSocketsTestCase):

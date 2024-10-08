@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from django.utils.html import strip_tags
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
 
@@ -610,7 +611,7 @@ class TestSkillSetsDetails(TestCase):
         self.assertEqual(response.status_code, 302)
 
 
-class TestSkillAndSkillqueue(TestCase):
+class TestSkills(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -624,7 +625,7 @@ class TestSkillAndSkillqueue(TestCase):
         cls.character = create_memberaudit_character(1001)
         cls.user = cls.character.eve_character.character_ownership.user
 
-    def test_character_skills_data(self):
+    def test_can_render_skills_data(self):
         create_character_skill(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
@@ -645,50 +646,92 @@ class TestSkillAndSkillqueue(TestCase):
         self.assertEqual(row["skill"], "Amarr Carrier")
         self.assertEqual(row["level"], 1)
 
-    def test_character_skillqueue_data_1(self):
-        """Char has skills in training"""
-        finish_date_1 = now() + dt.timedelta(days=3)
+
+class TestSkillqueue(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        load_eveuniverse()
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+        cls.caldari_carrier_skill_type = EveType.objects.get(id=24312)
+        cls.gallente_carrier_skill_type = EveType.objects.get(id=24313)
+        cls.minmatar_carrier_skill_type = EveType.objects.get(id=24314)
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.user = cls.character.eve_character.character_ownership.user
+
+    def test_can_render_active_skillqueue(self):
+        # given
+        finish_date_1 = now() - dt.timedelta(days=1)
+        create_character_skillqueue_entry(
+            character=self.character,
+            eve_type=self.gallente_carrier_skill_type,
+            finished_level=5,
+            queue_position=0,
+            start_date=now() - dt.timedelta(days=3),
+            finish_date=finish_date_1,
+            level_start_sp=0,
+            level_end_sp=100,
+        )
+        finish_date_2 = now() + dt.timedelta(days=3)
         create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
-            finish_date=finish_date_1,
             finished_level=5,
-            queue_position=0,
-            start_date=now() - dt.timedelta(days=1),
+            queue_position=1,
+            start_date=finish_date_1,
+            finish_date=finish_date_2,
+            level_start_sp=0,
+            level_end_sp=100,
         )
-        finish_date_2 = now() + dt.timedelta(days=10)
+        finish_date_3 = now() + dt.timedelta(days=10)
         create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.caldari_carrier_skill_type,
-            finish_date=finish_date_2,
+            finish_date=finish_date_3,
             finished_level=5,
-            queue_position=1,
-            start_date=now() - dt.timedelta(days=1),
+            queue_position=2,
+            start_date=finish_date_2,
         )
         request = self.factory.get(
             reverse("memberaudit:character_skillqueue_data", args=[self.character.pk])
         )
         request.user = self.user
+
+        # when
         response = character_skillqueue_data(request, self.character.pk)
+
+        # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
-        self.assertEqual(len(data), 2)
+        self.assertEqual(len(data), 3)
 
         row = data[0]
-        self.assertEqual(row["skill"], "Amarr Carrier&nbsp;V [ACTIVE]")
-        self.assertEqual(row["finished"]["sort"], finish_date_1.isoformat())
-        self.assertTrue(row["is_active"])
+        self.assertFalse(row["is_active"])
+        self.assertTrue(row["is_completed"])
+        self.assertEqual(strip_tags(row["skill"]), "Gallente Carrier V")
+        self.assertIsNone(row["completion"])
+        self.assertEqual(strip_tags(row["remaining"]), "Completed")
 
         row = data[1]
-        self.assertEqual(row["skill"], "Caldari Carrier&nbsp;V")
-        self.assertEqual(row["finished"]["sort"], finish_date_2.isoformat())
-        self.assertFalse(row["is_active"])
+        self.assertTrue(row["is_active"])
+        self.assertFalse(row["is_completed"])
+        self.assertEqual(strip_tags(row["skill"]), "Amarr Carrier V")
+        self.assertEqual(row["completion"], "25%")
+        self.assertEqual(strip_tags(row["remaining"]), "2 days")
 
-    def test_character_skillqueue_data_2(self):
-        """Char has no skills in training"""
+        row = data[2]
+        self.assertFalse(row["is_active"])
+        self.assertFalse(row["is_completed"])
+        self.assertEqual(strip_tags(row["skill"]), "Caldari Carrier V")
+        self.assertIsNone(row["completion"])
+
+    def test_should_not_show_any_skill_when_not_active(self):
         create_character_skillqueue_entry(
             character=self.character,
             eve_type=self.amarr_carrier_skill_type,
+            finish_date=None,
             finished_level=5,
             queue_position=0,
         )
@@ -699,11 +742,7 @@ class TestSkillAndSkillqueue(TestCase):
         response = character_skillqueue_data(request, self.character.pk)
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
-        self.assertEqual(len(data), 1)
-        row = data[0]
-        self.assertEqual(row["skill"], "Amarr Carrier&nbsp;V")
-        self.assertIsNone(row["finished"]["sort"])
-        self.assertFalse(row["is_active"])
+        self.assertEqual(len(data), 0)
 
 
 class TestStandings(TestCase):

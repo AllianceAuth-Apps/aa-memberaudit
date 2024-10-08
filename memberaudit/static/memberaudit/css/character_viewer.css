@@ -191,6 +191,17 @@
         text-align: center;
     }
 
+    /* Skillqueue */
+    #tab_skillqueue {
+        table-layout: fixed;
+    }
+    #tab_skillqueue tbody td:nth-child(2) {
+        text-align: left;
+    }
+    #tab_skillqueue tbody td:nth-child(3) {
+        text-align: right;
+    }
+
     /* Wallet Journal */
     #tab_wallet_journal tbody td:nth-child(1) {
         white-space: nowrap;

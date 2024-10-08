@@ -1,7 +1,11 @@
 """Character sections models."""
 
+import datetime as dt
+from typing import Optional
+
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
@@ -10,7 +14,7 @@ from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.core import standings
-from memberaudit.helpers import EveEntityIdsMixin
+from memberaudit.helpers import EveEntityIdsMixin, arabic_number_to_roman
 from memberaudit.managers.character_sections_3 import (
     CharacterMiningLedgerEntryManager,
     CharacterOnlineStatusManager,
@@ -438,12 +442,67 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.character}-{self.queue_position}"
+        return f"{self.character}-{self.skill_name()}"
 
-    @property
+    def completion_percent(self) -> float:
+        """Return current training progress for a skill."""
+        duration = self.total_duration()
+        if duration is None:
+            raise ValueError("insufficient data to calculate")
+
+        now_ = now()
+        if self.finish_date < now_:
+            return 1
+        if self.start_date > now_:
+            return 0
+        # if duration.total_seconds() == 0:
+        #     return 1
+        if (
+            self.level_start_sp is None
+            or self.level_end_sp is None
+            or self.training_start_sp is None
+        ):
+            raise ValueError("insufficient data to calculate")
+        remaining = self.finish_date - now_
+        c = remaining.total_seconds() / duration.total_seconds()
+        base = (self.level_end_sp - self.training_start_sp) / (
+            self.level_end_sp - self.level_start_sp
+        )
+        return 1 - (c * base)
+
     def is_active(self) -> bool:
-        """Returns true when this skill is currently being trained"""
-        return bool(self.finish_date) and self.queue_position == 0
+        """Reports whether a skill is currently being trained."""
+        now_ = now()
+        return (
+            bool(self.start_date)
+            and bool(self.finish_date)
+            and self.start_date < now_ < self.finish_date
+        )
+
+    def is_completed(self) -> bool:
+        """Reports whether a skill has completed training."""
+        return self.completion_percent() == 1
+
+    def remaining_duration(self) -> Optional[dt.timedelta]:
+        """Return remaining duration to train a skill."""
+        if not self.start_date or not self.finish_date:
+            return None
+        duration = self.total_duration()
+        if duration is None:
+            return None
+        remaining_percent = 1 - self.completion_percent()
+        return duration * remaining_percent
+
+    def skill_name(self) -> str:
+        """Return skill name."""
+        level_roman = arabic_number_to_roman(self.finished_level)
+        return f"{self.eve_type.name} {level_roman}"
+
+    def total_duration(self) -> Optional[dt.timedelta]:
+        """Return duration from start to finish for training a skill."""
+        if not self.start_date or not self.finish_date:
+            return None
+        return self.finish_date - self.start_date
 
 
 class CharacterSkillSetCheck(AddGenericReprMixin, models.Model):

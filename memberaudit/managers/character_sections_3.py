@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, List, Set
 from django.db import models, transaction
 from django.db.models import ExpressionWrapper, F
 from django.utils.html import strip_tags
+from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
@@ -344,7 +345,28 @@ class CharacterShipManager(models.Manager):
         )
 
 
-class CharacterSkillqueueEntryManager(models.Manager):
+class CharacterSkillqueueEntryQuerySet(models.QuerySet):
+    def active_skills(self):
+        """Return skills from an active training queue.
+        Returns empty queryset when training is not active.
+        """
+        return self.filter(
+            finish_date__isnull=False,
+            start_date__isnull=False,
+        )
+
+    def skill_in_training(self):
+        """Return current skill in training.
+        Returns empty queryset when training is not active.
+        """
+        now_ = now()
+        return self.active_skills().filter(
+            start_date__lt=now_,
+            finish_date__gt=now_,
+        )
+
+
+class CharacterSkillqueueEntryManagerBase(models.Manager):
     def update_or_create_esi(
         self, character: Character, force_update: bool = False
     ) -> UpdateSectionResult:
@@ -401,6 +423,11 @@ class CharacterSkillqueueEntryManager(models.Manager):
 
         self.bulk_create(entries, batch_size=MEMBERAUDIT_BULK_METHODS_BATCH_SIZE)
         logger.info("%s: Updated skill queue of size %s", character, len(entries))
+
+
+CharacterSkillqueueEntryManager = CharacterSkillqueueEntryManagerBase.from_queryset(
+    CharacterSkillqueueEntryQuerySet
+)
 
 
 class CharacterSkillManager(models.Manager):

@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.11.0] - 2024-10-08
+
+>**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
+### Changed
+
+- Reworked skill queue. It does now look more like the in-game skill queue.
+- Current trained skill (if any) now shown in character overview
+- Now shows explicitly whether a character's training queue is active
+
+### Fixed
+
+- Skill queue shows wrong skill as active (#142)
+
 ## [3.10.0] - 2024-10-07
 
 >**IMPORTANT**: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!

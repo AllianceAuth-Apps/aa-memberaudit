@@ -2,7 +2,6 @@
 
 # pylint: disable=unused-argument
 
-import datetime as dt
 from collections import defaultdict
 from typing import Optional
 
@@ -15,7 +14,6 @@ from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.html import format_html
-from django.utils.translation import gettext
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
@@ -47,6 +45,8 @@ from memberaudit.models import (
     CharacterMail,
     CharacterPlanet,
     CharacterRole,
+    CharacterSkill,
+    CharacterSkillqueueEntry,
     CharacterStanding,
     SkillSet,
     SkillSetSkill,
@@ -362,41 +362,36 @@ def character_skillqueue_data(
     """Render data view for character skillqueue."""
     data = []
     try:
-        for row in character.skillqueue.select_related("eve_type").filter(
-            character_id=character_pk
+        sqe: CharacterSkillqueueEntry
+        for sqe in (
+            character.skillqueue.active_skills()
+            .order_by("queue_position")
+            .select_related("eve_type")
         ):
-            level_roman = arabic_number_to_roman(row.finished_level)
-            skill_str = f"{row.eve_type.name}&nbsp;{level_roman}"
-            if row.is_active:
-                skill_str += " [ACTIVE]"
-
-            if row.finish_date:
-                finish_date_humanized = humanize.naturaltime(
-                    dt.datetime.now()
-                    + dt.timedelta(
-                        seconds=(
-                            row.finish_date.timestamp() - dt.datetime.now().timestamp()
-                        )
-                    )
-                )
-                finish_date_str = (
-                    f"{row.finish_date.strftime(DATETIME_FORMAT)} "
-                    f"({finish_date_humanized})"
-                )
-                finish_date_sort = row.finish_date.isoformat()
+            skill_str = format_html(
+                '<span class="text-tooltip" title="{}">{}</span>',
+                sqe.eve_type.description,
+                sqe.skill_name(),
+            )
+            completion = (
+                f"{sqe.completion_percent() * 100:.0f}%" if sqe.is_active() else None
+            )
+            if sqe.is_completed():
+                remaining = "Completed"
             else:
-                finish_date_str = gettext("(training not active)")
-                finish_date_sort = None
-
+                remaining = humanize.naturaldelta(sqe.remaining_duration())
+            remaining = format_html(
+                '<span class="text-tooltip" title="{}">{}</span>',
+                sqe.finish_date,
+                remaining,
+            )
             data.append(
                 {
-                    "position": row.queue_position + 1,
+                    "completion": completion,
+                    "is_active": sqe.is_active(),
+                    "is_completed": sqe.is_completed(),
+                    "remaining": remaining,
                     "skill": skill_str,
-                    "finished": {
-                        "display": finish_date_str,
-                        "sort": finish_date_sort,
-                    },
-                    "is_active": row.is_active,
                 }
             )
     except ObjectDoesNotExist:
@@ -667,6 +662,7 @@ def character_skills_data(
     """Render data view for character skills."""
     skills_data = []
     try:
+        skill: CharacterSkill
         for skill in character.skills.select_related("eve_type", "eve_type__eve_group"):
             level_str = arabic_number_to_roman(skill.active_skill_level)
             skill_name = format_html(

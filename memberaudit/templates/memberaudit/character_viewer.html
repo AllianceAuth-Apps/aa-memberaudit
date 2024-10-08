@@ -681,24 +681,20 @@
             },
             columns: [
                 { data: 'skill' },
-                {
-                    data: 'finished',
-                    render: {
-                        _: 'display',
-                        sort: 'sort'
-                    }
-                },
-                { data: 'position' },
+                { data: 'completion' },
+                { data: 'remaining' },
             ],
-            order: [[0, "asc"]],
             createdRow: function (row, data, dataIndex) {
-                if (data['is_active']) {
+                if (data['is_completed']) {
+                    $(row).addClass('text-muted');
+                } else if (data['is_active']) {
                     $(row).addClass('info');
                 }
             },
             paging: false,
             ordering: false,
-            info: false
+            info: false,
+            searching: false
         });
 
         /* Skill Sets */

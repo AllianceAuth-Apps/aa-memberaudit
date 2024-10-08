@@ -112,14 +112,11 @@
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
 
-                            <dt>{% translate 'Sec. Status:' %}</dt>
-                            {% if character_details.security_status %}
-                                <dd
-                                    class="{% if character_details.security_status < 0 %}text-danger{% elif character_details.security_status > 0 %}text-success{% endif %}">
-                                    {{ character_details.security_status|floatformat:1 }}
-                                </dd>
+                            <dt>{% translate 'Training:' %}</dt>
+                            {% if skill_in_training != None %}
+                                <dd>{{skill_in_training.skill_name}}</dd>
                             {% else %}
-                                <dd class="text-muted">{{no_data}}</dd>
+                                <dd class="text-warning">not active</dd>
                             {% endif %}
 
                             <dt>{% translate 'Assets:' %}</dt>
@@ -157,6 +154,16 @@
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
 
+                            <dt>{% translate 'Sec. Status:' %}</dt>
+                            {% if character_details.security_status %}
+                                <dd
+                                    class="{% if character_details.security_status < 0 %}text-danger{% elif character_details.security_status > 0 %}text-success{% endif %}">
+                                    {{ character_details.security_status|floatformat:1 }}
+                                </dd>
+                            {% else %}
+                                <dd class="text-muted">{{no_data}}</dd>
+                            {% endif %}
+
                             <dt>{% translate 'Home:' %}</dt>
                             {% if character.clone_info and character.clone_info.home_location %}
                                 <dd>{{ character.clone_info.home_location.name_plus }}</dd>
@@ -170,7 +177,6 @@
                             {% else %}
                                 <dd class="text-muted">{{no_data}}</dd>
                             {% endif %}
-
                         </dl>
                     </div>
                 </div>

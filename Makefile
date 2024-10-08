@@ -48,9 +48,6 @@ coverage:
 coverage_single:
 	coverage run $(myauth_path) test $(package).tests --keepdb --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --exclude-tag=breaks_with_older_mariadb --timing && coverage html && coverage report -m
 
-coverage_single:
-	coverage run $(myauth_path) test $(package).tests --keepdb --failfast --timing && coverage html && coverage report -m
-
 test:
 	# runs a full test incl. re-creating of the test DB
 	python $(myauth_path) test $(package).tests --failfast --timing --parallel -v 2
