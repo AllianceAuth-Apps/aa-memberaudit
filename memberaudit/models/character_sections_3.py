@@ -1,7 +1,11 @@
 """Character sections models."""
 
+import datetime as dt
+from typing import Optional
+
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
@@ -440,10 +444,55 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
     def __str__(self) -> str:
         return f"{self.character}-{self.queue_position}"
 
-    @property
     def is_active(self) -> bool:
-        """Returns true when this skill is currently being trained"""
-        return bool(self.finish_date) and self.queue_position == 0
+        """Reports whether a skill is currently being trained."""
+        now_ = now()
+        return (
+            bool(self.start_date)
+            and bool(self.finish_date)
+            and self.start_date < now_
+            and self.finish_date > now_
+        )
+
+    def is_completed(self) -> bool:
+        """Reports whether a skill has completed training."""
+        return self.completion_percent() == 1
+
+    def completion_percent(self) -> float:
+        """Return current training progress for a skill."""
+        duration = self.total_duration()
+        if duration is None:
+            return 0
+
+        now_ = now()
+        if self.finish_date < now_:
+            return 1
+        if self.start_date > now_:
+            return 0
+        if duration.total_seconds() == 0:
+            return 0
+        remaining = self.finish_date - now_
+        c = remaining.total_seconds() / duration.total_seconds()
+        base = (self.level_end_sp - self.training_start_sp) / (
+            self.level_end_sp - self.level_start_sp
+        )
+        return 1 - (c * base)
+
+    def remaining_duration(self) -> Optional[dt.timedelta]:
+        """Return remaining duration to train a skill."""
+        if not self.start_date or not self.finish_date:
+            return None
+        duration = self.total_duration()
+        if duration is None:
+            return None
+        remaining_percent = 1 - self.completion_percent()
+        return duration * remaining_percent
+
+    def total_duration(self) -> Optional[dt.timedelta]:
+        """Return duration from start to finish for training a skill."""
+        if not self.start_date or not self.finish_date:
+            return None
+        return self.finish_date - self.start_date
 
 
 class CharacterSkillSetCheck(AddGenericReprMixin, models.Model):

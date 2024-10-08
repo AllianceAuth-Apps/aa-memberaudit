@@ -47,6 +47,7 @@ from memberaudit.models import (
     CharacterMail,
     CharacterPlanet,
     CharacterRole,
+    CharacterSkillqueueEntry,
     CharacterStanding,
     SkillSet,
     SkillSetSkill,
@@ -362,41 +363,44 @@ def character_skillqueue_data(
     """Render data view for character skillqueue."""
     data = []
     try:
-        for row in character.skillqueue.select_related("eve_type").filter(
-            character_id=character_pk
+        sqe: CharacterSkillqueueEntry
+        for sqe in character.skillqueue.select_related("eve_type").filter(
+            character_id=character_pk,
+            finish_date__isnull=False,
+            start_date__isnull=False,
         ):
-            level_roman = arabic_number_to_roman(row.finished_level)
-            skill_str = f"{row.eve_type.name}&nbsp;{level_roman}"
-            if row.is_active:
+            level_roman = arabic_number_to_roman(sqe.finished_level)
+            skill_str = f"{sqe.eve_type.name}&nbsp;{level_roman}"
+            if sqe.is_active():
                 skill_str += " [ACTIVE]"
 
-            if row.finish_date:
+            if sqe.finish_date:
                 finish_date_humanized = humanize.naturaltime(
                     dt.datetime.now()
                     + dt.timedelta(
                         seconds=(
-                            row.finish_date.timestamp() - dt.datetime.now().timestamp()
+                            sqe.finish_date.timestamp() - dt.datetime.now().timestamp()
                         )
                     )
                 )
                 finish_date_str = (
-                    f"{row.finish_date.strftime(DATETIME_FORMAT)} "
+                    f"{sqe.finish_date.strftime(DATETIME_FORMAT)} "
                     f"({finish_date_humanized})"
                 )
-                finish_date_sort = row.finish_date.isoformat()
+                finish_date_sort = sqe.finish_date.isoformat()
             else:
                 finish_date_str = gettext("(training not active)")
                 finish_date_sort = None
 
             data.append(
                 {
-                    "position": row.queue_position + 1,
+                    "position": sqe.queue_position + 1,
                     "skill": skill_str,
                     "finished": {
                         "display": finish_date_str,
                         "sort": finish_date_sort,
                     },
-                    "is_active": row.is_active,
+                    "is_active": sqe.is_active(),
                 }
             )
     except ObjectDoesNotExist:

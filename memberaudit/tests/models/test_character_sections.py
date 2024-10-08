@@ -1,4 +1,5 @@
 import datetime as dt
+from typing import NamedTuple, Optional
 
 from django.test import TestCase
 from django.utils.timezone import now
@@ -19,6 +20,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_contract_item,
     create_character_fw_stats,
     create_character_ship,
+    create_character_skillqueue_entry,
     create_character_standing,
     create_character_title,
     create_character_wallet_journal_entry,
@@ -256,6 +258,197 @@ class TestCharacterShip(NoSocketsTestCase):
         # then
         self.assertIn("Bruce Wayne", result)
         self.assertIn("Merlin", result)
+
+
+class TestCharacterSkillQueueEntry(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        load_entities()
+        cls.character = create_memberaudit_character(1001)
+        cls.amarr_carrier_skill_type = EveType.objects.get(id=24311)
+
+    def test_should_report_active_skills(self):
+        sqe = create_character_skillqueue_entry(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            start_date=now() - dt.timedelta(days=3),
+            finish_date=now() + dt.timedelta(days=3),
+        )
+        self.assertTrue(sqe.is_active())
+
+    def test_should_report_not_active_skills_1(self):
+        sqe = create_character_skillqueue_entry(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            start_date=now() - dt.timedelta(days=3),
+            finish_date=now() - dt.timedelta(days=2),
+        )
+        self.assertFalse(sqe.is_active())
+
+    def test_should_report_not_active_skills_2(self):
+        sqe = create_character_skillqueue_entry(
+            character=self.character,
+            eve_type=self.amarr_carrier_skill_type,
+            start_date=now() + dt.timedelta(days=1),
+            finish_date=now() + dt.timedelta(days=2),
+        )
+        self.assertFalse(sqe.is_active())
+
+    def test_can_calculate_completion(self):
+        class X(NamedTuple):
+            start_date: dt.datetime
+            finish_date: dt.datetime
+            want: float
+            level_start_sp: int = 0
+            level_end_sp: int = 100
+            training_start_sp: int = 0
+
+        cases = [
+            X(
+                start_date=now() - dt.timedelta(hours=1),
+                finish_date=now() + dt.timedelta(hours=3),
+                level_start_sp=0,
+                level_end_sp=100,
+                training_start_sp=0,
+                want=0.25,
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=1),
+                finish_date=now() + dt.timedelta(hours=1),
+                level_start_sp=0,
+                level_end_sp=100,
+                training_start_sp=50,
+                want=0.75,
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=2),
+                finish_date=now() + dt.timedelta(hours=1),
+                level_start_sp=0,
+                level_end_sp=100,
+                training_start_sp=25,
+                want=0.75,
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=2),
+                finish_date=now() + dt.timedelta(hours=1),
+                level_start_sp=100,
+                level_end_sp=200,
+                training_start_sp=125,
+                want=0.75,
+            ),
+            X(
+                start_date=now() + dt.timedelta(hours=1),
+                finish_date=now() + dt.timedelta(hours=3),
+                want=0,
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=3),
+                finish_date=now() - dt.timedelta(hours=1),
+                want=1,
+            ),
+        ]
+        for i, tc in enumerate(cases, 1):
+            with self.subTest("completion percent", num=i):
+                sqe = create_character_skillqueue_entry(
+                    character=self.character,
+                    eve_type=self.amarr_carrier_skill_type,
+                    start_date=tc.start_date,
+                    finish_date=tc.finish_date,
+                    level_start_sp=tc.level_start_sp,
+                    level_end_sp=tc.level_end_sp,
+                    training_start_sp=tc.training_start_sp,
+                )
+                got = sqe.completion_percent()
+                self.assertAlmostEqual(tc.want, got, delta=0.01)
+
+    def test_can_calculate_total_duration(self):
+        class X(NamedTuple):
+            want: Optional[dt.timedelta]
+            start_date: Optional[dt.datetime] = None
+            finish_date: Optional[dt.datetime] = None
+
+        cases = [
+            X(
+                start_date=now() + dt.timedelta(hours=1),
+                finish_date=now() + dt.timedelta(hours=3),
+                want=dt.timedelta(hours=2),
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=3),
+                want=None,
+            ),
+            X(
+                finish_date=now() + dt.timedelta(hours=3),
+                want=None,
+            ),
+            X(
+                want=None,
+            ),
+        ]
+        for i, tc in enumerate(cases, 1):
+            with self.subTest("total duration", num=i):
+                sqe = create_character_skillqueue_entry(
+                    character=self.character,
+                    eve_type=self.amarr_carrier_skill_type,
+                    start_date=tc.start_date,
+                    finish_date=tc.finish_date,
+                )
+                got = sqe.total_duration()
+                if tc.want is None:
+                    self.assertIsNone(got)
+                else:
+                    self.assertAlmostEqual(tc.want, got, delta=dt.timedelta(seconds=5))
+
+    def test_can_calculate_remaining_duration(self):
+        class X(NamedTuple):
+            want: Optional[dt.timedelta]
+            start_date: Optional[dt.datetime] = None
+            finish_date: Optional[dt.datetime] = None
+            level_start_sp: int = 0
+            level_end_sp: int = 100
+            training_start_sp: int = 0
+
+        cases = [
+            X(
+                start_date=now(),
+                finish_date=now() + dt.timedelta(hours=3),
+                want=dt.timedelta(hours=3),
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=3),
+                finish_date=now() - dt.timedelta(hours=2),
+                want=dt.timedelta(seconds=0),
+            ),
+            X(
+                start_date=now() - dt.timedelta(hours=3),
+                want=None,
+            ),
+            X(
+                finish_date=now() + dt.timedelta(hours=3),
+                want=None,
+            ),
+            X(
+                want=None,
+            ),
+        ]
+        for i, tc in enumerate(cases, 1):
+            with self.subTest("total duration", num=i):
+                sqe = create_character_skillqueue_entry(
+                    character=self.character,
+                    eve_type=self.amarr_carrier_skill_type,
+                    start_date=tc.start_date,
+                    finish_date=tc.finish_date,
+                    level_start_sp=tc.level_start_sp,
+                    level_end_sp=tc.level_end_sp,
+                    training_start_sp=tc.training_start_sp,
+                )
+                got = sqe.remaining_duration()
+                if tc.want is None:
+                    self.assertIsNone(got)
+                else:
+                    self.assertAlmostEqual(tc.want, got, delta=dt.timedelta(seconds=5))
 
 
 class TestCharacterStanding(TestCase):
