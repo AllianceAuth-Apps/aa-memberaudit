@@ -710,22 +710,20 @@ class TestSkillqueue(TestCase):
         row = data[0]
         self.assertFalse(row["is_active"])
         self.assertTrue(row["is_completed"])
-        self.assertEqual(strip_tags(row["skill"]), "Gallente Carrier V")
-        self.assertIsNone(row["completion"])
-        self.assertEqual(strip_tags(row["remaining"]), "Completed")
+        self.assertEqual(strip_tags(row["skill_html"]), "Gallente Carrier V")
+        self.assertEqual(strip_tags(row["remaining_html"]), "Completed")
 
         row = data[1]
         self.assertTrue(row["is_active"])
         self.assertFalse(row["is_completed"])
-        self.assertEqual(strip_tags(row["skill"]), "Amarr Carrier V")
-        self.assertEqual(row["completion"], "25%")
-        self.assertEqual(strip_tags(row["remaining"]), "2 days")
+        self.assertEqual(strip_tags(row["skill_html"]), "Amarr Carrier V (25%)")
+        self.assertEqual(strip_tags(row["remaining_html"]), "2 days")
 
         row = data[2]
         self.assertFalse(row["is_active"])
         self.assertFalse(row["is_completed"])
-        self.assertEqual(strip_tags(row["skill"]), "Caldari Carrier V")
-        self.assertIsNone(row["completion"])
+        self.assertEqual(strip_tags(row["skill_html"]), "Caldari Carrier V")
+        self.assertEqual(strip_tags(row["remaining_html"]), "7 days")
 
     def test_should_not_show_any_skill_when_not_active(self):
         create_character_skillqueue_entry(

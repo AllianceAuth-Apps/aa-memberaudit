@@ -2,7 +2,7 @@
 
 <div role="tabpanel" class="tab-pane" id="skillqueue">
     <h3>{% translate 'Skill Queue' %}</h3>
-    {% if skill_in_training != None %}
+    {% if is_training %}
         <div class="table-responsive">
             <table class="table table-striped table-width-fix" id="tab_skillqueue">
                 <tbody></tbody>

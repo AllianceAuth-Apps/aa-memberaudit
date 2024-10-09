@@ -680,9 +680,8 @@
                 cache: false
             },
             columns: [
-                { data: 'skill' },
-                { data: 'completion' },
-                { data: 'remaining' },
+                { data: 'skill_html' },
+                { data: 'remaining_html' },
             ],
             createdRow: function (row, data, dataIndex) {
                 if (data['is_completed']) {
@@ -694,7 +693,7 @@
             paging: false,
             ordering: false,
             info: false,
-            searching: false
+            searching: true
         });
 
         /* Skill Sets */

@@ -442,7 +442,7 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.character}-{self.skill_name()}"
+        return f"{self.character}-{self.skill_display()}"
 
     def completion_percent(self) -> float:
         """Return current training progress for a skill."""
@@ -493,10 +493,15 @@ class CharacterSkillqueueEntry(AddGenericReprMixin, models.Model):
         remaining_percent = 1 - self.completion_percent()
         return duration * remaining_percent
 
-    def skill_name(self) -> str:
-        """Return skill name."""
+    def skill_display(self) -> str:
+        """Return skill for display."""
         level_roman = arabic_number_to_roman(self.finished_level)
-        return f"{self.eve_type.name} {level_roman}"
+        name = f"{self.eve_type.name} {level_roman}"
+        if not self.is_active():
+            return name
+        completion = self.completion_percent() * 100
+        name += f" ({completion:.0f}%)"
+        return name
 
     def total_duration(self) -> Optional[dt.timedelta]:
         """Return duration from start to finish for training a skill."""
