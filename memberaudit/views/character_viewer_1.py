@@ -116,8 +116,7 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     if sqe is None:
         skill_in_training = ""
     else:
-        completion = sqe.completion_percent() * 100
-        skill_in_training = f"{sqe.skill_name()} ({completion:.0f}%)"
+        skill_in_training = sqe.skill_display()
 
     context = {
         "all_characters": all_characters,

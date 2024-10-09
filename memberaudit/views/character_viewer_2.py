@@ -368,30 +368,26 @@ def character_skillqueue_data(
             .order_by("queue_position")
             .select_related("eve_type")
         ):
-            skill_str = format_html(
+            skill_html = format_html(
                 '<span class="text-tooltip" title="{}">{}</span>',
                 sqe.eve_type.description,
-                sqe.skill_name(),
-            )
-            completion = (
-                f"{sqe.completion_percent() * 100:.0f}%" if sqe.is_active() else None
+                sqe.skill_display(),
             )
             if sqe.is_completed():
-                remaining = "Completed"
+                remaining_html = "Completed"
             else:
-                remaining = humanize.naturaldelta(sqe.remaining_duration())
-            remaining = format_html(
+                remaining_html = humanize.naturaldelta(sqe.remaining_duration())
+            remaining_html = format_html(
                 '<span class="text-tooltip" title="{}">{}</span>',
                 sqe.finish_date,
-                remaining,
+                remaining_html,
             )
             data.append(
                 {
-                    "completion": completion,
                     "is_active": sqe.is_active(),
                     "is_completed": sqe.is_completed(),
-                    "remaining": remaining,
-                    "skill": skill_str,
+                    "remaining_html": remaining_html,
+                    "skill_html": skill_html,
                 }
             )
     except ObjectDoesNotExist:

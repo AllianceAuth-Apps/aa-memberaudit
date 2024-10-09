@@ -283,7 +283,7 @@ class TestCharacterSkillQueueEntry(TestCase):
             eve_type=self.amarr_carrier_skill_type,
             finished_level=5,
         )
-        self.assertEqual("Amarr Carrier V", sqe.skill_name())
+        self.assertIn("Amarr Carrier V", sqe.skill_display())
 
     def test_can_calculate_is_active(self):
         class X(NamedTuple):
