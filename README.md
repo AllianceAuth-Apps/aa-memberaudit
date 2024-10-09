@@ -7,7 +7,7 @@ An Alliance Auth app that provides full access to Eve characters and related rep
 [![django](https://img.shields.io/pypi/djversions/aa-memberaudit?label=django)](https://pypi.org/project/aa-memberaudit/)
 [![pipeline](https://gitlab.com/ErikKalkoken/aa-memberaudit/badges/master/pipeline.svg)](https://gitlab.com/ErikKalkoken/aa-memberaudit/-/pipelines)
 [![codecov](https://codecov.io/gl/ErikKalkoken/aa-memberaudit/branch/master/graph/badge.svg?token=QHMCUAFZBV)](https://codecov.io/gl/ErikKalkoken/aa-memberaudit)
-[![Documentation Status](https://readthedocs.org/projects/aa-memberaudit/badge/?version=latest)](https://aa-memberaudit.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/aa-memberaudit/badge/?version=latest)](https://aa-memberaudit.readthedocs.io/en/stable/)
 [![license](https://img.shields.io/badge/license-MIT-green)](https://gitlab.com/ErikKalkoken/aa-memberaudit/-/blob/master/LICENSE)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://github.com/pre-commit/pre-commit)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
@@ -63,7 +63,7 @@ Member Audit adds the following features to Auth:
 - Admins can use the flexible permission system to grant access levels for different roles (e.g. corp leadership may only have access to reports about their own corp members)
 - Admins can customize and configure Member Audit to fit their needs. e.g. change the app's name and define how often which type of data is updated from the Eve server
 
-- Ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](https://aa-memberaudit.readthedocs.io/en/latest/user.html#compliance-groups))
+- Ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](https://aa-memberaudit.readthedocs.io/en/stable/user.html#compliance-groups))
 - Get notifications when a user removes a character that they had previously registered.
 - Designed to work efficiently with large number of characters
 - Data retention policy allows managing storage capacity needs
@@ -104,4 +104,4 @@ On this page recruiters and leadership can look for other characters to view (as
 
 ## Documentation
 
-Link to [documentation](https://aa-memberaudit.readthedocs.io/en/latest/).
+Link to [documentation](https://aa-memberaudit.readthedocs.io/en/stable/).
