@@ -43,6 +43,7 @@ from memberaudit.models import (
     CharacterAsset,
     CharacterContract,
     CharacterFwStats,
+    CharacterSkillqueueEntry,
     Location,
 )
 
@@ -70,28 +71,28 @@ def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:
 @login_required
 @permission_required("memberaudit.basic_access")
 @fetch_character_if_allowed(
-    "details",
+    "clone_info__home_location__eve_solar_system",
+    "clone_info__home_location",
     "details__alliance",
     "details__corporation",
     "details__eve_ancestry",
-    "details__eve_bloodline",
     "details__eve_bloodline__eve_race",
+    "details__eve_bloodline",
     "details__eve_faction",
     "details__eve_race",
-    "wallet_balance",
-    "skillpoints",
-    "eve_character__character_ownership__user",
+    "details",
     "eve_character__character_ownership__user__profile__main_character",
+    "eve_character__character_ownership__user",
     "eve_character",
     "location__eve_solar_system",
-    "location__location",
-    "location__location__eve_solar_system",
     "location__location__eve_solar_system__eve_constellation__eve_region",
+    "location__location__eve_solar_system",
+    "location__location",
     "online_status",
-    "ship",
     "ship__eve_type",
-    "clone_info__home_location",
-    "clone_info__home_location__eve_solar_system",
+    "ship",
+    "skillpoints",
+    "wallet_balance",
 )
 def character_viewer(request, character_pk: int, character: Character) -> HttpResponse:
     """Main view for showing a character with all details.
@@ -111,25 +112,33 @@ def character_viewer(request, character_pk: int, character: Character) -> HttpRe
     connection_skills_differ = _connection_skills_differ_for_character(character)
     page_title = _page_title_for_character(request, character)
 
+    sqe: CharacterSkillqueueEntry = character.skillqueue.skill_in_training().first()
+    if sqe is None:
+        skill_in_training = ""
+    else:
+        completion = sqe.completion_percent() * 100
+        skill_in_training = f"{sqe.skill_name()} ({completion:.0f}%)"
+
     context = {
-        "page_title": page_title,
-        "character": character,
+        "all_characters": all_characters,
         "auth_character": character.eve_character,
-        "total_update_status": character.calc_total_update_status(),
+        "character_assets_total": character_assets_total,
         "character_details": character.details_or_none(),
+        "character": character,
+        "connection_skills_differ": connection_skills_differ,
+        "enabled_sections": Character.UpdateSection.enabled_sections(),
+        "has_implants": character.implants.exists(),
+        "is_training": character.skillqueue.skill_in_training().exists(),
         "mail_labels": mail_labels,
         "mailing_lists": mailing_lists,
-        "main": main,
         "main_character_id": main_character_id,
-        "all_characters": all_characters,
-        "show_tab": request.GET.get("tab", ""),
+        "main": main,
+        "page_title": page_title,
         "sections_update_status": character.update_status_as_dict(),
-        "character_assets_total": character_assets_total,
-        "has_implants": character.implants.exists(),
-        "skill_in_training": character.skill_in_training(),
-        "connection_skills_differ": connection_skills_differ,
+        "show_tab": request.GET.get("tab", ""),
+        "skill_in_training": skill_in_training,
+        "total_update_status": character.calc_total_update_status(),
         "UpdateSection": Character.UpdateSection,
-        "enabled_sections": Character.UpdateSection.enabled_sections(),
     }
     return render(
         request,
