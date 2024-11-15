@@ -1,4 +1,5 @@
 import datetime as dt
+from collections import namedtuple
 from unittest.mock import patch
 
 from django.test import override_settings
@@ -1304,28 +1305,32 @@ class TestCharacterTitleManager(NoSocketsTestCase):
         self.assertEqual(self.character_1001.titles.count(), 0)
 
     def test_should_remove_xml_from_titles_and_strip(self, mock_esi):
-        # given
-        endpoints = [
-            EsiEndpoint(
-                "Character",
-                "get_characters_character_id_titles",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {"name": "<color=0xFFee82ee> Awesome Title ", "title_id": 1}
-                    ]
-                },
-            ),
+        create_character_title(
+            character=self.character_1001, name="Old title", title_id=1
+        )
+        X = namedtuple("X", ["title", "want"])
+        cases = [
+            X("<color=0xFFee82ee> Awesome Title ", "Awesome Title"),
+            X("<color=0xFFee82ee> Officer", "Officer"),
+            X("<color=0xff649abb>Officer</color>", "Officer"),
         ]
-        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
-        # when
-        self.character_1001.update_titles()
-        # then
-        self.assertEqual(self.character_1001.titles.count(), 1)
-        obj = self.character_1001.titles.first()
-        self.assertEqual(obj.name, "Awesome Title")
-        self.assertEqual(obj.title_id, 1)
+        for tc in cases:
+            with self.subTest(title=tc.title):
+                endpoints = [
+                    EsiEndpoint(
+                        "Character",
+                        "get_characters_character_id_titles",
+                        "character_id",
+                        needs_token=True,
+                        data={"1001": [{"name": tc.title, "title_id": 1}]},
+                    ),
+                ]
+                mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+                # when
+                self.character_1001.update_titles()
+                # then
+                obj = self.character_1001.titles.get(title_id=1)
+                self.assertEqual(obj.name, tc.want)
 
 
 @patch(MANAGERS_PATH + ".esi")
