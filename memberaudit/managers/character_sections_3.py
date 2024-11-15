@@ -695,22 +695,23 @@ class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_titles.v1")
-    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
-        """Update the character's roles"""
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
+        """Fetch character title from ESI."""
 
         logger.info("%s: Fetching titles from ESI", character)
         titles_data = esi.client.Character.get_characters_character_id_titles(
             character_id=character.eve_character.character_id,
             token=token.valid_access_token(),
         ).results()
+        for r in titles_data:
+            r["name"] = strip_tags(r["name"]).strip()[:100]
         return titles_data
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
     ) -> Set[int]:
         def make_obj_from_esi_entry(character, key, value):
-            name_sanitized = strip_tags(value).strip()[:100]
-            obj = self.model(character=character, title_id=key, name=name_sanitized)
+            obj = self.model(character=character, title_id=key, name=value)
             return obj
 
         self._update_or_create_objs_generic(

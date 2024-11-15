@@ -5,7 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+> :warning: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
+
 ## [Unreleased] - yyyy-mm-dd
+
+## [3.12.1] - 2024-11-15
+
+### Fixed
+
+- Character titles are not consistently stripped of possible color tags (#174)
 
 ## [3.12.0] - 2024-10-22
 
