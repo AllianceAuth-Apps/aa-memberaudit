@@ -90,6 +90,18 @@ def update_all_characters(
     - ignore_stale: When True, will start updating all sections regardless
         of it's stale status
     """
+    priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
+
+    # check consistency of shared characters
+    shared_characters = list(
+        Character.objects.filter(is_shared=True).values_list("pk", flat=True)
+    )
+    if shared_characters:
+        for character_pk in shared_characters:
+            check_character_consistency.apply_async(
+                kwargs={"character_pk": character_pk}, priority=priority
+            )
+
     Character.objects.disable_characters_with_no_owner()
 
     # start sync for all enabled characters
@@ -97,7 +109,6 @@ def update_all_characters(
         Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
     )
     if enabled_characters:
-        priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
         for character_pk in enabled_characters:
             update_character.apply_async(
                 kwargs={
@@ -175,11 +186,6 @@ def update_character(
         task.apply_async(
             kwargs={"character_pk": character.pk, "force_update": force_update},
             priority=priority,
-        )
-
-    if character.is_shared:
-        check_character_consistency.apply_async(
-            kwargs={"character_pk": character.pk}, priority=priority
         )
 
     return True

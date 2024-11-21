@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.12.2] - 2024-11-21
+
+### Fixed
+
+- Check shared characters for consistency with every regular update, instead of only when the character has changed
+
 ## [3.12.1] - 2024-11-15
 
 ### Fixed

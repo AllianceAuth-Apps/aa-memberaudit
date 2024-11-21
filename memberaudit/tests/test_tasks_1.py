@@ -1408,6 +1408,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
 
 
 @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
+@patch(TASKS_PATH + ".check_character_consistency", spec=True)
 @patch(TASKS_PATH + ".update_character", spec=True)
 class TestUpdateAllCharacters(TestCase):
     @classmethod
@@ -1417,7 +1418,9 @@ class TestUpdateAllCharacters(TestCase):
         load_entities()
         load_locations()
 
-    def test_should_update_all_enabled_characters(self, mock_update_character):
+    def test_should_update_all_enabled_characters(
+        self, mock_update_character, mock_check_character_consistency
+    ):
         # given
         character_1001 = create_memberaudit_character(1001)
         character_1002 = create_memberaudit_character(1002)
@@ -1434,7 +1437,9 @@ class TestUpdateAllCharacters(TestCase):
         }
         self.assertSetEqual(called_pks, {character_1001.pk, character_1002.pk})
 
-    def test_should_disable_orphaned_characters(self, mock_update_character):
+    def test_should_disable_orphaned_characters(
+        self, mock_update_character, mock_check_character_consistency
+    ):
         # given
         character_1001 = create_memberaudit_character(1001)
         eve_character_1002 = EveCharacter.objects.get(character_id=1002)
@@ -1446,6 +1451,24 @@ class TestUpdateAllCharacters(TestCase):
         self.assertFalse(character_1001.is_disabled)
         character_1002.refresh_from_db()
         self.assertTrue(character_1002.is_disabled)
+
+    def test_should_unshare_characters_without_share_permission(
+        self, mock_update_character, mock_check_character_consistency
+    ):
+        # given
+        character_1001 = create_memberaudit_character(1001)
+        character_1001.is_shared = True
+        character_1001.save()
+        character_1002 = create_memberaudit_character(1002)
+        character_1002.is_shared = False
+        character_1002.save()
+        # when
+        tasks.update_all_characters()
+        # then
+        character_1001.refresh_from_db()
+        self.assertEqual(mock_check_character_consistency.apply_async.call_count, 1)
+        _, kwargs = mock_check_character_consistency.apply_async.call_args
+        self.assertEqual(kwargs["kwargs"]["character_pk"], character_1001.pk)
 
 
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id", spec=True)
