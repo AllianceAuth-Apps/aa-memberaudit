@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [3.13.0] - 2025-02-10
 
-### Changed
+### Fixed
 
-- App no longer requests the bookmark scope, which has been removed and is no longer valid (#176).
+- App no longer requests the bookmark scope, which has been removed and is no longer valid (#179).
 
 ## [3.12.2] - 2024-11-21
 
