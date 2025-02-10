@@ -112,7 +112,7 @@ def _fetch_attributes_for_eve_types(
 
 
 def _create_skills_from_attributes(
-    all_attributes_map: Dict[int, Dict[int, int]]
+    all_attributes_map: Dict[int, Dict[int, int]],
 ) -> List[Tuple[int, int]]:
     skills = []
     for attributes in all_attributes_map.values():
