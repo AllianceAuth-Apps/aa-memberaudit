@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.13.0] - 2025-02-10
+
+### Fixed
+
+- App no longer requests the bookmark scope, which has been removed and is no longer valid (#179).
+
 ## [3.12.2] - 2024-11-21
 
 ### Fixed

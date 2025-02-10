@@ -200,7 +200,7 @@ def _get_esi_status() -> requests.Response:
 
 
 def _determine_unavailable_sections(
-    status: List[Dict[str, Any]]
+    status: List[Dict[str, Any]],
 ) -> Set[Character.UpdateSection]:
     sections: Set[Character.UpdateSection] = set()
     red_endpoints = [_Endpoint.from_dict(ep) for ep in status if ep["status"] == "red"]

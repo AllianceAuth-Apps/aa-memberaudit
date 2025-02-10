@@ -767,7 +767,6 @@ class TestCharacterGetEsiScopes(TestCase):
         # then
         expected = {
             "esi-assets.read_assets.v1",
-            "esi-bookmarks.read_character_bookmarks.v1",
             "esi-calendar.read_calendar_events.v1",
             "esi-characters.read_agents_research.v1",
             "esi-characters.read_blueprints.v1",
