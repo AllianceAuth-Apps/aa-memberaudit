@@ -777,7 +777,6 @@ class TestCharacterGetEsiScopes(TestCase):
             "esi-characters.read_loyalty.v1",
             "esi-characters.read_medals.v1",
             "esi-characters.read_notifications.v1",
-            "esi-characters.read_opportunities.v1",
             "esi-characters.read_standings.v1",
             "esi-characters.read_titles.v1",
             "esi-clones.read_clones.v1",

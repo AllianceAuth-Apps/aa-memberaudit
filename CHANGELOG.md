@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.14.0] - 2025-02-24
+
+### Changed
+
+- App no longer requests the scope: `esi-characters.read_opportunities.v1`. This scope been deprecated and will soon be removed (see also [Deprecation and impending removal of esi-opportunities and esi-bookmarks](https://developers.eveonline.com/blog/deprecation-and-impending-removal-of-esi-opportunities-and-esi-bookmarks)).
+
 ## [3.13.0] - 2025-02-10
 
 ### Fixed
