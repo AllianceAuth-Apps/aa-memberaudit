@@ -9,6 +9,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.15.0] - 2025-02-24
+
+### Update notes
+
+This update aims to reduce the load on CCP's servers caused by Member Audit.
+
+Please enable `apply_offset` for the celery beat configuration in your local settings. For the complete new config please see the [installation guide](https://aa-memberaudit.readthedocs.io/en/stable/operations.html#step-2-configure-auth-settings).
+
+### Added
+
+- Added caching of request to ESI status to peak reduce server load
+- Added offset to task configuration so that task starts are spread out randomly
+
 ## [3.14.0] - 2025-02-24
 
 ### Changed
