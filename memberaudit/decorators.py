@@ -2,6 +2,7 @@
 
 from functools import wraps
 
+from django.core.cache import cache
 from django.http import HttpResponseForbidden, HttpResponseNotFound
 
 from allianceauth.services.hooks import get_extension_logger
@@ -91,11 +92,18 @@ def when_esi_is_available(func):
     @wraps(func)
     def outer(*args, **kwargs):
         if IS_TESTING is not True:
-            try:
-                fetch_esi_status().raise_for_status()
-            except EsiDailyDowntime:
-                logger.info("Daily Downtime detected. Aborting.")
-                return None  # function will not run
+            key = "when-esi-is-available-status"
+            status = cache.get(key)
+            if not status:
+                try:
+                    status = fetch_esi_status()
+                except EsiDailyDowntime:
+                    logger.info("Daily Downtime detected. Aborting.")
+                    return None  # function will not run
+
+                cache.set(key, status, timeout=2)
+
+            status.raise_for_status()
 
         return func(*args, **kwargs)
 
