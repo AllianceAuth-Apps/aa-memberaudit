@@ -14,6 +14,11 @@ from memberaudit.constants import IS_TESTING
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
+ESI_STATUS_CACHE_TIMEOUT = 2
+"""Calls to the ESI status endpoint by the when_esi_is_available decorater
+ are cached for this duration in seconds.
+ """
+
 
 def fetch_character_if_allowed(*args_select_related):
     """Assert the current user has access to the character
@@ -101,7 +106,7 @@ def when_esi_is_available(func):
                     logger.info("Daily Downtime detected. Aborting.")
                     return None  # function will not run
 
-                cache.set(key, status, timeout=2)
+                cache.set(key, status, timeout=ESI_STATUS_CACHE_TIMEOUT)
 
             status.raise_for_status()
 
