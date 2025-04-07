@@ -9,18 +9,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [3.15.0] - 2025-04-06
+## [3.15.0] - 2025-04-07
 
-### Update notes
+### Changed
 
-This update aims to improve the load profile of ESI requests from Member Audit accross all installations.
-
-ACTION REQUIRED: Please enable `apply_offset` for the celery beat configuration in your local settings. For the complete new config please see the [installation guide](https://aa-memberaudit.readthedocs.io/en/stable/operations.html#step-2-configure-auth-settings).
-
-### Added
-
-- Added caching of ESI status requests before task starts
-- Enabled feature that adds a random offset to start time of regular running tasks
+- Enabled caching of ESI status requests at the beginnig of update tasks
 
 ## [3.14.0] - 2025-02-24
 

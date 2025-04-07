@@ -27,7 +27,6 @@ Configure your Auth settings (`local.py`) as follows:
 CELERYBEAT_SCHEDULE["memberaudit_run_regular_updates"] = {
     "task": "memberaudit.tasks.run_regular_updates",
     "schedule": crontab(minute="*/15"),
-    "apply_offset": True,
 }
 ```
 
