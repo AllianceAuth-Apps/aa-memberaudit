@@ -9,6 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [3.15.0] - 2025-04-07
+
+### Changed
+
+- Enabled caching of ESI status requests at the beginnig of update tasks
+
 ## [3.14.0] - 2025-02-24
 
 ### Changed

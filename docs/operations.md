@@ -20,13 +20,13 @@ pip install aa-memberaudit
 
 Configure your Auth settings (`local.py`) as follows:
 
-- Add `'memberaudit'` to `INSTALLED_APPS`
+- Add `"memberaudit"` to `INSTALLED_APPS`
 - Add below lines to your settings file:
 
 ```python
-CELERYBEAT_SCHEDULE['memberaudit_run_regular_updates'] = {
-    'task': 'memberaudit.tasks.run_regular_updates',
-    'schedule': crontab(minute="*/15"),
+CELERYBEAT_SCHEDULE["memberaudit_run_regular_updates"] = {
+    "task": "memberaudit.tasks.run_regular_updates",
+    "schedule": crontab(minute="*/15"),
 }
 ```
 
@@ -49,7 +49,6 @@ Update the Eve Online API app used for authentication in your AA installation to
 
 ```text
 esi-assets.read_assets.v1
-esi-bookmarks.read_character_bookmarks.v1
 esi-calendar.read_calendar_events.v1
 esi-characters.read_agents_research.v1
 esi-characters.read_blueprints.v1
@@ -60,7 +59,6 @@ esi-characters.read_fw_stats.v1
 esi-characters.read_loyalty.v1
 esi-characters.read_medals.v1
 esi-characters.read_notifications.v1
-esi-characters.read_opportunities.v1
 esi-characters.read_standings.v1
 esi-characters.read_titles.v1
 esi-clones.read_clones.v1

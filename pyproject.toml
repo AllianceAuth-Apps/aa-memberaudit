@@ -32,7 +32,7 @@ classifiers = [
 ]
 dependencies = [
     "allianceauth-app-utils>=1.23",
-    "allianceauth>=3",
+    "allianceauth>=3,<5",
     "django-esi>=5.3b2",
     "bleach",
     "dj-datatables-view",

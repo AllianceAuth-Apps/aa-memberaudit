@@ -130,32 +130,67 @@ class TestFetchToken(TestCase):
 
 
 @when_esi_is_available
-def my_func():
+def when_esi_is_available_func():
     return "ok"
 
 
 @patch(MODULE_PATH + ".IS_TESTING", False)
+@patch(MODULE_PATH + ".cache.set", spec=True)
+@patch(MODULE_PATH + ".cache.get", spec=True)
 @patch(MODULE_PATH + ".fetch_esi_status")
-class TestEsiIsAvailable(NoSocketsTestCase):
-    def test_should_run_task_when_esi_is_available(self, mock_fetch_esi_status):
+class TestWhenEsiIsAvailable(NoSocketsTestCase):
+    def test_should_run_task_when_esi_is_available(
+        self, mock_fetch_esi_status, mock_cache_get, mock_cache_set
+    ):
         # given
+        mock_cache_get.return_value = None
         mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         # when/then
-        result = my_func()
+        result = when_esi_is_available_func()
         # then
         self.assertEqual(result, "ok")
 
-    def test_should_raise_error_when_esi_is_offline(self, mock_fetch_esi_status):
+    def test_should_raise_error_when_esi_is_offline(
+        self, mock_fetch_esi_status, mock_cache_get, mock_cache_set
+    ):
         # given
+        mock_cache_get.return_value = None
         mock_fetch_esi_status.return_value = EsiStatus(False, 99, 60)
         # when/then
         with self.assertRaises(EsiOffline):
-            my_func()
+            when_esi_is_available_func()
 
-    def test_should_complete_task_early_when_downtime(self, mock_fetch_esi_status):
+    def test_should_complete_task_early_when_downtime(
+        self, mock_fetch_esi_status, mock_cache_get, mock_cache_set
+    ):
         # given
+        mock_cache_get.return_value = None
         mock_fetch_esi_status.side_effect = EsiDailyDowntime
         # when/then
-        result = my_func()
+        result = when_esi_is_available_func()
         # then
         self.assertIsNone(result)
+
+    def test_should_take_status_from_cache_when_availale(
+        self, mock_fetch_esi_status, mock_cache_get, mock_cache_set
+    ):
+        # given
+        mock_cache_get.return_value = EsiStatus(True, 99, 60)
+        mock_fetch_esi_status.side_effect = RuntimeError
+        # when/then
+        result = when_esi_is_available_func()
+        # then
+        self.assertEqual(result, "ok")
+        self.assertFalse(mock_cache_set.called)
+
+    def test_should_run_task_when_esi_is_available_and_store_in_cache(
+        self, mock_fetch_esi_status, mock_cache_get, mock_cache_set
+    ):
+        # given
+        mock_cache_get.return_value = None
+        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
+        # when/then
+        result = when_esi_is_available_func()
+        # then
+        self.assertEqual(result, "ok")
+        self.assertTrue(mock_cache_set.called)
