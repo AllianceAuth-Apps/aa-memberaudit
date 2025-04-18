@@ -5,11 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-> :warning: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
-
 ## [Unreleased] - yyyy-mm-dd
 
+## [4.0.0] - TBD
+
+### Update notes
+
+This release requires Alliance Auth 4.0 or greater.
+
+### Changed
+
+- BREAKING CHANGE: Support dropped for AA3
+- Templates migrated to AA4 / Bootstrap 5
+
 ## [3.15.0] - 2025-04-07
+
+> :warning: When updating from a version prior to 3.7.2, 3.6.0, 3.4.0 or 3.0.0 please see the update notes for those versions first!
 
 ### Changed
 
