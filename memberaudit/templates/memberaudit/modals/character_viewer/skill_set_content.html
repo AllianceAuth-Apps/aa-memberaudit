@@ -3,11 +3,6 @@
 
 <div class="modal-content">
     <div class="modal-header">
-        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">
-                &times;
-            </span>
-        </button>
-
         <div style="display: flex; flex-wrap: nowrap;">
             <div style="margin-right: 1rem;">
                 <p class="text-center">
@@ -29,6 +24,8 @@
                 </div>
             </div>
         </div>
+
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
     </div>
 
     <div class="modal-body">
@@ -65,7 +62,7 @@
         </table>
         <div id="div-missing-skills" class="hidden">{{ missing_skills_str }}</div>
         {% if missing_skills_str %}
-            <button type="button" id="btn-copy-missing-skills" class="btn btn-default pull-right" data-text="{{ missing_skills_str }}">
+            <button type="button" id="btn-copy-missing-skills" class="btn btn-secondary pull-right" data-text="{{ missing_skills_str }}">
                 {% translate 'Copy missing skills to clipboard' %}
             </button>
         {% endif %}
@@ -83,7 +80,7 @@
         </div>
     </div>
     <div class="modal-footer">
-        <button type="button" class="btn btn-default" data-dismiss="modal">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
             {% translate 'Close' %}
         </button>
     </div>

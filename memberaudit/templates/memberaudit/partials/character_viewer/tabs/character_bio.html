@@ -1,6 +1,6 @@
 {% load i18n %}
 
-<div role="tabpanel" class="tab-pane" id="bio">
+<div role="tabcard" class="tab-pane" id="bio">
     <h3>{% translate 'Bio' %}</h3>
     {{ character_details.description_html|default:"-" }}
     <br>

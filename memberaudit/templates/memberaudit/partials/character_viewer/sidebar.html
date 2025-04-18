@@ -2,10 +2,12 @@
 {% load static %}
 {% load evelinks %}
 
-<!-- Sidebar panel-->
-<div class="panel panel-default">
-    <div class="panel-heading">{% translate 'Characters' %}</div>
-    <div class="panel-body">
+<!-- Sidebar card-->
+<div class="card">
+    <div class="card-header">
+        {% translate 'Characters' %}
+    </div>
+    <div class="card-body">
         <ul class="sidebar_characters">
             {% for character in all_characters %}
                 {% if character.memberaudit_character_pk and character.has_access %}

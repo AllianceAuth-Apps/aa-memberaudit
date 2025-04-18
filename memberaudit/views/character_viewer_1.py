@@ -306,8 +306,8 @@ def character_assets_data(
                     args=[character.pk, asset.pk],
                 )
                 actions_html = (
-                    '<button type="button" class="btn btn-default btn-sm" '
-                    'data-toggle="modal" data-target="#modalCharacterAssetContainer" '
+                    '<button type="button" class="btn btn-secondary btn-sm" '
+                    'data-bs-toggle="modal" data-bs-target="#modalCharacterAssetContainer" '
                     f"data-ajax_children_url={ajax_children_url}>"
                     '<i class="fas fa-search"></i></button>'
                 )
@@ -544,7 +544,7 @@ def character_contracts_data(
 
         actions_html = (
             '<button type="button" class="btn btn-primary" '
-            'data-toggle="modal" data-target="#modalCharacterContract" '
+            'data-bs-toggle="modal" data-bs-target="#modalCharacterContract" '
             f"data-ajax_contract_detail={ajax_contract_detail}>"
             '<i class="fas fa-search"></i></button>'
         )

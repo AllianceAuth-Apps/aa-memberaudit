@@ -14,14 +14,14 @@
         transform: translate(-50%, -50%);
     }
 
-    .memberaudit-dashboard-panels,
-    .memberaudit-dashboard-item .panel-body {
+    .memberaudit-dashboard-cards,
+    .memberaudit-dashboard-item .card-body {
         align-items: center;
         display: flex;
         flex-wrap: wrap;
     }
 
-    .memberaudit-dashboard-panels {
+    .memberaudit-dashboard-cards {
         justify-content: center;
     }
 
