@@ -52,7 +52,8 @@
 {% endblock header_nav_collapse_left %}
 
 {% block content %}
-    <h2 class="text-left">{{ page_title }}</h2>
+    {% include "framework/header/page-header.html" with title=page_title %}
+
     {% block details %}{% endblock %}
 {% endblock %}
 
