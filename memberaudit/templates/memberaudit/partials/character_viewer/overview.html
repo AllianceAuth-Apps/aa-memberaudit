@@ -5,7 +5,7 @@
 {% load memberaudit %}
 
 <!-- Character summary card -->
-<div class="card">
+<div class="card mb-3">
     <div class="card-header">
         {% translate 'Overview' %}
     </div>
@@ -37,12 +37,6 @@
                     <a href="https://eve-search.com/search/author/{{ auth_character.character_name }}" target="_blank">
                         <img src="{% static 'memberaudit/images/evesearch.png' %}"
                             title="{{ auth_character.character_name }} on Eve Search" width="16px" height="16px">
-                    </a>
-
-                    <a href="https://eve-prism.com/?view=character&name={{ auth_character.character_name }}"
-                        target="_blank">
-                        <img src="{% static 'memberaudit/images/eve-prism.png' %}"
-                            title="{{ auth_character.character_name }} on Eve Prism" width="16px" height="16px">
                     </a>
                 </p>
             </div>
