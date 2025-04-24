@@ -1,10 +1,10 @@
 @media all {
     h3 {
-        margin-top: 0px;
+        margin-top: 0;
     }
 
     h4 {
-        margin-top: 0px;
+        margin-top: 0;
     }
 
     /* character summary */
@@ -36,7 +36,7 @@
         width: 30%;
         /* adjust the width; make sure the total of both is 100% */
         padding: 0;
-        margin-bottom: 1em;
+        /*margin-bottom: 1em;*/
     }
 
     dd {
@@ -44,7 +44,7 @@
         width: 70%;
         /* adjust the width; make sure the total of both is 100% */
         padding: 0;
-        margin-bottom: 1em;
+        /*margin-bottom: 1em;*/
     }
 
     /* Assets Tab */
