@@ -3,7 +3,8 @@
 import numbers
 
 from django.conf import settings
-from django.core.checks import Warning, register
+from django.core.checks import Warning as DjangoWarning
+from django.core.checks import register
 
 
 @register()
@@ -31,7 +32,7 @@ def _verify_task_config(warnings: list, name: str, obj: dict, task_name: str):
         return
 
     warnings.append(
-        Warning(
+        DjangoWarning(
             (
                 "Periodic task has deprecated schedule: "
                 f'CELERYBEAT_SCHEDULE["{name}"]'
