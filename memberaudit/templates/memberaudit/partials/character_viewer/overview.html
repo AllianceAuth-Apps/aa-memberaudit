@@ -7,7 +7,49 @@
 <!-- Character summary card -->
 <div class="card mb-3">
     <div class="card-header">
-        {% translate 'Overview' %}
+        <div class="row">
+            <div class="col text-start">
+                {% translate 'Overview' %}
+            </div>
+            <div class="col text-end">
+                <div class="dropdown">
+                    <a class="btn btn-secondary btn-sm dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Characters
+                        {% if all_characters %}
+                            <span class="badge text-bg-secondary">{{ all_characters|length }}</span>
+                        {% endif %}
+                    </a>
+                    <ul class="dropdown-menu">
+                        {% for character in all_characters %}
+                            {% if character.memberaudit_character_pk and character.has_access %}
+                                <li>
+                                    <a class="dropdown-item" href="{% url 'memberaudit:character_viewer' character.memberaudit_character_pk %}">
+                                        <span class="sidebar-character-list-item text-nowrap">
+                                            {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}
+                                        </span>
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li>
+                                    <a class="dropdown-item disabled" aria-disabled="true">
+                                       <span class="sidebar-character-list-item text-nowrap">
+                                            {% include "memberaudit/partials/character_viewer/sidebar_character.html" %}&nbsp;
+                                            <i class="sidebar-character-list-item-icon fas fa-exclamation-triangle text-muted" title="{% translate 'Unregistered character' %}"></i>
+                                        </span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        {% empty %}
+                            <li>
+                                <a class="dropdown-item disabled" aria-disabled="true">
+                                    <span class="text-muted">{% translate '(orphan)' %}</span>
+                                </a>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
     </div>
     <div class="card-body">
         <div class="character-summary-flex">

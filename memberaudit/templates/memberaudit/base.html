@@ -14,7 +14,7 @@
             <a class="nav-link {% navactive request 'memberaudit:launcher' %}" href="{% url 'memberaudit:launcher' %}">
                 {% translate 'My Characters' %}
                 {%  if unregistered_count > 0 %}
-                    <span class="badge badge-nav">{{ unregistered_count }}</span>
+                    <span class="badge text-bg-warning badge-nav">{{ unregistered_count }}</span>
                 {% endif %}
             </a>
         </li>

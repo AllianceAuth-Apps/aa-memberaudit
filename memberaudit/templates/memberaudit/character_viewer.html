@@ -6,53 +6,45 @@
 {% load evelinks %}
 
 {% block details %}
-<div class="row">
-    <!-- Side bar -->
-    <div class="col-md-3 col-xl-2 order-md-last">
-        {% include 'memberaudit/partials/character_viewer/sidebar.html' %}
-    </div>
+<div>
+    {% include 'memberaudit/partials/character_viewer/overview.html' %}
 
-    <!-- Main card-->
-    <div class="col-md-9 col-xl-10 order-md-first">
-        {% include 'memberaudit/partials/character_viewer/overview.html' %}
+    <!-- Details sub card -->
+    <div>
+        {% include 'memberaudit/partials/character_viewer/tabs_navigation.html' %}
 
-        <!-- Details sub card -->
-        <div>
-            {% include 'memberaudit/partials/character_viewer/tabs_navigation.html' %}
+        <div class="card card-tabs">
+            <div class="card-body">
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    {% include 'memberaudit/partials/character_viewer/tabs/assets.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/character_attributes.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/contacts.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/character_bio.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/contracts.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/fw_stats.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/implants.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/jump_clones.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/titles.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
 
-            <div class="card card-tabs">
-                <div class="card-body">
-                    <!-- Tab panes -->
-                    <div class="tab-content">
-                        {% include 'memberaudit/partials/character_viewer/tabs/assets.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/character_attributes.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/contacts.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/character_bio.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/contracts.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/fw_stats.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/implants.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/jump_clones.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/titles.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
+                    {% if UpdateSection.ROLES in enabled_sections %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
+                    {% endif%}
 
-                        {% if UpdateSection.ROLES in enabled_sections %}
-                            {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
-                        {% endif%}
+                    {% if perms.memberaudit.view_skill_sets %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
+                    {% endif %}
 
-                        {% if perms.memberaudit.view_skill_sets %}
-                            {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
-                        {% endif %}
-
-                    </div>
                 </div>
             </div>
         </div>
