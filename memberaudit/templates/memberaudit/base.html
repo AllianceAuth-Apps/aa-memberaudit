@@ -1,14 +1,64 @@
-{% extends 'allianceauth/base.html' %}
+{% extends 'allianceauth/base-bs5.html' %}
 
-{% block page_title %}
-    {{ page_title|striptags }} - {{ app_title }}
-{% endblock %}
+{% load i18n %}
+{% load navactive %}
+
+{% block page_title %}{{ page_title|striptags }} - {{ app_title }}{% endblock %}
+
+{% block header_nav_brand %}{{ app_title }}{% endblock %}
+
+{% block header_nav_collapse_left %}
+    <ul class="nav navbar-nav">
+
+        <li class="nav-item">
+            <a class="nav-link {% navactive request 'memberaudit:launcher' %}" href="{% url 'memberaudit:launcher' %}">
+                {% translate 'My Characters' %}
+                {%  if unregistered_count > 0 %}
+                    <span class="badge text-bg-warning badge-nav">{{ unregistered_count }}</span>
+                {% endif %}
+            </a>
+        </li>
+
+        {% if "/character_viewer/" in request.path %}
+            <li class="nav-item">
+                <a class="nav-link {% renavactive request '/character_viewer/' %}" href="#">{% translate 'Character Sheet' %}</a>
+            </li>
+        {% endif %}
+
+        {% if perms.memberaudit.finder_access %}
+            <li class="nav-item">
+                <a class="nav-link {% navactive request 'memberaudit:character_finder' %}" href="{% url 'memberaudit:character_finder' %}">
+                    {% translate 'Character Finder' %}
+                </a>
+            </li>
+        {% endif %}
+
+        {% if perms.memberaudit.reports_access %}
+            <li class="nav-item">
+                <a class="nav-link {% navactive request 'memberaudit:reports' %}" href="{% url 'memberaudit:reports' %}">
+                    {% translate 'Reports' %}
+                </a>
+            </li>
+        {% endif %}
+
+        {% if perms.memberaudit.exports_access %}
+            <li class="nav-item">
+                <a class="nav-link {% navactive request 'memberaudit:data_export' %}" href="{% url 'memberaudit:data_export' %}">
+                    {% translate 'Data Export' %}
+                </a>
+            </li>
+        {% endif %}
+    </ul>
+{% endblock header_nav_collapse_left %}
 
 {% block content %}
-    <br />
-    <div class="aa-memberaudit">
-        {% include 'memberaudit/partials/menu.html' %}
-        <h2 class="text-left">{{ page_title }}</h2>
-        {% block details %}{% endblock %}
-    </div>
+    {% include "framework/header/page-header.html" with title=page_title %}
+
+    {% block details %}{% endblock %}
+{% endblock %}
+
+{% block header_nav_user_character_control %}
+    {% comment %}
+        This block is left empty intentionally to disable defaults.
+    {% endcomment %}
 {% endblock %}

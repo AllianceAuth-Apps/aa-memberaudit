@@ -5,12 +5,11 @@
 
 
 {% block details %}
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3 class="panel-title">{% translate 'Characters' %}</h3>
+    <div class="card">
+        <div class="card-header">
+            {% translate 'Characters' %}
         </div>
-
-        <div class="panel-body">
+        <div class="card-body">
             <div class="table-responsive">
                 <table class="table table-striped table-width-fix" id="tab_characters">
                     <thead>
@@ -36,10 +35,10 @@
 {% endblock details %}
 
 {% block extra_javascript %}
-    {% include 'bundles/datatables-js.html' %}
+    {% include 'bundles/datatables-js-bs5.html' %}
 
     <!--load JS for filterDropDown plugin -->
-    <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/filterDropDown.min.js' %}"></script>
+    {% include "bundles/filterdropdown-js.html" %}
 
     <script>
         $(document).ready(function() {
@@ -81,35 +80,43 @@
                     columns: [
                         {
                             idx: 6,
-                            title: "{% translate 'Char Alliance' %}"
+                            title: "{% translate 'Char Alliance' %}",
+                            maxWidth: "10em"
                         },
                         {
                             idx: 7,
-                            title: "{% translate 'Char Corporation' %}"
+                            title: "{% translate 'Char Corporation' %}",
+                            maxWidth: "12em"
                         },
                         {
                             idx: 8,
-                            title: "{% translate 'Main Alliance' %}"
+                            title: "{% translate 'Main Alliance' %}",
+                            maxWidth: "10em"
                         },
                         {
                             idx: 9,
-                            title: "{% translate 'Main Corporation' %}"
+                            title: "{% translate 'Main Corporation' %}",
+                            maxWidth: "12em"
                         },
                         {
                             idx: 10,
-                            title: "{% translate 'Main?' %}"
+                            title: "{% translate 'Main?' %}",
+                            maxWidth: "7em"
                         },
                         {
                             idx: 4,
-                            title: "{% translate 'Main State' %}"
+                            title: "{% translate 'Main State' %}",
+                            maxWidth: "9em"
                         },
                         {
                             idx: 11,
-                            title: "{% translate 'Unregistered?' %}"
+                            title: "{% translate 'Unregistered?' %}",
+                            maxWidth: "10em"
                         },
 
                     ],
                     bootstrap: true,
+                    bootstrap_version: 5,
                     ajax: '{% url "memberaudit:character_finder_list_fdd_data" %}'
                 }
             });
@@ -118,7 +125,7 @@
 {% endblock %}
 
 {% block extra_css %}
-    {% include 'bundles/datatables-css.html' %}
+    {% include 'bundles/datatables-css-bs5.html' %}
     <link rel="stylesheet" href="{% static 'memberaudit/css/global.css' %}" type="text/css">
     <link rel="stylesheet" href="{% static 'memberaudit/css/memberaudit.css' %}" type="text/css">
     <link rel="stylesheet" href="{% static 'memberaudit/css/character_finder.css' %}" type="text/css">

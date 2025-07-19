@@ -538,7 +538,7 @@ class Character(
             error_message = f"{type(ex).__name__}: {str(ex)}"
             is_token_error = isinstance(ex, (TokenError))
             logger.error(
-                "%s: %s: Error ocurred: %s",
+                "%s: %s: Error occurred: %s",
                 self,
                 section.label,
                 error_message,

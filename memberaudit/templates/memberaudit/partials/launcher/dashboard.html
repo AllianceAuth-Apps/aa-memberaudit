@@ -2,29 +2,27 @@
 {% load memberaudit %}
 
 
-<div id="memberaudit-dashboard">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <div class="panel-title">{% translate 'Dashboard' %}</div>
+<div id="memberaudit-dashboard" class="mb-3">
+    <div class="card">
+        <div class="card-header">
+            {% translate 'Dashboard' %}
         </div>
 
-        <div class="panel-body">
-            <div class="memberaudit-dashboard-panels">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-center align-items-center">
                 <!-- Online Players -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="fas fa-server"></i>
-                            {% comment %} <i class="fa-solid fa-server"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-solid fa-server fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Online Players" %}
                             </span>
 
                             <span
-                                class="memberaudit-dashboard-item-value"
                                 id="dashboard-player-count"
                                 data-url="{% url 'memberaudit:player_count_data' %}">
                                 ?
@@ -34,19 +32,18 @@
                 </div>
 
                 <!-- Registered characters -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="fas fa-user-friends"></i>
-                            {% comment %} <i class="fa-solid fa-user-group"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-solid fa-user-group fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Registered Characters" %}
                             </span>
 
-                            <span class="memberaudit-dashboard-item-value">
+                            <span>
                                 {{ registered_count }} ({{ registered_percent|default_if_none:"?" }}%)
                             </span>
                         </span>
@@ -54,19 +51,18 @@
                 </div>
 
                 <!-- Total character ISK -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="fas fa-wallet"></i>
-                            {% comment %} <i class="fa-solid fa-wallet"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-solid fa-wallet fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Total Wallet ISK" %}
                             </span>
 
-                            <span class="memberaudit-dashboard-item-value">
+                            <span>
                                 {% natural_number total_wallet_isk %}
                             </span>
                         </span>
@@ -74,19 +70,18 @@
                 </div>
 
                 <!-- Total Mining ISK -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="far fa-gem"></i>
-                            {% comment %} <i class="fa-regular fa-gem"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-regular fa-gem fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Total Mined ISK" %} <small>{% translate "(this month)" %}</small>
                             </span>
 
-                            <span class="memberaudit-dashboard-item-value">
+                            <span>
                                 {% natural_number total_mined_isk %}
                             </span>
                         </span>
@@ -94,19 +89,18 @@
                 </div>
 
                 <!-- Total Ratted ISK -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="far fa-money-bill-alt"></i>
-                            {% comment %} <i class="fa-regular fa-money-bill-1"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-regular fa-money-bill-1 fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Total Ratted ISK" %} <small>{% translate "(this month)" %}</small>
                             </span>
 
-                            <span class="memberaudit-dashboard-item-value">
+                            <span>
                                 {% natural_number total_ratted_isk %}
                             </span>
                         </span>
@@ -114,19 +108,20 @@
                 </div>
 
                 <!-- Total Character Skillpoints -->
-                <div class="panel panel-default memberaudit-dashboard-item">
-                    <div class="panel-body">
-                        <span class="memberaudit-dashboard-item-icon">
-                            <i class="fas fa-graduation-cap"></i>
-                            {% comment %} <i class="fa-solid fa-graduation-cap"></i> {% endcomment %}
+                <div class="card mx-2 mb-3" style="width: 300px;">
+                    <div class="card-body d-flex flex-row align-items-center">
+                        <span class="me-3">
+                            <i class="fa-solid fa-graduation-cap fa-3x"></i>
                         </span>
 
-                        <span class="memberaudit-dashboard-item-wrapper">
-                            <span class="memberaudit-dashboard-item-title">
+                        <span class="d-flex flex-column">
+                            <span class="h6 fw-bold">
                                 {% translate "Total Character Skillpoints" %}
                             </span>
 
-                            {% natural_number total_character_skillpoints %}
+                            <span>
+                                {% natural_number total_character_skillpoints %}
+                            </span>
                         </span>
                     </div>
                 </div>

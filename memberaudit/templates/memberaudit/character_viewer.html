@@ -6,53 +6,45 @@
 {% load evelinks %}
 
 {% block details %}
-<div class="row">
-    <!-- Side bar -->
-    <div class="col-md-2 col-md-push-10">
-        {% include 'memberaudit/partials/character_viewer/sidebar.html' %}
-    </div>
+<div>
+    {% include 'memberaudit/partials/character_viewer/overview.html' %}
 
-    <!-- Main panel-->
-    <div class="col-md-10 col-md-pull-2">
-        {% include 'memberaudit/partials/character_viewer/overview.html' %}
+    <!-- Details sub card -->
+    <div>
+        {% include 'memberaudit/partials/character_viewer/tabs_navigation.html' %}
 
-        <!-- Details sub panel -->
-        <div>
-            {% include 'memberaudit/partials/character_viewer/tabs_navigation.html' %}
+        <div class="card card-tabs">
+            <div class="card-body">
+                <!-- Tab panes -->
+                <div class="tab-content">
+                    {% include 'memberaudit/partials/character_viewer/tabs/assets.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/character_attributes.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/contacts.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/character_bio.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/contracts.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/fw_stats.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/implants.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/jump_clones.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/titles.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
+                    {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
 
-            <div class="panel panel-default panel-tabs">
-                <div class="panel-body">
-                    <!-- Tab panes -->
-                    <div class="tab-content">
-                        {% include 'memberaudit/partials/character_viewer/tabs/assets.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/character_attributes.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/contacts.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/character_bio.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/contracts.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/corporation_history.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/fw_stats.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/implants.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/jump_clones.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/loyalty.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/mails.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/mining_ledger.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/planets.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skill_queue.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/standings.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/skills.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/titles.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_journal.html' %}
-                        {% include 'memberaudit/partials/character_viewer/tabs/wallet_transactions.html' %}
+                    {% if UpdateSection.ROLES in enabled_sections %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
+                    {% endif%}
 
-                        {% if UpdateSection.ROLES in enabled_sections %}
-                            {% include 'memberaudit/partials/character_viewer/tabs/roles.html' %}
-                        {% endif%}
+                    {% if perms.memberaudit.view_skill_sets %}
+                        {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
+                    {% endif %}
 
-                        {% if perms.memberaudit.view_skill_sets %}
-                            {% include 'memberaudit/partials/character_viewer/tabs/skill_sets.html' %}
-                        {% endif %}
-
-                    </div>
                 </div>
             </div>
         </div>
@@ -67,7 +59,7 @@
 {% endblock details %}
 
 {% block extra_javascript %}
-{% include 'bundles/datatables-js.html' %}
+{% include 'bundles/datatables-js-bs5.html' %}
 
 <script type="application/javascript"
     src="{% static 'memberaudit/vendor/datatables/plugins/dataTables.rowGroup.min.js' %}"></script>
@@ -75,7 +67,7 @@
 {% include 'bundles/moment-js.html' with locale=True %}
 
 <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/datetime.js' %}"></script>
-<script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/filterDropDown.min.js' %}"></script>
+{% include "bundles/filterdropdown-js.html" %}
 
 <script type="application/javascript">
     const DATETIME_FORMAT = 'YYYY-MMM-DD<br>HH:mm'
@@ -132,11 +124,11 @@
             tabId = getCookie(COOKIE_LAST_TAB_ID)
             if (tabId == "") tabId = "mail"
         }
-        $('a[href="#' + tabId + '"]').tab("show")
+        $('button[data-bs-target="#' + tabId + '"]').tab("show")
 
         /* remember last selected tab */
-        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
-            const selectedTabId = $(e.target).attr("href").substr(1)
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            const selectedTabId = $(e.target).attr("data-bs-target").substr(1)
             setCookie(COOKIE_LAST_TAB_ID, selectedTabId, COOKIE_LAST_TAB_HOURS)
         });
 
@@ -208,7 +200,8 @@
                     },
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             },
             footerCallback: function (row, data, start, end, display) {
                 var api = this.api(), data;
@@ -317,7 +310,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -355,7 +349,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -469,7 +464,8 @@
                     },
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             },
         });
 
@@ -614,7 +610,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -645,7 +642,8 @@
                         }
                     ],
                     autoSize: false,
-                    bootstrap: true
+                    bootstrap: true,
+                    bootstrap_version: 5
                 },
                 rowGroup: {
                     dataSrc: 'group',
@@ -751,7 +749,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -790,7 +789,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -842,7 +842,8 @@
                     },
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -903,7 +904,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             },
             createdRow: function (row, data, dataIndex) {
                 if (data['reason']) {
@@ -965,7 +967,8 @@
                     }
                 ],
                 autoSize: false,
-                bootstrap: true
+                bootstrap: true,
+                bootstrap_version: 5
             }
         });
 
@@ -974,7 +977,7 @@
 {% endblock extra_javascript %}
 
 {% block extra_css %}
-{% include 'bundles/datatables-css.html' %}
+{% include 'bundles/datatables-css-bs5.html' %}
 <link rel="stylesheet" href="{% static 'memberaudit/vendor/datatables/plugins/rowGroup.dataTables.min.css' %}"
     type="text/css">
 <link rel="stylesheet" href="{% static 'memberaudit/css/global.css' %}" type="text/css">

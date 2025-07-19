@@ -1,4 +1,4 @@
-/** Functionality for dashboard panel. */
+/** Functionality for dashboard card. */
 
 "use strict";
 

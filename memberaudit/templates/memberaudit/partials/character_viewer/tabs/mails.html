@@ -2,33 +2,33 @@
 {% load static %}
 
 
-<div role="tabpanel" class="tab-pane" id="mail">
+<div role="tabcard" class="tab-pane" id="mail">
     <h3>{% translate 'Mails' %}</h3>
     <div class="row">
         <!-- Mail Labels -->
         <div class="col-md-2">
             <ul class="nav nav-pills nav-stacked">
                 {% for item in mail_labels|dictsort:"label_id" %}
-                    <li role="presentation" class="pillMailLabel{% if item.label_id == 1%} active{% endif %}" data-label-id="{{ item.label_id }}">
-                        <a href="#" onclick="return false;">
+                    <li class="nav-item pillMailLabel{% if item.label_id == 1%} active{% endif %}" data-label-id="{{ item.label_id }}" role="presentation">
+                        <button class="nav-link" data-bs-target="#" onclick="return false;">
                             {{ item.name }}
                             {% if item.unread_count_2 %}
                                 <span class="badge">{{ item.unread_count_2 }}</span>
                             {% endif %}
-                        </a>
+                        </button>
                     </li>
                 {% endfor %}
 
                 {% if mailing_lists %}
                     <hr>
                     {% for item in mailing_lists|dictsort:"name_plus.lower" %}
-                        <li role="presentation" class="pillMailLabel" data-list-id="{{ item.list_id }}">
-                            <a href="#" onclick="return false;">
+                        <li class="nav-item pillMailLabel" data-list-id="{{ item.list_id }}" role="presentation">
+                            <button class="nav-link" data-bs-target="#" onclick="return false;">
                                 {{ item.name_plus }}
                                 {% if item.unread_count %}
                                     <span class="badge">{{ item.unread_count }}</span>
                                 {% endif %}
-                            </a>
+                            </button>
                         </li>
                     {% endfor %}
                 {% endif %}

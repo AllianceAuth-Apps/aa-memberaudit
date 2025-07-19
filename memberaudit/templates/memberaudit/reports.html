@@ -8,8 +8,8 @@
     <div>
         {% include 'memberaudit/partials/reports/tabs_navigation.html' %}
 
-        <div class="panel panel-default panel-tabs">
-            <div class="panel-body">
+        <div class="card card-tabs">
+            <div class="card-body">
                 <!-- Tab panes -->
                 <div class="tab-content">
                     {% include 'memberaudit/partials/reports/tabs/user_compliance.html' %}
@@ -23,10 +23,10 @@
 {% endblock details %}
 
 {% block extra_javascript %}
-    {% include 'bundles/datatables-js.html' %}
+    {% include 'bundles/datatables-js-bs5.html' %}
 
     <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/dataTables.rowGroup.min.js' %}"></script>
-    <script type="application/javascript" src="{% static 'memberaudit/vendor/datatables/plugins/filterDropDown.min.js' %}"></script>
+    {% include "bundles/filterdropdown-js.html" %}
 
     <script>
         $(document).ready(function() {
@@ -91,7 +91,8 @@
                             maxWidth: "12em"
                         }
                     ],
-                    bootstrap: true
+                    bootstrap: true,
+                    bootstrap_version: 5
                 },
                 createdRow: function( row, data, dataIndex )
                 {
@@ -152,7 +153,8 @@
                         },
                     ],
                     autoSize: false,
-                    bootstrap: true
+                    bootstrap: true,
+                    bootstrap_version: 5
                 },
                 createdRow: function( row, data, dataIndex )
                 {
@@ -236,7 +238,8 @@
                         }
                     ],
                     autoSize: false,
-                    bootstrap: true
+                    bootstrap: true,
+                    bootstrap_version: 5
                 }
             });
 
@@ -245,7 +248,7 @@
 {% endblock %}
 
 {% block extra_css %}
-    {% include 'bundles/datatables-css.html' %}
+    {% include 'bundles/datatables-css-bs5.html' %}
     <link rel="stylesheet" href="{% static 'memberaudit/css/global.css' %}" type="text/css">
     <link rel="stylesheet" href="{% static 'memberaudit/css/memberaudit.css' %}" type="text/css">
     <link rel="stylesheet" href="{% static 'memberaudit/css/reports.css' %}" type="text/css">

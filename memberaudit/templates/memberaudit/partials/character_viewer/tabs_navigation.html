@@ -4,171 +4,171 @@
 <!-- Nav tabs -->
 <ul class="nav nav-tabs" role="tablist">
 
-    <li role="presentation">
-        <a href="#assets" aria-controls="assets" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#assets" aria-controls="assets" role="tab" data-bs-toggle="tab">
             {% translate 'Assets' %}{% tab_status_indicator UpdateSection.ASSETS %}
-        </a>
+        </button>
     </li>
 
-    <li role="presentation">
-        <a href="#bio" aria-controls="bio" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#bio" aria-controls="bio" role="tab" data-bs-toggle="tab">
             {% translate 'Bio' %}{% tab_status_indicator UpdateSection.CHARACTER_DETAILS %}
-        </a>
+        </button>
     </li>
 
-    <li role="presentation">
-        <a href="#contracts" aria-controls="contracts" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#contracts" aria-controls="contracts" role="tab" data-bs-toggle="tab">
             {% translate 'Contracts' %}{% tab_status_indicator UpdateSection.CONTRACTS %}
-        </a>
+        </button>
     </li>
 
-    <li role="presentation">
-        <a href="#history" aria-controls="history" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#history" aria-controls="history" role="tab" data-bs-toggle="tab">
             {% translate 'Corporations' %}
             {% tab_status_indicator UpdateSection.CORPORATION_HISTORY %}
-        </a>
+        </button>
     </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
-        <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">
+        <button class="nav-link" data-bs-target="#" id="myTabDrop2" class="dropdown-toggle" data-bs-toggle="dropdown">
             {% translate 'Clones' %}
             {% tab_status_indicator UpdateSection.IMPLANTS UpdateSection.JUMP_CLONES %}
             <b class="caret"></b>
-        </a>
+        </button>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
-                <a href="#implants" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#implants" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Implants' %}{% tab_status_indicator UpdateSection.IMPLANTS %}
-                </a>
+                </button>
             </li>
             <li class="">
-                <a href="#clones" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#clones" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Jump Clones' %}{% tab_status_indicator UpdateSection.JUMP_CLONES %}
-                </a>
+                </button>
             </li>
         </ul>
     </li>
 
-    <li role="presentation">
-        <a href="#fw_stats" aria-controls="fw_stats" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#fw_stats" aria-controls="fw_stats" role="tab" data-bs-toggle="tab">
             {% translate 'Faction Warfare' %}{% tab_status_indicator UpdateSection.FW_STATS %}
-        </a>
+        </button>
     </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
-        <a href="#" id="myTabDrop3" class="dropdown-toggle" data-toggle="dropdown">
+        <button class="nav-link" data-bs-target="#" id="myTabDrop3" class="dropdown-toggle" data-bs-toggle="dropdown">
             {% translate 'Industry' %}
             {% tab_status_indicator UpdateSection.MINING_LEDGER UpdateSection.PLANETS %}
             <b class="caret"></b>
-        </a>
+        </button>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop3">
             <li class="">
-                <a href="#mining_ledger" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#mining_ledger" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Mining' %}{% tab_status_indicator UpdateSection.MINING_LEDGER %}
-                </a>
+                </button>
             </li>
             <li class="">
-                <a href="#planets" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#planets" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Planets' %}{% tab_status_indicator UpdateSection.PLANETS %}
-                </a>
+                </button>
             </li>
         </ul>
     </li>
 
-    <li role="presentation">
-        <a href="#loyalty" aria-controls="loyalty" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#loyalty" aria-controls="loyalty" role="tab" data-bs-toggle="tab">
             {% translate 'Loyalty' %}{% tab_status_indicator UpdateSection.LOYALTY %}
-        </a>
+        </button>
     </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
-        <a href="#" class="dropdown-toggle" data-toggle="dropdown">
+        <button class="nav-link" data-bs-target="#" class="dropdown-toggle" data-bs-toggle="dropdown">
             {% translate 'Standings' %}
             {% tab_status_indicator UpdateSection.CONTACTS UpdateSection.STANDINGS %}
             <b class="caret"></b>
-        </a>
+        </button>
         <ul class="dropdown-menu" role="menu">
             <li class="">
-                <a href="#contacts" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#contacts" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Contacts' %}{% tab_status_indicator UpdateSection.CONTACTS %}
-                </a>
+                </button>
             </li>
             <li class="">
-                <a href="#standings" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#standings" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'NPC Standings' %}{% tab_status_indicator UpdateSection.STANDINGS %}
-                </a>
+                </button>
             </li>
         </ul>
     </li>
 
-    <li role="presentation">
-        <a href="#mail" aria-controls="mail" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#mail" aria-controls="mail" role="tab" data-bs-toggle="tab">
             {% translate 'Mails' %}{% tab_status_indicator UpdateSection.MAILS %}
-        </a>
+        </button>
     </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="clones">
-        <a href="#" id="myTabDrop2" class="dropdown-toggle" data-toggle="dropdown">
+        <button class="nav-link" data-bs-target="#" id="myTabDrop2" class="dropdown-toggle" data-bs-toggle="dropdown">
             {% translate 'Skills' %}
             {% tab_status_indicator UpdateSection.ATTRIBUTES UpdateSection.SKILL_QUEUE UpdateSection.SKILL_SETS UpdateSection.SKILLS %}
             <b class="caret"></b>
-        </a>
+        </button>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop2">
             <li class="">
-                <a href="#attributes" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#attributes" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Attributes' %}{% tab_status_indicator UpdateSection.ATTRIBUTES %}
-                </a>
+                </button>
             </li>
             <li class="">
-                <a href="#skillqueue" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#skillqueue" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Skill Queue' %}{% tab_status_indicator UpdateSection.SKILL_QUEUE %}
-                </a>
+                </button>
             </li>
             {% if perms.memberaudit.view_skill_sets %}
                 <li class="">
-                    <a href="#skill_sets" tabindex="-1" data-toggle="tab">
+                    <button class="nav-link" data-bs-target="#skill_sets" tabindex="-1" data-bs-toggle="tab">
                         {% translate 'Skill Sets' %}{% tab_status_indicator UpdateSection.SKILL_SETS %}
-                    </a>
+                    </button>
                 </li>
             {% endif %}
             <li class="">
-                <a href="#skills" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#skills" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Skills' %}{% tab_status_indicator UpdateSection.SKILLS %}
-                </a>
+                </button>
             </li>
         </ul>
     </li>
 
     {% if UpdateSection.ROLES in enabled_sections %}
-        <li role="presentation">
-            <a href="#roles" aria-controls="roles" role="tab" data-toggle="tab">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" data-bs-target="#roles" aria-controls="roles" role="tab" data-bs-toggle="tab">
                 {% translate 'Roles' %}{% tab_status_indicator UpdateSection.ROLES %}
-            </a>
+            </button>
         </li>
     {% endif %}
 
-    <li role="presentation">
-        <a href="#titles" aria-controls="titles" role="tab" data-toggle="tab">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" data-bs-target="#titles" aria-controls="titles" role="tab" data-bs-toggle="tab">
             {% translate 'Titles' %}{% tab_status_indicator UpdateSection.TITLES %}
-        </a>
+        </button>
     </li>
 
     <li class="dropdown active" role="presentation" role="tab" aria-controls="wallet">
-        <a href="#" id="myTabDrop1" class="dropdown-toggle" data-toggle="dropdown">
+        <button class="nav-link" data-bs-target="#" id="myTabDrop1" class="dropdown-toggle" data-bs-toggle="dropdown">
             {% translate 'Wallet' %}
             {% tab_status_indicator UpdateSection.WALLET_JOURNAL UpdateSection.WALLET_TRANSACTIONS %}
             <b class="caret"></b>
-        </a>
+        </button>
         <ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop1">
             <li class="">
-                <a href="#wallet_journal" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#wallet_journal" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Transactions' %}{% tab_status_indicator UpdateSection.WALLET_JOURNAL %}
-                </a>
+                </button>
             </li>
             <li class="">
-                <a href="#wallet_transactions" tabindex="-1" data-toggle="tab">
+                <button class="nav-link" data-bs-target="#wallet_transactions" tabindex="-1" data-bs-toggle="tab">
                     {% translate 'Market Transactions' %}{% tab_status_indicator UpdateSection.WALLET_TRANSACTIONS %}
-                </a>
+                </button>
             </li>
         </ul>
     </li>

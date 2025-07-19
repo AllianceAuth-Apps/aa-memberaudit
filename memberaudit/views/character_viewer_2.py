@@ -145,7 +145,7 @@ def _character_mail_headers_data(request, character, mail_headers_qs) -> JsonRes
             if mail.body:
                 actions_html = (
                     '<button type="button" class="btn btn-primary" '
-                    'data-toggle="modal" data-target="#modalCharacterMail" '
+                    'data-bs-toggle="modal" data-bs-target="#modalCharacterMail" '
                     f"data-ajax_url={mail_ajax_url}>"
                     '<i class="fas fa-search"></i></button>'
                 )
@@ -471,7 +471,7 @@ def character_skill_sets_data(
         )
         actions_html = (
             '<button type="button" class="btn btn-primary" '
-            'data-toggle="modal" data-target="#modalCharacterSkillSetDetails" '
+            'data-bs-toggle="modal" data-bs-target="#modalCharacterSkillSetDetails" '
             f"data-ajax_skill_set_detail={ ajax_children_url }>"
             '<i class="fas fa-search"></i></button>'
         )

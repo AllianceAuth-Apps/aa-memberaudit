@@ -5,11 +5,11 @@
 {% load static %}
 
 {% block details %}
-    <div class="panel panel-default">
-        <div class="panel-heading" style="display:flex;">
-            <h3 class="panel-title">{% translate 'Topics' %}</h3>
+    <div class="card">
+        <div class="card-header">
+            {% translate 'Topics' %}
         </div>
-        <div class="panel-body">
+        <div class="card-body">
             <table id="tbl_data_exports" class="table table-striped">
                 <thead>
                     <th>{% translate 'Name' %}</th>
@@ -32,9 +32,9 @@
                                     <a class="btn btn-primary" href="#" disabled>Download</a>
                                 {% endif %}
                                 {% if topic.update_allowed %}
-                                    <a class="btn btn-default" href="{% url 'memberaudit:data_export_run_update' topic.value %}">Update now</a>
+                                    <a class="btn btn-secondary" href="{% url 'memberaudit:data_export_run_update' topic.value %}">Update now</a>
                                 {% else %}
-                                    <a class="btn btn-default" href="#" disabled>Update now</a>
+                                    <a class="btn btn-secondary" href="#" disabled>Update now</a>
                                 {% endif %}
                             </td>
                         </tr>
