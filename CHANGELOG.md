@@ -7,15 +7,44 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
-## [4.0.0] - TBD
+## [4.0.0] - 2025-07-19
 
 ### Update notes
 
-This release requires Alliance Auth 4.0 or greater.
+**TL~DR**:<br>1. This release requires Alliance Auth 4.0 or greater.<br>2. Please update the configuration of Member Audit's periodic tasks in your local settings as described below.
+
+#### Context
+
+Member Audit is making periodic requests to ESI to keep it's structures and notifications up-to-date with the game server. These requests are performed with via periodic tasks in Django.
+
+Previously these tasks have been scheduled to run at specific times each hour,
+e.g. all structures where updated at the full hour and again at the half hour.
+
+With Member Audit being quite popular this results in many Alliance Auth instances
+making similar ESI requests at the same time leading to significant request spikes on ESI servers.
+
+CCP has asked us for help to reduce these request spike. To mitigate this issue we are making changes to the scheduling of Member Audit's periodic task.
+
+#### Settings changes
+
+Please update the values for `'schedule'` of Member Audit's periodic task in your local settings.
+The new default configuration looks like this:
+
+```python
+CELERYBEAT_SCHEDULE["memberaudit_run_regular_updates"] = {
+    "task": "memberaudit.tasks.run_regular_updates",
+    "schedule": 600,
+}
+```
+
+Please make sure to restart your AA instance so the changes can take effect.
+
+>**Note**:<br>Member Audit will generate a Django warning until this important configuration change has been completed.
 
 ### Changed
 
 - BREAKING CHANGE: Support dropped for AA3
+- The previous cron based schedule for periodic tasks has been deprecated and replaces with a basic schedule.
 - Templates migrated to AA4 / Bootstrap 5
 
 ## [3.15.0] - 2025-04-07
