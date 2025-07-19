@@ -104,24 +104,27 @@ def update_all_characters(
 
     Character.objects.disable_characters_with_no_owner()
 
-    # start sync for all enabled characters
-    enabled_characters = list(
-        Character.objects.filter(is_disabled=False).values_list("pk", flat=True)
+    characters_to_update = list(
+        Character.objects.filter(
+            is_disabled=False,  # enabled for updates
+            eve_character__character_ownership__isnull=False,  # not an orphan
+        ).values_list("pk", flat=True)
     )
-    if enabled_characters:
-        for character_pk in enabled_characters:
-            update_character.apply_async(
-                kwargs={
-                    "character_pk": character_pk,
-                    "force_update": force_update,
-                    "ignore_stale": ignore_stale,
-                },
-                priority=priority,
-            )
-        logger.info("Started updates for %d characters", len(enabled_characters))
-
-    else:
+    if not characters_to_update:
         logger.info("No enabled characters found for update.")
+        return
+
+    for character_pk in characters_to_update:
+        update_character.apply_async(
+            kwargs={
+                "character_pk": character_pk,
+                "force_update": force_update,
+                "ignore_stale": ignore_stale,
+            },
+            priority=priority,
+        )
+
+    logger.info("Started updates for %d characters", len(characters_to_update))
 
 
 # Main character update tasks
