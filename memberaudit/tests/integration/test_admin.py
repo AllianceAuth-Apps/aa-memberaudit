@@ -2,7 +2,6 @@ from unittest.mock import patch
 
 from django.test import TestCase, override_settings
 
-from app_utils.esi import EsiStatus
 from app_utils.testdata_factories import UserFactory
 
 from memberaudit.models import Character, SkillSet
@@ -24,7 +23,6 @@ TASKS_PATH = "memberaudit.tasks"
     TASKS_PATH + ".Character.objects.get_cached",
     lambda pk, timeout: Character.objects.get(pk=pk),
 )
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
