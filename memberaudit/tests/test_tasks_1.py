@@ -1235,49 +1235,71 @@ class TestUpdateStructureEsi(TestCase):
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
 
-    def test_normal(self, mock_structure_update_or_create_esi):
-        """When ESI status is ok, then create MailEntity"""
-        mock_structure_update_or_create_esi.return_value = None
-        try:
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
-        except Exception as ex:
-            self.fail(f"Unexpected exception occurred: {ex}")
+    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.return_value = None
+        tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
-    def test_invalid_token(self, mock_structure_update_or_create_esi):
-        """When called with invalid token, raise exception"""
-        mock_structure_update_or_create_esi.side_effect = EsiOffline
-
+    def test_should_raise_exception_when_token_is_invalid(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.return_value = None
         with self.assertRaises(Token.DoesNotExist):
             tasks.update_structure_esi(
                 id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
             )
 
-    def test_esi_status_1(self, mock_structure_update_or_create_esi):
-        """When ESI is offline, then retry"""
-        mock_structure_update_or_create_esi.side_effect = EsiOffline
+    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(502)
 
         with self.assertRaises(CeleryRetry):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
+    def test_should_retry_when_esi_error_limit_breached(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.side_effect = build_http_error(420)
+
         with self.assertRaises(CeleryRetry):
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
+
+    def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(400)
+
+        with self.assertRaises(HTTPError):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
 
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
 class TestUpdateMailEntityEsi(TestCase):
-    def test_normal(self, mock_update_or_create_esi):
-        """When ESI status is ok, then create MailEntity"""
+    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
         mock_update_or_create_esi.return_value = None
-        try:
-            tasks.update_mail_entity_esi(1001)
-        except Exception:
-            self.fail("Unexpected exception occurred")
+        tasks.update_mail_entity_esi(1001)
 
     def test_esi_status_1(self, mock_update_or_create_esi):
         """When ESI is offline, then abort"""
         mock_update_or_create_esi.side_effect = EsiOffline
 
         with self.assertRaises(EsiOffline):
+            tasks.update_mail_entity_esi(1001)
+
+    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(502)
+
+        with self.assertRaises(CeleryRetry):
+            tasks.update_mail_entity_esi(1001)
+
+    def test_should_retry_when_esi_error_limit_breached(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.side_effect = build_http_error(420)
+
+        with self.assertRaises(CeleryRetry):
+            tasks.update_mail_entity_esi(1001)
+
+    def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(400)
+
+        with self.assertRaises(HTTPError):
             tasks.update_mail_entity_esi(1001)
 
 

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [4.1.0] - 2025-10-12
+
+### Changed
+
+- Updated tasks to work with changed status endpoint. See [CHANGELOG](https://gitlab.com/ErikKalkoken/allianceauth-app-utils/-/blob/master/CHANGELOG.md#1270---2025-10-12) of app_utils for more information.
+
 ## [4.0.0] - 2025-07-19
 
 ### Update notes
@@ -53,7 +59,7 @@ Please make sure to restart your AA instance so the changes can take effect.
 
 ### Changed
 
-- Enabled caching of ESI status requests at the beginnig of update tasks
+- Enabled caching of ESI status requests at the beginning of update tasks
 
 ## [3.14.0] - 2025-02-24
 
@@ -425,7 +431,7 @@ For the current ship asset to be included correctly you need to force an update 
 
 ### Fixed
 
-- Added missing default permissions for skil set related models
+- Added missing default permissions for skill set related models
 
 ## [3.3.2] - 2023-10-12
 
@@ -831,7 +837,7 @@ Big thanks to @arctiru for the feature contributions!
 
 ### Fixed
 
-- Searching for Toon in Admin Bug (#129)
+- Searching for Character in Admin Bug (#129)
 
 ## [2.1.1] - 2022-09-03
 
@@ -984,7 +990,8 @@ Due to the breaking changes introduced by this new release for 3rd party apps, w
 
 - XSS vulnerability in character bio and emails
 
-Big thanks to @marnvermuldir for finding and fixing this issue!
+Big thanks to @marnv
+ermuldir for finding and fixing this issue!
 
 ## [1.14.3] - 2022-06-17
 
@@ -1127,7 +1134,7 @@ Big thanks to @buymespam for the contribution!
 
 ### Changed
 
-- Improved rendering of bios and mails. Now fully supports font sizes and most links. Colors are ignored on purpose to ensure good readibility with both light and dark theme.
+- Improved rendering of bios and mails. Now fully supports font sizes and most links. Colors are ignored on purpose to ensure good readability with both light and dark theme.
 
 ## [1.9.1] - 2022-02-04
 
@@ -1156,13 +1163,13 @@ Big thanks to @buymespam for the contribution!
 
 ### Changed
 
-- Recruiters can now only see character that are shared and if the owning user has the "share_characters" permission. Use case: When only guests can share they charactes, recruiters now automatically loose access to their charactes, one a guest becomes a member.
+- Recruiters can now only see character that are shared and if the owning user has the "share_characters" permission. Use case: When only guests can share they characters, recruiters now automatically loose access to their characters, one a guest becomes a member.
 
 ## [1.7.0] - 2022-01-08
 
 ### Added
 
-- Link to directly open character viewer for main characters from compliance report. This allows you to see quicly which characters are missing for full compliance, because the sidebar shows which characters are not registered.
+- Link to directly open character viewer for main characters from compliance report. This allows you to see quickly which characters are missing for full compliance, because the sidebar shows which characters are not registered.
 
 ### Changed
 
