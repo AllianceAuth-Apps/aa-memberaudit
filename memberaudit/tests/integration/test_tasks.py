@@ -24,6 +24,7 @@ TASKS_PATH = "memberaudit.tasks"
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
+@patch("app_utils.esi._esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
 @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)

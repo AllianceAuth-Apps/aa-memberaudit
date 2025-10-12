@@ -11,7 +11,6 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
-from app_utils.esi import EsiStatus, fetch_esi_status
 from app_utils.esi_testing import BravadoOperationStub, BravadoResponseStub
 from app_utils.testing import (
     NoSocketsTestCase,
@@ -236,22 +235,16 @@ class TestMailEntityManager(NoSocketsTestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "John Doe")
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
-    def test_get_or_create_esi_2(self, mock_fetch_esi_status):
+    def test_get_or_create_esi_2(self):
         """When entity does not exist, create it from ESI / existing EveEntity"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-
         obj, created = MailEntity.objects.get_or_create_esi(id=1001)
 
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
-    def test_update_or_create_esi_1(self, mock_fetch_esi_status):
+    def test_update_or_create_esi_1(self):
         """When entity does not exist, create it from ESI / existing EveEntity"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-
         obj, created = MailEntity.objects.update_or_create_esi(id=1001)
 
         self.assertTrue(created)
@@ -284,7 +277,6 @@ class TestMailEntityManager(NoSocketsTestCase):
         # method must not create an EveEntity object for the mailing list
         self.assertFalse(EveEntity.objects.filter(id=9001).exists())
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(return_value=MagicMock()))
     def test_update_or_create_esi_4(self):
         """When entity does not exist and is a mailing list, then create it."""
         # when
@@ -405,16 +397,14 @@ class TestMailEntityManager(NoSocketsTestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
 class TestMailEntityManagerAsync(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         load_entities()
 
-    def test_get_or_create_esi_async_1(self, mock_fetch_esi_status):
+    def test_get_or_create_esi_async_1(self):
         """When entity already exists, return it"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
 
         create_mail_entity(
             id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
@@ -425,14 +415,11 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertFalse(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "John Doe")
-        self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
 
-    def test_get_or_create_esi_async_2(self, mock_fetch_esi_status):
+    def test_get_or_create_esi_async_2(self):
         """When entity does not exist and no category specified,
         then create it asynchronously from ESI / existing EveEntity
         """
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-
         obj, created = MailEntity.objects.get_or_create_esi_async(id=1001)
 
         self.assertTrue(created)
@@ -442,14 +429,11 @@ class TestMailEntityManagerAsync(TestCase):
         obj.refresh_from_db()
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
-        self.assertTrue(mock_fetch_esi_status.called)  # was esi error status checked
 
-    def test_get_or_create_esi_async_3(self, mock_fetch_esi_status):
+    def test_get_or_create_esi_async_3(self):
         """When entity does not exist and category is not mailing list,
         then create it synchronously from ESI / existing EveEntity
         """
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-
         obj, created = MailEntity.objects.get_or_create_esi_async(
             id=1001, category=MailEntity.Category.CHARACTER
         )
@@ -457,11 +441,9 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
-        self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
 
-    def test_update_or_create_esi_async_1(self, mock_fetch_esi_status):
+    def test_update_or_create_esi_async_1(self):
         """When entity does not exist, create empty object and run task to resolve"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
 
         obj, created = MailEntity.objects.update_or_create_esi_async(1001)
 
@@ -473,11 +455,8 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-        self.assertTrue(mock_fetch_esi_status.called)  # was esi error status checked
-
-    def test_update_or_create_esi_async_2(self, mock_fetch_esi_status):
+    def test_update_or_create_esi_async_2(self):
         """When entity exists and not a mailing list, then update synchronously"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         create_mail_entity(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
@@ -488,11 +467,8 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-        self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
-
-    def test_update_or_create_esi_async_3(self, mock_fetch_esi_status):
+    def test_update_or_create_esi_async_3(self):
         """When entity exists and is a mailing list, then do nothing"""
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         create_mail_entity(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
         )
@@ -503,14 +479,10 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
         self.assertEqual(obj.name, "Dummy")
 
-        self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
-
-    def test_update_or_create_esi_async_4(self, mock_fetch_esi_status):
+    def test_update_or_create_esi_async_4(self):
         """When entity does not exist and category is not a mailing list,
         then create empty object from ESI synchronously
         """
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
-
         obj, created = MailEntity.objects.update_or_create_esi_async(
             1001, MailEntity.Category.CHARACTER
         )
@@ -519,10 +491,7 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-        self.assertFalse(mock_fetch_esi_status.called)  # was esi error status checked
 
-
-@patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
 class TestMailEntityManagerAsync2(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
@@ -557,7 +526,6 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
 
 
 @patch(MANAGERS_PATH + ".esi")
-@patch(MANAGERS_PATH + ".fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestLocationManager(NoSocketsTestCase):
     @classmethod
@@ -1014,10 +982,8 @@ class TestLocationManagerAsync(TestCase):
         )
 
     @patch(MANAGERS_PATH + ".esi")
-    @patch(MANAGERS_PATH + ".fetch_esi_status", spec=True)
-    def test_can_create_structure_async(self, mock_fetch_esi_status, mock_esi):
+    def test_can_create_structure_async(self, mock_esi):
         # given
-        mock_fetch_esi_status.return_value = EsiStatus(True, 99, 60)
         mock_esi.client = esi_client_stub
         # when
         obj, created = Location.objects.update_or_create_esi_async(
@@ -1033,9 +999,7 @@ class TestLocationManagerAsync(TestCase):
         self.assertEqual(obj.eve_solar_system, self.amamake)
         self.assertEqual(obj.eve_type, self.astrahus)
         self.assertEqual(obj.owner, self.corporation_2001)
-        self.assertTrue(mock_fetch_esi_status.called)  # proofs task was called
 
-    @patch(MANAGERS_PATH + ".fetch_esi_status", MagicMock(spec=fetch_esi_status))
     @patch(TASKS_PATH + ".update_structure_esi", spec=True)
     def test_should_create_location_and_ignore_already_queued(
         self, mock_task_update_structure_esi

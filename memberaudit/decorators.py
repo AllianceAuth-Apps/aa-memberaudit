@@ -14,8 +14,8 @@ from memberaudit.constants import IS_TESTING
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
-ESI_STATUS_CACHE_TIMEOUT = 2
-"""Calls to the ESI status endpoint by the when_esi_is_available decorater
+ESI_STATUS_CACHE_TIMEOUT = 5
+"""Calls to the ESI status endpoint by the when_esi_is_available decorator
  are cached for this duration in seconds.
  """
 

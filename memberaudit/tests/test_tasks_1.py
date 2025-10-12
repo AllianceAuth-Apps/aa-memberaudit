@@ -13,7 +13,7 @@ from eveuniverse.models import EveSolarSystem, EveType
 from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline, EsiStatus
+from app_utils.esi import EsiOffline
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import (  # NoSocketsTestCase,
     create_authgroup,
@@ -86,7 +86,6 @@ class TestRegularUpdates(TestCase):
 
 
 @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
@@ -310,7 +309,6 @@ class TestUpdateCharacter(TestCase):
         self.assertFalse(result)
 
 
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
@@ -659,7 +657,6 @@ class TestUpdateCharacterAssets(TestCase):
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContacts(TestCase):
     @classmethod
@@ -707,7 +704,6 @@ class TestUpdateCharacterContacts(TestCase):
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_1.esi")
 class TestUpdateCharacterContracts(TestCase):
@@ -983,7 +979,6 @@ class TestUpdateCharacterContracts(TestCase):
     APP_UTILS_OBJECT_CACHE_DISABLED=True,
 )
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(MANAGERS_PATH + ".character_sections_2.esi")
 @patch(MANAGERS_PATH + ".general.esi")
 class TestUpdateCharacterMails(TestCase):
@@ -1229,7 +1224,6 @@ class TestUpdateCharacterMails(TestCase):
             self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 2)
 
 
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
 class TestUpdateStructureEsi(TestCase):
     @classmethod
@@ -1241,48 +1235,45 @@ class TestUpdateStructureEsi(TestCase):
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
 
-    def test_normal(self, mock_structure_update_or_create_esi):
-        """When ESI status is ok, then create MailEntity"""
-        mock_structure_update_or_create_esi.return_value = None
-        try:
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
-        except Exception as ex:
-            self.fail(f"Unexpected exception occurred: {ex}")
+    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.return_value = None
+        tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
-    def test_invalid_token(self, mock_structure_update_or_create_esi):
-        """When called with invalid token, raise exception"""
-        mock_structure_update_or_create_esi.side_effect = EsiOffline
-
+    def test_should_raise_exception_when_token_is_invalid(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.return_value = None
         with self.assertRaises(Token.DoesNotExist):
             tasks.update_structure_esi(
                 id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
             )
 
-    def test_esi_status_1(self, mock_structure_update_or_create_esi):
-        """When ESI is offline, then retry"""
-        mock_structure_update_or_create_esi.side_effect = EsiOffline
+    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(502)
 
         with self.assertRaises(CeleryRetry):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
-    def test_esi_status_2(self, mock_structure_update_or_create_esi):
-        """When ESI error limit reached, then retry"""
-        mock_structure_update_or_create_esi.side_effect = EsiErrorLimitExceeded(5)
+    def test_should_retry_when_esi_error_limit_breached(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.side_effect = build_http_error(420)
 
         with self.assertRaises(CeleryRetry):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
+    def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(400)
 
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
+        with self.assertRaises(HTTPError):
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
+
+
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
 class TestUpdateMailEntityEsi(TestCase):
-    def test_normal(self, mock_update_or_create_esi):
-        """When ESI status is ok, then create MailEntity"""
+    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
         mock_update_or_create_esi.return_value = None
-        try:
-            tasks.update_mail_entity_esi(1001)
-        except Exception:
-            self.fail("Unexpected exception occurred")
+        tasks.update_mail_entity_esi(1001)
 
     def test_esi_status_1(self, mock_update_or_create_esi):
         """When ESI is offline, then abort"""
@@ -1291,15 +1282,27 @@ class TestUpdateMailEntityEsi(TestCase):
         with self.assertRaises(EsiOffline):
             tasks.update_mail_entity_esi(1001)
 
-    def test_esi_status_2(self, mock_update_or_create_esi):
-        """When ESI error limit reached, then abort"""
-        mock_update_or_create_esi.side_effect = EsiErrorLimitExceeded(5)
+    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(502)
 
-        with self.assertRaises(EsiErrorLimitExceeded):
+        with self.assertRaises(CeleryRetry):
+            tasks.update_mail_entity_esi(1001)
+
+    def test_should_retry_when_esi_error_limit_breached(
+        self, mock_update_or_create_esi
+    ):
+        mock_update_or_create_esi.side_effect = build_http_error(420)
+
+        with self.assertRaises(CeleryRetry):
+            tasks.update_mail_entity_esi(1001)
+
+    def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
+        mock_update_or_create_esi.side_effect = build_http_error(400)
+
+        with self.assertRaises(HTTPError):
             tasks.update_mail_entity_esi(1001)
 
 
-@patch(MANAGERS_PATH + ".general.fetch_esi_status", lambda: EsiStatus(True, 99, 60))
 @override_settings(
     CELERY_ALWAYS_EAGER=True,
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,

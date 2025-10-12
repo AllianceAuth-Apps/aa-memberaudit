@@ -19,7 +19,6 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.esi import fetch_esi_status
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
@@ -285,7 +284,6 @@ class LocationManager(models.Manager):
 
     def structure_update_or_create_esi(self, id: int, token: Token):
         """Update or creates structure from ESI."""
-        fetch_esi_status().raise_for_status()
         try:
             structure = esi.client.Universe.get_universe_structures_structure_id(
                 structure_id=id, token=token.valid_access_token()
@@ -420,7 +418,6 @@ class MailEntityManager(models.Manager):
             pass
 
         if not category or category == self.model.Category.UNKNOWN:
-            fetch_esi_status().raise_for_status()
             eve_entity, _ = EveEntity.objects.get_or_create_esi(id=id)
             if eve_entity:
                 return self.update_or_create_from_eve_entity(eve_entity)

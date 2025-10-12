@@ -3,10 +3,9 @@
 # pylint: disable=redefined-builtin, too-many-lines
 
 import inspect
-import random
 from typing import Callable, Iterable, List, Optional
 
-from celery import chain, shared_task
+from celery import Task, chain, shared_task
 
 from django.apps import apps
 from django.contrib.auth.models import Group, User
@@ -17,7 +16,7 @@ from eveuniverse.models import EveEntity, EveMarketPrice
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.esi import EsiErrorLimitExceeded, EsiOffline
+from app_utils.esi import retry_task_on_esi_error_and_offline
 from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, utils
@@ -1036,52 +1035,33 @@ def update_market_prices():
         },
     }
 )
-def update_structure_esi(self, id: int, token_pk: int):
+def update_structure_esi(self: Task, id: int, token_pk: int):
     """Update a structure object from ESI.
 
-    If the ESI error limit has already been reached retry later.
+    Will retry when ESI error limit is reached and when ESI is offline.
     """
     token = Token.objects.get(pk=token_pk)
 
-    try:
+    with retry_task_on_esi_error_and_offline(self, f"Update structure {id}"):
         Location.objects.structure_update_or_create_esi(id, token)
-
-    except EsiOffline as ex:
-        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
-        countdown = (15 + backoff_jitter) * 60
-        logger.warning(
-            "Location #%s: ESI appears to be offline. Trying again in %d seconds.",
-            id,
-            countdown,
-        )
-        raise self.retry(countdown=countdown) from ex
-
-    except EsiErrorLimitExceeded as ex:
-        backoff_jitter = int(random.uniform(2, 4) ** self.request.retries)
-        countdown = ex.retry_in + backoff_jitter
-        logger.warning(
-            "Location #%s: ESI error limit threshold reached. "
-            "Trying again in %s seconds",
-            id,
-            countdown,
-        )
-        raise self.retry(countdown=countdown) from ex
 
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_ONCE,
+        **TASK_DEFAULTS_BIND_ONCE,
         **{
             "once": {"keys": ["id"], "graceful": True},
             "max_retries": MAX_RETRIES_MAIL_ENTITIES,
         },
     }
 )
-def update_mail_entity_esi(id: int, category: Optional[str] = None):
-    """Update a mail entity object from ESI
-    and retry later if the ESI error limit has already been reached.
+def update_mail_entity_esi(self: Task, id: int, category: Optional[str] = None):
+    """Update a mail entity object from ESI.
+
+    Will retry when ESI error limit is reached and when ESI is offline.
     """
-    MailEntity.objects.update_or_create_esi(id=id, category=category)
+    with retry_task_on_esi_error_and_offline(self, f"Update mail entity {id}"):
+        MailEntity.objects.update_or_create_esi(id=id, category=category)
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
