@@ -13,7 +13,7 @@
             <ul class="cards_container">
                 <!-- Add New Character -->
                 <li class="cards_item">
-                    <div class="card">
+                    <div class="card bg-secondary">
                         <div class="card-header">{% translate 'Register Character' %}</div>
 
                         <div class="card-body card__content">
@@ -32,7 +32,7 @@
                     <!-- Registered Characters -->
                     {% for auth_character in auth_characters|dictsort:"character_name" %}
                         <li class="cards_item">
-                            <div class="card">
+                            <div class="card bg-secondary">
                                 <div class="card-header">
                                     {% include 'memberaudit/partials/character_name.html' with total_update_status=auth_character.total_update_status %}
                                 </div>
