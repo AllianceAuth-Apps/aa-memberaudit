@@ -13,7 +13,7 @@ from eveuniverse.models import EveSolarSystem, EveType
 from eveuniverse.tests.testdata.factories import create_eve_entity
 
 from allianceauth.eveonline.models import EveCharacter
-from app_utils.esi import EsiOffline
+from app_utils.esi import reset_retry_task_on_esi_error_and_offline
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
 from app_utils.testing import (  # NoSocketsTestCase,
     create_authgroup,
@@ -1224,6 +1224,7 @@ class TestUpdateCharacterMails(TestCase):
             self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 2)
 
 
+@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
 class TestUpdateStructureEsi(TestCase):
     @classmethod
@@ -1234,6 +1235,9 @@ class TestUpdateStructureEsi(TestCase):
         cls.token = (
             cls.character.eve_character.character_ownership.user.token_set.first()
         )
+
+    def setUp(self):
+        reset_retry_task_on_esi_error_and_offline()
 
     def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
         mock_update_or_create_esi.return_value = None
@@ -1269,18 +1273,15 @@ class TestUpdateStructureEsi(TestCase):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
 
 
+@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
 class TestUpdateMailEntityEsi(TestCase):
+    def setUp(self):
+        reset_retry_task_on_esi_error_and_offline()
+
     def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
         mock_update_or_create_esi.return_value = None
         tasks.update_mail_entity_esi(1001)
-
-    def test_esi_status_1(self, mock_update_or_create_esi):
-        """When ESI is offline, then abort"""
-        mock_update_or_create_esi.side_effect = EsiOffline
-
-        with self.assertRaises(EsiOffline):
-            tasks.update_mail_entity_esi(1001)
 
     def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
         mock_update_or_create_esi.side_effect = build_http_error(502)

@@ -4,6 +4,8 @@ import requests_mock
 
 from django.test import TestCase, override_settings
 
+from app_utils.esi import reset_retry_task_on_esi_error_and_offline
+
 from memberaudit import tasks
 from memberaudit.core import esi_status
 from memberaudit.tests.testdata.esi_client_stub import esi_stub
@@ -21,6 +23,7 @@ TASKS_PATH = "memberaudit.tasks"
 
 
 # TODO: Replace esi_stubs with http request mocks
+@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
 @patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
@@ -46,6 +49,9 @@ class TestTasksIntegration(TestCase):
         load_locations()
         reset_celery_once_locks()
         esi_status.clear_cache()
+
+    def setUp(self):
+        reset_retry_task_on_esi_error_and_offline()
 
     def test_should_update_all_characters(self, requests_mocker):
         # given

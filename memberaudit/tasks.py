@@ -1042,7 +1042,7 @@ def update_structure_esi(self: Task, id: int, token_pk: int):
     """
     token = Token.objects.get(pk=token_pk)
 
-    with retry_task_on_esi_error_and_offline(self, f"Update structure {id}"):
+    with retry_task_on_esi_error_and_offline(self):
         Location.objects.structure_update_or_create_esi(id, token)
 
 
@@ -1060,7 +1060,7 @@ def update_mail_entity_esi(self: Task, id: int, category: Optional[str] = None):
 
     Will retry when ESI error limit is reached and when ESI is offline.
     """
-    with retry_task_on_esi_error_and_offline(self, f"Update mail entity {id}"):
+    with retry_task_on_esi_error_and_offline(self):
         MailEntity.objects.update_or_create_esi(id=id, category=category)
 
 
