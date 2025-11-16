@@ -15,7 +15,7 @@ from eveuniverse.tests.testdata.factories import create_eve_entity
 from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi import reset_retry_task_on_esi_error_and_offline
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
-from app_utils.testing import (  # NoSocketsTestCase,
+from app_utils.testing import (
     create_authgroup,
     create_user_from_evecharacter,
     generate_invalid_pk,
@@ -30,7 +30,7 @@ from memberaudit.models import (
     Location,
 )
 
-from .testdata.esi_client_stub import esi_client_stub, esi_error_stub, esi_stub
+from .testdata.esi_client_stub import esi_client_stub, esi_stub
 from .testdata.factories import (
     create_character,
     create_character_asset,
@@ -309,43 +309,7 @@ class TestUpdateCharacter(TestCase):
         self.assertFalse(result)
 
 
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_error_stub)
-@patch(MANAGERS_PATH + ".general.esi", esi_error_stub)
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestUpdateCharacterErrorReporting(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        reset_celery_once_locks()
-
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
-
-    def test_should_report_errors_during_updates(self):
-        # when
-        with self.assertRaises(HTTPError):  # raised when trying to fetch attributes
-            tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(self.character_1001.is_update_status_ok())
-        status = self.character_1001.update_status_set.filter(
-            character=self.character_1001, is_success=False
-        ).first()
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-        self.assertTrue(status.run_finished_at)
-
-
+@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @override_settings(
     CELERY_ALWAYS_EAGER=True,
     CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
@@ -369,6 +333,9 @@ class TestUpdateCharacterAssets(TestCase):
         cls.amamake = EveSolarSystem.objects.get(id=30002537)
         cls.structure_1 = Location.objects.get(id=1_000_000_000_001)
         reset_celery_once_locks()
+
+    def setUp(self):
+        reset_retry_task_on_esi_error_and_offline()
 
     def test_should_create_assets_from_scratch(self, mock_esi):
         # given
@@ -546,65 +513,6 @@ class TestUpdateCharacterAssets(TestCase):
         self.assertTrue(status.is_success)
         self.assertFalse(status.error_message)
 
-    def test_should_report_the_error_when_update_failed(self, mock_esi):
-        # given
-        exception = build_http_error(502, "Test exception")
-        mock_esi.client.Assets.get_characters_character_id_assets.side_effect = (
-            exception
-        )
-
-        # when
-        with self.assertRaises(HTTPError):
-            tasks.update_character_assets(self.character_1001.pk, True)
-
-        # then
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-
-    def test_should_report_error_when_preload_objects_failed(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-
-        # when
-        with patch(
-            MANAGERS_PATH + ".general.LocationManager.get_or_create_esi_async",
-            spec=True,
-        ) as m:
-            exception = build_http_error(502, "Test exception")
-            m.side_effect = exception
-            with self.assertRaises(HTTPError):
-                tasks.update_character_assets(self.character_1001.pk, True)
-
-        # then
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-
-    def test_should_report_the_error_when_building_the_asset_tree_failed(
-        self, mock_esi
-    ):
-        # given
-        mock_esi.client = esi_client_stub
-
-        # when
-        with patch(MANAGERS_PATH + ".character_sections_1.logger") as m:
-            exception = build_http_error(502, "Test exception")
-            m.info.side_effect = exception
-            with self.assertRaises(HTTPError):
-                tasks.update_character_assets(self.character_1001.pk, True)
-
-        # then
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-
     def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
         self, mock_esi
     ):
@@ -682,22 +590,6 @@ class TestUpdateCharacterContacts(TestCase):
         self.assertTrue(status.is_success)
         self.assertFalse(status.error_message)
 
-    def test_detect_error(self, mock_esi):
-        """when update failed then report the error"""
-        exception = build_http_error(502, "Test exception")
-        mock_esi.client.Contacts.get_characters_character_id_contacts_labels.side_effect = (
-            exception
-        )
-
-        with self.assertRaises(HTTPError):
-            tasks.update_character_contacts(self.character_1001.pk, True)
-
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.CONTACTS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-
 
 @override_settings(
     CELERY_ALWAYS_EAGER=True,
@@ -734,24 +626,6 @@ class TestUpdateCharacterContracts(TestCase):
         self.assertFalse(status.error_message)
         self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_finished_at)
-
-    def test_should_record_error_when_update_failed(self, mock_esi):
-        # given
-        exception = build_http_error(502, "Test exception")
-        mock_esi.client.Contracts.get_characters_character_id_contracts.side_effect = (
-            exception
-        )
-
-        # when
-        with self.assertRaises(HTTPError):
-            tasks.update_character_contracts(self.character_1001.pk, True)
-
-        # then
-        status = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.CONTRACTS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
 
     def test_should_store_new_item_exchange_contract_with_items(self, mock_esi):
         # given
@@ -1116,30 +990,6 @@ class TestUpdateCharacterMails(TestCase):
         self.assertEqual(label_ids, {1})
 
     # TODO: Add test to check force update works
-
-    def test_should_report_error_when_update_failed(
-        self, mock_esi_general, mock_esi_sections
-    ):
-        # given
-        mock_esi_general.client = self.esi_client_stub
-        exception = build_http_error(502, "Test exception")
-        mock_esi_sections.client.Mail.get_characters_character_id_mail_labels.side_effect = (
-            exception
-        )
-        # when
-        with self.assertRaises(HTTPError):
-            tasks.update_character_mails(self.character_1001.pk, True)
-
-        # then
-        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
-            section=Character.UpdateSection.MAILS
-        )
-        self.assertFalse(status.is_success)
-        self.assertEqual(status.error_message, "HTTPBadGateway: 502 Test exception")
-        self.assertTrue(status.run_started_at)
-        self.assertTrue(status.run_finished_at)
-        self.assertIsNone(status.update_started_at)
-        self.assertIsNone(status.update_finished_at)
 
     def test_should_only_fetch_body_for_new_mails(
         self, mock_esi_general, mock_esi_sections

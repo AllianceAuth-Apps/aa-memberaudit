@@ -30,7 +30,6 @@ from memberaudit.app_settings import (
     MEMBERAUDIT_TASKS_TIME_LIMIT,
 )
 from memberaudit.core import data_exporters, esi_status
-from memberaudit.decorators import when_esi_is_available
 from memberaudit.helpers import determine_task_priority
 from memberaudit.models import (
     Character,
@@ -77,7 +76,6 @@ def run_regular_updates() -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
-@when_esi_is_available
 def update_all_characters(
     self, force_update: bool = False, ignore_stale: bool = False
 ) -> None:
@@ -197,16 +195,18 @@ def update_character(
 
 
 _update_character_params = {
-    **TASK_DEFAULTS_ONCE,
+    **TASK_DEFAULTS_BIND_ONCE,
     **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
 }
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_attributes(character_pk: int, force_update: bool) -> None:
+def update_character_attributes(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update attributes for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ATTRIBUTES,
         force_update=force_update,
@@ -214,10 +214,12 @@ def update_character_attributes(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_character_details(character_pk: int, force_update: bool) -> None:
+def update_character_character_details(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update character_details for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.CHARACTER_DETAILS,
         force_update=force_update,
@@ -225,10 +227,12 @@ def update_character_character_details(character_pk: int, force_update: bool) ->
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_corporation_history(character_pk: int, force_update: bool) -> None:
+def update_character_corporation_history(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update corporation_history for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.CORPORATION_HISTORY,
         force_update=force_update,
@@ -236,10 +240,12 @@ def update_character_corporation_history(character_pk: int, force_update: bool) 
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
+def update_character_fw_stats(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update fw_stats for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.FW_STATS,
         force_update=force_update,
@@ -247,10 +253,12 @@ def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_implants(character_pk: int, force_update: bool) -> None:
+def update_character_implants(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update implants for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.IMPLANTS,
         force_update=force_update,
@@ -258,10 +266,12 @@ def update_character_implants(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
+def update_character_jump_clones(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update jump_clones for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.JUMP_CLONES,
         force_update=force_update,
@@ -269,10 +279,12 @@ def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_location(character_pk: int, force_update: bool) -> None:
+def update_character_location(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update location for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.LOCATION,
         force_update=force_update,
@@ -280,10 +292,10 @@ def update_character_location(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_loyalty(character_pk: int, force_update: bool) -> None:
+def update_character_loyalty(self: Task, character_pk: int, force_update: bool) -> None:
     """Update loyalty for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.LOYALTY,
         force_update=force_update,
@@ -291,10 +303,12 @@ def update_character_loyalty(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_mining_ledger(character_pk: int, force_update: bool) -> None:
+def update_character_mining_ledger(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update mining_ledger for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.MINING_LEDGER,
         force_update=force_update,
@@ -302,10 +316,12 @@ def update_character_mining_ledger(character_pk: int, force_update: bool) -> Non
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_online_status(character_pk: int, force_update: bool) -> None:
+def update_character_online_status(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update online_status for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ONLINE_STATUS,
         force_update=force_update,
@@ -313,10 +329,10 @@ def update_character_online_status(character_pk: int, force_update: bool) -> Non
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_planets(character_pk: int, force_update: bool) -> None:
+def update_character_planets(self: Task, character_pk: int, force_update: bool) -> None:
     """Update planets for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.PLANETS,
         force_update=force_update,
@@ -324,10 +340,10 @@ def update_character_planets(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_roles(character_pk: int, force_update: bool) -> None:
+def update_character_roles(self: Task, character_pk: int, force_update: bool) -> None:
     """Update roles for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ROLES,
         force_update=force_update,
@@ -335,10 +351,10 @@ def update_character_roles(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_ship(character_pk: int, force_update: bool) -> None:
+def update_character_ship(self: Task, character_pk: int, force_update: bool) -> None:
     """Update ship for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SHIP,
         force_update=force_update,
@@ -346,10 +362,12 @@ def update_character_ship(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
+def update_character_skill_queue(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update skill_queue for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_QUEUE,
         force_update=force_update,
@@ -357,10 +375,12 @@ def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
+def update_character_skill_sets(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update skill_sets for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_SETS,
         force_update=force_update,
@@ -368,10 +388,10 @@ def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_skills(character_pk: int, force_update: bool) -> None:
+def update_character_skills(self: Task, character_pk: int, force_update: bool) -> None:
     """Update skills for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILLS,
         force_update=force_update,
@@ -379,10 +399,12 @@ def update_character_skills(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_standings(character_pk: int, force_update: bool) -> None:
+def update_character_standings(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update standings for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.STANDINGS,
         force_update=force_update,
@@ -390,10 +412,10 @@ def update_character_standings(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_titles(character_pk: int, force_update: bool) -> None:
+def update_character_titles(self: Task, character_pk: int, force_update: bool) -> None:
     """Update titles for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.TITLES,
         force_update=force_update,
@@ -401,10 +423,12 @@ def update_character_titles(character_pk: int, force_update: bool) -> None:
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_wallet_balance(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_balance(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_balance for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_BALLANCE,
         force_update=force_update,
@@ -412,10 +436,12 @@ def update_character_wallet_balance(character_pk: int, force_update: bool) -> No
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_wallet_journal(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_journal(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_journal for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_JOURNAL,
         force_update=force_update,
@@ -423,10 +449,12 @@ def update_character_wallet_journal(character_pk: int, force_update: bool) -> No
 
 
 @shared_task(**_update_character_params)
-@when_esi_is_available
-def update_character_wallet_transactions(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_transactions(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_transactions for a character from ESI."""
     _update_character_section(
+        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_TRANSACTIONS,
         force_update=force_update,
@@ -434,7 +462,7 @@ def update_character_wallet_transactions(character_pk: int, force_update: bool) 
 
 
 def _update_character_section(
-    character_pk: int, section: str, force_update: bool
+    task: Task, character_pk: int, section: str, force_update: bool
 ) -> None:
     """Update a section for a character from ESI."""
     section = Character.UpdateSection(section)
@@ -451,17 +479,18 @@ def _update_character_section(
     else:
         kwargs = {}
 
-    result = character.perform_update_with_error_logging(
-        section=section, method=method, **kwargs
-    )
+    with retry_task_on_esi_error_and_offline(task):
+        result = character.perform_update_with_error_logging(
+            section=section, method=method, **kwargs
+        )
+
     character.update_section_log_result(
         section, is_success=True, is_updated=result.is_updated
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_unresolved_eve_entities() -> None:
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_unresolved_eve_entities(self: Task) -> None:
     """Bulk resolved all unresolved EveEntity objects in database.
 
     This task is used by other apps. Do not remove!
@@ -469,7 +498,10 @@ def update_unresolved_eve_entities() -> None:
     unresolved_ids = EveEntity.objects.filter(name="")[
         :POST_UNIVERSE_NAMES_MAX_ITEMS
     ].values_list("id", flat=True)
-    if unresolved_ids:
+    if not unresolved_ids:
+        return
+
+    with retry_task_on_esi_error_and_offline(self):
         updated_count = EveEntity.objects.update_from_esi_by_id(unresolved_ids)
         logger.info("Updating %d unresolved entities from ESI", updated_count)
 
@@ -484,7 +516,7 @@ _update_task_params_with_bind = {
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_assets(self, character_pk: int, force_update: bool) -> None:
+def update_character_assets(self: Task, character_pk: int, force_update: bool) -> None:
     """Update the assets of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -500,10 +532,9 @@ def update_character_assets(self, character_pk: int, force_update: bool) -> None
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def assets_build_list_from_esi(
-    character_pk: int, force_update: bool = False
+    self: Task, character_pk: int, force_update: bool = False
 ) -> Optional[dict]:
     """Retrieve asset list for a character from ESI and return it
     or return None if asset list is unchanged.
@@ -511,11 +542,12 @@ def assets_build_list_from_esi(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    result = character.perform_update_with_error_logging(
-        section=Character.UpdateSection.ASSETS,
-        method=character.assets_build_list_from_esi,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        result = character.perform_update_with_error_logging(
+            section=Character.UpdateSection.ASSETS,
+            method=character.assets_build_list_from_esi,
+            force_update=force_update,
+        )
     if not result.is_changed and not force_update:
         return None
 
@@ -532,9 +564,9 @@ def assets_build_list_from_esi(
     return asset_list
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_BIND)
 def assets_preload_objects(
-    asset_list: Optional[list], character_pk: int
+    self: Task, asset_list: Optional[list], character_pk: int
 ) -> Optional[list]:
     """Preload asset objects for a character from ESI."""
     if asset_list is None:
@@ -543,16 +575,19 @@ def assets_preload_objects(
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
-        Character.UpdateSection.ASSETS,
-        character.assets_preload_objects,
-        asset_list,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        character.perform_update_with_error_logging(
+            Character.UpdateSection.ASSETS,
+            character.assets_preload_objects,
+            asset_list,
+        )
     return asset_list
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def assets_create_parents(self, asset_list: Optional[list], character_pk: int) -> None:
+def assets_create_parents(
+    self: Task, asset_list: Optional[list], character_pk: int
+) -> None:
     """Create the parent assets from an asset list.
 
     Parent assets are assets attached directly to a Location object (e.g. station)
@@ -728,7 +763,7 @@ def assets_create_children(
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_mails(self, character_pk: int, force_update: bool) -> None:
+def update_character_mails(self: Task, character_pk: int, force_update: bool) -> None:
     """Update mails of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -753,50 +788,52 @@ def update_character_mails(self, character_pk: int, force_update: bool) -> None:
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_mailing_lists(
-    character_pk: int, force_update: bool = False
+    self: Task, character_pk: int, force_update: bool = False
 ) -> None:
     """Update mailing list for a character."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
-        section=Character.UpdateSection.MAILS,
-        method=character.update_mailing_lists,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        character.perform_update_with_error_logging(
+            section=Character.UpdateSection.MAILS,
+            method=character.update_mailing_lists,
+            force_update=force_update,
+        )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_character_mail_labels(character_pk: int, force_update: bool = False) -> None:
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_character_mail_labels(
+    self: Task, character_pk: int, force_update: bool = False
+) -> None:
     """Update mail labels for a character."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
-        section=Character.UpdateSection.MAILS,
-        method=character.update_mail_labels,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        character.perform_update_with_error_logging(
+            section=Character.UpdateSection.MAILS,
+            method=character.update_mail_labels,
+            force_update=force_update,
+        )
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
-@when_esi_is_available
 def update_character_mails_headers_and_bodies(
-    self, character_pk: int, force_update: bool = False
+    self: Task, character_pk: int, force_update: bool = False
 ) -> List[int]:
     """Update mail headers & bodies for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    result = character.perform_update_with_error_logging(
-        section=Character.UpdateSection.MAILS,
-        method=character.update_mail_headers,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        result = character.perform_update_with_error_logging(
+            section=Character.UpdateSection.MAILS,
+            method=character.update_mail_headers,
+            force_update=force_update,
+        )
     if result.is_changed or force_update:
         mail_ids = result.data.keys()
         mails_to_fetch = character.mails.filter(mail_id__in=mail_ids)
@@ -823,27 +860,31 @@ def update_character_mails_headers_and_bodies(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_mail_body_esi(character_pk: int, mail_id: int, force_update: bool = False):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_mail_body_esi(
+    self: Task, character_pk: int, mail_id: int, force_update: bool = False
+):
     """Update the body of a character's mail from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     mail = character.mails.get(mail_id=mail_id)
-    character.perform_update_with_error_logging(
-        section=Character.UpdateSection.MAILS,
-        method=character.update_mail_body,
-        mail=mail,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        character.perform_update_with_error_logging(
+            section=Character.UpdateSection.MAILS,
+            method=character.update_mail_body,
+            mail=mail,
+            force_update=force_update,
+        )
 
 
 # special tasks for updating contacts
 
 
 @shared_task(**_update_task_params_with_bind)
-def update_character_contacts(self, character_pk: int, force_update: bool) -> None:
+def update_character_contacts(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update contacts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -862,34 +903,36 @@ def update_character_contacts(self, character_pk: int, force_update: bool) -> No
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 def update_character_contact_labels(
-    character_pk: int, force_update: bool = False
+    self: Task, character_pk: int, force_update: bool = False
 ) -> None:
     """Update contact labels for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    character.perform_update_with_error_logging(
-        section=Character.UpdateSection.CONTACTS,
-        method=character.update_contact_labels,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        character.perform_update_with_error_logging(
+            section=Character.UpdateSection.CONTACTS,
+            method=character.update_contact_labels,
+            force_update=force_update,
+        )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_character_contacts_2(character_pk: int, force_update: bool = False) -> None:
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_character_contacts_2(
+    self: Task, character_pk: int, force_update: bool = False
+) -> None:
     """Update contacts for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    result = character.perform_update_with_error_logging(
-        section=Character.UpdateSection.CONTACTS,
-        method=character.update_contacts,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        result = character.perform_update_with_error_logging(
+            section=Character.UpdateSection.CONTACTS,
+            method=character.update_contacts,
+            force_update=force_update,
+        )
     character.update_section_log_result(
         Character.UpdateSection.CONTACTS, is_success=True, is_updated=result.is_updated
     )
@@ -917,18 +960,20 @@ def update_character_contracts(self, character_pk: int, force_update: bool) -> N
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_character_contract_headers(character_pk: int, force_update: bool = False):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_character_contract_headers(
+    self: Task, character_pk: int, force_update: bool = False
+):
     """Update contract headers for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
-    result = character.perform_update_with_error_logging(
-        section=Character.UpdateSection.CONTRACTS,
-        method=character.update_contract_headers,
-        force_update=force_update,
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        result = character.perform_update_with_error_logging(
+            section=Character.UpdateSection.CONTRACTS,
+            method=character.update_contract_headers,
+            force_update=force_update,
+        )
     character.update_section_log_result(
         Character.UpdateSection.CONTRACTS, is_success=True, is_updated=result.is_updated
     )
@@ -965,15 +1010,15 @@ def update_character_contracts_items(self, character_pk: int):
         logger.info("%s: No items to update", character)
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_contract_items_esi(character_pk: int, contract_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_contract_items_esi(self: Task, character_pk: int, contract_pk: int):
     """Update the items of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract = CharacterContract.objects.get(pk=contract_pk)
-    character.update_contract_items(contract)
+    with retry_task_on_esi_error_and_offline(self):
+        character.update_contract_items(contract)
 
 
 @shared_task(**TASK_DEFAULTS_BIND_ONCE)
@@ -1003,27 +1048,27 @@ def update_character_contracts_bids(self, character_pk: int):
         logger.info("%s: No bids to update", character)
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_contract_bids_esi(character_pk: int, contract_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_contract_bids_esi(self: Task, character_pk: int, contract_pk: int):
     """Update bids of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
     )
     contract = CharacterContract.objects.get(pk=contract_pk)
-    character.update_contract_bids(contract)
+    with retry_task_on_esi_error_and_offline(self):
+        character.update_contract_bids(contract)
 
 
 # Tasks for other objects
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
-@when_esi_is_available
-def update_market_prices():
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+def update_market_prices(self: Task):
     """Update market prices from ESI."""
-    EveMarketPrice.objects.update_from_esi(
-        minutes_until_stale=MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
-    )
+    with retry_task_on_esi_error_and_offline(self):
+        EveMarketPrice.objects.update_from_esi(
+            minutes_until_stale=MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
+        )
 
 
 @shared_task(
