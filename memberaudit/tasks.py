@@ -63,6 +63,15 @@ TASK_DEFAULTS_ONCE = {**TASK_DEFAULTS, **{"base": QueueOnce}}
 TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 """Default params for tasks that need access to self and run once only."""
 
+TASK_DEFAULTS_BIND_ONCE_CHARACTER = {
+    **TASK_DEFAULTS_BIND_ONCE,
+    **{"once": {"keys": ["character_pk"], "graceful": True}},
+}
+TASK_DEFAULTS_BIND_ONCE_CHARACTER = {
+    **TASK_DEFAULTS_BIND_ONCE,
+    **{"once": {"keys": ["character_pk"], "graceful": True}},
+}
+
 
 @shared_task(**TASK_DEFAULTS_ONCE)
 def run_regular_updates() -> None:
@@ -75,9 +84,14 @@ def run_regular_updates() -> None:
         )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": [], "graceful": True}},
+    }
+)
 def update_all_characters(
-    self, force_update: bool = False, ignore_stale: bool = False
+    self: Task, force_update: bool = False, ignore_stale: bool = False
 ) -> None:
     """Update all enabled characters from ESI and disable update for orphans.
 
@@ -127,9 +141,12 @@ def update_all_characters(
 # Main character update tasks
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character(
-    self, character_pk: int, force_update: bool = False, ignore_stale: bool = False
+    self: Task,
+    character_pk: int,
+    force_update: bool = False,
+    ignore_stale: bool = False,
 ) -> bool:
     """Update all sections of a character from ESI.
 
@@ -194,13 +211,7 @@ def update_character(
 # Updating sections with simple update logic
 
 
-_update_character_params = {
-    **TASK_DEFAULTS_BIND_ONCE,
-    **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-}
-
-
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_attributes(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -213,7 +224,7 @@ def update_character_attributes(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_character_details(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -226,7 +237,7 @@ def update_character_character_details(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_corporation_history(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -239,7 +250,7 @@ def update_character_corporation_history(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_fw_stats(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -252,7 +263,7 @@ def update_character_fw_stats(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_implants(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -265,7 +276,7 @@ def update_character_implants(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_jump_clones(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -278,7 +289,7 @@ def update_character_jump_clones(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_location(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -291,7 +302,7 @@ def update_character_location(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_loyalty(self: Task, character_pk: int, force_update: bool) -> None:
     """Update loyalty for a character from ESI."""
     _update_character_section(
@@ -302,7 +313,7 @@ def update_character_loyalty(self: Task, character_pk: int, force_update: bool) 
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_mining_ledger(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -315,7 +326,7 @@ def update_character_mining_ledger(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_online_status(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -328,7 +339,7 @@ def update_character_online_status(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_planets(self: Task, character_pk: int, force_update: bool) -> None:
     """Update planets for a character from ESI."""
     _update_character_section(
@@ -339,7 +350,7 @@ def update_character_planets(self: Task, character_pk: int, force_update: bool) 
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_roles(self: Task, character_pk: int, force_update: bool) -> None:
     """Update roles for a character from ESI."""
     _update_character_section(
@@ -350,7 +361,7 @@ def update_character_roles(self: Task, character_pk: int, force_update: bool) ->
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_ship(self: Task, character_pk: int, force_update: bool) -> None:
     """Update ship for a character from ESI."""
     _update_character_section(
@@ -361,7 +372,7 @@ def update_character_ship(self: Task, character_pk: int, force_update: bool) -> 
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_skill_queue(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -374,7 +385,7 @@ def update_character_skill_queue(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_skill_sets(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -387,7 +398,7 @@ def update_character_skill_sets(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_skills(self: Task, character_pk: int, force_update: bool) -> None:
     """Update skills for a character from ESI."""
     _update_character_section(
@@ -398,7 +409,7 @@ def update_character_skills(self: Task, character_pk: int, force_update: bool) -
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_standings(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -411,7 +422,7 @@ def update_character_standings(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_titles(self: Task, character_pk: int, force_update: bool) -> None:
     """Update titles for a character from ESI."""
     _update_character_section(
@@ -422,7 +433,7 @@ def update_character_titles(self: Task, character_pk: int, force_update: bool) -
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_wallet_balance(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -435,7 +446,7 @@ def update_character_wallet_balance(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_wallet_journal(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -448,7 +459,7 @@ def update_character_wallet_journal(
     )
 
 
-@shared_task(**_update_character_params)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_wallet_transactions(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -509,13 +520,7 @@ def update_unresolved_eve_entities(self: Task) -> None:
 # Special tasks for updating assets
 
 
-_update_task_params_with_bind = {
-    **TASK_DEFAULTS_BIND_ONCE,
-    **{"once": {"keys": ["character_pk", "force_update"], "graceful": True}},
-}
-
-
-@shared_task(**_update_task_params_with_bind)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_assets(self: Task, character_pk: int, force_update: bool) -> None:
     """Update the assets of a character from ESI."""
     character: Character = Character.objects.get_cached(
@@ -532,7 +537,7 @@ def update_character_assets(self: Task, character_pk: int, force_update: bool) -
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def assets_build_list_from_esi(
     self: Task, character_pk: int, force_update: bool = False
 ) -> Optional[dict]:
@@ -564,7 +569,7 @@ def assets_build_list_from_esi(
     return asset_list
 
 
-@shared_task(**TASK_DEFAULTS_BIND)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def assets_preload_objects(
     self: Task, asset_list: Optional[list], character_pk: int
 ) -> Optional[list]:
@@ -674,7 +679,7 @@ def _assets_create_parents_chunk(character: Character, asset_data: dict, cycle: 
 
 @shared_task(**TASK_DEFAULTS_BIND)
 def assets_create_children(
-    self, asset_list: list, character_pk: int, cycle: int = 1
+    self: Task, asset_list: list, character_pk: int, cycle: int = 1
 ) -> None:
     """Create child assets from given asset list.
 
@@ -762,7 +767,7 @@ def assets_create_children(
 # Special tasks for updating mail section
 
 
-@shared_task(**_update_task_params_with_bind)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_mails(self: Task, character_pk: int, force_update: bool) -> None:
     """Update mails of a character from ESI."""
     character: Character = Character.objects.get_cached(
@@ -788,7 +793,7 @@ def update_character_mails(self: Task, character_pk: int, force_update: bool) ->
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_mailing_lists(
     self: Task, character_pk: int, force_update: bool = False
 ) -> None:
@@ -804,7 +809,7 @@ def update_character_mailing_lists(
         )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_mail_labels(
     self: Task, character_pk: int, force_update: bool = False
 ) -> None:
@@ -820,7 +825,7 @@ def update_character_mail_labels(
         )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_mails_headers_and_bodies(
     self: Task, character_pk: int, force_update: bool = False
 ) -> List[int]:
@@ -860,7 +865,12 @@ def update_character_mails_headers_and_bodies(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "mail_id"], "graceful": True}},
+    }
+)
 def update_mail_body_esi(
     self: Task, character_pk: int, mail_id: int, force_update: bool = False
 ):
@@ -881,7 +891,7 @@ def update_mail_body_esi(
 # special tasks for updating contacts
 
 
-@shared_task(**_update_task_params_with_bind)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_contacts(
     self: Task, character_pk: int, force_update: bool
 ) -> None:
@@ -903,7 +913,7 @@ def update_character_contacts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_contact_labels(
     self: Task, character_pk: int, force_update: bool = False
 ) -> None:
@@ -919,7 +929,7 @@ def update_character_contact_labels(
         )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_contacts_2(
     self: Task, character_pk: int, force_update: bool = False
 ) -> None:
@@ -941,8 +951,10 @@ def update_character_contacts_2(
 # special tasks for updating contracts
 
 
-@shared_task(**_update_task_params_with_bind)
-def update_character_contracts(self, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
+def update_character_contracts(
+    self: Task, character_pk: int, force_update: bool
+) -> None:
     """Update contracts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -960,7 +972,7 @@ def update_character_contracts(self, character_pk: int, force_update: bool) -> N
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 def update_character_contract_headers(
     self: Task, character_pk: int, force_update: bool = False
 ):
@@ -979,8 +991,8 @@ def update_character_contract_headers(
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_contracts_items(self, character_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
+def update_character_contracts_items(self: Task, character_pk: int):
     """Update items for all contracts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -1010,7 +1022,12 @@ def update_character_contracts_items(self, character_pk: int):
         logger.info("%s: No items to update", character)
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "contract_pk"], "graceful": True}},
+    }
+)
 def update_contract_items_esi(self: Task, character_pk: int, contract_pk: int):
     """Update the items of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
@@ -1021,8 +1038,8 @@ def update_contract_items_esi(self: Task, character_pk: int, contract_pk: int):
         character.update_contract_items(contract)
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_character_contracts_bids(self, character_pk: int):
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
+def update_character_contracts_bids(self: Task, character_pk: int):
     """Update bids for all contracts of a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -1048,7 +1065,12 @@ def update_character_contracts_bids(self, character_pk: int):
         logger.info("%s: No bids to update", character)
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
+@shared_task(
+    **{
+        **TASK_DEFAULTS_BIND_ONCE,
+        **{"once": {"keys": ["character_pk", "contract_pk"], "graceful": True}},
+    }
+)
 def update_contract_bids_esi(self: Task, character_pk: int, contract_pk: int):
     """Update bids of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
@@ -1109,8 +1131,8 @@ def update_mail_entity_esi(self: Task, id: int, category: Optional[str] = None):
         MailEntity.objects.update_or_create_esi(id=id, category=category)
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE)
-def update_characters_skill_checks(self, force_update: bool = False) -> None:
+@shared_task(**TASK_DEFAULTS_BIND)
+def update_characters_skill_checks(self: Task, force_update: bool = False) -> None:
     """Start the update of skill checks for all registered characters.
 
     Args:
@@ -1128,7 +1150,7 @@ def update_characters_skill_checks(self, force_update: bool = False) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_ONCE)
-def check_character_consistency(character_pk) -> None:
+def check_character_consistency(character_pk: int) -> None:
     """Check consistency of a character."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -1147,7 +1169,7 @@ def delete_objects(model_name: str, obj_pks: Iterable[int]) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def export_data(self, user_pk: Optional[int] = None) -> None:
+def export_data(self: Task, user_pk: Optional[int] = None) -> None:
     """Export data to files."""
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     tasks = [
@@ -1160,7 +1182,7 @@ def export_data(self, user_pk: Optional[int] = None) -> None:
 
 
 @shared_task(**TASK_DEFAULTS_BIND)
-def export_data_for_topic(self, topic: str, user_pk: int):
+def export_data_for_topic(self: Task, topic: str, user_pk: int):
     """Export data for a topic."""
     priority = determine_task_priority(self) or MEMBERAUDIT_TASKS_LOW_PRIORITY
     chain(
@@ -1206,21 +1228,21 @@ def update_compliance_groups_for_all(self):
             )
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def update_compliance_groups_for_user(user_pk: int):
     """Update compliance groups for user."""
     user = User.objects.get(pk=user_pk)
     ComplianceGroupDesignation.objects.update_user(user)
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def add_compliant_users_to_group(group_pk: int):
     """Add compliant users to given group."""
     group = Group.objects.get(pk=group_pk)
     General.add_compliant_users_to_group(group)
 
 
-@shared_task(**TASK_DEFAULTS)
+@shared_task(**TASK_DEFAULTS_ONCE)
 def clear_users_from_group(group_pk: int):
     """Clear all users from given group."""
     group = Group.objects.get(pk=group_pk)
