@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [4.2.0] - 2025-11-17
+
+### Changed
+
+- Added basic support for rate limits
+- Improved background for cards (!151) - Thank you @geuther for the contribution!
+
 ## [4.1.0] - 2025-10-12
 
 ### Changed
