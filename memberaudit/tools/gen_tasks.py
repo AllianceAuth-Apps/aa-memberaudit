@@ -18,8 +18,7 @@ def main():
     """MAIN"""
     from memberaudit.models import Character
 
-    template = Template(
-        """
+    template = Template("""
         @shared_task(**_task_params)
         @when_esi_is_available
         def update_character_${value}(
@@ -36,8 +35,7 @@ def main():
                 root_task_id=root_task_id,
                 parent_task_id=parent_task_id,
             )
-    """
-    )
+    """)
 
     sections = set(Character.UpdateSection)
     excludes = {
