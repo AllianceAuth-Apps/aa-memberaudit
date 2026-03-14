@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [4.3.0] - 2026-03-14
+
+### Changed
+
+- Migrate to new ESI status endpoint. This is a critical change has the old endpoint has been deprecated and will be shut down by March 24, 2026. For details please see CCP's blog entry on the developer site: [Spring Cleaning](https://developers.eveonline.com/blog/spring-cleaning-legacy-routes-removed-24-march-2026)
+
 ## [4.2.0] - 2025-11-17
 
 ### Changed

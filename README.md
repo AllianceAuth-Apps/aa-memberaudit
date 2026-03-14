@@ -76,7 +76,7 @@ A few noteworthy community apps that are build on Member Audit:
 - [Inactivity](https://apps.allianceauth.org/apps/detail/aa-inactivity): Activity monitoring app
 - [Mail Relay](https://apps.allianceauth.org/apps/detail/aa-mailrelay): An app for relaying Eve mails to Discord
 
-See [here](https://apps.allianceauth.org/apps/detail/aa-memberaudit) for a full list of community apps that use Member Audit.
+For a full list of community apps that use Member Audit please check out this web site: [Alliance Auth Apps](https://apps.allianceauth.org/apps/detail/aa-memberaudit)
 
 ## Highlights
 
