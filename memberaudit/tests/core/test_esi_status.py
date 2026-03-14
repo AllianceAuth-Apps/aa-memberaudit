@@ -18,25 +18,23 @@ class TestEndpoint(NoSocketsTestCase):
             ("", ""),
             ("xxx", "/characters/{character_id}"),
             ("", "/characters/{character_id}"),
-            ("get", ""),
+            ("GET", ""),
         ]
-        for method, route in cases:
-            with self.subTest(method=method, route=route):
+        for method, path in cases:
+            with self.subTest(method=method, path=path):
                 with self.assertRaises(ValueError):
-                    esi_status._Endpoint(method=method, route=route)
+                    esi_status._Endpoint(method=method, path=path)
 
     def test_can_create_from_dict(self):
         ep = esi_status._Endpoint.from_dict(
             {
-                "endpoint": "esi-assets",
-                "method": "get",
-                "route": "/characters/{character_id}/assets/",
-                "status": "green",
-                "tags": ["Assets"],
+                "method": "GET",
+                "path": "/characters/{character_id}/assets",
+                "status": "OK",
             },
         )
-        self.assertEqual(ep.method, "get")
-        self.assertEqual(ep.route, "/characters/{character_id}/assets/")
+        self.assertEqual(ep.method, "GET")
+        self.assertEqual(ep.path, "/characters/{character_id}/assets")
 
 
 @patch(MODULE_PATH + "._unavailable_sections", spec=True)
@@ -77,30 +75,27 @@ class TestUnavailableSections2(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
-            json=[
-                {
-                    "endpoint": "esi-mail",
-                    "method": "get",
-                    "route": "/characters/{character_id}/mail/",
-                    "status": "green",
-                    "tags": ["Mail"],
-                },
-                {
-                    "endpoint": "esi-loyalty",
-                    "method": "get",
-                    "route": "/characters/{character_id}/loyalty/points/",
-                    "status": "red",
-                    "tags": ["Loyalty"],
-                },
-                {
-                    "endpoint": "esi-loyalty",
-                    "method": "get",
-                    "route": "/characters/{character_id}/loyalty/points/xy/",
-                    "status": "green",
-                    "tags": ["Loyalty"],
-                },
-            ],
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
+            json={
+                "routes": [
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/mail",
+                        "status": "OK",
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/loyalty/points",
+                        "status": "Down",
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/loyalty/points/xyz",
+                        "status": "OK",
+                    },
+                ]
+            },
         )
         # when
         got = esi_status._unavailable_sections()
@@ -114,23 +109,22 @@ class TestUnavailableSections2(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
-            json=[
-                {
-                    "endpoint": "esi-mail",
-                    "method": "get",
-                    "route": "/characters/{character_id}/mail/",
-                    "status": "green",
-                    "tags": ["Mail"],
-                },
-                {
-                    "endpoint": "esi-loyalty",
-                    "method": "get",
-                    "route": "/characters/{character_id}/loyalty/points/",
-                    "status": "green",
-                    "tags": ["Loyalty"],
-                },
-            ],
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
+            json={
+                "routes": [
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/mail",
+                        "status": "OK",
+                    },
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/loyalty/points",
+                        "status": "OK",
+                    },
+                ]
+            },
         )
         # when
         got = esi_status._unavailable_sections()
@@ -142,7 +136,8 @@ class TestUnavailableSections2(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             status_code=500,
         )
         # when
@@ -156,8 +151,9 @@ class TestUnavailableSections2(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
-            json=[],
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
+            json={"routes": []},
         )
         # when
         got = esi_status._unavailable_sections()
@@ -171,36 +167,38 @@ class TestFetchStatus(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
-            json=[
-                {
-                    "endpoint": "esi-mail",
-                    "method": "get",
-                    "route": "/characters/{character_id}/mail/",
-                    "status": "green",
-                    "tags": ["Mail"],
-                }
-            ],
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
+            json={
+                "routes": [
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/mail",
+                        "status": "OK",
+                    },
+                ]
+            },
         )
         # when
         got = esi_status._fetch_status()
         # then
-        want = [
-            {
-                "endpoint": "esi-mail",
-                "method": "get",
-                "route": "/characters/{character_id}/mail/",
-                "status": "green",
-                "tags": ["Mail"],
-            }
-        ]
-        self.assertListEqual(want, got)
+        want = {
+            "routes": [
+                {
+                    "method": "GET",
+                    "path": "/characters/{character_id}/mail",
+                    "status": "OK",
+                },
+            ]
+        }
+        self.assertEqual(want, got)
 
     def test_should_report_http_error(self, requests_mocker):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             status_code=500,
         )
         # when
@@ -212,7 +210,8 @@ class TestFetchStatus(NoSocketsTestCase):
         # given
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             text="this is not json",
         )
         # when
@@ -227,7 +226,8 @@ class TestGetEsiStatus(NoSocketsTestCase):
     def test_should_return_response_when_ok(self, requests_mocker):
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             text="ok",
         )
         # when
@@ -240,7 +240,8 @@ class TestGetEsiStatus(NoSocketsTestCase):
     def test_should_return_most_errors_directly(self, requests_mocker):
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             status_code=500,
         )
         # when
@@ -252,7 +253,8 @@ class TestGetEsiStatus(NoSocketsTestCase):
     def test_should_retry_on_specific_errors(self, requests_mocker):
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
             status_code=503,
         )
         # when
@@ -278,9 +280,10 @@ class TestSectionEndpointsDef(NoSocketsTestCase):
         p = Path(__file__).parent / "esi_status_example.json"
         with p.open("r", encoding="utf8") as f:
             status = json.load(f)
-        valid_endpoints = {(ep["method"], ep["route"]) for ep in status}
+
+        valid_endpoints = {(ep["method"], ep["path"]) for ep in status["routes"]}
         for s, endpoints in esi_status._REQUIRED_ENDPOINTS_FOR_SECTIONS.items():
             endpoints: list[esi_status._Endpoint]
             for ep in endpoints:
-                if (ep.method, ep.route) not in valid_endpoints:
-                    self.fail(f"{s}: invalid route: {ep}")
+                if (ep.method, ep.path) not in valid_endpoints:
+                    self.fail(f"{s}: invalid path: {ep}")

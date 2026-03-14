@@ -58,16 +58,17 @@ class TestTasksIntegration(TestCase):
         character_1001 = create_memberaudit_character(1001)
         requests_mocker.register_uri(
             "GET",
-            url="https://esi.evetech.net/status.json?version=latest",
-            json=[
-                {
-                    "endpoint": "esi-mail",
-                    "method": "get",
-                    "route": "/characters/{character_id}/mail/",
-                    "status": "green",
-                    "tags": ["Mail"],
-                }
-            ],
+            url="https://esi.evetech.net/meta/status",
+            request_headers={"X-Compatibility-Date": "2025-12-16"},
+            json={
+                "routes": [
+                    {
+                        "method": "GET",
+                        "path": "/characters/{character_id}/mail",
+                        "status": "OK",
+                    }
+                ]
+            },
         )
         requests_mocker.register_uri(
             "GET",
