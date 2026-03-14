@@ -9,6 +9,7 @@ from typing import Any, Dict, List, Optional, Set
 import requests
 from requests.exceptions import RequestException
 
+from django.conf import settings
 from django.core.cache import cache
 
 from allianceauth.services.hooks import get_extension_logger
@@ -168,12 +169,14 @@ def _fetch_status() -> Optional[List[Dict[str, Any]]]:
 
 def _get_esi_status() -> requests.Response:
     """Fetch current ESI status. Retry on common HTTP errors."""
+    email = getattr(settings, "ESI_USER_CONTACT_EMAIL", "kalkoken87@gmail.com")
+
     retry_count = 0
     while True:
         response = requests.get(
             _ESI_STATUS_JSON_URL,
             timeout=_REQUEST_TIMEOUT,
-            headers={"User-Agent": f"{__package__};{__version__}"},
+            headers={"User-Agent": f"aa-memberaudit v{__version__} ({email})"},
         )
         if response.status_code not in {
             HTTPStatus.BAD_GATEWAY,
