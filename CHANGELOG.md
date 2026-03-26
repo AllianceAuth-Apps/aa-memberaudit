@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [4.3.1] - tbd
+
+### Fixed
+
+- Fetching ESI status often violates rate limit
+
 ## [4.3.0] - 2026-03-14
 
 ### Changed

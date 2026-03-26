@@ -136,21 +136,17 @@ def unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
 
     Results are cached.
     """
-    status = cache.get(_CACHE_KEY)
-    if status:
-        return status
-
-    status = _unavailable_sections()
-    if status is None:
-        return None
-
-    cache.set(key=_CACHE_KEY, value=status, timeout=_CACHE_TIMEOUT)
-    return status
+    with cache.lock("memberaudit-esi-status-lock"):
+        return cache.get_or_set(
+            _CACHE_KEY,
+            _fetch_unavailable_sections,
+            timeout=_CACHE_TIMEOUT,
+        )
 
 
-def _unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
+def _fetch_unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
     status = _fetch_status()
-    if not status:
+    if status is None:
         return None
 
     sections = _determine_unavailable_sections(status)
@@ -181,6 +177,12 @@ def _get_esi_status() -> requests.Response:
                 "User-Agent": f"aa-memberaudit v{__version__} ({email})",
                 "X-Compatibility-Date": _COMPATIBILITY_DATE,
             },
+        )
+        logger.info(
+            "esi status response: %s %s %s",
+            response.status_code,
+            response.headers,
+            response.text,
         )
         if response.status_code not in {
             HTTPStatus.BAD_GATEWAY,
