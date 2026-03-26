@@ -178,7 +178,7 @@ def _get_esi_status() -> requests.Response:
                 "X-Compatibility-Date": _COMPATIBILITY_DATE,
             },
         )
-        logger.info(
+        logger.debug(
             "esi status response: %s %s %s",
             response.status_code,
             response.headers,
