@@ -1,10 +1,11 @@
 import json
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
 import requests_mock
 
-from app_utils.testing import NoSocketsTestCase
+from app_utils.testing import CacheFake, NoSocketsTestCase
 
 from memberaudit.core import esi_status
 from memberaudit.models import Character
@@ -37,39 +38,47 @@ class TestEndpoint(NoSocketsTestCase):
         self.assertEqual(ep.path, "/characters/{character_id}/assets")
 
 
-@patch(MODULE_PATH + "._unavailable_sections", spec=True)
-@patch(MODULE_PATH + ".cache.set", spec=True)
-@patch(MODULE_PATH + ".cache.get", spec=True)
+class CacheFake2(CacheFake):
+    def get_or_set(self, key, default, timeout=None):
+        v = self.get(key)
+        if v is not None:
+            return v
+        v = default()
+        self.set(key, default, timeout)
+        return v
+
+    @contextmanager
+    def lock(self, key):
+        yield None
+
+
+@patch(MODULE_PATH + "._fetch_unavailable_sections", spec=True)
+@patch(MODULE_PATH + ".cache", new_callable=CacheFake2)
 class TestUnavailableSections(NoSocketsTestCase):
-    def test_should_return_from_cache(
-        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
+    def test_should_fetch_from_api_and_update_cache_when_cache_empty(
+        self, _, mock_fetch_unavailable_sections
     ):
-        mock_cache_get.return_value = {Character.UpdateSection.ASSETS}
+        v1 = {Character.UpdateSection.ASSETS}
+        mock_fetch_unavailable_sections.return_value = v1
+        x = esi_status.unavailable_sections()
+        self.assertSetEqual(x, v1)
+
+    def test_should_return_from_cache_when_cache_has_value(
+        self, mock_cache: CacheFake2, _
+    ):
+        mock_cache.set(esi_status._CACHE_KEY, {Character.UpdateSection.ASSETS})
         x = esi_status.unavailable_sections()
         self.assertSetEqual(x, {Character.UpdateSection.ASSETS})
 
-    def test_should_update_cache_and_return_new_value(
-        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
-    ):
-        mock_cache_get.return_value = None
-        mock_unavailable_sections.return_value = {Character.UpdateSection.ASSETS}
-        x = esi_status.unavailable_sections()
-        self.assertSetEqual(x, {Character.UpdateSection.ASSETS})
-        self.assertTrue(mock_cache_set.called)
-
-    def test_should_none_on_failure(
-        self, mock_cache_get, mock_cache_set, mock_unavailable_sections
-    ):
-        mock_cache_get.return_value = None
-        mock_unavailable_sections.return_value = None
+    def test_should_return_none_on_failure(self, _, mock_fetch_unavailable_sections):
+        mock_fetch_unavailable_sections.return_value = None
         x = esi_status.unavailable_sections()
         self.assertIsNone(x)
-        self.assertFalse(mock_cache_set.called)
 
 
 @requests_mock.Mocker()
 class TestUnavailableSections2(NoSocketsTestCase):
-    def test_should_return_unavailable_sections_as_reported_by_ESI(
+    def test_should_return_fetch_unavailable_sections_as_reported_by_ESI(
         self, requests_mocker
     ):
         # given
@@ -98,7 +107,7 @@ class TestUnavailableSections2(NoSocketsTestCase):
             },
         )
         # when
-        got = esi_status._unavailable_sections()
+        got = esi_status._fetch_unavailable_sections()
         # then
         want = {Character.UpdateSection.LOYALTY}
         self.assertEqual(want, got)
@@ -127,7 +136,7 @@ class TestUnavailableSections2(NoSocketsTestCase):
             },
         )
         # when
-        got = esi_status._unavailable_sections()
+        got = esi_status._fetch_unavailable_sections()
         # then
         want = set()
         self.assertEqual(want, got)
@@ -141,7 +150,7 @@ class TestUnavailableSections2(NoSocketsTestCase):
             status_code=500,
         )
         # when
-        got = esi_status._unavailable_sections()
+        got = esi_status._fetch_unavailable_sections()
         # then
         self.assertIsNone(got)
 
@@ -156,7 +165,7 @@ class TestUnavailableSections2(NoSocketsTestCase):
             json={"routes": []},
         )
         # when
-        got = esi_status._unavailable_sections()
+        got = esi_status._fetch_unavailable_sections()
         # then
         self.assertIsNone(got)
 
@@ -286,4 +295,5 @@ class TestSectionEndpointsDef(NoSocketsTestCase):
             endpoints: list[esi_status._Endpoint]
             for ep in endpoints:
                 if (ep.method, ep.path) not in valid_endpoints:
+                    self.fail(f"{s}: invalid path: {ep}")
                     self.fail(f"{s}: invalid path: {ep}")
