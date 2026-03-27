@@ -1,4 +1,4 @@
-sphinx
+sphinx<9
 myst_parser
 sphinx_rtd_theme
 sphinx-copybutton
