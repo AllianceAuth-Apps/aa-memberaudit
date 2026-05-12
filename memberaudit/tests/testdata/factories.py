@@ -6,6 +6,8 @@ from itertools import count
 from pathlib import Path
 from typing import Iterable
 
+from typing_extensions import deprecated
+
 from django.contrib.auth.models import Group, User
 from django.utils.timezone import now
 from eveuniverse.models import (
@@ -119,6 +121,7 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     return obj
 
 
+@deprecated("Use factory boy pendant")
 def create_character_attributes(character: Character, **kwargs) -> CharacterAttributes:
     params = {
         "character": character,
@@ -144,6 +147,7 @@ def create_character_clone_info(character: Character, **kwargs) -> CharacterClon
     return CharacterCloneInfo.objects.create(**params)
 
 
+@deprecated("Use factory boy pendant")
 def create_character_contact(
     character: Character, eve_entity: EveEntity, **kwargs
 ) -> CharacterContact:
@@ -158,6 +162,7 @@ def create_character_contact(
     return CharacterContact.objects.create(**params)
 
 
+@deprecated("Use factory boy pendant")
 def create_character_contact_label(
     character: Character, **kwargs
 ) -> CharacterContactLabel:
@@ -332,6 +337,7 @@ def create_character_jump_clone_implant(
     return CharacterJumpCloneImplant.objects.create(**params)
 
 
+@deprecated("Use factory boy pendant")
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
@@ -455,6 +461,7 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     return CharacterRole.objects.create(**params)
 
 
+@deprecated("Use factory boy pendant")
 def create_character_ship(character: Character, **kwargs) -> CharacterShip:
     item_id = kwargs.get("item_id") or next_number("asset_item_id")
     params = {"character": character, "item_id": item_id, "name": "My sweet ride"}

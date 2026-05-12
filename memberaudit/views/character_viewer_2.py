@@ -472,7 +472,7 @@ def character_skill_sets_data(
         actions_html = (
             '<button type="button" class="btn btn-primary" '
             'data-bs-toggle="modal" data-bs-target="#modalCharacterSkillSetDetails" '
-            f"data-ajax_skill_set_detail={ ajax_children_url }>"
+            f"data-ajax_skill_set_detail={ajax_children_url}>"
             '<i class="fas fa-search"></i></button>'
         )
         return {

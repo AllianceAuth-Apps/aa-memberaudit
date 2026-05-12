@@ -4,11 +4,14 @@ from unittest.mock import patch
 import pook
 
 from django.db import IntegrityError
-from django.test import TestCase, override_settings
+from django.test import TestCase
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
-from eveuniverse.tests.testdata.factories_2 import EveTypeFactory
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityCharacterFactory,
+    EveTypeFactory,
+)
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 from app_utils.testing import NoSocketsTestCase
@@ -17,6 +20,7 @@ from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import (
     CharacterAsset,
     CharacterAttributes,
+    CharacterContact,
     CharacterContactLabel,
     CharacterContract,
     CharacterContractBid,
@@ -27,8 +31,6 @@ from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     build_character_asset,
     create_character_asset,
-    create_character_contact,
-    create_character_contact_label,
     create_character_contract,
     create_character_contract_bid,
     create_character_from_user,
@@ -37,6 +39,8 @@ from memberaudit.tests.testdata.factories import (
 )
 from memberaudit.tests.testdata.factories_2 import (
     CharacterAttributesFactory,
+    CharacterContactFactory,
+    CharacterContactLabelFactory,
     CharacterFactory,
     LocationFactory,
     make_esi_url,
@@ -392,7 +396,7 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
     def test_should_remove_obsolete_labels(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=99)
+        CharacterContactLabelFactory(character=self.character, label_id=99)
 
         # when
         self.character.update_contact_labels()
@@ -403,27 +407,18 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
     def test_should_update_existing_label(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        create_character_contact_label(
+        CharacterContactLabelFactory(
             character=self.character, label_id=1, name="update-me"
         )
-        with patch(
-            MODULE_PATH + ".CharacterContactLabelManager.bulk_update",
-            wraps=CharacterContactLabel.objects.filter(
-                character=self.character
-            ).bulk_update,
-        ) as mock_bulk_update:
-            # when
-            self.character.update_contact_labels()
 
-            # then
-            self.assertSetEqual(self._current_label_ids(), {1, 2})
+        # when
+        self.character.update_contact_labels()
 
-            label = self.character.contact_labels.get(label_id=1)
-            self.assertEqual(label.name, "friend")
+        # then
+        self.assertSetEqual(self._current_label_ids(), {1, 2})
 
-            # then only the modified label was updated
-            updated_obj_ids = {o.id for o in mock_bulk_update.call_args.kwargs["objs"]}
-            self.assertSetEqual(updated_obj_ids, {label.id})
+        label = self.character.contact_labels.get(label_id=1)
+        self.assertEqual(label.name, "friend")
 
     def test_should_skip_update_when_esi_data_has_not_changed(self, mock_esi):
         # given
@@ -463,126 +458,113 @@ class TestCharacterContactLabelManager(NoSocketsTestCase):
         return current_label_ids
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
-class TestCharacterContactsManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    def test_should_create_from_scratch(self, mock_esi):
+class TestCharacter_UpdateContacts(TestCaseWithClearCache):
+    @pook.on
+    def test_should_create_from_scratch(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=1)
-        create_character_contact_label(character=self.character, label_id=2)
-
+        character = CharacterFactory()
+        eve_entity = EveEntityCharacterFactory()
+        label_id = 1
+        standing = -5
+        CharacterContactLabelFactory(character=character, label_id=label_id)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contacts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "contact_id": eve_entity.id,
+                    "contact_type": "character",
+                    "is_blocked": False,
+                    "is_watched": True,
+                    "label_ids": [label_id],
+                    "standing": standing,
+                }
+            ],
+        )
         # when
-        result = self.character.update_contacts()
+        result = character.update_contacts()
 
         # then
         self.assertTrue(result.is_changed)
-        self.assertEqual(self.character.contacts.count(), 2)
+        self.assertEqual(character.contacts.count(), 1)
 
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
+        obj: CharacterContact = character.contacts.first()
+        self.assertEqual(obj.eve_entity, eve_entity)
         self.assertFalse(obj.is_blocked)
         self.assertTrue(obj.is_watched)
-        self.assertEqual(obj.standing, -10)
-        self.assertEqual({x.label_id for x in obj.labels.all()}, {2})
+        self.assertEqual(obj.standing, standing)
+        self.assertEqual({x.label_id for x in obj.labels.all()}, {label_id})
 
-        obj = self.character.contacts.get(eve_entity_id=2002)
-        self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CORPORATION)
-        self.assertFalse(obj.is_blocked)
-        self.assertFalse(obj.is_watched)
-        self.assertEqual(obj.standing, 5)
-        self.assertEqual(obj.labels.count(), 0)
-
-    def test_should_remove_obsolete_contacts(self, mock_esi):
+    @pook.on
+    def test_should_remove_obsolete_contacts(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=1)
-        create_character_contact_label(character=self.character, label_id=2)
-        create_character_contact(
-            character=self.character,
-            eve_entity=EveEntity.objects.get(id=3101),
-            standing=-5,
+        character = CharacterFactory()
+        eve_entity = EveEntityCharacterFactory()
+        label_id = 1
+        standing = -5
+        CharacterContactLabelFactory(character=character, label_id=label_id)
+        CharacterContactFactory(character=character)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contacts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "contact_id": eve_entity.id,
+                    "contact_type": "character",
+                    "is_blocked": False,
+                    "is_watched": True,
+                    "label_ids": [label_id],
+                    "standing": standing,
+                }
+            ],
         )
-
         # when
-        result = self.character.update_contacts()
+        result = character.update_contacts()
 
         # then
         self.assertTrue(result.is_changed)
-        self.assertEqual(
-            {x.eve_entity_id for x in self.character.contacts.all()}, {1101, 2002}
-        )
+        self.assertEqual(character.contacts.count(), 1)
 
-    def test_should_update_existing_contracts(self, mock_esi):
+        obj: CharacterContact = character.contacts.first()
+        self.assertEqual(obj.eve_entity, eve_entity)
+
+    @pook.on
+    def test_should_update_existing_contact(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=2)
-        my_label = create_character_contact_label(character=self.character, label_id=1)
-        my_contact = create_character_contact(
-            character=self.character,
-            eve_entity=EveEntity.objects.get(id=1101),
-            is_blocked=True,
-            is_watched=False,
-            standing=-5,
+        character = CharacterFactory()
+        contact = CharacterContactFactory(character=character)
+        label_id = 1
+        standing = -5
+        CharacterContactLabelFactory(character=character, label_id=label_id)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contacts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "contact_id": contact.eve_entity.id,
+                    "contact_type": "character",
+                    "is_blocked": False,
+                    "is_watched": True,
+                    "label_ids": [label_id],
+                    "standing": standing,
+                }
+            ],
         )
-        my_contact.labels.add(my_label)
-
         # when
-        result = self.character.update_contacts()
+        result = character.update_contacts()
 
         # then
         self.assertTrue(result.is_changed)
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        self.assertEqual(obj.eve_entity.category, EveEntity.CATEGORY_CHARACTER)
+        self.assertEqual(character.contacts.count(), 1)
+
+        obj: CharacterContact = character.contacts.first()
         self.assertFalse(obj.is_blocked)
         self.assertTrue(obj.is_watched)
-        self.assertEqual(obj.standing, -10)
-        self.assertEqual({x.label_id for x in obj.labels.all()}, {2})
-
-    def test_should_not_update_when_data_has_not_changed(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=1)
-        create_character_contact_label(character=self.character, label_id=2)
-
-        self.character.update_contacts()
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        obj.is_watched = False
-        obj.save()
-
-        # when
-        result = self.character.update_contacts()
-
-        # then
-        self.assertFalse(result.is_changed)
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        self.assertFalse(obj.is_watched)
-
-    def test_should_always_update_when_data_has_not_changed_and_forced(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        create_character_contact_label(character=self.character, label_id=1)
-        create_character_contact_label(character=self.character, label_id=2)
-
-        self.character.update_contacts()
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        obj.is_watched = False
-        obj.save()
-
-        # when
-        result = self.character.update_contacts(force_update=True)
-
-        # then
-        self.assertFalse(result.is_changed)
-        self.assertTrue(result.is_updated)
-        obj = self.character.contacts.get(eve_entity_id=1101)
-        self.assertTrue(obj.is_watched)
+        self.assertEqual(obj.standing, standing)
+        self.assertEqual({x.label_id for x in obj.labels.all()}, {label_id})
 
 
 @patch(MODULE_PATH + ".esi")

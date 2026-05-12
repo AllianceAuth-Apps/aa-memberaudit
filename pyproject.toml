@@ -40,6 +40,7 @@ dependencies = [
     "humanize>=4.7.0",
     "unidecode",
     "tqdm>=4.66",
+    "typing_extensions"
 ]
 [project.optional-dependencies]
 test = ["coverage", "factory_boy", "django-webtest", "requests-mock", "pook"]

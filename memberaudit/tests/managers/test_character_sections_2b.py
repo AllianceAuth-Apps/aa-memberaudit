@@ -19,12 +19,12 @@ from memberaudit.models import (
 )
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
 from memberaudit.tests.testdata.factories import (
-    create_character_location,
     create_character_mail,
     create_character_mail_label,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
 )
+from memberaudit.tests.testdata.factories_2 import CharacterLocationFactory
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
@@ -82,7 +82,7 @@ class TestCharacterLocationManager(NoSocketsTestCase):
     def test_should_update_location(self, mock_esi):
         # given
         mock_esi.client = esi_client_stub
-        create_character_location(
+        CharacterLocationFactory(
             character=self.character_1001,
             eve_solar_system=self.amamake,
             location=self.structure_1,

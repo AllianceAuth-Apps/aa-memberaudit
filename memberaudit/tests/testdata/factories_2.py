@@ -8,6 +8,7 @@ import factory.fuzzy
 from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import (
     CitadelTypeFactory,
+    EveEntityCharacterFactory,
     EveEntityCorporationFactory,
     EveSolarSystemFactory,
     EveTypeFactory,
@@ -21,6 +22,8 @@ from app_utils.testing import add_character_to_user
 from memberaudit.models import (
     Character,
     CharacterAttributes,
+    CharacterContact,
+    CharacterContactLabel,
     CharacterLocation,
     CharacterShip,
     CharacterUpdateStatus,
@@ -156,6 +159,28 @@ class CharacterAttributesFactory(
     willpower = factory.fuzzy.FuzzyInteger(17, 32)
 
 
+class CharacterContactFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterContact]
+):
+    class Meta:
+        model = CharacterContact
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_entity = factory.SubFactory(EveEntityCharacterFactory)
+    standing = factory.fuzzy.FuzzyFloat(-10.0, 10.0)
+
+
+class CharacterContactLabelFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterContactLabel]
+):
+    class Meta:
+        model = CharacterContactLabel
+
+    character = factory.SubFactory(CharacterFactory)
+    label_id = factory.Sequence(lambda n: 1 + n)
+    name = factory.faker.Faker("color")
+
+
 class CharacterLocationFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterLocation]
 ):
@@ -163,8 +188,8 @@ class CharacterLocationFactory(
         model = CharacterLocation
 
     character = factory.SubFactory(CharacterFactory)
-    location = factory.SubFactory(LocationFactory)
     eve_solar_system = factory.LazyAttribute(lambda o: o.location.eve_solar_system)
+    location = factory.SubFactory(LocationFactory)
 
 
 class CharacterShipFactory(

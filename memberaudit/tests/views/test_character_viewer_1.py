@@ -19,7 +19,6 @@ from memberaudit.models import CharacterAsset, CharacterContract, Location
 from memberaudit.tests.testdata.factories import (
     create_character,
     create_character_asset,
-    create_character_attributes,
     create_character_contact,
     create_character_contract,
     create_character_contract_item,
@@ -29,6 +28,7 @@ from memberaudit.tests.testdata.factories import (
     create_character_loyalty_entry,
     create_eve_market_price,
 )
+from memberaudit.tests.testdata.factories_2 import CharacterAttributesFactory
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
@@ -98,7 +98,7 @@ class TestCharacterViewer(TestCase):
         self.assertEqual(response.status_code, 200)
 
     def test_character_attribute_data(self):
-        create_character_attributes(
+        CharacterAttributesFactory(
             character=self.character,
             last_remap_date="2020-10-24T09:00:00Z",
             bonus_remaps=3,

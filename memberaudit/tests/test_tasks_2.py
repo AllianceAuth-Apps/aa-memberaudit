@@ -16,6 +16,10 @@ from memberaudit.models import (
     Location,
 )
 from memberaudit.tests.testdata.constants import EveTypeId
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterLocationFactory,
+    CharacterShipFactory,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
@@ -28,8 +32,6 @@ from memberaudit.tests.utils import (
 from .testdata.factories import (
     create_character_asset,
     create_character_from_user,
-    create_character_location,
-    create_character_ship,
     create_character_update_status,
     create_location_eve_solar_system,
 )
@@ -92,13 +94,13 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     def test_should_add_current_ship_when_it_not_in_assets(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        create_character_ship(
+        CharacterShipFactory(
             character=self.character_1001,
             item_id=1_100_000_000_999,
             eve_type_id=EveTypeId.MERLIN,
             name="Joy Ride",
         )
-        create_character_location(
+        CharacterLocationFactory(
             character=self.character_1001, location=self.location_jita_44
         )
 
@@ -123,13 +125,13 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     def test_should_not_add_current_ship_when_already_in_assets(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        create_character_ship(
+        CharacterShipFactory(
             character=self.character_1001,
             item_id=1_100_000_000_001,
             eve_type_id=EveTypeId.MERLIN,
             name="Joy Ride",
         )
-        create_character_location(
+        CharacterLocationFactory(
             character=self.character_1001, location=self.location_jita
         )
 
@@ -155,13 +157,13 @@ class TestUpdateCharacterAssetsBuildListFromEsi(TestCase):
     def test_should_return_none_when_asset_list_is_unchanged_w_ship(self, mock_esi):
         # given
         mock_esi.client = self.esi_client_stub
-        create_character_ship(
+        CharacterShipFactory(
             character=self.character_1001,
             item_id=1_100_000_000_999,
             eve_type_id=EveTypeId.MERLIN,
             name="Joy Ride",
         )
-        create_character_location(
+        CharacterLocationFactory(
             character=self.character_1001, location=self.location_jita
         )
         tasks.assets_build_list_from_esi(self.character_1001.pk)

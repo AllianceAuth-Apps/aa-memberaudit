@@ -29,9 +29,9 @@ from memberaudit.tests.testdata.factories import (
     create_character_mining_ledger_entry,
     create_character_planet,
     create_character_role,
-    create_character_ship,
     create_character_skill,
 )
+from memberaudit.tests.testdata.factories_2 import CharacterShipFactory
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.utils import create_memberaudit_character
@@ -494,7 +494,7 @@ class TestCharacterShipManager(NoSocketsTestCase):
         mock_esi.client.Location.get_characters_character_id_ship.side_effect = (
             error_500
         )
-        create_character_ship(
+        CharacterShipFactory(
             character=self.character_1001,
             eve_type_id=603,
             item_id=1000000016991,
@@ -513,7 +513,7 @@ class TestCharacterShipManager(NoSocketsTestCase):
         mock_esi.client.Location.get_characters_character_id_ship.return_value = (
             BravadoOperationStub(data={})
         )
-        create_character_ship(character=self.character_1001)
+        CharacterShipFactory(character=self.character_1001)
         # when
         CharacterShip.objects.update_or_create_esi(self.character_1001)
         # then

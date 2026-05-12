@@ -19,13 +19,13 @@ from memberaudit.tests.testdata.factories import (
     create_character_contract,
     create_character_contract_item,
     create_character_fw_stats,
-    create_character_ship,
     create_character_skillqueue_entry,
     create_character_standing,
     create_character_title,
     create_character_wallet_journal_entry,
     create_eve_market_price,
 )
+from memberaudit.tests.testdata.factories_2 import CharacterShipFactory
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
@@ -250,7 +250,7 @@ class TestCharacterShip(NoSocketsTestCase):
 
     def test_str(self):
         # given
-        create_character_ship(
+        CharacterShipFactory(
             character=self.character_1001, eve_type=EveType.objects.get(id=603)
         )
         # when
