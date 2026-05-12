@@ -156,7 +156,7 @@ def corporation_compliance_report_data(request) -> JsonResponse:
             "userprofile__user__character_ownerships__character",
             "userprofile__user__character_ownerships",
         )
-        .filter(userprofile__in=relevant_user_ids)
+        .filter(userprofile__user__in=relevant_user_ids)
         .values(
             "corporation_id",
             "corporation_name",
