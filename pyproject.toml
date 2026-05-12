@@ -42,7 +42,7 @@ dependencies = [
     "tqdm>=4.66",
 ]
 [project.optional-dependencies]
-test = ["coverage", "factory_boy", "django-webtest", "requests-mock"]
+test = ["coverage", "factory_boy", "django-webtest", "requests-mock", "pook"]
 
 [project.urls]
 Homepage = "https://gitlab.com/ErikKalkoken/aa-memberaudit"

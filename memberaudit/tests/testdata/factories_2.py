@@ -1,4 +1,5 @@
 import datetime as dt
+import urllib.parse
 from typing import Generic, TypeVar
 
 import factory
@@ -19,6 +20,7 @@ from app_utils.testing import add_character_to_user
 
 from memberaudit.models import (
     Character,
+    CharacterAttributes,
     CharacterLocation,
     CharacterShip,
     CharacterUpdateStatus,
@@ -27,6 +29,17 @@ from memberaudit.models import (
 from memberaudit.tests.testdata.constants import EveCategoryId, EveGroupId, EveTypeId
 
 T = TypeVar("T")
+_BASE_URL = "https://esi.evetech.net/"
+
+
+def make_esi_url(path: str) -> str:
+    if path.startswith("/"):
+        raise ValueError("path can not start with a slash")
+    if path.endswith("/"):
+        raise ValueError("path can not end with a slash")
+
+    url = urllib.parse.urljoin(_BASE_URL, "latest/" + path + "/")
+    return url
 
 
 class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
@@ -123,6 +136,24 @@ class LocationFactory(
 
 
 # Character Sections
+
+
+class CharacterAttributesFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterAttributes]
+):
+    class Meta:
+        model = CharacterAttributes
+
+    accrued_remap_cooldown_date = factory.fuzzy.FuzzyDateTime(
+        now(), now() + dt.timedelta(days=90)
+    )
+    bonus_remaps = 3
+    charisma = factory.fuzzy.FuzzyInteger(17, 32)
+    intelligence = factory.fuzzy.FuzzyInteger(17, 32)
+    last_remap_date = factory.fuzzy.FuzzyDateTime(now() - dt.timedelta(days=3))
+    memory = factory.fuzzy.FuzzyInteger(17, 32)
+    perception = factory.fuzzy.FuzzyInteger(17, 32)
+    willpower = factory.fuzzy.FuzzyInteger(17, 32)
 
 
 class CharacterLocationFactory(

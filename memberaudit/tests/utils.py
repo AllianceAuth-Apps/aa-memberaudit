@@ -1,10 +1,11 @@
-"""Shared utils for tests."""
+"""Helpers used in tests."""
 
 import json
 import logging
 from typing import Any, Tuple
 
 from django.contrib.auth.models import Permission, User
+from django.core.cache import cache
 from django.db.models import QuerySet
 from django.http import JsonResponse
 from django.test import TestCase
@@ -122,3 +123,10 @@ def reset_celery_once_locks():
         logger.info("Removed %d stuck celery once keys", deleted_count)
     else:
         deleted_count = 0
+
+
+class TestCaseWithClearCache(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()

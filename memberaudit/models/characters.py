@@ -245,6 +245,11 @@ class Character(
             self.clear_cache()
 
     @cached_property
+    def character_id(self) -> int:
+        """Return the eve character ID of this character."""
+        return self.eve_character.character_id
+
+    @cached_property
     def name(self) -> str:
         """Return the name of this character."""
         return str(self.eve_character.character_name)

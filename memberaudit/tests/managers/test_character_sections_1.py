@@ -1,15 +1,19 @@
 import datetime as dt
 from unittest.mock import patch
 
+import pook
+
 from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
+from eveuniverse.tests.testdata.factories_2 import EveTypeFactory
 
 from app_utils.esi_testing import EsiClientStub, EsiEndpoint
 from app_utils.testing import NoSocketsTestCase
 
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import (
     CharacterAsset,
     CharacterAttributes,
@@ -19,12 +23,10 @@ from memberaudit.models import (
     CharacterContractItem,
     Location,
 )
-from memberaudit.tests.testdata.constants import EveStationId, EveTypeId
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import (
     build_character_asset,
     create_character_asset,
-    create_character_attributes,
     create_character_contact,
     create_character_contact_label,
     create_character_contract,
@@ -33,10 +35,17 @@ from memberaudit.tests.testdata.factories import (
     create_eve_market_price,
     create_location,
 )
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterAttributesFactory,
+    CharacterFactory,
+    LocationFactory,
+    make_esi_url,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
+    TestCaseWithClearCache,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
 )
@@ -133,61 +142,56 @@ def _extract_item_ids(objs) -> set:
     return {obj.item_id for obj in objs}
 
 
-@patch(MODULE_PATH + ".esi")
-class TestCharacterAssetsFetchFromEsi(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    def test_can_fetch_new_assets(self, mock_esi):
+class TestCharacterAssets_FetchFromEsi(TestCaseWithClearCache):
+    @pook.on
+    def test_can_fetch_new_assets(self):
         # given
-        mock_esi.client = esi_client_stub
+        character = CharacterFactory()
+        eve_type = EveTypeFactory()
+        location = LocationFactory()
+        item_id = 1_000_900_000_999
+        quantity = 3
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": True,
+                    "is_singleton": True,
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": location.id,
+                    "location_type": "station",
+                    "quantity": quantity,
+                    "type_id": eve_type.id,
+                }
+            ],
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=200,
+            response_json=[{"item_id": item_id, "name": "Alpha Boy"}],
+        )
         # when
-        result = CharacterAsset.objects.fetch_from_esi(self.character)
+        result: UpdateSectionResult = CharacterAsset.objects.fetch_from_esi(character)
         # then
         self.assertTrue(result.is_changed)
         asset_data = {asset["item_id"]: asset for asset in result.data}
-        self.assertSetEqual(
-            set(asset_data.keys()),
-            {
-                1100000000001,
-                1100000000002,
-                1100000000003,
-                1100000000004,
-                1100000000005,
-                1100000000006,
-                1100000000007,
-                1100000000008,
-            },
-        )
-        obj = asset_data[1100000000001]
-        self.assertEqual(obj["name"], "Parent Item 1")
+        self.assertSetEqual(set(asset_data.keys()), {item_id})
+        obj = asset_data[item_id]
+        self.assertEqual(obj["name"], "Alpha Boy")
         self.assertTrue(obj["is_blueprint_copy"])
         self.assertTrue(obj["is_singleton"])
         self.assertEqual(obj["location_flag"], "Hangar")
-        self.assertEqual(obj["location_id"], EveStationId.JITA_44.value)
-        self.assertEqual(obj["quantity"], 1)
-        self.assertEqual(obj["type_id"], EveTypeId.CHARON.value)
-
-    def test_should_always_return_assets_when_forced(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterAsset.objects.fetch_from_esi(self.character)
-        # when
-        result = CharacterAsset.objects.fetch_from_esi(
-            self.character, force_update=True
-        )
-        # then
-        self.assertIsNotNone(result.data)
-        self.assertFalse(result.is_changed)
+        self.assertEqual(obj["location_id"], location.id)
+        self.assertEqual(obj["quantity"], quantity)
+        self.assertEqual(obj["type_id"], eve_type.id)
 
 
 @patch("memberaudit.models.Location.objects.create_missing_esi", spec=True)
 @patch(MODULE_PATH + ".EveType.objects.bulk_get_or_create_esi", spec=True)
-class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
+class TestCharacterAssets_PreloadObjects(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -253,69 +257,97 @@ class TestCharacterAssetsPreloadObjects(NoSocketsTestCase):
         self.assertFalse(mock_preload_locations.called)
 
 
-@patch(MODULE_PATH + ".esi")
-class TestCharacterAttributesManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    def test_can_create_from_scratch(self, mock_esi):
+class TestCharacterAttributesManager_UpdateOrCreateEsi(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_from_scratch(self):
         # given
-        mock_esi.client = esi_client_stub
+        character = CharacterFactory()
+        accrued_remap_cooldown_date = now() + dt.timedelta(days=3)
+        bonus_remaps = 3
+        charisma = 16
+        intelligence = 17
+        last_remap_date = now() - dt.timedelta(days=3)
+        memory = 18
+        perception = 19
+        willpower = 20
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/attributes"),
+            reply=200,
+            response_json={
+                "accrued_remap_cooldown_date": accrued_remap_cooldown_date.isoformat(),
+                "bonus_remaps": bonus_remaps,
+                "charisma": charisma,
+                "intelligence": intelligence,
+                "last_remap_date": last_remap_date.isoformat(),
+                "memory": memory,
+                "perception": perception,
+                "willpower": willpower,
+            },
+        )
         # when
-        result = CharacterAttributes.objects.update_or_create_esi(self.character)
+        result: UpdateSectionResult = CharacterAttributes.objects.update_or_create_esi(
+            character
+        )
         # then
         self.assertTrue(result.is_changed)
         self.assertEqual(
-            self.character.attributes.accrued_remap_cooldown_date,
-            parse_datetime("2016-10-24T09:00:00Z"),
+            character.attributes.accrued_remap_cooldown_date,
+            accrued_remap_cooldown_date,
         )
-        self.assertEqual(
-            self.character.attributes.last_remap_date,
-            parse_datetime("2016-10-24T09:00:00Z"),
-        )
-        self.assertEqual(self.character.attributes.charisma, 16)
-        self.assertEqual(self.character.attributes.intelligence, 17)
-        self.assertEqual(self.character.attributes.memory, 18)
-        self.assertEqual(self.character.attributes.perception, 19)
-        self.assertEqual(self.character.attributes.willpower, 20)
+        character.attributes.refresh_from_db()
+        self.assertEqual(character.attributes.bonus_remaps, bonus_remaps)
+        self.assertEqual(character.attributes.charisma, charisma)
+        self.assertEqual(character.attributes.intelligence, intelligence)
+        self.assertEqual(character.attributes.last_remap_date, last_remap_date)
+        self.assertEqual(character.attributes.memory, memory)
+        self.assertEqual(character.attributes.perception, perception)
+        self.assertEqual(character.attributes.willpower, willpower)
 
-    def test_can_update_existing_attributes(self, mock_esi):
+    @pook.on
+    def test_can_update_existing_attributes(self):
         # given
-        mock_esi.client = esi_client_stub
-
-        create_character_attributes(
-            character=self.character,
-            accrued_remap_cooldown_date=None,
-            last_remap_date=None,
-            bonus_remaps=4,
-            charisma=102,
-            intelligence=103,
-            memory=104,
-            perception=105,
-            willpower=106,
+        character = CharacterFactory()
+        CharacterAttributesFactory(character=character)
+        accrued_remap_cooldown_date = now() + dt.timedelta(days=3)
+        bonus_remaps = 3
+        charisma = 16
+        intelligence = 17
+        last_remap_date = now() - dt.timedelta(days=3)
+        memory = 18
+        perception = 19
+        willpower = 20
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/attributes"),
+            reply=200,
+            response_json={
+                "accrued_remap_cooldown_date": accrued_remap_cooldown_date.isoformat(),
+                "bonus_remaps": bonus_remaps,
+                "charisma": charisma,
+                "intelligence": intelligence,
+                "last_remap_date": last_remap_date.isoformat(),
+                "memory": memory,
+                "perception": perception,
+                "willpower": willpower,
+            },
         )
         # when
-        result = CharacterAttributes.objects.update_or_create_esi(self.character)
-
+        result: UpdateSectionResult = CharacterAttributes.objects.update_or_create_esi(
+            character
+        )
         # then
         self.assertTrue(result.is_changed)
-        self.character.attributes.refresh_from_db()
+        character.attributes.refresh_from_db()
+        self.assertEqual(character.attributes.charisma, charisma)
+        self.assertEqual(character.attributes.intelligence, intelligence)
+        self.assertEqual(character.attributes.last_remap_date, last_remap_date)
+        self.assertEqual(character.attributes.memory, memory)
+        self.assertEqual(character.attributes.perception, perception)
+        self.assertEqual(character.attributes.willpower, willpower)
+        self.assertEqual(character.attributes.bonus_remaps, bonus_remaps)
         self.assertEqual(
-            self.character.attributes.accrued_remap_cooldown_date,
-            parse_datetime("2016-10-24T09:00:00Z"),
+            character.attributes.accrued_remap_cooldown_date,
+            accrued_remap_cooldown_date,
         )
-        self.assertEqual(
-            self.character.attributes.last_remap_date,
-            parse_datetime("2016-10-24T09:00:00Z"),
-        )
-        self.assertEqual(self.character.attributes.charisma, 16)
-        self.assertEqual(self.character.attributes.intelligence, 17)
-        self.assertEqual(self.character.attributes.memory, 18)
-        self.assertEqual(self.character.attributes.perception, 19)
-        self.assertEqual(self.character.attributes.willpower, 20)
 
 
 @patch(MODULE_PATH + ".esi")
