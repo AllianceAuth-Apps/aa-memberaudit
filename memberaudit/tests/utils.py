@@ -38,7 +38,7 @@ def create_user_from_evecharacter_with_access(
         user,
         auth_character,
         is_main=True,
-        scopes=Character.get_esi_scopes(),
+        scopes=Character.esi_scopes(),
         disconnect_signals=disconnect_signals,
     )
     return user, character_ownership
@@ -61,7 +61,7 @@ def add_auth_character_to_user(
 ) -> CharacterOwnership:
     auth_character = EveCharacter.objects.get(character_id=character_id)
     if not scopes:
-        scopes = Character.get_esi_scopes()
+        scopes = Character.esi_scopes()
 
     return add_character_to_user(
         user,

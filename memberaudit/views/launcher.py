@@ -177,7 +177,7 @@ def _characters_panel(request: HttpRequest) -> dict:
 
 @login_required
 @permission_required("memberaudit.basic_access")
-@token_required(scopes=Character.get_esi_scopes())
+@token_required(scopes=Character.esi_scopes())
 def add_character(request, token) -> HttpResponse:
     """Render add character view."""
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)

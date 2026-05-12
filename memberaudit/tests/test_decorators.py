@@ -101,7 +101,7 @@ class TestFetchToken(TestCase):
         @fetch_token_for_character()
         def dummy(self, character, token):
             self.assertIsInstance(token, Token)
-            self.assertSetEqual(scope_names_set(token), set(Character.get_esi_scopes()))
+            self.assertSetEqual(scope_names_set(token), set(Character.esi_scopes()))
 
         dummy(self, self.character)
 

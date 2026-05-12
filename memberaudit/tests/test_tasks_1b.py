@@ -439,7 +439,7 @@ class TestUpdateComplianceGroupDesignations(TestCase):
         user, _ = create_user_from_evecharacter(
             1001,
             permissions=["memberaudit.basic_access"],
-            scopes=Character.get_esi_scopes(),
+            scopes=Character.esi_scopes(),
         )
         # when
         tasks.update_compliance_groups_for_user(user.pk)

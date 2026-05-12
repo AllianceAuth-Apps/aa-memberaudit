@@ -763,7 +763,7 @@ class TestCharacterGetEsiScopes(TestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_all_scopes(self):
         # when
-        result = Character.get_esi_scopes()
+        result = Character.esi_scopes()
         # then
         expected = {
             "esi-assets.read_assets.v1",

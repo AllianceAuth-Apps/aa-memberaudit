@@ -75,3 +75,7 @@ DEFAULT_FROM_EMAIL = ""
 LOGGING = None
 STATICFILES_DIRS = []
 ANALYTICS_DISABLED = True
+
+STORAGES["staticfiles"][
+    "BACKEND"
+] = "django.contrib.staticfiles.storage.StaticFilesStorage"

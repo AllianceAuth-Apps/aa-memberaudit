@@ -36,11 +36,13 @@ dependencies = [
     "django-esi>=7,<9",
     "bleach",
     "dj-datatables-view",
-    "django-eveuniverse>=1.6",
+    "django-eveuniverse>=2.0.0a1",
     "humanize>=4.7.0",
     "unidecode",
     "tqdm>=4.66",
 ]
+[project.optional-dependencies]
+test = ["coverage", "factory_boy", "django-webtest", "requests-mock"]
 
 [project.urls]
 Homepage = "https://gitlab.com/ErikKalkoken/aa-memberaudit"

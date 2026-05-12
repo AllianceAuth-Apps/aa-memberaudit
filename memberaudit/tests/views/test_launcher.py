@@ -105,7 +105,7 @@ class TestAddCharacter(TestCase):
         user, _ = create_user_from_evecharacter(
             1001,
             permissions=["memberaudit.basic_access"],
-            scopes=Character.get_esi_scopes(),
+            scopes=Character.esi_scopes(),
         )
         token = user.token_set.get(character_id=1001)
         # when

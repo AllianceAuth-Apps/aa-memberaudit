@@ -6,20 +6,28 @@ class EveCategoryId(IntEnum):
 
     ASTEROID = 25
     BLUEPRINT = 9
+    CELESTIAL = 2
     CHARGE = 8
     DRONE = 18
     FIGHTER = 87
     IMPLANT = 20
     MODULE = 7
-    SKILL = 16
-    SUBSYSTEM = 32
-    STATION = 3
     SHIP = 6
+    SKILL = 16
+    STATION = 3
     STRUCTURE = 65
+    SUBSYSTEM = 32
 
 
 class EveFactionId(IntEnum):
     CALDARI_STATE = 500_001
+
+
+class EveGroupId(IntEnum):
+    """Eve Online named group IDs"""
+
+    CAPSULE = 29
+    SOLAR_SYSTEM = 5
 
 
 class EveSolarSystemId(IntEnum):

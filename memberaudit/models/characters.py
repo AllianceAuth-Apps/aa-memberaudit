@@ -580,7 +580,7 @@ class Character(
         token = (
             Token.objects.prefetch_related("scopes")
             .filter(user=self.user, character_id=self.eve_character.character_id)
-            .require_scopes(scopes if scopes else self.get_esi_scopes())
+            .require_scopes(scopes if scopes else self.esi_scopes())
             .require_valid()
             .first()
         )
@@ -828,7 +828,7 @@ class Character(
         Character.objects.clear_cache(pk=self.pk)
 
     @staticmethod
-    def get_esi_scopes() -> List[str]:
+    def esi_scopes() -> List[str]:
         """Return all enabled ESI scopes required to update this character."""
         scopes = [
             "esi-assets.read_assets.v1",
