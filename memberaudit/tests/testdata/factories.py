@@ -121,7 +121,7 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     return obj
 
 
-@deprecated("Use factory boy pendant")
+@deprecated("Use `CharacterAttributesFactory`")
 def create_character_attributes(character: Character, **kwargs) -> CharacterAttributes:
     params = {
         "character": character,
@@ -136,6 +136,7 @@ def create_character_attributes(character: Character, **kwargs) -> CharacterAttr
     return CharacterAttributes.objects.create(**params)
 
 
+@deprecated("Use `CharacterCloneInfoFactory`")
 def create_character_clone_info(character: Character, **kwargs) -> CharacterCloneInfo:
     params = {
         "character": character,
@@ -147,7 +148,7 @@ def create_character_clone_info(character: Character, **kwargs) -> CharacterClon
     return CharacterCloneInfo.objects.create(**params)
 
 
-@deprecated("Use factory boy pendant")
+@deprecated("Use `CharacterContactFactory`")
 def create_character_contact(
     character: Character, eve_entity: EveEntity, **kwargs
 ) -> CharacterContact:
@@ -162,7 +163,7 @@ def create_character_contact(
     return CharacterContact.objects.create(**params)
 
 
-@deprecated("Use factory boy pendant")
+@deprecated("Use `CharacterContactLabelFactory`")
 def create_character_contact_label(
     character: Character, **kwargs
 ) -> CharacterContactLabel:
@@ -176,6 +177,7 @@ def create_character_contact_label(
     return CharacterContactLabel.objects.create(**params)
 
 
+@deprecated("Use `CharacterContractCourierFactory`")
 def create_character_contract(character: Character, **kwargs) -> CharacterContract:
     date_issued = kwargs.get("date_issued") or now()
     contract_id = kwargs.get("contract_id") or next_number("contract_id") + 190_000_000
@@ -198,6 +200,7 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
     return CharacterContract.objects.create(**params)
 
 
+@deprecated("Use `CharacterContractCourierFactory`")
 def create_character_contract_courier(
     character: Character, **kwargs
 ) -> CharacterContract:
@@ -218,6 +221,7 @@ def create_character_contract_courier(
     return create_character_contract(**params)
 
 
+@deprecated("Use `CharacterContractItemFactory`")
 def create_character_contract_item(
     contract: CharacterContract, **kwargs
 ) -> CharacterContractItem:
@@ -234,6 +238,7 @@ def create_character_contract_item(
     return CharacterContractItem.objects.create(**params)
 
 
+@deprecated("Use `CharacterContractBidFactory`")
 def create_character_contract_bid(
     contract: CharacterContract, bidder: EveEntity, **kwargs
 ) -> CharacterContractBid:
@@ -249,6 +254,7 @@ def create_character_contract_bid(
     return CharacterContractBid.objects.create(**params)
 
 
+@deprecated("Use `CharacterCorporationHistoryFactory`")
 def create_character_corporation_history(
     character: Character, **kwargs
 ) -> CharacterCorporationHistory:
@@ -265,6 +271,7 @@ def create_character_corporation_history(
     return CharacterCorporationHistory.objects.create(**params)
 
 
+@deprecated("Use `CharacterDetailsFactory`")
 def create_character_details(character: Character, **kwargs) -> CharacterDetails:
     params = {
         "character": character,
@@ -282,6 +289,7 @@ def create_character_details(character: Character, **kwargs) -> CharacterDetails
     return CharacterDetails.objects.create(**params)
 
 
+@deprecated("Use `CharacterFwStatsFactory`")
 def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStats:
     current_rank = random.randint(1, 5)
     highest_rank = max(current_rank, random.randint(1, 5))
@@ -311,6 +319,7 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
     return CharacterFwStats.objects.create(**params)
 
 
+@deprecated("Use `CharacterImplantFactory`")
 def create_character_implant(character: Character, **kwargs) -> CharacterImplant:
     params = {"character": character}
     params.update(kwargs)
@@ -318,6 +327,7 @@ def create_character_implant(character: Character, **kwargs) -> CharacterImplant
     return CharacterImplant.objects.create(**params)
 
 
+@deprecated("Use `CharacterJumpCloneFactory`")
 def create_character_jump_clone(character: Character, **kwargs) -> CharacterJumpClone:
     jump_clone_id = kwargs.get("jump_clone_id") or next_number(
         "create_character_implant_jump_clone_id"
@@ -328,6 +338,7 @@ def create_character_jump_clone(character: Character, **kwargs) -> CharacterJump
     return CharacterJumpClone.objects.create(**params)
 
 
+@deprecated("Use `CharacterJumpCloneImplantFactory`")
 def create_character_jump_clone_implant(
     jump_clone: CharacterJumpClone, **kwargs
 ) -> CharacterJumpCloneImplant:
@@ -337,7 +348,7 @@ def create_character_jump_clone_implant(
     return CharacterJumpCloneImplant.objects.create(**params)
 
 
-@deprecated("Use factory boy pendant")
+@deprecated("Use `CharacterLocationFactory`")
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
@@ -349,6 +360,7 @@ def create_character_location(character: Character, **kwargs) -> CharacterLocati
     return CharacterLocation.objects.create(**params)
 
 
+@deprecated("Use `CharacterLoyaltyEntryFactory`")
 def create_character_loyalty_entry(
     character: Character, **kwargs
 ) -> CharacterLoyaltyEntry:
@@ -461,7 +473,7 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     return CharacterRole.objects.create(**params)
 
 
-@deprecated("Use factory boy pendant")
+@deprecated("Use `CharacterContractShipFactory`")
 def create_character_ship(character: Character, **kwargs) -> CharacterShip:
     item_id = kwargs.get("item_id") or next_number("asset_item_id")
     params = {"character": character, "item_id": item_id, "name": "My sweet ride"}
@@ -658,6 +670,7 @@ def create_fitting_text(file_name: str) -> str:
         return file.read()
 
 
+@deprecated("Use `LocationStationFactory`")
 def create_location(**kwargs) -> Location:
     location_id = kwargs.get("id") or next_number("location_id") + 1_700_000_000_000
     params = {

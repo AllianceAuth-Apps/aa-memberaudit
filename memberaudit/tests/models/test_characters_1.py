@@ -30,6 +30,9 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterLocationFactory,
     CharacterShipFactory,
     CharacterUpdateStatusFactory,
+    LocationSolarSystemFactory,
+    LocationStationFactory,
+    LocationStructureFactory,
 )
 from memberaudit.tests.utils import scope_names_set
 
@@ -521,7 +524,8 @@ class TestCharacter_GenerateShipAsset(TestCase):
         # given
         character = CharacterFactory()
         ship = CharacterShipFactory(character=character)
-        location = CharacterLocationFactory(character=character)
+        location = LocationStationFactory()
+        CharacterLocationFactory(character=character, location=location)
 
         # when
         obj = character.generate_asset_from_current_ship_and_location()
@@ -530,7 +534,7 @@ class TestCharacter_GenerateShipAsset(TestCase):
         self.assertEqual(obj["name"], ship.name)
         self.assertEqual(obj["item_id"], ship.item_id)
         self.assertEqual(obj["is_singleton"], True)
-        self.assertEqual(obj["location_id"], location.location.id)
+        self.assertEqual(obj["location_id"], location.id)
         self.assertEqual(obj["location_flag"], "Hangar")
         self.assertEqual(obj["location_type"], "station")
         self.assertEqual(obj["quantity"], 1)
@@ -540,9 +544,8 @@ class TestCharacter_GenerateShipAsset(TestCase):
         # given
         character = CharacterFactory()
         ship = CharacterShipFactory(character=character)
-        location = CharacterLocationFactory(
-            character=character, location__is_structure=True
-        )
+        location = LocationStructureFactory()
+        CharacterLocationFactory(character=character, location=location)
 
         # when
         obj = character.generate_asset_from_current_ship_and_location()
@@ -551,7 +554,7 @@ class TestCharacter_GenerateShipAsset(TestCase):
         self.assertEqual(obj["name"], ship.name)
         self.assertEqual(obj["item_id"], ship.item_id)
         self.assertEqual(obj["is_singleton"], True)
-        self.assertEqual(obj["location_id"], location.location.id)
+        self.assertEqual(obj["location_id"], location.id)
         self.assertEqual(obj["location_flag"], "Hangar")
         self.assertEqual(obj["location_type"], "item")
         self.assertEqual(obj["quantity"], 1)
@@ -561,9 +564,8 @@ class TestCharacter_GenerateShipAsset(TestCase):
         # given
         character = CharacterFactory()
         ship = CharacterShipFactory(character=character)
-        location = CharacterLocationFactory(
-            character=character, location__is_solar_system=True
-        )
+        location = LocationSolarSystemFactory()
+        CharacterLocationFactory(character=character, location=location)
 
         # when
         obj = character.generate_asset_from_current_ship_and_location()
@@ -572,7 +574,7 @@ class TestCharacter_GenerateShipAsset(TestCase):
         self.assertEqual(obj["name"], ship.name)
         self.assertEqual(obj["item_id"], ship.item_id)
         self.assertEqual(obj["is_singleton"], True)
-        self.assertEqual(obj["location_id"], location.location.id)
+        self.assertEqual(obj["location_id"], location.id)
         self.assertEqual(obj["location_flag"], "Hangar")
         self.assertEqual(obj["location_type"], "solar_system")
         self.assertEqual(obj["quantity"], 1)

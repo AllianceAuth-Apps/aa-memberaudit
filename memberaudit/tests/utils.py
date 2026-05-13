@@ -4,6 +4,8 @@ import json
 import logging
 from typing import Any, Tuple
 
+from typing_extensions import deprecated
+
 from django.contrib.auth.models import Permission, User
 from django.core.cache import cache
 from django.db.models import QuerySet
@@ -45,6 +47,7 @@ def create_user_from_evecharacter_with_access(
     return user, character_ownership
 
 
+@deprecated("Use `CharacterFactory`")
 def create_memberaudit_character(
     character_id: int, disconnect_signals: bool = True, **kwargs
 ) -> Character:

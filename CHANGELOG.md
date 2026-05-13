@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed command: memberaudit_fix_locations related to old isssue (#153)
 - Removed command: memberaudit_fix_eve_entities related to old isssue (#156)
 
+### Fixed
+
+- Fails to read contracts without title
+
 ## [4.3.1] - 2026-03-26
 
 ### Fixed

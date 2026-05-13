@@ -1,9 +1,12 @@
 import datetime as dt
 from unittest.mock import patch
 
+import pook
+
 from django.test import TestCase, override_settings
 from django.utils.dateparse import parse_datetime
-from eveuniverse.models import EveEntity, EveSolarSystem
+from eveuniverse.models import EveEntity
+from eveuniverse.tests.testdata.factories_2 import EveEntityCorporationFactory
 
 from app_utils.esi_testing import build_http_error
 from app_utils.testing import NoSocketsTestCase
@@ -14,7 +17,6 @@ from memberaudit.models import (
     CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
-    Location,
     MailEntity,
 )
 from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
@@ -24,178 +26,204 @@ from memberaudit.tests.testdata.factories import (
     create_mail_entity_from_eve_entity,
     create_mailing_list,
 )
-from memberaudit.tests.testdata.factories_2 import CharacterLocationFactory
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterLocationFactory,
+    CharacterLoyaltyEntryFactory,
+    LocationSolarSystemFactory,
+    LocationStationFactory,
+    LocationStructureFactory,
+    make_esi_url,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.utils import TestCaseWithClearCache, create_memberaudit_character
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
 
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
-class TestCharacterLocationManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
-
-    def test_should_create_location_from_scratch_for_station(self, mock_esi):
+class TestCharacterLocationManager(TestCaseWithClearCache):
+    @pook.on
+    def test_should_create_location_from_scratch_for_station(self):
         # given
-        mock_esi.client = esi_client_stub
-        # when
-        CharacterLocation.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
-        self.assertEqual(self.character_1001.location.location, self.jita_44)
-
-    def test_should_create_location_from_scratch_for_structure(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        # when
-        CharacterLocation.objects.update_or_create_esi(self.character_1002)
-        # then
-        self.assertEqual(self.character_1002.location.eve_solar_system, self.amamake)
-        self.assertEqual(self.character_1002.location.location, self.structure_1)
-
-    def test_should_create_location_from_scratch_for_solar_system(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        character_1003 = create_memberaudit_character(1003)
-        # when
-        CharacterLocation.objects.update_or_create_esi(character_1003)
-        # then
-        self.assertEqual(character_1003.location.eve_solar_system, self.amamake)
-        self.assertEqual(
-            character_1003.location.location.eve_solar_system, self.amamake
-        )
-
-    def test_should_update_location(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterLocationFactory(
-            character=self.character_1001,
-            eve_solar_system=self.amamake,
-            location=self.structure_1,
-        )
-        # when
-        CharacterLocation.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.character_1001.refresh_from_db()
-        self.assertEqual(self.character_1001.location.eve_solar_system, self.jita)
-        self.assertEqual(self.character_1001.location.location, self.jita_44)
-
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterLoyaltyEntryManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-
-    def test_can_create_from_scratch(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
-        obj = self.character_1001.loyalty_entries.get(corporation_id=2002)
-        self.assertEqual(obj.loyalty_points, 100)
-
-    def test_can_update_existing_entries(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.loyalty_entries.create(
-            corporation=self.corporation_2001, loyalty_points=200
-        )
-        # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        self.assertEqual(obj.loyalty_points, 100)
-
-    def test_can_remove_obsolete_entries(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        obsolete_entry = self.character_1001.loyalty_entries.create(
-            corporation=EveEntity.objects.get(id=2101), loyalty_points=200
+        character = CharacterFactory()
+        location = LocationStationFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/location"),
+            reply=200,
+            response_json={
+                "solar_system_id": location.eve_solar_system.id,
+                "station_id": location.id,
+            },
         )
 
         # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        character.update_location()
 
         # then
-        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        self.assertEqual(obj.loyalty_points, 100)
+        obj: CharacterLocation = character.location
+        self.assertEqual(obj.eve_solar_system, location.eve_solar_system)
+        self.assertEqual(obj.location, location)
 
-        self.assertFalse(
-            self.character_1001.loyalty_entries.filter(
-                corporation_id=obsolete_entry.corporation_id
-            ).exists()
-        )
-
-    def test_should_skip_update_when_no_change(self, mock_esi):
+    @pook.on
+    def test_should_create_location_from_scratch_for_structure(self):
         # given
-        mock_esi.client = esi_client_stub
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        obj.loyalty_points = 200
-        obj.save()
-        # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
-        # then
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        self.assertEqual(obj.loyalty_points, 200)
+        character = CharacterFactory()
+        location = LocationStructureFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/location"),
+            reply=200,
+            response_json={
+                "solar_system_id": location.eve_solar_system.id,
+                "structure_id": location.id,
+            },
+        )
 
-    def test_should_always_update_when_forced(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        obj.loyalty_points = 200
-        obj.save()
         # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(
-            self.character_1001, force_update=True
-        )
-        # then
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2002)
-        self.assertEqual(obj.loyalty_points, 100)
+        character.update_location()
 
-    def test_should_thread_http_500_as_empty_loyalty_list(self, mock_esi):
+        # then
+        obj: CharacterLocation = character.location
+        self.assertEqual(obj.eve_solar_system, location.eve_solar_system)
+        self.assertEqual(obj.location, location)
+
+    @pook.on
+    def test_should_create_location_from_scratch_for_solar_system(self):
         # given
-        exception = build_http_error(
-            500, '{"error":"Unhandled internal error encountered!"}'
+        character = CharacterFactory()
+        location = LocationSolarSystemFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/location"),
+            reply=200,
+            response_json={
+                "solar_system_id": location.id,
+            },
         )
-        mock_esi.client.Loyalty.get_characters_character_id_loyalty_points.side_effect = (
-            exception
+
+        # when
+        character.update_location()
+
+        # then
+        obj: CharacterLocation = character.location
+        self.assertEqual(obj.eve_solar_system, location.eve_solar_system)
+        self.assertEqual(obj.location, location)
+
+    @pook.on
+    def test_should_update_location(self):
+        # given
+        character = CharacterFactory()
+        character_location = CharacterLocationFactory(character=character)
+        location = LocationStationFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/location"),
+            reply=200,
+            response_json={
+                "solar_system_id": location.eve_solar_system.id,
+                "station_id": location.id,
+            },
         )
-        self.character_1001.loyalty_entries.create(
-            corporation=self.corporation_2001, loyalty_points=100
+
+        # when
+        character.update_location()
+
+        # then
+        character_location.refresh_from_db()
+        self.assertEqual(character_location.eve_solar_system, location.eve_solar_system)
+        self.assertEqual(character_location.location, location)
+
+
+class TestCharacter_UpdateLoyalty(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_from_scratch(self):
+        # given
+        character = CharacterFactory()
+        corporation = EveEntityCorporationFactory()
+        loyalty_points = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/loyalty/points"),
+            reply=200,
+            response_json=[
+                {
+                    "corporation_id": corporation.id,
+                    "loyalty_points": loyalty_points,
+                }
+            ],
         )
         # when
-        CharacterLoyaltyEntry.objects.update_or_create_esi(self.character_1001)
+        character.update_loyalty()
+
         # then
-        self.assertEqual(self.character_1001.loyalty_entries.count(), 1)
-        obj = self.character_1001.loyalty_entries.get(corporation=self.corporation_2001)
-        self.assertEqual(obj.loyalty_points, 100)
+        self.assertEqual(character.loyalty_entries.count(), 1)
+        obj: CharacterLoyaltyEntry = character.loyalty_entries.first()
+        self.assertEqual(obj.corporation, corporation)
+        self.assertEqual(obj.loyalty_points, loyalty_points)
+
+    @pook.on
+    def test_can_update_existing_entries(self):
+        # given
+        character = CharacterFactory()
+        entry = CharacterLoyaltyEntryFactory(character=character)
+        loyalty_points = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/loyalty/points"),
+            reply=200,
+            response_json=[
+                {
+                    "corporation_id": entry.corporation.id,
+                    "loyalty_points": loyalty_points,
+                }
+            ],
+        )
+        # when
+        character.update_loyalty()
+
+        # then
+        entry.refresh_from_db()
+        self.assertEqual(entry.loyalty_points, loyalty_points)
+
+    @pook.on
+    def test_can_remove_stale_entries(self):
+        # given
+        character = CharacterFactory()
+        CharacterLoyaltyEntryFactory(character=character)  # to be removed
+        corporation = EveEntityCorporationFactory()
+        loyalty_points = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/loyalty/points"),
+            reply=200,
+            response_json=[
+                {
+                    "corporation_id": corporation.id,
+                    "loyalty_points": loyalty_points,
+                }
+            ],
+        )
+        # when
+        character.update_loyalty()
+
+        # then
+        self.assertEqual(character.loyalty_entries.count(), 1)
+        obj: CharacterLoyaltyEntry = character.loyalty_entries.first()
+        self.assertEqual(obj.corporation, corporation)
+
+    @pook.on
+    def test_should_ignore_http_500(self):
+        # given
+        character = CharacterFactory()
+        entry = CharacterLoyaltyEntryFactory(character=character)  # to be kept
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/loyalty/points"),
+            reply=500,
+            response_json={"error": "some error"},
+        )
+        # when
+        character.update_loyalty()
+
+        # then
+        self.assertEqual(character.loyalty_entries.count(), 1)
+        obj: CharacterLoyaltyEntry = character.loyalty_entries.first()
+        self.assertEqual(obj.corporation, entry.corporation)
 
 
 @patch(MODULE_PATH + ".esi")

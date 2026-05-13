@@ -28,6 +28,7 @@ class EveGroupId(IntEnum):
 
     CAPSULE = 29
     SOLAR_SYSTEM = 5
+    CYBERIMPLANT = 300
 
 
 class EveSolarSystemId(IntEnum):

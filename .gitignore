@@ -23,3 +23,4 @@ memberaudit_log/
 _build/
 .ruff_cache/
 .env
+.temp/

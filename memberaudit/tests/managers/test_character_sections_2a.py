@@ -1,656 +1,682 @@
 import datetime as dt
-from unittest.mock import patch
 
-from django.test import override_settings
-from django.utils.dateparse import parse_datetime
+import pook
+
 from django.utils.timezone import now
-from eveuniverse.models import EveEntity, EveType
+from eveuniverse.tests.testdata.factories_2 import (
+    EveBloodlineFactory,
+    EveEntityAllianceFactory,
+    EveEntityCorporationFactory,
+    EveFactionFactory,
+    EveRaceFactory,
+)
 
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint
-from app_utils.testing import NoSocketsTestCase
-
-from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.models import (
     CharacterCloneInfo,
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
     CharacterJumpClone,
-    Location,
 )
-from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
-from memberaudit.tests.testdata.factories import (
-    create_character_clone_info,
-    create_character_corporation_history,
-    create_character_details,
-    create_character_from_user,
-    create_character_fw_stats,
-    create_character_jump_clone,
-    create_character_jump_clone_implant,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterCloneInfoFactory,
+    CharacterCorporationHistoryFactory,
+    CharacterDetailsFactory,
+    CharacterFactory,
+    CharacterFwStatsFactory,
+    CharacterImplantFactory,
+    CharacterJumpCloneFactory,
+    CharacterJumpCloneImplantFactory,
+    CyberimplantTypeFactory,
+    LocationStationFactory,
+    make_esi_url,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
-from memberaudit.tests.utils import (
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-)
-
-MODULE_PATH = "memberaudit.managers.character_sections_2"
+from memberaudit.tests.testdata.load_esi_testdata import esi_testdata
+from memberaudit.tests.utils import TestCaseWithClearCache
 
 
-@patch(MODULE_PATH + ".esi")
-class TestCharacterCorporationHistoryManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-
-    def test_can_create_from_scratch(self, mock_esi):
+class TestCharacter_UpdateCorporationHistory(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_from_scratch(self):
         # given
-        mock_esi.client = esi_client_stub
+        character = CharacterFactory()
+        corporation_1 = EveEntityCorporationFactory()
+        record_id_1 = 1
+        start_date_1 = now() - dt.timedelta(days=30)
+        corporation_2 = EveEntityCorporationFactory()
+        start_date_2 = now() - dt.timedelta(days=5)
+        record_id_2 = 2
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/corporationhistory"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "corporation_id": corporation_2.id,
+                    "record_id": record_id_2,
+                    "start_date": start_date_2.isoformat(),
+                },
+                {
+                    "corporation_id": corporation_1.id,
+                    "record_id": record_id_1,
+                    "start_date": start_date_1.isoformat(),
+                },
+            ],
+        )
 
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        character.update_corporation_history()
 
         # then
-        self.assertEqual(self.character_1001.corporation_history.count(), 2)
+        self.assertEqual(character.corporation_history.count(), 2)
 
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        self.assertEqual(obj.corporation, self.corporation_2001)
-        self.assertTrue(obj.is_deleted)
-        self.assertEqual(obj.start_date, parse_datetime("2016-06-26T20:00:00Z"))
+        obj_1: CharacterCorporationHistory = character.corporation_history.get(
+            record_id=record_id_1
+        )
+        self.assertEqual(obj_1.corporation, corporation_1)
+        self.assertFalse(obj_1.is_deleted)
+        self.assertEqual(obj_1.start_date, start_date_1)
 
-        obj = self.character_1001.corporation_history.get(record_id=501)
-        self.assertEqual(obj.corporation, self.corporation_2002)
+        obj_2: CharacterCorporationHistory = character.corporation_history.get(
+            record_id=record_id_2
+        )
+        self.assertEqual(obj_2.corporation, corporation_2)
+        self.assertFalse(obj_2.is_deleted)
+        self.assertEqual(obj_2.start_date, start_date_2)
+
+    @pook.on
+    def test_can_update_existing_history(self):
+        # given
+        character = CharacterFactory()
+        entry_1 = CharacterCorporationHistoryFactory()
+        corporation_2 = EveEntityCorporationFactory()
+        start_date_2 = entry_1.start_date + dt.timedelta(days=5)
+        record_id_2 = entry_1.record_id + 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/corporationhistory"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "corporation_id": corporation_2.id,
+                    "record_id": record_id_2,
+                    "start_date": start_date_2.isoformat(),
+                },
+                {
+                    "corporation_id": entry_1.corporation.id,
+                    "record_id": entry_1.record_id,
+                    "start_date": entry_1.start_date.isoformat(),
+                },
+            ],
+        )
+
+        # when
+        character.update_corporation_history()
+
+        # then
+        self.assertEqual(character.corporation_history.count(), 2)
+
+        obj: CharacterCorporationHistory = character.corporation_history.get(
+            record_id=record_id_2
+        )
+        self.assertEqual(obj.corporation, corporation_2)
         self.assertFalse(obj.is_deleted)
-        self.assertEqual(obj.start_date, parse_datetime("2016-07-26T20:00:00Z"))
+        self.assertEqual(obj.start_date, start_date_2)
 
-    def test_can_update_existing_history(self, mock_esi):
+    @pook.on
+    def test_should_handle_empty_response(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_corporation_history(
-            character=self.character_1001,
-            record_id=500,
-            corporation=self.corporation_2002,
-            start_date=now(),
+        character = CharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/corporationhistory"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[],
         )
 
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        character.update_corporation_history()
 
         # then
-        self.assertEqual(self.character_1001.corporation_history.count(), 2)
+        self.assertEqual(character.corporation_history.count(), 0)
 
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        self.assertEqual(obj.corporation, self.corporation_2001)
-        self.assertTrue(obj.is_deleted)
-        self.assertEqual(obj.start_date, parse_datetime("2016-06-26T20:00:00Z"))
 
-    def test_can_remove_obsolete_entries(self, mock_esi):
+class TestCharacter_UpdateCharacterDetails(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_minimal_details(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_corporation_history(
-            character=self.character_1001,
-            record_id=499,
-            corporation=EveEntity.objects.get(id=2101),
+        character = CharacterFactory()
+        birthday = now()
+        bloodline = EveBloodlineFactory()
+        corporation = EveEntityCorporationFactory()
+        name = "Bruce Wayne"
+        race = EveRaceFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "birthday": birthday.isoformat(),
+                "bloodline_id": bloodline.id,
+                "corporation_id": corporation.id,
+                "gender": "male",
+                "name": name,
+                "race_id": race.id,
+            },
         )
 
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        character.update_character_details()
 
         # then
-        record_ids = set(
-            self.character_1001.corporation_history.values_list("record_id", flat=True)
-        )
-        self.assertSetEqual(record_ids, {500, 501})
+        details: CharacterDetails = character.details
+        self.assertEqual(details.birthday, birthday)
+        self.assertEqual(details.eve_bloodline, bloodline)
+        self.assertEqual(details.corporation, corporation)
+        self.assertEqual(details.eve_race, race)
+        self.assertEqual(details.gender, CharacterDetails.GENDER_MALE)
+        self.assertEqual(details.name, name)
 
-    def test_should_skip_update_when_data_on_ESI_has_not_changed(self, mock_esi):
+    @pook.on
+    def test_can_create_full_details(self):
         # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.update_corporation_history()
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        obj.corporation = self.corporation_2002
-        obj.save()
+        character = CharacterFactory()
+        alliance = EveEntityAllianceFactory()
+        birthday = now()
+        bloodline = EveBloodlineFactory()
+        corporation = EveEntityCorporationFactory()
+        description = "description"
+        faction = EveFactionFactory()
+        name = "Bruce Wayne"
+        race = EveRaceFactory()
+        security_status = -9.9
+        title = "title"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "alliance_id": alliance.id,
+                "birthday": birthday.isoformat(),
+                "bloodline_id": bloodline.id,
+                "corporation_id": corporation.id,
+                "description": description,
+                "faction_id": faction.id,
+                "gender": "male",
+                "name": name,
+                "race_id": race.id,
+                "security_status": security_status,
+                "title": title,
+            },
+        )
 
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1001)
+        character.update_character_details()
 
         # then
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        self.assertEqual(obj.corporation, self.corporation_2002)
+        details: CharacterDetails = character.details
+        self.assertEqual(details.alliance, alliance)
+        self.assertEqual(details.birthday, birthday)
+        self.assertEqual(details.corporation, corporation)
+        self.assertEqual(details.description, description)
+        self.assertEqual(details.eve_bloodline, bloodline)
+        self.assertEqual(details.eve_faction, faction)
+        self.assertEqual(details.eve_race, race)
+        self.assertEqual(details.gender, CharacterDetails.GENDER_MALE)
+        self.assertEqual(details.name, name)
+        self.assertEqual(details.security_status, security_status)
+        self.assertEqual(details.title, title)
 
-    def test_should_update_always_when_forced(self, mock_esi):
+    @pook.on
+    def test_can_update_existing_data(self):
         # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.update_corporation_history()
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        obj.corporation = self.corporation_2002
-        obj.save()
+        character = CharacterFactory()
+        details = CharacterDetailsFactory(character=character)
+        alliance = EveEntityAllianceFactory()
+        corporation = EveEntityCorporationFactory()
+        description = "description"
+        faction = EveFactionFactory()
+        name = "Bruce Wayne"
+        security_status = -9.9
+        title = "title"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "alliance_id": alliance.id,
+                "birthday": details.birthday.isoformat(),
+                "bloodline_id": details.eve_bloodline.id,
+                "corporation_id": corporation.id,
+                "description": description,
+                "faction_id": faction.id,
+                "gender": "male",
+                "name": name,
+                "race_id": details.eve_race.id,
+                "security_status": security_status,
+                "title": title,
+            },
+        )
 
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(
-            self.character_1001, force_update=True
-        )
+        character.update_character_details()
 
         # then
-        obj = self.character_1001.corporation_history.get(record_id=500)
-        self.assertEqual(obj.corporation, self.corporation_2001)
+        details.refresh_from_db()
+        self.assertEqual(details.alliance, alliance)
+        self.assertEqual(details.corporation, corporation)
+        self.assertEqual(details.description, description)
+        self.assertEqual(details.eve_faction, faction)
+        self.assertEqual(details.gender, CharacterDetails.GENDER_MALE)
+        self.assertEqual(details.name, name)
+        self.assertEqual(details.security_status, security_status)
+        self.assertEqual(details.title, title)
 
-    def test_should_handle_empty_response(self, mock_esi):
+    @pook.on
+    def test_can_handle_bug_1(self):
         # given
-        mock_esi.client = esi_client_stub
+        character = CharacterFactory()
+        EveBloodlineFactory(id=1)
+        EveEntityCorporationFactory(id=2001)
+        EveRaceFactory(id=1)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=esi_testdata["Character"]["get_characters_character_id"][
+                "1002"
+            ],
+        )
+
         # when
-        CharacterCorporationHistory.objects.update_or_create_esi(self.character_1002)
+        character.update_character_details()
+
         # then
-        self.assertEqual(self.character_1001.corporation_history.count(), 0)
+        details: CharacterDetails = character.details
+        self.assertNotEqual(details.description[:2], "u'")
 
-
-@patch(MODULE_PATH + ".eve_xml_to_html")
-@patch(MODULE_PATH + ".esi")
-class TestCharacterDetailManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-
-    def test_can_create_from_scratch(self, mock_esi, mock_eve_xml_to_html):
+    @pook.on
+    def test_can_handle_bug_2(self):
         # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
+        character = CharacterFactory()
+        EveBloodlineFactory(id=1)
+        EveEntityCorporationFactory(id=2002)
+        EveRaceFactory(id=1)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=esi_testdata["Character"]["get_characters_character_id"][
+                "1003"
+            ],
+        )
+
         # when
-        CharacterDetails.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.assertEqual(self.character_1001.details.eve_ancestry.id, 11)
-        self.assertEqual(
-            self.character_1001.details.birthday, parse_datetime("2015-03-24T11:37:00Z")
-        )
-        self.assertEqual(self.character_1001.details.eve_bloodline_id, 1)
-        self.assertEqual(self.character_1001.details.corporation, self.corporation_2001)
-        self.assertEqual(self.character_1001.details.description, "Scio me nihil scire")
-        self.assertEqual(
-            self.character_1001.details.gender, CharacterDetails.GENDER_MALE
-        )
-        self.assertEqual(self.character_1001.details.name, "Bruce Wayne")
-        self.assertEqual(self.character_1001.details.eve_race.id, 1)
-        self.assertEqual(
-            self.character_1001.details.title, "All round pretty awesome guy"
-        )
-        self.assertTrue(mock_eve_xml_to_html.called)
+        character.update_character_details()
 
-    def test_can_update_existing_data(self, mock_esi, mock_eve_xml_to_html):
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        create_character_details(
-            character=self.character_1001,
-            birthday=now(),
-            corporation=self.corporation_2002,
-            description="Change me",
-            eve_bloodline_id=1,
-            eve_race_id=1,
-            name="Change me also",
-        )
-        # when
-        self.character_1001.update_character_details()
         # then
-        self.character_1001.details.refresh_from_db()
-        self.assertEqual(self.character_1001.details.eve_ancestry_id, 11)
-        self.assertEqual(
-            self.character_1001.details.birthday, parse_datetime("2015-03-24T11:37:00Z")
+        details: CharacterDetails = character.details
+        self.assertNotEqual(details.description[:2], "u'")
+
+    @pook.on
+    def test_can_handle_bug_3(self):
+        # given
+        character = CharacterFactory()
+        EveBloodlineFactory(id=1)
+        EveEntityCorporationFactory(id=2101)
+        EveRaceFactory(id=1)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=esi_testdata["Character"]["get_characters_character_id"][
+                "1101"
+            ],
         )
-        self.assertEqual(self.character_1001.details.eve_bloodline_id, 1)
-        self.assertEqual(self.character_1001.details.corporation, self.corporation_2001)
-        self.assertEqual(self.character_1001.details.description, "Scio me nihil scire")
-        self.assertEqual(
-            self.character_1001.details.gender, CharacterDetails.GENDER_MALE
-        )
-        self.assertEqual(self.character_1001.details.name, "Bruce Wayne")
-        self.assertEqual(self.character_1001.details.eve_race.id, 1)
-        self.assertEqual(
-            self.character_1001.details.title, "All round pretty awesome guy"
-        )
-        self.assertTrue(mock_eve_xml_to_html.called)
 
-    def test_skip_update_1(self, mock_esi, mock_eve_xml_to_html):
-        """when data from ESI has not changed, then skip update"""
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        self.character_1001.update_character_details()
-        self.character_1001.details.name = "John Doe"
-        self.character_1001.details.save()
-        # when
-        self.character_1001.update_character_details()
-        # then
-        self.character_1001.details.refresh_from_db()
-        self.assertEqual(self.character_1001.details.name, "John Doe")
-
-    def test_skip_update_2(self, mock_esi, mock_eve_xml_to_html):
-        """when data from ESI has not changed and update is forced, then do update"""
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        self.character_1001.update_character_details()
-        self.character_1001.details.name = "John Doe"
-        self.character_1001.details.save()
-        # when
-        self.character_1001.update_character_details(force_update=True)
-        # then
-        self.character_1001.details.refresh_from_db()
-        self.assertEqual(self.character_1001.details.name, "Bruce Wayne")
-
-    def test_can_handle_u_bug_1(self, mock_esi, mock_eve_xml_to_html):
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        # when
-        self.character_1002.update_character_details()
-        # then
-        self.assertNotEqual(self.character_1002.details.description[:2], "u'")
-
-    def test_can_handle_u_bug_2(self, mock_esi, mock_eve_xml_to_html):
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        character = create_memberaudit_character(1003)
         # when
         character.update_character_details()
-        # then
-        self.assertNotEqual(character.details.description[:2], "u'")
 
-    def test_can_handle_u_bug_3(self, mock_esi, mock_eve_xml_to_html):
+        # then
+        details: CharacterDetails = character.details
+        self.assertNotEqual(details.description[:2], "u'")
+
+
+class TestCharacter_UpdateFwStats(TestCaseWithClearCache):
+    @pook.on
+    def test_should_create_stats_for_enlisted(self):
         # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        character = create_memberaudit_character(1101)
-        # when
-        character.update_character_details()
-        # then
-        self.assertNotEqual(character.details.description[:2], "u'")
-
-    # @patch(MANAGERS_PATH + ".sections.get_or_create_esi_or_none")
-    # def test_esi_ancestry_bug(
-    #     self, mock_get_or_create_esi_or_none, mock_esi, mock_eve_xml_to_html
-    # ):
-    #     """when esi ancestry endpoint returns http error then ignore it and carry on"""
-
-    #     def my_get_or_create_esi_or_none(prop_name: str, dct: dict, Model: type):
-    #         if issubclass(Model, EveAncestry):
-    #             raise HTTPInternalServerError(
-    #                 response=BravadoResponseStub(500, "Test exception")
-    #             )
-    #         return get_or_create_esi_or_none(prop_name=prop_name, dct=dct, Model=Model)
-
-    #     mock_esi.client = esi_client_stub
-    #     mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-    #     mock_get_or_create_esi_or_none.side_effect = my_get_or_create_esi_or_none
-
-    #     self.character_1001.update_character_details()
-    #     self.assertIsNone(self.character_1001.details.eve_ancestry)
-    #     self.assertEqual(
-    #         self.character_1001.details.birthday, parse_datetime("2015-03-24T11:37:00Z")
-    #     )
-    #     self.assertEqual(self.character_1001.details.eve_bloodline_id, 1)
-    #     self.assertEqual(self.character_1001.details.corporation, self.corporation_2001)
-    #     self.assertEqual(self.character_1001.details.description, "Scio me nihil scire")
-    #     self.assertEqual(
-    #         self.character_1001.details.gender, CharacterDetails.GENDER_MALE
-    #     )
-    #     self.assertEqual(self.character_1001.details.name, "Bruce Wayne")
-    #     self.assertEqual(self.character_1001.details.eve_race.id, 1)
-    #     self.assertEqual(
-    #         self.character_1001.details.title, "All round pretty awesome guy"
-    #     )
-    #     self.assertTrue(mock_eve_xml_to_html.called)
-
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterFwStatsManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.endpoints = [
-            EsiEndpoint(
-                "Faction_Warfare",
-                "get_characters_character_id_fw_stats",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": {
-                        "current_rank": 3,
-                        "enlisted_on": dt.datetime(
-                            2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc
-                        ),
-                        "faction_id": 500001,
-                        "highest_rank": 4,
-                        "kills": {
-                            "last_week": 893,
-                            "total": 684350,
-                            "yesterday": 136,
-                        },
-                        "victory_points": {
-                            "last_week": 102640,
-                            "total": 52658260,
-                            "yesterday": 15980,
-                        },
-                    }
+        character = CharacterFactory()
+        faction = EveFactionFactory()
+        enlisted_on = now()
+        current_rank = 3
+        highest_rank = 4
+        kills_last_week = 893
+        kills_total = 684350
+        kills_yesterday = 136
+        victory_points_last_week = 102640
+        victory_points_total = 52658260
+        victory_points_yesterday = 15980
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/fw/stats"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "current_rank": current_rank,
+                "enlisted_on": enlisted_on.isoformat(),
+                "faction_id": faction.id,
+                "highest_rank": highest_rank,
+                "kills": {
+                    "last_week": kills_last_week,
+                    "total": kills_total,
+                    "yesterday": kills_yesterday,
                 },
-            ),
-        ]
-        cls.esi_client_stub = EsiClientStub.create_from_endpoints(cls.endpoints)
-
-    def test_should_add_new_entry_from_scratch(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
-        # when
-        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
-            CharacterFwStats.objects.update_or_create_esi(self.character_1001)
-        # then
-        obj: CharacterFwStats = self.character_1001.fw_stats
-        self.assertEqual(obj.current_rank, 3)
-        self.assertEqual(
-            obj.enlisted_on,
-            dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc),
-        )
-        self.assertEqual(obj.faction_id, 500001)
-        self.assertEqual(obj.highest_rank, 4)
-        self.assertEqual(obj.kills_last_week, 893)
-        self.assertEqual(obj.kills_total, 684350)
-        self.assertEqual(obj.kills_yesterday, 136)
-        self.assertEqual(obj.victory_points_last_week, 102640)
-        self.assertEqual(obj.victory_points_total, 52658260)
-        self.assertEqual(obj.victory_points_yesterday, 15980)
-
-    def test_should_update_existing_entries(self, mock_esi):
-        # given
-        mock_esi.client = self.esi_client_stub
-        create_character_fw_stats(
-            character=self.character_1001,
-            kills_last_week=0,
-            kills_total=0,
-            kills_yesterday=0,
-            victory_points_last_week=0,
-            victory_points_total=0,
-            victory_points_yesterday=0,
-        )
-        # when
-        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
-            CharacterFwStats.objects.update_or_create_esi(self.character_1001)
-        # then
-        self.character_1001.refresh_from_db()
-        obj: CharacterFwStats = self.character_1001.fw_stats
-        self.assertEqual(obj.current_rank, 3)
-        self.assertEqual(
-            obj.enlisted_on,
-            dt.datetime(2023, 3, 21, 15, 0, tzinfo=dt.timezone.utc),
-        )
-        self.assertEqual(obj.faction_id, 500001)
-        self.assertEqual(obj.highest_rank, 4)
-        self.assertEqual(obj.kills_last_week, 893)
-        self.assertEqual(obj.kills_total, 684350)
-        self.assertEqual(obj.kills_yesterday, 136)
-        self.assertEqual(obj.victory_points_last_week, 102640)
-        self.assertEqual(obj.victory_points_total, 52658260)
-        self.assertEqual(obj.victory_points_yesterday, 15980)
-
-    def test_should_add_new_entry_from_scratch_for_unlisted(self, mock_esi):
-        # given
-        endpoints = [
-            EsiEndpoint(
-                "Faction_Warfare",
-                "get_characters_character_id_fw_stats",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": {
-                        "kills": {
-                            "last_week": 0,
-                            "total": 684350,
-                            "yesterday": 0,
-                        },
-                        "victory_points": {
-                            "last_week": 0,
-                            "total": 52658260,
-                            "yesterday": 0,
-                        },
-                    }
+                "victory_points": {
+                    "last_week": victory_points_last_week,
+                    "total": victory_points_total,
+                    "yesterday": victory_points_yesterday,
                 },
-            ),
-        ]
-        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+            },
+        )
         # when
-        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: None):
-            CharacterFwStats.objects.update_or_create_esi(self.character_1001)
+        character.update_fw_stats()
+
         # then
-        obj: CharacterFwStats = self.character_1001.fw_stats
-        self.assertIsNone(obj.current_rank)
-        self.assertIsNone(obj.enlisted_on)
-        self.assertIsNone(obj.faction)
-        self.assertIsNone(obj.highest_rank)
-        self.assertEqual(obj.kills_last_week, 0)
-        self.assertEqual(obj.kills_total, 684350)
-        self.assertEqual(obj.kills_yesterday, 0)
-        self.assertEqual(obj.victory_points_last_week, 0)
-        self.assertEqual(obj.victory_points_total, 52658260)
-        self.assertEqual(obj.victory_points_yesterday, 0)
+        stats: CharacterFwStats = character.fw_stats
+        self.assertEqual(stats.current_rank, current_rank)
+        self.assertEqual(stats.enlisted_on, enlisted_on)
+        self.assertEqual(stats.faction, faction)
+        self.assertEqual(stats.highest_rank, highest_rank)
+        self.assertEqual(stats.kills_last_week, kills_last_week)
+        self.assertEqual(stats.kills_total, kills_total)
+        self.assertEqual(stats.kills_yesterday, kills_yesterday)
+        self.assertEqual(stats.victory_points_last_week, victory_points_last_week)
+        self.assertEqual(stats.victory_points_total, victory_points_total)
+        self.assertEqual(stats.victory_points_yesterday, victory_points_yesterday)
 
-    # FIXME: Test stopped working after moving it over
-    # @patch(MODULE_PATH + ".CharacterFwStats.objects.update_for_character")
-    # def test_should_not_update_when_not_changed(
-    #     self, mock_update_for_character, mock_esi
-    # ):
-    #     # given
-    #     mock_esi.client = self.esi_client_stub
-    #     # when
-    #     with patch(
-    #         MODULE_PATH + ".Character.has_section_changed"
-    #     ) as mock_has_section_changed:
-    #         mock_has_section_changed.return_value = False
-    #         CharacterFwStats.objects.update_or_create_esi(self.character_1001)
-    #     # then
-    #     self.assertFalse(mock_update_for_character.called)
-
-
-@patch(MODULE_PATH + ".esi")
-class TestCharacterImplantManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-
-    def test_update_implants_1(self, mock_esi):
-        """can create implants from scratch"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.assertEqual(self.character_1001.implants.count(), 3)
-        self.assertSetEqual(
-            set(self.character_1001.implants.values_list("eve_type_id", flat=True)),
-            {19540, 19551, 19553},
-        )
-
-    def test_update_implants_2(self, mock_esi):
-        """can deal with no implants returned from ESI"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1002.update_implants()
-        self.assertEqual(self.character_1002.implants.count(), 0)
-
-    def test_update_implants_3(self, mock_esi):
-        """when data from ESI has not changed, then skip update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants()
-        self.assertFalse(
-            self.character_1001.implants.filter(eve_type_id=19540).exists()
-        )
-
-    def test_update_implants_4(self, mock_esi):
-        """when data from ESI has not changed and update is forced, then do update"""
-        mock_esi.client = esi_client_stub
-
-        self.character_1001.update_implants()
-        self.character_1001.implants.get(eve_type_id=19540).delete()
-
-        self.character_1001.update_implants(force_update=True)
-        self.assertTrue(self.character_1001.implants.filter(eve_type_id=19540).exists())
-
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
-class TestCharacterJumpClonesManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
-        cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
-        cls.user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        cls.snakes_alpha = EveType.objects.get(name="High-grade Snake Alpha")
-        cls.snakes_beta = EveType.objects.get(name="High-grade Snake Beta")
-
-    def test_should_create_from_scratch(self, mock_esi):
+    @pook.on
+    def test_should_update_stats_for_enlisted(self):
         # given
-        mock_esi.client = esi_client_stub
-        character_1001 = create_character_from_user(self.user_1001)
+        character = CharacterFactory()
+        stats = CharacterFwStatsFactory(character=character)
+        current_rank = 3
+        highest_rank = 4
+        kills_last_week = 893
+        kills_total = 684350
+        kills_yesterday = 136
+        victory_points_last_week = 102640
+        victory_points_total = 52658260
+        victory_points_yesterday = 15980
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/fw/stats"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "current_rank": current_rank,
+                "enlisted_on": stats.enlisted_on.isoformat(),
+                "faction_id": stats.faction.id,
+                "highest_rank": highest_rank,
+                "kills": {
+                    "last_week": kills_last_week,
+                    "total": kills_total,
+                    "yesterday": kills_yesterday,
+                },
+                "victory_points": {
+                    "last_week": victory_points_last_week,
+                    "total": victory_points_total,
+                    "yesterday": victory_points_yesterday,
+                },
+            },
+        )
 
         # when
-        CharacterJumpClone.objects.update_or_create_esi(character_1001)
+        character.update_fw_stats()
 
         # then
-        self.assertEqual(character_1001.jump_clones.count(), 1)
-        obj: CharacterJumpClone = character_1001.jump_clones.get(jump_clone_id=12345)
-        self.assertEqual(obj.location, self.jita_44)
-        self.assertEqual(
-            {type_id for type_id in obj.implants.values_list("eve_type_id", flat=True)},
-            {19540, 19551, 19553},
-        )
+        stats.refresh_from_db()
+        self.assertEqual(stats.current_rank, current_rank)
+        self.assertEqual(stats.highest_rank, highest_rank)
+        self.assertEqual(stats.kills_last_week, kills_last_week)
+        self.assertEqual(stats.kills_total, kills_total)
+        self.assertEqual(stats.kills_yesterday, kills_yesterday)
+        self.assertEqual(stats.victory_points_last_week, victory_points_last_week)
+        self.assertEqual(stats.victory_points_total, victory_points_total)
+        self.assertEqual(stats.victory_points_yesterday, victory_points_yesterday)
 
-        obj: CharacterCloneInfo = character_1001.clone_info
-        self.assertEqual(obj.home_location, self.structure_1)
-        self.assertEqual(
-            obj.last_clone_jump_date,
-            dt.datetime(2017, 1, 1, 10, 10, 10, tzinfo=dt.timezone.utc),
-        )
-        self.assertEqual(
-            obj.last_station_change_date,
-            dt.datetime(2017, 1, 2, 11, 10, 10, tzinfo=dt.timezone.utc),
-        )
-
-    def test_should_update_existing(self, mock_esi):
+    @pook.on
+    def test_should_create_stats_for_unlisted(self):
         # given
-        mock_esi.client = esi_client_stub
-        character_1001 = create_character_from_user(self.user_1001)
-        create_character_clone_info(
-            character_1001,
-            home_location_id=1000000000002,
-            last_clone_jump_date=dt.datetime(
-                2016, 1, 1, 10, 10, 10, tzinfo=dt.timezone.utc
-            ),
-            last_station_change_date=dt.datetime(
-                2016, 1, 2, 11, 10, 10, tzinfo=dt.timezone.utc
-            ),
+        character = CharacterFactory()
+        kills_last_week = 893
+        kills_total = 684350
+        kills_yesterday = 136
+        victory_points_last_week = 102640
+        victory_points_total = 52658260
+        victory_points_yesterday = 15980
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/fw/stats"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json={
+                "kills": {
+                    "last_week": kills_last_week,
+                    "total": kills_total,
+                    "yesterday": kills_yesterday,
+                },
+                "victory_points": {
+                    "last_week": victory_points_last_week,
+                    "total": victory_points_total,
+                    "yesterday": victory_points_yesterday,
+                },
+            },
         )
-        jump_clone = create_character_jump_clone(
-            character=character_1001, location=self.jita_44
-        )
-        create_character_jump_clone_implant(
-            jump_clone=jump_clone, eve_type=self.snakes_alpha
-        )
-        create_character_jump_clone_implant(
-            jump_clone=jump_clone, eve_type=self.snakes_beta
+        # when
+        character.update_fw_stats()
+
+        # then
+        stats: CharacterFwStats = character.fw_stats
+        self.assertEqual(stats.kills_last_week, kills_last_week)
+        self.assertEqual(stats.kills_total, kills_total)
+        self.assertEqual(stats.kills_yesterday, kills_yesterday)
+        self.assertEqual(stats.victory_points_last_week, victory_points_last_week)
+        self.assertEqual(stats.victory_points_total, victory_points_total)
+        self.assertEqual(stats.victory_points_yesterday, victory_points_yesterday)
+
+
+class TestCharacter_UpdateImplants(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_implants(self):
+        character = CharacterFactory()
+        implant = CyberimplantTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/implants"),
+            reply=200,
+            response_json=[implant.id],
         )
 
         # when
-        CharacterJumpClone.objects.update_or_create_esi(character_1001)
+        character.update_implants()
 
         # then
-        character_1001.refresh_from_db()
-        self.assertEqual(character_1001.jump_clones.count(), 1)
-        obj: CharacterJumpClone = character_1001.jump_clones.get(jump_clone_id=12345)
-        self.assertEqual(obj.location, self.jita_44)
-        self.assertEqual(
-            {type_id for type_id in obj.implants.values_list("eve_type_id", flat=True)},
-            {19540, 19551, 19553},
+        self.assertEqual(character.implants.count(), 1)
+        got = set(character.implants.values_list("eve_type_id", flat=True))
+        self.assertSetEqual(got, {implant.id})
+
+    @pook.on
+    def test_can_update_implants(self):
+        character = CharacterFactory()
+        implant_type = CyberimplantTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/implants"),
+            reply=200,
+            response_json=[implant_type.id],
         )
 
-        obj: CharacterCloneInfo = character_1001.clone_info
-        self.assertEqual(obj.home_location, self.structure_1)
-        self.assertEqual(
-            obj.last_clone_jump_date,
-            dt.datetime(2017, 1, 1, 10, 10, 10, tzinfo=dt.timezone.utc),
-        )
-        self.assertEqual(
-            obj.last_station_change_date,
-            dt.datetime(2017, 1, 2, 11, 10, 10, tzinfo=dt.timezone.utc),
+        # when
+        character.update_implants()
+
+        # then
+        got = set(character.implants.values_list("eve_type_id", flat=True))
+        self.assertSetEqual(got, {implant_type.id})
+
+    @pook.on
+    def test_add_implants(self):
+        character = CharacterFactory()
+        implant_1 = CharacterImplantFactory(character=character)
+        implant_2_type = CyberimplantTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/implants"),
+            reply=200,
+            response_json=[implant_2_type.id, implant_1.eve_type.id],
         )
 
-    def test_can_update_without_implants(self, mock_esi):
+        # when
+        character.update_implants()
+
+        # then
+        got = set(character.implants.values_list("eve_type_id", flat=True))
+        self.assertSetEqual(got, {implant_2_type.id, implant_1.eve_type.id})
+
+    @pook.on
+    def test_remove_implants(self):
+        character = CharacterFactory()
+        implant_1 = CharacterImplantFactory(character=character)
+        CharacterImplantFactory(character=character)  # to be removed
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/implants"),
+            reply=200,
+            response_json=[implant_1.eve_type.id],
+        )
+
+        # when
+        character.update_implants()
+
+        # then
+        got = set(character.implants.values_list("eve_type_id", flat=True))
+        self.assertSetEqual(got, {implant_1.eve_type.id})
+
+    @pook.on
+    def test_remove_all_implants(self):
+        character = CharacterFactory()
+        CharacterImplantFactory(character=character)  # to be removed
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/implants"),
+            reply=200,
+            response_json=[],
+        )
+
+        # when
+        character.update_implants()
+
+        # then
+        got = set(character.implants.values_list("eve_type_id", flat=True))
+        self.assertSetEqual(got, set())
+
+
+class TestCharacter_UpdateJumpClones(TestCaseWithClearCache):
+    @pook.on
+    def test_should_create_from_scratch(self):
         # given
-        mock_esi.client = esi_client_stub
-        character_1002 = create_character_from_user(self.user_1002)
-
-        # when
-        CharacterJumpClone.objects.update_or_create_esi(character_1002)
-
-        # then
-        self.assertEqual(character_1002.jump_clones.count(), 1)
-        obj = character_1002.jump_clones.get(jump_clone_id=12345)
-        self.assertEqual(obj.location, self.jita_44)
-        self.assertEqual(obj.implants.count(), 0)
-
-    def test_skip_update_when_no_new_data(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        character_1001 = create_character_from_user(self.user_1001)
-        CharacterJumpClone.objects.update_or_create_esi(character_1001)
-        obj = character_1001.jump_clones.get(jump_clone_id=12345)
-        obj.location = self.structure_1
-        obj.save()
-
-        # when
-        CharacterJumpClone.objects.update_or_create_esi(character_1001)
-
-        # then
-        obj = character_1001.jump_clones.get(jump_clone_id=12345)
-        self.assertEqual(obj.location, self.structure_1)
-
-    def test_update_always_when_forced(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        character_1001 = create_character_from_user(self.user_1001)
-        CharacterJumpClone.objects.update_or_create_esi(character_1001)
-        obj = character_1001.jump_clones.get(jump_clone_id=12345)
-        obj.location = self.structure_1
-        obj.save()
-
-        # when
-        CharacterJumpClone.objects.update_or_create_esi(
-            character_1001, force_update=True
+        character = CharacterFactory()
+        clone_id = 1
+        clone_location = LocationStationFactory()
+        clone_name = "name"
+        home_location = LocationStationFactory()
+        implant_type = CyberimplantTypeFactory()
+        last_clone_jump_date = now()
+        last_station_change_date = now()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/clones"),
+            reply=200,
+            response_json={
+                "home_location": {
+                    "location_id": home_location.id,
+                    "location_type": "station",
+                },
+                "jump_clones": [
+                    {
+                        "implants": [implant_type.id],
+                        "jump_clone_id": clone_id,
+                        "location_id": clone_location.id,
+                        "location_type": "station",
+                        "name": clone_name,
+                    }
+                ],
+                "last_clone_jump_date": last_clone_jump_date.isoformat(),
+                "last_station_change_date": last_station_change_date.isoformat(),
+            },
         )
+        # when
+        character.update_jump_clones()
 
         # then
-        obj = character_1001.jump_clones.get(jump_clone_id=12345)
-        self.assertEqual(obj.location, self.jita_44)
+        self.assertEqual(character.jump_clones.count(), 1)
+        clone: CharacterJumpClone = character.jump_clones.first()
+        self.assertEqual(clone.location, clone_location)
+        self.assertEqual(clone.jump_clone_id, clone_id)
+        self.assertEqual(clone.name, clone_name)
+        got = {
+            type_id for type_id in clone.implants.values_list("eve_type_id", flat=True)
+        }
+        self.assertEqual(got, {implant_type.id})
+
+        info: CharacterCloneInfo = character.clone_info
+        self.assertEqual(info.home_location, home_location)
+        self.assertEqual(info.last_clone_jump_date, last_clone_jump_date)
+        self.assertEqual(info.last_station_change_date, last_station_change_date)
+
+    @pook.on
+    def test_should_update_existing(self):
+        # given
+        character = CharacterFactory()
+        info = CharacterCloneInfoFactory(character=character)
+        jump_clone = CharacterJumpCloneFactory(character=character)
+        CharacterJumpCloneImplantFactory(jump_clone=jump_clone)
+
+        clone_id = 1
+        clone_location = LocationStationFactory()
+        clone_name = "name"
+        home_location = LocationStationFactory()
+        implant_type = CyberimplantTypeFactory()
+        last_clone_jump_date = now()
+        last_station_change_date = now()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/clones"),
+            reply=200,
+            response_json={
+                "home_location": {
+                    "location_id": home_location.id,
+                    "location_type": "station",
+                },
+                "jump_clones": [
+                    {
+                        "implants": [implant_type.id],
+                        "jump_clone_id": clone_id,
+                        "location_id": clone_location.id,
+                        "location_type": "station",
+                        "name": clone_name,
+                    }
+                ],
+                "last_clone_jump_date": last_clone_jump_date.isoformat(),
+                "last_station_change_date": last_station_change_date.isoformat(),
+            },
+        )
+        # when
+        character.update_jump_clones()
+
+        # then
+        self.assertEqual(character.jump_clones.count(), 1)
+        jump_clone_2: CharacterJumpClone = character.jump_clones.first()
+        self.assertEqual(jump_clone_2.location, clone_location)
+        self.assertEqual(jump_clone_2.jump_clone_id, clone_id)
+        self.assertEqual(jump_clone_2.name, clone_name)
+        got = {
+            type_id
+            for type_id in jump_clone_2.implants.values_list("eve_type_id", flat=True)
+        }
+        self.assertEqual(got, {implant_type.id})
+
+        info.refresh_from_db()
+        self.assertEqual(info.home_location, home_location)
+        self.assertEqual(info.last_clone_jump_date, last_clone_jump_date)
+        self.assertEqual(info.last_station_change_date, last_station_change_date)

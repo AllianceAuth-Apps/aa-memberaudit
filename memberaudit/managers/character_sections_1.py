@@ -35,7 +35,7 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, CharacterAsset
+    from memberaudit.models import Character, CharacterAsset, CharacterContract
 
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
@@ -484,17 +484,18 @@ class CharacterContractManager(models.Manager):
         if cutoff_datetime := data_retention_cutoff():
             character.contracts.filter(date_expired__lt=cutoff_datetime).delete()
 
-        existing_ids = set(character.contracts.values_list("contract_id", flat=True))
-        incoming_location_ids = {
-            obj["start_location_id"]
-            for contract_id, obj in contracts_list.items()
-            if contract_id not in existing_ids
-        }
-        incoming_location_ids |= {
-            obj["end_location_id"] for obj in contracts_list.values()
-        }
-        Location.objects.create_missing_esi(incoming_location_ids, token)
+        incoming_location_ids = set()
+        for obj in contracts_list.values():
+            if location_id := obj.get("start_location_id"):
+                incoming_location_ids.add(location_id)
 
+            if location_id := obj.get("end_location_id"):
+                incoming_location_ids.add(location_id)
+
+        if incoming_location_ids:
+            Location.objects.create_missing_esi(incoming_location_ids, token)
+
+        existing_ids = set(character.contracts.values_list("contract_id", flat=True))
         with transaction.atomic():
             incoming_ids = set(contracts_list.keys())
             existing_ids = set(
@@ -569,7 +570,7 @@ class CharacterContractManager(models.Manager):
                             "start_location_id", contract_data, Location
                         ),
                         status=self.model.ESI_STATUS_MAP[contract_data.get("status")],
-                        title=contract_data.get("title", ""),
+                        title=contract_data.get("title") or "",
                         volume=contract_data.get("volume"),
                     )
                 )
@@ -587,6 +588,7 @@ class CharacterContractManager(models.Manager):
             )
         )
         contracts = self.in_bulk(update_contract_pks)
+        contract: CharacterContract
         for contract in contracts.values():
             contract_data = contracts_list.get(contract.contract_id)
             if contract_data:
