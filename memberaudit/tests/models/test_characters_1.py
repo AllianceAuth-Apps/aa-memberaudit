@@ -10,6 +10,7 @@ from esi.models import Token
 from eveuniverse.tests.testdata.factories_2 import (
     EveSolarSystemFactory,
     ShipTypeFactory,
+    SolarSystemTypeFactory,
 )
 
 from app_utils.testdata_factories import UserMainFactory
@@ -431,7 +432,7 @@ class TestCharacter_HasChanged(NoSocketsTestCase):
         )
         self.assertEqual(got, want)
 
-    def test_should_return_true_when_secion_does_not_exist(self):
+    def test_should_return_true_when_section_does_not_exist(self):
         # given
         character = CharacterFactory()
         section = Character.UpdateSection.ASSETS
@@ -506,20 +507,7 @@ class TestCharacter_CalcUpdateNeeded(TestCase):
         self.assertTrue(update_needed)
 
 
-class TestCharacter_GenerateShipAsset(TestCase):
-    # @classmethod
-    # def setUpClass(cls):
-    #     super().setUpClass()
-    #     load_eveuniverse()
-    #     load_entities()
-    #     load_locations()
-    #     cls.character = create_memberaudit_character(1001)
-    #     cls.jita = EveSolarSystem.objects.get(name="Jita")
-    #     cls.location_jita_44 = Location.objects.get(id=60003760)
-    #     cls.amamake = EveSolarSystem.objects.get(name="Amamake")
-    #     cls.location_structure_1 = Location.objects.get(id=1_000_000_000_001)
-    #     cls.location_jita = create_location_eve_solar_system(id=cls.jita.id)
-
+class TestCharacter_GenerateShipAsset(NoSocketsTestCase):
     def test_should_generate_asset_when_in_station(self):
         # given
         character = CharacterFactory()
@@ -582,6 +570,7 @@ class TestCharacter_GenerateShipAsset(TestCase):
 
     def test_should_generate_asset_when_partial_location_only(self):
         # given
+        SolarSystemTypeFactory()
         character = CharacterFactory()
         ship = CharacterShipFactory(character=character)
         location = CharacterLocationFactory(
@@ -603,6 +592,7 @@ class TestCharacter_GenerateShipAsset(TestCase):
 
     def test_should_generate_asset_when_no_location(self):
         # given
+        SolarSystemTypeFactory()
         character = CharacterFactory()
         ship = CharacterShipFactory(character=character)
 

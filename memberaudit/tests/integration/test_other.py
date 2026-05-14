@@ -12,7 +12,7 @@ from memberaudit.tests.testdata.factories import (
     create_mailing_list,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.utils import create_memberaudit_character, extract
 
 MANAGERS_PATH = "memberaudit.managers"
 MODELS_PATH = "memberaudit.models"
@@ -74,7 +74,7 @@ class TestCharacterMailUpdate(NoSocketsTestCase):
 
         # then
         self.assertSetEqual(
-            set(self.character.mails.values_list("mail_id", flat=True)),
+            extract(self.character.mails, "mail_id"),
             {1, 2, 3},
         )
 
@@ -84,7 +84,7 @@ class TestCharacterMailUpdate(NoSocketsTestCase):
         self.assertEqual(obj.subject, "Mail 1")
         self.assertEqual(obj.timestamp, parse_datetime("2015-09-05T16:07:00Z"))
         self.assertEqual(obj.body, "My body text")
-        recipient_ids = set(obj.recipients.values_list("id", flat=True))
+        recipient_ids = extract(obj.recipients, "id")
         self.assertSetEqual(recipient_ids, {recipient_1.id, recipient_2.id})
-        label_ids = set(obj.labels.values_list("label_id", flat=True))
+        label_ids = extract(obj.labels, "label_id")
         self.assertSetEqual(label_ids, {3})

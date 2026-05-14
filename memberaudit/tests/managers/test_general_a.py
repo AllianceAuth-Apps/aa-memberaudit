@@ -4,6 +4,11 @@ from celery_once import AlreadyQueued
 
 from django.test import TestCase, override_settings
 from eveuniverse.models import EveEntity, EveType
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityAllianceFactory,
+    EveEntityCharacterFactory,
+    EveEntityCorporationFactory,
+)
 
 from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
@@ -18,10 +23,14 @@ from memberaudit.models import ComplianceGroupDesignation, MailEntity, SkillSet
 from memberaudit.tests.testdata.factories import (
     create_compliance_group,
     create_fitting,
-    create_mail_entity,
     create_skill,
     create_skill_plan,
     create_skill_set_group,
+)
+from memberaudit.tests.testdata.factories_2 import (
+    MailEntityCharacterFactory,
+    MailEntityMailingListFactory,
+    MailEntityUnknownFactory,
 )
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
@@ -202,184 +211,196 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertEqual(user.notification_set.count(), 0)
 
 
-class TestMailEntityManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
-    def test_get_or_create_esi_1(self):
-        """When entity already exists, return it"""
+class TestMailEntityManager_GetOrCreateEsi(NoSocketsTestCase):
+    def test_should_return_existing_items(self):
         # given
-        create_mail_entity(
-            id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
-        )
+        obj_1 = MailEntityCharacterFactory()
+
         # when
-        obj, created = MailEntity.objects.get_or_create_esi(id=1234)
+        obj_2, created = MailEntity.objects.get_or_create_esi(id=obj_1.id)
+
         # then
         self.assertFalse(created)
-        self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "John Doe")
+        self.assertEqual(obj_2, obj_1)
 
-    def test_get_or_create_esi_2(self):
-        """When entity does not exist, create it from ESI / existing EveEntity"""
-        obj, created = MailEntity.objects.get_or_create_esi(id=1001)
+    def test_should_create_from_existing_eve_entity_when_not_exists(self):
+        # given
+        eve_entity = EveEntityCharacterFactory()
 
+        # when
+        obj, created = MailEntity.objects.get_or_create_esi(id=eve_entity.id)
+
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
+        self.assertEqual(obj.name, eve_entity.name)
 
-    def test_update_or_create_esi_1(self):
-        """When entity does not exist, create it from ESI / existing EveEntity"""
-        obj, created = MailEntity.objects.update_or_create_esi(id=1001)
 
+class TestMailEntityManager_UpdateOrCreateEsi(NoSocketsTestCase):
+    def test_should_create_from_existing_eve_entity(self):
+        # given
+        eve_entity = EveEntityCharacterFactory()
+
+        # given
+        obj, created = MailEntity.objects.update_or_create_esi(id=eve_entity.id)
+
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
+        self.assertEqual(obj.name, eve_entity.name)
 
-    def test_update_or_create_esi_2(self):
-        """When entity already exist and is not a mailing list,
-        then update it from ESI / existing EveEntity
-        """
-        create_mail_entity(
-            id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
-        )
-        obj, created = MailEntity.objects.update_or_create_esi(id=1001)
+    def test_should_update_existing_mail_entity(self):
+        # given
+        obj_id = 42
+        MailEntityUnknownFactory(id=obj_id)
+        eve_entity = EveEntityCharacterFactory(id=obj_id)
 
+        # when
+        obj: MailEntity
+        obj, created = MailEntity.objects.update_or_create_esi(id=obj_id)
+
+        # then
         self.assertFalse(created)
+        self.assertEqual(obj.name, eve_entity.name)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
 
-    def test_update_or_create_esi_3(self):
-        """When entity already exist and is a mailing list, then do nothing"""
-        create_mail_entity(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
-        )
-        obj, created = MailEntity.objects.update_or_create_esi(id=9001)
+    def test_should_not_update_mailing_list(self):
+        # given
+        obj_1 = MailEntityMailingListFactory()
 
+        # when
+        obj_2: MailEntity
+        obj_2, created = MailEntity.objects.update_or_create_esi(id=obj_1.id)
+
+        # then
         self.assertFalse(created)
-        self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
-        self.assertEqual(obj.name, "Dummy")
+        self.assertEqual(obj_2.name, obj_1.name)
         # method must not create an EveEntity object for the mailing list
-        self.assertFalse(EveEntity.objects.filter(id=9001).exists())
+        self.assertFalse(EveEntity.objects.filter(id=obj_1.id).exists())
 
-    def test_update_or_create_esi_4(self):
-        """When entity does not exist and is a mailing list, then create it."""
+    def test_should_create_mailing_list(self):
+        # given
+        obj_1_id = 9001
         # when
         with patch(
             MANAGERS_PATH + ".EveEntity.objects.get_or_create_esi", spec=True
         ) as m:
             m.return_value = None, False
-            obj, created = MailEntity.objects.update_or_create_esi(id=9001)
+            obj_2: MailEntity
+            obj_2, created = MailEntity.objects.update_or_create_esi(id=obj_1_id)
+
+        # then
+        self.assertTrue(created)
+        self.assertEqual(obj_2.id, obj_1_id)
+        self.assertEqual(obj_2.category, MailEntity.Category.MAILING_LIST)
+
+
+class TestMailEntityManager_UpdateOrCreateFromEveEntity(NoSocketsTestCase):
+    def test_should_create_from_eve_entity(self):
+        # given
+        eve_entity = EveEntityCharacterFactory()
+
         # when
-        self.assertTrue(created)
-        self.assertEqual(obj.id, 9001)
-        self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
-
-    def test_update_or_create_from_eve_entity_1(self):
-        """When entity does not exist, create it from given EveEntity"""
-        eve_entity = EveEntity.objects.get(id=1001)
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_from_eve_entity(eve_entity)
 
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
+        self.assertEqual(obj.name, eve_entity.name)
+        self.assertEqual(obj.id, eve_entity.id)
 
-    def test_update_or_create_from_eve_entity_2(self):
-        """When entity already exist, update it from given EveEntity"""
-        create_mail_entity(
-            id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
-        )
+    def test_should_update_from_eve_entity(self):
+        # given
+        obj_1 = MailEntityUnknownFactory()
+        eve_entity = EveEntityCharacterFactory(id=obj_1.id)
 
-        eve_entity = EveEntity.objects.get(id=1001)
-        obj, created = MailEntity.objects.update_or_create_from_eve_entity(eve_entity)
+        # when
+        obj_2: MailEntity
+        obj_2, created = MailEntity.objects.update_or_create_from_eve_entity(eve_entity)
 
+        # then
         self.assertFalse(created)
-        self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
+        self.assertEqual(obj_2.name, eve_entity.name)
+        self.assertEqual(obj_2.category, MailEntity.Category.CHARACTER)
 
-    def test_update_or_create_from_eve_entity_id_1(self):
-        """When entity does not exist, create it from given EveEntity"""
-        eve_entity = EveEntity.objects.get(id=1001)
-        obj, created = MailEntity.objects.update_or_create_from_eve_entity_id(
-            eve_entity.id
+
+class TestMailEntityManager_BulkUpdateNames(NoSocketsTestCase):
+    def test_can_bulk_resolve_from_existing_eve_entities(self):
+        # given
+        character = EveEntityCharacterFactory()
+        corporation = EveEntityCorporationFactory()
+        alliance = EveEntityAllianceFactory()
+        obj_1 = MailEntityUnknownFactory(
+            id=character.id, category=MailEntity.Category.CHARACTER
+        )
+        obj_2 = MailEntityUnknownFactory(
+            id=corporation.id, category=MailEntity.Category.CORPORATION
+        )
+        obj_3 = MailEntityUnknownFactory(
+            id=alliance.id, category=MailEntity.Category.ALLIANCE
         )
 
-        self.assertTrue(created)
-        self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
+        # when
+        MailEntity.objects.bulk_update_names([obj_1, obj_2, obj_3])
 
-    def test_update_or_create_from_eve_entity_id_2(self):
-        """When entity already exist, update it from given EveEntity"""
-        create_mail_entity(
-            id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
+        # then
+        obj_1.refresh_from_db()
+        self.assertEqual(obj_1.name, character.name)
+        obj_2.refresh_from_db()
+        self.assertEqual(obj_2.name, corporation.name)
+        obj_3.refresh_from_db()
+        self.assertEqual(obj_3.name, alliance.name)
+
+    def test_should_not_resolve_non_matching_categories(self):
+        # given
+        character = EveEntityCharacterFactory()
+        obj_1 = MailEntityUnknownFactory(
+            id=character.id, category=MailEntity.Category.CHARACTER
         )
-
-        eve_entity = EveEntity.objects.get(id=1001)
-        obj, created = MailEntity.objects.update_or_create_from_eve_entity_id(
-            eve_entity.id
-        )
-
-        self.assertFalse(created)
-        self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
-        self.assertEqual(obj.name, "Bruce Wayne")
-
-    def test_bulk_resolve_1(self):
-        """Can resolve all 3 categories known by EveEntity"""
-        obj_1001 = create_mail_entity(id=1001, category=MailEntity.Category.CHARACTER)
-        obj_2001 = create_mail_entity(id=2001, category=MailEntity.Category.CORPORATION)
-        obj_3001 = create_mail_entity(id=3001, category=MailEntity.Category.ALLIANCE)
-
-        MailEntity.objects.bulk_update_names([obj_1001, obj_2001, obj_3001])
-
-        self.assertEqual(obj_1001.name, "Bruce Wayne")
-        self.assertEqual(obj_2001.name, "Wayne Technologies")
-        self.assertEqual(obj_3001.name, "Wayne Enterprises")
-
-    def test_bulk_resolve_2(self):
-        """Will ignore categories not known to EveEntity"""
-
-        obj_1001 = create_mail_entity(id=1001, category=MailEntity.Category.CHARACTER)
-        obj_9001 = create_mail_entity(
+        obj_2 = MailEntityUnknownFactory(
             id=9001, category=MailEntity.Category.MAILING_LIST
         )
-        obj_9002 = create_mail_entity(id=9002, category=MailEntity.Category.UNKNOWN)
+        obj_3 = MailEntityUnknownFactory(id=9002, category=MailEntity.Category.UNKNOWN)
 
-        MailEntity.objects.bulk_update_names([obj_1001, obj_9001, obj_9002])
+        # when
+        MailEntity.objects.bulk_update_names([obj_1, obj_2, obj_3])
 
-        self.assertEqual(obj_1001.name, "Bruce Wayne")
-        self.assertEqual(obj_9001.name, "")
-        self.assertEqual(obj_9002.name, "")
+        # then
+        self.assertEqual(obj_1.name, character.name)
+        self.assertEqual(obj_2.name, "")
+        self.assertEqual(obj_3.name, "")
 
-    def test_bulk_resolve_3(self):
-        """When object list is empty, then no op"""
+    def test_should_do_nothing_when_list_is_empty(self):
+        MailEntity.objects.bulk_update_names([])
 
-        try:
-            MailEntity.objects.bulk_update_names([])
-        except Exception as ex:
-            self.fail(f"Unexpected exception: {ex}")
-
-    def test_bulk_resolve_4(self):
-        """When object already has a name, then update it"""
-        obj_1001 = create_mail_entity(
-            id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
+    def test_should_overwrite_existing_names_for_matching_categories(self):
+        # given
+        character = EveEntityCharacterFactory()
+        obj = MailEntityCharacterFactory(
+            id=character.id, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
-        MailEntity.objects.bulk_update_names([obj_1001])
+        # when
+        MailEntity.objects.bulk_update_names([obj])
 
-        self.assertEqual(obj_1001.name, "Bruce Wayne")
+        # then
+        self.assertEqual(obj.name, character.name)
 
-    def test_bulk_resolve_5(self):
-        """When object already has a name and respective option is chosen
-        then ignore it
-        """
-        obj_1001 = create_mail_entity(
-            id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
+    def test_should_not_overwrite_existing_names_for_matching_categories_when_disabled(
+        self,
+    ):
+        # given
+        character = EveEntityCharacterFactory()
+        obj = MailEntityCharacterFactory(
+            id=character.id, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
-        MailEntity.objects.bulk_update_names([obj_1001], keep_names=True)
+        # when
+        MailEntity.objects.bulk_update_names([obj], keep_names=True)
 
-        self.assertEqual(obj_1001.name, "John Doe")
+        # then
+        self.assertEqual(obj.name, "John Doe")
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
@@ -392,7 +413,7 @@ class TestMailEntityManagerAsync(TestCase):
     def test_get_or_create_esi_async_1(self):
         """When entity already exists, return it"""
 
-        create_mail_entity(
+        MailEntityCharacterFactory(
             id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -443,7 +464,7 @@ class TestMailEntityManagerAsync(TestCase):
 
     def test_update_or_create_esi_async_2(self):
         """When entity exists and not a mailing list, then update synchronously"""
-        create_mail_entity(
+        MailEntityCharacterFactory(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
@@ -455,7 +476,7 @@ class TestMailEntityManagerAsync(TestCase):
 
     def test_update_or_create_esi_async_3(self):
         """When entity exists and is a mailing list, then do nothing"""
-        create_mail_entity(
+        MailEntityCharacterFactory(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
         )
 

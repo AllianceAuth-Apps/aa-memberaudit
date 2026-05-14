@@ -2,7 +2,7 @@
 
 import json
 import logging
-from typing import Any, Tuple
+from typing import Any, Set, Tuple
 
 from typing_extensions import deprecated
 
@@ -133,3 +133,8 @@ class TestCaseWithClearCache(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cache.clear()
+
+
+def extract(qs: QuerySet, field: str) -> Set[int]:
+    """Return the extracted fields from the items of a query set."""
+    return set(qs.values_list(field, flat=True))

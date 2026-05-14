@@ -121,7 +121,7 @@ def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     return obj
 
 
-@deprecated("Use `CharacterAttributesFactory`")
+@deprecated("Replaced by `CharacterAttributesFactory`")
 def create_character_attributes(character: Character, **kwargs) -> CharacterAttributes:
     params = {
         "character": character,
@@ -136,7 +136,7 @@ def create_character_attributes(character: Character, **kwargs) -> CharacterAttr
     return CharacterAttributes.objects.create(**params)
 
 
-@deprecated("Use `CharacterCloneInfoFactory`")
+@deprecated("Replaced by `CharacterCloneInfoFactory`")
 def create_character_clone_info(character: Character, **kwargs) -> CharacterCloneInfo:
     params = {
         "character": character,
@@ -148,7 +148,7 @@ def create_character_clone_info(character: Character, **kwargs) -> CharacterClon
     return CharacterCloneInfo.objects.create(**params)
 
 
-@deprecated("Use `CharacterContactFactory`")
+@deprecated("Replaced by `CharacterContactFactory`")
 def create_character_contact(
     character: Character, eve_entity: EveEntity, **kwargs
 ) -> CharacterContact:
@@ -163,7 +163,7 @@ def create_character_contact(
     return CharacterContact.objects.create(**params)
 
 
-@deprecated("Use `CharacterContactLabelFactory`")
+@deprecated("Replaced by `CharacterContactLabelFactory`")
 def create_character_contact_label(
     character: Character, **kwargs
 ) -> CharacterContactLabel:
@@ -177,7 +177,7 @@ def create_character_contact_label(
     return CharacterContactLabel.objects.create(**params)
 
 
-@deprecated("Use `CharacterContractCourierFactory`")
+@deprecated("Replaced by `CharacterContractCourierFactory`")
 def create_character_contract(character: Character, **kwargs) -> CharacterContract:
     date_issued = kwargs.get("date_issued") or now()
     contract_id = kwargs.get("contract_id") or next_number("contract_id") + 190_000_000
@@ -200,7 +200,7 @@ def create_character_contract(character: Character, **kwargs) -> CharacterContra
     return CharacterContract.objects.create(**params)
 
 
-@deprecated("Use `CharacterContractCourierFactory`")
+@deprecated("Replaced by `CharacterContractCourierFactory`")
 def create_character_contract_courier(
     character: Character, **kwargs
 ) -> CharacterContract:
@@ -221,7 +221,7 @@ def create_character_contract_courier(
     return create_character_contract(**params)
 
 
-@deprecated("Use `CharacterContractItemFactory`")
+@deprecated("Replaced by `CharacterContractItemFactory`")
 def create_character_contract_item(
     contract: CharacterContract, **kwargs
 ) -> CharacterContractItem:
@@ -238,7 +238,7 @@ def create_character_contract_item(
     return CharacterContractItem.objects.create(**params)
 
 
-@deprecated("Use `CharacterContractBidFactory`")
+@deprecated("Replaced by `CharacterContractBidFactory`")
 def create_character_contract_bid(
     contract: CharacterContract, bidder: EveEntity, **kwargs
 ) -> CharacterContractBid:
@@ -254,7 +254,7 @@ def create_character_contract_bid(
     return CharacterContractBid.objects.create(**params)
 
 
-@deprecated("Use `CharacterCorporationHistoryFactory`")
+@deprecated("Replaced by `CharacterCorporationHistoryFactory`")
 def create_character_corporation_history(
     character: Character, **kwargs
 ) -> CharacterCorporationHistory:
@@ -271,7 +271,7 @@ def create_character_corporation_history(
     return CharacterCorporationHistory.objects.create(**params)
 
 
-@deprecated("Use `CharacterDetailsFactory`")
+@deprecated("Replaced by `CharacterDetailsFactory`")
 def create_character_details(character: Character, **kwargs) -> CharacterDetails:
     params = {
         "character": character,
@@ -289,7 +289,7 @@ def create_character_details(character: Character, **kwargs) -> CharacterDetails
     return CharacterDetails.objects.create(**params)
 
 
-@deprecated("Use `CharacterFwStatsFactory`")
+@deprecated("Replaced by `CharacterFwStatsFactory`")
 def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStats:
     current_rank = random.randint(1, 5)
     highest_rank = max(current_rank, random.randint(1, 5))
@@ -319,7 +319,7 @@ def create_character_fw_stats(character: Character, **kwargs) -> CharacterFwStat
     return CharacterFwStats.objects.create(**params)
 
 
-@deprecated("Use `CharacterImplantFactory`")
+@deprecated("Replaced by `CharacterImplantFactory`")
 def create_character_implant(character: Character, **kwargs) -> CharacterImplant:
     params = {"character": character}
     params.update(kwargs)
@@ -327,7 +327,7 @@ def create_character_implant(character: Character, **kwargs) -> CharacterImplant
     return CharacterImplant.objects.create(**params)
 
 
-@deprecated("Use `CharacterJumpCloneFactory`")
+@deprecated("Replaced by `CharacterJumpCloneFactory`")
 def create_character_jump_clone(character: Character, **kwargs) -> CharacterJumpClone:
     jump_clone_id = kwargs.get("jump_clone_id") or next_number(
         "create_character_implant_jump_clone_id"
@@ -338,7 +338,7 @@ def create_character_jump_clone(character: Character, **kwargs) -> CharacterJump
     return CharacterJumpClone.objects.create(**params)
 
 
-@deprecated("Use `CharacterJumpCloneImplantFactory`")
+@deprecated("Replaced by `CharacterJumpCloneImplantFactory`")
 def create_character_jump_clone_implant(
     jump_clone: CharacterJumpClone, **kwargs
 ) -> CharacterJumpCloneImplant:
@@ -348,7 +348,7 @@ def create_character_jump_clone_implant(
     return CharacterJumpCloneImplant.objects.create(**params)
 
 
-@deprecated("Use `CharacterLocationFactory`")
+@deprecated("Replaced by `CharacterLocationFactory`")
 def create_character_location(character: Character, **kwargs) -> CharacterLocation:
     params = {"character": character}
     params.update(kwargs)
@@ -360,7 +360,7 @@ def create_character_location(character: Character, **kwargs) -> CharacterLocati
     return CharacterLocation.objects.create(**params)
 
 
-@deprecated("Use `CharacterLoyaltyEntryFactory`")
+@deprecated("Replaced by `CharacterLoyaltyEntryFactory`")
 def create_character_loyalty_entry(
     character: Character, **kwargs
 ) -> CharacterLoyaltyEntry:
@@ -372,6 +372,7 @@ def create_character_loyalty_entry(
     return CharacterLoyaltyEntry.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterMailFactory`")
 def create_character_mail(
     character: Character,
     recipients: Iterable[MailEntity] = None,
@@ -400,6 +401,7 @@ def create_character_mail(
     return obj
 
 
+@deprecated("Replaced by `CharacterMailLabelFactory`")
 def create_character_mail_label(character: Character, **kwargs) -> CharacterMailLabel:
     label_id = kwargs.get("label_id") or next_number("mail_label_id")
     params = {
@@ -411,6 +413,7 @@ def create_character_mail_label(character: Character, **kwargs) -> CharacterMail
     return CharacterMailLabel.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterMiningLedgerEntryFactory`")
 def create_character_mining_ledger_entry(
     character: Character, **kwargs
 ) -> CharacterMiningLedgerEntry:
@@ -431,6 +434,7 @@ def create_character_mining_ledger_entry(
     return CharacterMiningLedgerEntry.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterOnlineStatusFactory`")
 def create_character_online_status(
     character: Character, **kwargs
 ) -> CharacterOnlineStatus:
@@ -444,6 +448,7 @@ def create_character_online_status(
     return CharacterOnlineStatus.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterPlanetFactory`")
 def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     all_planets = set(EvePlanet.objects.values_list("id", flat=True))
     colonized_planets = set(
@@ -463,6 +468,7 @@ def create_character_planet(character: Character, **kwargs) -> CharacterPlanet:
     return CharacterPlanet.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterRoleFactory`")
 def create_character_role(character: Character, **kwargs) -> CharacterRole:
     params = {
         "character": character,
@@ -473,7 +479,7 @@ def create_character_role(character: Character, **kwargs) -> CharacterRole:
     return CharacterRole.objects.create(**params)
 
 
-@deprecated("Use `CharacterContractShipFactory`")
+@deprecated("Replaced by `CharacterContractShipFactory`")
 def create_character_ship(character: Character, **kwargs) -> CharacterShip:
     item_id = kwargs.get("item_id") or next_number("asset_item_id")
     params = {"character": character, "item_id": item_id, "name": "My sweet ride"}
@@ -482,6 +488,7 @@ def create_character_ship(character: Character, **kwargs) -> CharacterShip:
     return CharacterShip.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterSkillFactory`")
 def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
     params = {
         "character": character,
@@ -494,6 +501,7 @@ def create_character_skill(character: Character, **kwargs) -> CharacterSkill:
     return CharacterSkill.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterSkillqueueEntryFactory`")
 def create_character_skillqueue_entry(
     character: Character, **kwargs
 ) -> CharacterSkillqueueEntry:
@@ -523,6 +531,7 @@ def create_character_skillpoints(
     return CharacterSkillpoints.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterSkillSetCheckFactory`")
 def create_character_skill_set_check(
     character: Character, skill_set: SkillSet, **kwargs
 ) -> CharacterSkillSetCheck:
@@ -531,6 +540,7 @@ def create_character_skill_set_check(
     )
 
 
+@deprecated("Replaced by `CharacterStandingFactory`")
 def create_character_standing(
     character: Character, eve_entity: EveEntity, **kwargs
 ) -> CharacterStanding:
@@ -543,6 +553,7 @@ def create_character_standing(
     return CharacterStanding.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterTitleFactory`")
 def create_character_title(character: Character, **kwargs) -> CharacterRole:
     title_id = kwargs.get("title_id") or next_number("title_id")
     params = {
@@ -568,6 +579,7 @@ def create_character_update_status(
     return CharacterUpdateStatus.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterWalletBalanceFactory`")
 def create_character_wallet_balance(
     character: Character, **kwargs
 ) -> CharacterWalletBalance:
@@ -576,6 +588,7 @@ def create_character_wallet_balance(
     return CharacterWalletBalance.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterWalletJournalEntryFactory`")
 def create_character_wallet_journal_entry(
     character: Character, **kwargs
 ) -> CharacterWalletJournalEntry:
@@ -596,6 +609,7 @@ def create_character_wallet_journal_entry(
     return CharacterWalletJournalEntry.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterWalletTransactionFactory`")
 def create_character_wallet_transaction(
     character: Character, **kwargs
 ) -> CharacterWalletTransaction:
@@ -670,7 +684,7 @@ def create_fitting_text(file_name: str) -> str:
         return file.read()
 
 
-@deprecated("Use `LocationStationFactory`")
+@deprecated("Replaced by `LocationStationFactory`")
 def create_location(**kwargs) -> Location:
     location_id = kwargs.get("id") or next_number("location_id") + 1_700_000_000_000
     params = {
@@ -686,6 +700,7 @@ def create_location(**kwargs) -> Location:
     return Location.objects.create(**params)
 
 
+@deprecated("Replaced by `LocationSolarSystemFactory`")
 def create_location_eve_solar_system(**kwargs) -> Location:
     solar_system_id = kwargs.get("id") or EveSolarSystemId.AMAMAKE
     eve_solar_system = EveSolarSystem.objects.get(id=solar_system_id)
@@ -694,6 +709,7 @@ def create_location_eve_solar_system(**kwargs) -> Location:
     return create_location(**params)
 
 
+@deprecated("Replaced by `MailEntityCharacterFactory`")
 def create_mail_entity(**kwargs) -> MailEntity:
     my_id = kwargs.get("id") or next_number("create_mail_entity_id") + 10_000_000
     params = {
@@ -746,6 +762,7 @@ def create_skill_plan(**kwargs) -> SkillPlan:
     return SkillPlan(**params)
 
 
+@deprecated("Replaced by `SkillSetFactory`")
 def create_skill_set(**kwargs) -> SkillSet:
     my_id = next_number("skill_set_id")
     params = {
@@ -757,6 +774,7 @@ def create_skill_set(**kwargs) -> SkillSet:
     return SkillSet.objects.create(**params)
 
 
+@deprecated("Replaced by `SkillSetGroupFactory`")
 def create_skill_set_group(**kwargs) -> SkillSetGroup:
     my_id = next_number("skill_set_group_id")
     params = {
@@ -767,6 +785,7 @@ def create_skill_set_group(**kwargs) -> SkillSetGroup:
     return SkillSetGroup.objects.create(**params)
 
 
+@deprecated("Replaced by `SkillSetSkillFactory`")
 def create_skill_set_skill(skill_set, **kwargs) -> SkillSetSkill:
     params = {
         "skill_set": skill_set,

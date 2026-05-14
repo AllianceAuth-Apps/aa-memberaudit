@@ -18,7 +18,7 @@ from memberaudit.tests.testdata.esi_client_stub import esi_client_stub
 from memberaudit.tests.testdata.factories import create_location, create_mail_entity
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.utils import create_memberaudit_character, extract
 
 MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
@@ -531,11 +531,9 @@ class TestCharacterMailingLists(NoSocketsTestCase):
 
         self.character.update_mailing_lists()
 
+        self.assertSetEqual(extract(MailEntity.objects, "id"), {9001, 9002})
         self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
-        )
-        self.assertSetEqual(
-            set(self.character.mailing_lists.values_list("id", flat=True)),
+            extract(self.character.mailing_lists, "id"),
             {9001, 9002},
         )
 
@@ -554,11 +552,9 @@ class TestCharacterMailingLists(NoSocketsTestCase):
 
         self.character.update_mailing_lists()
 
+        self.assertSetEqual(extract(MailEntity.objects, "id"), {9001, 9002, 5})
         self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002, 5}
-        )
-        self.assertSetEqual(
-            set(self.character.mailing_lists.values_list("id", flat=True)),
+            extract(self.character.mailing_lists, "id"),
             {9001, 9002},
         )
 
@@ -571,11 +567,9 @@ class TestCharacterMailingLists(NoSocketsTestCase):
 
         self.character.update_mailing_lists()
 
+        self.assertSetEqual(extract(MailEntity.objects, "id"), {9001, 9002})
         self.assertSetEqual(
-            set(MailEntity.objects.values_list("id", flat=True)), {9001, 9002}
-        )
-        self.assertSetEqual(
-            set(self.character.mailing_lists.values_list("id", flat=True)),
+            extract(self.character.mailing_lists, "id"),
             {9001, 9002},
         )
         obj = MailEntity.objects.get(id=9001)
@@ -594,9 +588,7 @@ class TestCharacterMailingLists(NoSocketsTestCase):
         self.character.update_mailing_lists()
         obj = MailEntity.objects.get(id=9001)
         self.assertEqual(obj.name, "Extravaganza")
-        self.assertSetEqual(
-            set(self.character.mailing_lists.values_list("id", flat=True)), set()
-        )
+        self.assertSetEqual(extract(self.character.mailing_lists, "id"), set())
 
     def test_update_mailing_lists_5(self, mock_esi):
         """when data from ESI has not changed and update is forced, then do update"""

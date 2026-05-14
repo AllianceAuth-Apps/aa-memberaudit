@@ -13,6 +13,7 @@ from app_utils.testing import (
     create_user_from_evecharacter,
 )
 
+from memberaudit.tests.utils import extract
 from memberaudit.utils import (
     clear_users_from_group,
     filter_groups_available_to_user,
@@ -29,8 +30,8 @@ MODULE_PATH = "memberaudit.utils"
 
 def querysets_pks(qs1: models.QuerySet, qs2: models.QuerySet) -> tuple:
     """Two querysets as set of pks for comparison with assertSetEqual()."""
-    qs1_pks = set(qs1.values_list("pk", flat=True))
-    qs2_pks = set(qs2.values_list("pk", flat=True))
+    qs1_pks = extract(qs1, "pk")
+    qs2_pks = extract(qs2, "pk")
     return (qs1_pks, qs2_pks)
 
 
@@ -84,12 +85,8 @@ class TestHelpers(TestCase):
         # when
         clear_users_from_group(group_1)
         # then
-        self.assertSetEqual(
-            {group_2.pk}, set(user_1001.groups.values_list("pk", flat=True))
-        )
-        self.assertSetEqual(
-            {group_2.pk}, set(user_1002.groups.values_list("pk", flat=True))
-        )
+        self.assertSetEqual({group_2.pk}, extract(user_1001.groups, "pk"))
+        self.assertSetEqual({group_2.pk}, extract(user_1002.groups, "pk"))
 
     def test_get_unidecoded_slug_with_default_app_name(self):
         """Test get_unidecoded_slug with default app name"""

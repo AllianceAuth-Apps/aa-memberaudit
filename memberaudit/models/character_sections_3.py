@@ -659,7 +659,7 @@ class CharacterWalletJournalEntry(EveEntityIdsMixin, AddGenericReprMixin, models
     CONTEXT_ID_TYPE_PLANET_ID = "PLN"
     CONTEXT_ID_TYPE_SYSTEM_ID = "SYS"
     CONTEXT_ID_TYPE_TYPE_ID = "TYP"
-    CONTEXT_ID_CHOICES = (
+    CONTEXT_ID_CHOICES = (  # FIXME: structure id is missing
         (CONTEXT_ID_TYPE_UNDEFINED, _("undefined")),
         (CONTEXT_ID_TYPE_STATION_ID, _("station ID")),
         (CONTEXT_ID_TYPE_MARKET_TRANSACTION_ID, _("market transaction ID")),

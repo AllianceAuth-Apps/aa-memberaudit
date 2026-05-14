@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Fails to read contracts without title
+- Fails when receiving roles response with only some role sections defined
+- Tax received for wallet journal entries not read from ESI
 
 ## [4.3.1] - 2026-03-26
 

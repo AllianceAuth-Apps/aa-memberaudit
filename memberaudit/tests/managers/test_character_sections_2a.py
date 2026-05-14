@@ -32,7 +32,7 @@ from memberaudit.tests.testdata.factories_2 import (
     make_esi_url,
 )
 from memberaudit.tests.testdata.load_esi_testdata import esi_testdata
-from memberaudit.tests.utils import TestCaseWithClearCache
+from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 
 class TestCharacter_UpdateCorporationHistory(TestCaseWithClearCache):
@@ -499,7 +499,7 @@ class TestCharacter_UpdateImplants(TestCaseWithClearCache):
 
         # then
         self.assertEqual(character.implants.count(), 1)
-        got = set(character.implants.values_list("eve_type_id", flat=True))
+        got = extract(character.implants, "eve_type_id")
         self.assertSetEqual(got, {implant.id})
 
     @pook.on
@@ -516,7 +516,7 @@ class TestCharacter_UpdateImplants(TestCaseWithClearCache):
         character.update_implants()
 
         # then
-        got = set(character.implants.values_list("eve_type_id", flat=True))
+        got = extract(character.implants, "eve_type_id")
         self.assertSetEqual(got, {implant_type.id})
 
     @pook.on
@@ -534,7 +534,7 @@ class TestCharacter_UpdateImplants(TestCaseWithClearCache):
         character.update_implants()
 
         # then
-        got = set(character.implants.values_list("eve_type_id", flat=True))
+        got = extract(character.implants, "eve_type_id")
         self.assertSetEqual(got, {implant_2_type.id, implant_1.eve_type.id})
 
     @pook.on
@@ -552,7 +552,7 @@ class TestCharacter_UpdateImplants(TestCaseWithClearCache):
         character.update_implants()
 
         # then
-        got = set(character.implants.values_list("eve_type_id", flat=True))
+        got = extract(character.implants, "eve_type_id")
         self.assertSetEqual(got, {implant_1.eve_type.id})
 
     @pook.on
@@ -569,7 +569,7 @@ class TestCharacter_UpdateImplants(TestCaseWithClearCache):
         character.update_implants()
 
         # then
-        got = set(character.implants.values_list("eve_type_id", flat=True))
+        got = extract(character.implants, "eve_type_id")
         self.assertSetEqual(got, set())
 
 

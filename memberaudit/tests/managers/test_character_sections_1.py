@@ -49,6 +49,7 @@ from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     TestCaseWithClearCache,
     create_user_from_evecharacter_with_access,
+    extract,
 )
 
 MODULE_PATH = "memberaudit.managers.character_sections_1"
@@ -107,7 +108,7 @@ class TestCharacterAssetManagerBulkCreate2(TestCase):
 
         # then
         expected_ids = _extract_item_ids(objs)
-        existing_item_ids = set(self.character.assets.values_list("item_id", flat=True))
+        existing_item_ids = extract(self.character.assets, "item_id")
         self.assertSetEqual(existing_item_ids, expected_ids)
         self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
 
@@ -135,7 +136,7 @@ class TestCharacterAssetManagerBulkCreate2(TestCase):
         expected_ids = _extract_item_ids(objs) - {problem_item_id}
         self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
 
-        existing_item_ids = set(self.character.assets.values_list("item_id", flat=True))
+        existing_item_ids = extract(self.character.assets, "item_id")
         self.assertSetEqual(existing_item_ids, expected_ids)
 
 
@@ -720,7 +721,7 @@ class TestCharacter_UpdateContractHeaders(TestCaseWithClearCache):
         character.update_contract_headers()
 
         # then
-        got = set(character.contracts.values_list("contract_id", flat=True))
+        got = extract(character.contracts, "contract_id")
         self.assertSetEqual(got, {contract_1.contract_id, contract_id})
 
     @pook.on
@@ -823,7 +824,7 @@ class TestCharacter_UpdateContractHeaders(TestCaseWithClearCache):
         with patch(MODULE_PATH + ".data_retention_cutoff", lambda: retention_cutoff):
             character.update_contract_headers()
         # then
-        got = set(character.contracts.values_list("contract_id", flat=True))
+        got = extract(character.contracts, "contract_id")
         self.assertSetEqual(got, {contract_2_id, contract_3.contract_id})
 
     @pook.on

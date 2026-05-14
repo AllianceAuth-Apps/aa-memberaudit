@@ -17,6 +17,7 @@ from memberaudit.tests.utils import (
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
+    extract,
 )
 
 MODELS_PATH = "memberaudit.models.characters"
@@ -681,7 +682,7 @@ class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
         result = self.character_1001.update_status_set.filter_enabled_sections()
         # then
         expected = {Character.UpdateSection.ASSETS, Character.UpdateSection.ROLES}
-        sections = set(result.values_list("section", flat=True))
+        sections = extract(result, "section")
         self.assertSetEqual(sections, expected)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
@@ -697,5 +698,5 @@ class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
         result = self.character_1001.update_status_set.filter_enabled_sections()
         # then
         expected = {Character.UpdateSection.ASSETS}
-        sections = set(result.values_list("section", flat=True))
+        sections = extract(result, "section")
         self.assertSetEqual(sections, expected)

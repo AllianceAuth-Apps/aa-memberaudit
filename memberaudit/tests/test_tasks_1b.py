@@ -17,6 +17,7 @@ from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
 from memberaudit import tasks
 from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.tests.utils import extract
 
 from .testdata.factories import (
     create_character,
@@ -162,7 +163,7 @@ class TestUpdateCharacterMails(TestCase):
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
 
-        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+        mail_ids = extract(self.character_1001.mails, "mail_id")
         self.assertSetEqual(mail_ids, {1, 2})
 
         mail = self.character_1001.mails.get(mail_id=1)
@@ -172,7 +173,7 @@ class TestUpdateCharacterMails(TestCase):
         mail = self.character_1001.mails.get(mail_id=2)
         self.assertEqual(mail.subject, "subject 2")
         self.assertEqual(mail.body, "body 2")
-        label_ids = set(mail.labels.values_list("label_id", flat=True))
+        label_ids = extract(mail.labels, "label_id")
         self.assertEqual(label_ids, {1})
 
     # TODO: Add test to check force update works
@@ -205,7 +206,7 @@ class TestUpdateCharacterMails(TestCase):
             )
 
             # then
-            mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+            mail_ids = extract(self.character_1001.mails, "mail_id")
             self.assertSetEqual(mail_ids, {1, 2})
 
             mail = self.character_1001.mails.get(mail_id=1)
@@ -246,7 +247,7 @@ class TestUpdateCharacterMails(TestCase):
             )
 
             # then
-            mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
+            mail_ids = extract(self.character_1001.mails, "mail_id")
             self.assertSetEqual(mail_ids, {1, 2})
 
             mail = self.character_1001.mails.get(mail_id=1)

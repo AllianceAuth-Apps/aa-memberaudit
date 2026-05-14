@@ -1,4 +1,5 @@
 import datetime as dt
+import math
 import urllib.parse
 from typing import Generic, TypeVar
 
@@ -13,6 +14,7 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCorporationFactory,
     EveFactionFactory,
     EveGroupFactory,
+    EvePlanetFactory,
     EveRaceFactory,
     EveSolarSystemFactory,
     EveTypeFactory,
@@ -40,9 +42,27 @@ from memberaudit.models import (
     CharacterJumpCloneImplant,
     CharacterLocation,
     CharacterLoyaltyEntry,
+    CharacterMail,
+    CharacterMailLabel,
+    CharacterMiningLedgerEntry,
+    CharacterOnlineStatus,
+    CharacterPlanet,
+    CharacterRole,
     CharacterShip,
+    CharacterSkill,
+    CharacterSkillqueueEntry,
+    CharacterSkillSetCheck,
+    CharacterStanding,
+    CharacterTitle,
     CharacterUpdateStatus,
+    CharacterWalletBalance,
+    CharacterWalletJournalEntry,
+    CharacterWalletTransaction,
     Location,
+    MailEntity,
+    SkillSet,
+    SkillSetGroup,
+    SkillSetSkill,
 )
 from memberaudit.tests.testdata.constants import EveCategoryId, EveGroupId, EveTypeId
 
@@ -60,6 +80,11 @@ def make_esi_url(path: str) -> str:
     return url
 
 
+class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
+    def __call__(cls, *args, **kwargs) -> T:
+        return super().__call__(*args, **kwargs)
+
+
 # eveuniverse
 
 
@@ -73,9 +98,27 @@ class CyberimplantTypeFactory(EveTypeFactory):
     )
 
 
-class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
-    def __call__(cls, *args, **kwargs) -> T:
-        return super().__call__(*args, **kwargs)
+class NavigationSkillTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.SKILL,
+        eve_category__name="Skill",
+        id=EveGroupId.NAVIGATION,
+        name="Navigation",
+    )
+
+
+class SpaceshipCommandSkillTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.SKILL,
+        eve_category__name="Skill",
+        id=EveGroupId.SPACESHIP_COMMAND,
+        name="Spaceship Command",
+    )
+
+
+# allianceauth
 
 
 class BasicUserFactory(UserMainFactory):
@@ -178,6 +221,82 @@ class LocationSolarSystemFactory(
         eve_group__id=EveGroupId.SOLAR_SYSTEM,
         eve_group__eve_category__id=EveCategoryId.CELESTIAL,
     )
+
+
+class MailEntityCharacterFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
+):
+    class Meta:
+        model = MailEntity
+
+    id = factory.Sequence(lambda n: 90_900_001 + n)
+    category = MailEntity.Category.CHARACTER
+    name = factory.Sequence(lambda n: f"character_name_{n}")
+
+
+class MailEntityMailingListFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
+):
+    class Meta:
+        model = MailEntity
+
+    id = factory.Sequence(lambda n: 10_900_001 + n)
+    category = MailEntity.Category.MAILING_LIST
+    name = factory.Sequence(lambda n: f"mailing_list_{n}")
+
+
+class MailEntityUnknownFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
+):
+    class Meta:
+        model = MailEntity
+
+    id = factory.Sequence(lambda n: 50_900_001 + n)
+    category = MailEntity.Category.UNKNOWN
+
+
+class SkillSetFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[SkillSet]
+):
+    class Meta:
+        model = SkillSet
+
+    description = factory.Faker("paragraph")
+    is_visible = True
+    name = factory.Sequence(lambda n: f"skill set #{1 + n}")
+    ship_type = None
+
+
+class SkillSetGroupFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[SkillSetGroup]
+):
+    class Meta:
+        model = SkillSetGroup
+
+    description = factory.Faker("paragraph")
+    is_doctrine = False
+    is_active = True
+    name = factory.Sequence(lambda n: f"skill group #{1 + n}")
+
+    @factory.post_generation
+    def create_items(obj, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        for o in extracted:
+            obj.groups.add(o)
+
+
+class SkillSetSkillFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[SkillSetSkill]
+):
+    class Meta:
+        model = SkillSetSkill
+
+    skill_set = factory.SubFactory(SkillSetFactory)
+    eve_type = factory.SubFactory(NavigationSkillTypeFactory)
+    required_level = 1
+    recommended_level = 1
 
 
 # Character Sections
@@ -459,6 +578,99 @@ class CharacterLoyaltyEntryFactory(
     loyalty_points = factory.fuzzy.FuzzyInteger(0, 10_000_000)
 
 
+class CharacterMailFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterMail]
+):
+    class Meta:
+        model = CharacterMail
+
+    body = factory.Faker("paragraph")
+    character = factory.SubFactory(CharacterFactory)
+    is_read = False
+    mail_id = factory.Sequence(lambda n: 101 + n)
+    sender = factory.SubFactory(MailEntityCharacterFactory)
+    subject = factory.Faker("sentence")
+    timestamp = factory.LazyFunction(now)
+
+    @factory.post_generation
+    def create_recipients(obj, create, extracted, **kwargs):
+        if not create or extracted is False:
+            return
+
+        obj.recipients.add(MailEntityCharacterFactory())
+
+    @factory.post_generation
+    def create_labels(obj, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        for label in extracted:
+            obj.labels.add(label)
+
+
+class CharacterMailLabelFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterMailLabel]
+):
+    class Meta:
+        model = CharacterMailLabel
+
+    character = factory.SubFactory(CharacterFactory)
+    label_id = factory.Sequence(lambda n: 1 + n)
+    name = factory.Faker("word")
+    color = factory.Faker("color")
+    unread_count = 0
+
+
+class CharacterMiningLedgerEntryFactory(
+    factory.django.DjangoModelFactory,
+    metaclass=BaseMetaFactory[CharacterMiningLedgerEntry],
+):
+    class Meta:
+        model = CharacterMiningLedgerEntry
+
+    character = factory.SubFactory(CharacterFactory)
+    date = factory.LazyAttribute(lambda _: now().date())
+    eve_solar_system = factory.SubFactory(EveSolarSystemFactory)
+    eve_type = factory.SubFactory(EveTypeFactory)
+    quantity = factory.fuzzy.FuzzyInteger(100, 10_000)
+
+
+class CharacterOnlineStatusFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterOnlineStatus]
+):
+    class Meta:
+        model = CharacterOnlineStatus
+
+    character = factory.SubFactory(CharacterFactory)
+    last_login = factory.fuzzy.FuzzyDateTime(now() - dt.timedelta(days=7), now())
+    last_logout = factory.fuzzy.FuzzyDateTime(now() - dt.timedelta(days=7), now())
+    logins = factory.fuzzy.FuzzyInteger(1, 5_000)
+
+
+class CharacterPlanetFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterPlanet]
+):
+    class Meta:
+        model = CharacterPlanet
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_planet = factory.SubFactory(EvePlanetFactory)
+    last_update_at = factory.LazyFunction(now)
+    num_pins = factory.fuzzy.FuzzyInteger(1, 50)
+    upgrade_level = factory.fuzzy.FuzzyInteger(0, 5)
+
+
+class CharacterRoleFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterRole]
+):
+    class Meta:
+        model = CharacterRole
+
+    character = factory.SubFactory(CharacterFactory)
+    location = CharacterRole.Location.UNIVERSAL
+    role = factory.fuzzy.FuzzyChoice(CharacterRole.Role.values)
+
+
 class CharacterShipFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterShip]
 ):
@@ -469,3 +681,124 @@ class CharacterShipFactory(
     eve_type = factory.SubFactory(ShipTypeFactory)
     item_id = factory.Sequence(lambda n: 100_000_001 + n)
     name = factory.faker.Faker("word")
+
+
+class CharacterSkillFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterSkill]
+):
+    class Meta:
+        model = CharacterSkill
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_type = factory.SubFactory(NavigationSkillTypeFactory)
+    active_skill_level = factory.LazyAttribute(lambda o: o.trained_skill_level)
+    trained_skill_level = factory.fuzzy.FuzzyInteger(0, 5)
+
+    @factory.lazy_attribute
+    def skillpoints_in_skill(self):
+        rank = factory.fuzzy.FuzzyInteger(1, 16).fuzz()
+        n = self.trained_skill_level
+        return 250 * rank * math.sqrt(math.pow(32, n - 1))
+
+
+class CharacterSkillqueueEntryFactory(
+    factory.django.DjangoModelFactory,
+    metaclass=BaseMetaFactory[CharacterSkillqueueEntry],
+):
+    class Meta:
+        model = CharacterSkillqueueEntry
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_type = factory.SubFactory(NavigationSkillTypeFactory)
+    finish_date = factory.fuzzy.FuzzyDateTime(
+        now() + dt.timedelta(hours=1), now() + dt.timedelta(days=15)
+    )
+    finished_level = factory.fuzzy.FuzzyInteger(1, 5)
+    level_end_sp = factory.LazyAttribute(lambda o: o.level_start_sp + 100_000)
+    level_start_sp = factory.fuzzy.FuzzyInteger(0, 10_000)
+    queue_position = factory.Sequence(lambda n: 1 + n)
+    start_date = factory.fuzzy.FuzzyDateTime(
+        now() - dt.timedelta(days=15), now() - dt.timedelta(hours=1)
+    )
+    training_start_sp = 0
+
+
+class CharacterStandingFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterStanding]
+):
+    class Meta:
+        model = CharacterStanding
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_entity = factory.SubFactory(EveEntityCharacterFactory)
+    standing = factory.fuzzy.FuzzyFloat(-10, 10)
+
+
+class CharacterSkillSetCheckFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterSkillSetCheck]
+):
+    class Meta:
+        model = CharacterSkillSetCheck
+
+    character = factory.SubFactory(CharacterFactory)
+
+
+class CharacterTitleFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterTitle]
+):
+    class Meta:
+        model = CharacterTitle
+
+    character = factory.SubFactory(CharacterFactory)
+    name = factory.faker.Faker("word")
+    title_id = factory.Sequence(lambda n: 1 + n)
+
+
+class CharacterWalletBalanceFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterWalletBalance]
+):
+    class Meta:
+        model = CharacterWalletBalance
+
+    character = factory.SubFactory(CharacterFactory)
+    total = factory.fuzzy.FuzzyDecimal(0, 10_000_000_000)
+
+
+class CharacterWalletJournalEntryFactory(
+    factory.django.DjangoModelFactory,
+    metaclass=BaseMetaFactory[CharacterWalletJournalEntry],
+):
+    class Meta:
+        model = CharacterWalletJournalEntry
+
+    amount = factory.fuzzy.FuzzyDecimal(0, 10_000_000_000)
+    balance = factory.fuzzy.FuzzyDecimal(0, 10_000_000_000)
+    context_id_type = CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED
+    character = factory.SubFactory(CharacterFactory)
+    date = factory.LazyFunction(now)
+    description = factory.faker.Faker("sentence")
+    entry_id = factory.Sequence(lambda n: 1 + n)
+    first_party = factory.SubFactory(EveEntityCharacterFactory)
+    reason = factory.faker.Faker("sentence")
+    ref_type = "player_donation"
+    second_party = factory.SubFactory(EveEntityCharacterFactory)
+
+
+class CharacterWalletTransactionFactory(
+    factory.django.DjangoModelFactory,
+    metaclass=BaseMetaFactory[CharacterWalletTransaction],
+):
+    class Meta:
+        model = CharacterWalletTransaction
+
+    character = factory.SubFactory(CharacterFactory)
+    client = factory.SubFactory(EveEntityCharacterFactory)
+    date = factory.LazyFunction(now)
+    eve_type = factory.SubFactory(EveTypeFactory)
+    is_buy = True
+    is_personal = True
+    journal_ref = None
+    location = factory.SubFactory(LocationStationFactory)
+    quantity = factory.fuzzy.FuzzyInteger(1, 10_000)
+    transaction_id = factory.Sequence(lambda n: 1 + n)
+    unit_price = factory.fuzzy.FuzzyDecimal(0, 500_000_000)

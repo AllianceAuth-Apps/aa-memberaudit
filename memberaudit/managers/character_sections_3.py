@@ -234,6 +234,9 @@ class CharacterRoleManager(models.Manager):
         )
         to_add = []
         for location_name, roles in roles_data.items():
+            if not roles:
+                continue
+
             location = location_map[location_name]
             for role_name in roles:
                 try:
@@ -329,12 +332,7 @@ class CharacterShipManager(models.Manager):
         return ship_info
 
     def _update_or_create_objs(self, character: Character, ship_info):
-        ship_type_id = ship_info.get("ship_type_id")
-        if not ship_type_id:
-            self.filter(character=character).delete()
-            return
-
-        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_type_id)
+        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_info["ship_type_id"])
         self.update_or_create(
             character=character,
             defaults={
@@ -812,7 +810,9 @@ class CharacterWalletJournalEntryManager(models.Manager):
                         "second_party_id", row, EveEntity
                     ),
                     tax=row.get("tax"),
-                    tax_receiver=row.get("tax_receiver"),
+                    tax_receiver=get_or_create_or_none(
+                        "tax_receiver_id", row, EveEntity
+                    ),
                 )
                 for entry_id, row in entries_list.items()
                 if entry_id in create_ids

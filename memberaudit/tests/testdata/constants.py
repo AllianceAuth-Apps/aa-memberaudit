@@ -27,8 +27,10 @@ class EveGroupId(IntEnum):
     """Eve Online named group IDs"""
 
     CAPSULE = 29
-    SOLAR_SYSTEM = 5
     CYBERIMPLANT = 300
+    NAVIGATION = 275
+    SOLAR_SYSTEM = 5
+    SPACESHIP_COMMAND = 257
 
 
 class EveSolarSystemId(IntEnum):

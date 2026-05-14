@@ -1,49 +1,38 @@
 import datetime as dt
+from http import HTTPStatus
 from unittest.mock import patch
 
 import pook
 
-from django.test import TestCase, override_settings
-from django.utils.dateparse import parse_datetime
-from eveuniverse.models import EveEntity
+from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import EveEntityCorporationFactory
 
-from app_utils.esi_testing import build_http_error
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.models import (
     CharacterLocation,
     CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
-    MailEntity,
-)
-from memberaudit.tests.testdata.esi_client_stub import esi_client_stub, esi_stub
-from memberaudit.tests.testdata.factories import (
-    create_character_mail,
-    create_character_mail_label,
-    create_mail_entity_from_eve_entity,
-    create_mailing_list,
 )
 from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
     CharacterLocationFactory,
     CharacterLoyaltyEntryFactory,
+    CharacterMailFactory,
+    CharacterMailLabelFactory,
     LocationSolarSystemFactory,
     LocationStationFactory,
     LocationStructureFactory,
+    MailEntityCharacterFactory,
     make_esi_url,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
-from memberaudit.tests.utils import TestCaseWithClearCache, create_memberaudit_character
+from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 MODULE_PATH = "memberaudit.managers.character_sections_2"
 
 
-class TestCharacterLocationManager(TestCaseWithClearCache):
+class TestCharacter_UpdateLocation(TestCaseWithClearCache):
     @pook.on
     def test_should_create_location_from_scratch_for_station(self):
         # given
@@ -51,7 +40,7 @@ class TestCharacterLocationManager(TestCaseWithClearCache):
         location = LocationStationFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/location"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json={
                 "solar_system_id": location.eve_solar_system.id,
                 "station_id": location.id,
@@ -73,7 +62,7 @@ class TestCharacterLocationManager(TestCaseWithClearCache):
         location = LocationStructureFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/location"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json={
                 "solar_system_id": location.eve_solar_system.id,
                 "structure_id": location.id,
@@ -95,7 +84,7 @@ class TestCharacterLocationManager(TestCaseWithClearCache):
         location = LocationSolarSystemFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/location"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json={
                 "solar_system_id": location.id,
             },
@@ -117,7 +106,7 @@ class TestCharacterLocationManager(TestCaseWithClearCache):
         location = LocationStationFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/location"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json={
                 "solar_system_id": location.eve_solar_system.id,
                 "station_id": location.id,
@@ -142,7 +131,7 @@ class TestCharacter_UpdateLoyalty(TestCaseWithClearCache):
         loyalty_points = 42
         pook.get(
             make_esi_url(f"characters/{character.character_id}/loyalty/points"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json=[
                 {
                     "corporation_id": corporation.id,
@@ -167,7 +156,7 @@ class TestCharacter_UpdateLoyalty(TestCaseWithClearCache):
         loyalty_points = 42
         pook.get(
             make_esi_url(f"characters/{character.character_id}/loyalty/points"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json=[
                 {
                     "corporation_id": entry.corporation.id,
@@ -191,7 +180,7 @@ class TestCharacter_UpdateLoyalty(TestCaseWithClearCache):
         loyalty_points = 42
         pook.get(
             make_esi_url(f"characters/{character.character_id}/loyalty/points"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_json=[
                 {
                     "corporation_id": corporation.id,
@@ -226,432 +215,423 @@ class TestCharacter_UpdateLoyalty(TestCaseWithClearCache):
         self.assertEqual(obj.corporation, entry.corporation)
 
 
-@patch(MODULE_PATH + ".esi")
-class TestUpdateCharacterMailHeaders(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    def test_can_create_new_mail_from_scratch(self, mock_esi):
+class TestCharacter_UpdateMailHeaders(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_new_mail_without_labels(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_mail_entity_from_eve_entity(1002)
-        create_mailing_list(id=9001)
-        create_character_mail_label(character=self.character_1001, label_id=3)
+        character = CharacterFactory()
+        sender = MailEntityCharacterFactory()
+        recipient = MailEntityCharacterFactory()
+        subject = "subject"
+        mail_id = 42
+        timestamp = now()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": sender.id,
+                    "is_read": True,
+                    "labels": [],
+                    "mail_id": mail_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": subject,
+                    "timestamp": timestamp.isoformat(),
+                }
+            ],
+        )
 
         # when
-        result = self.character_1001.update_mail_headers()
+        character.update_mail_headers()
 
         # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-
-        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
-        self.assertSetEqual(mail_ids, {1, 2, 3})
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertEqual(obj.sender.id, 1002)
-        self.assertTrue(obj.is_read)
-        self.assertEqual(obj.subject, "Mail 1")
-        self.assertEqual(obj.timestamp, parse_datetime("2015-09-05T16:07:00Z"))
+        self.assertEqual(character.mails.count(), 1)
+        obj: CharacterMail = character.mails.first()
+        self.assertEqual(obj.is_read, True)
+        self.assertEqual(obj.mail_id, mail_id)
+        self.assertEqual(obj.sender, sender)
+        self.assertEqual(obj.subject, subject)
+        self.assertEqual(obj.timestamp, timestamp)
         self.assertFalse(obj.body)
-        self.assertTrue(obj.recipients.filter(id=1001).exists())
-        self.assertTrue(obj.recipients.filter(id=9001).exists())
-        self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
 
-        obj = self.character_1001.mails.get(mail_id=2)
-        self.assertEqual(obj.sender_id, 9001)
-        self.assertFalse(obj.is_read)
-        self.assertEqual(obj.subject, "Mail 2")
-        self.assertEqual(obj.timestamp, parse_datetime("2015-09-10T18:07:00Z"))
+        self.assertSetEqual(extract(obj.recipients, "id"), {recipient.id})
+
+    @pook.on
+    def test_can_create_new_mail_with_labels(self):
+        # given
+        character = CharacterFactory()
+        label = CharacterMailLabelFactory(character=character)
+        sender = MailEntityCharacterFactory()
+        recipient = MailEntityCharacterFactory()
+        subject = "subject"
+        mail_id = 42
+        timestamp = now()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": sender.id,
+                    "is_read": True,
+                    "labels": [label.label_id],
+                    "mail_id": mail_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": subject,
+                    "timestamp": timestamp.isoformat(),
+                }
+            ],
+        )
+
+        # when
+        character.update_mail_headers()
+
+        # then
+        self.assertEqual(character.mails.count(), 1)
+        obj: CharacterMail = character.mails.first()
+        self.assertEqual(obj.is_read, True)
+        self.assertEqual(obj.mail_id, mail_id)
+        self.assertEqual(obj.sender, sender)
+        self.assertEqual(obj.subject, subject)
+        self.assertEqual(obj.timestamp, timestamp)
         self.assertFalse(obj.body)
-        self.assertSetEqual(set(obj.labels.values_list("label_id", flat=True)), {3})
 
-        obj = self.character_1001.mails.get(mail_id=3)
-        self.assertEqual(obj.sender_id, 1002)
-        self.assertTrue(obj.recipients.filter(id=9003).exists())
-        self.assertEqual(obj.timestamp, parse_datetime("2015-09-20T12:07:00Z"))
+        self.assertSetEqual(extract(obj.recipients, "id"), {recipient.id})
+        self.assertSetEqual(extract(obj.labels, "label_id"), {label.label_id})
 
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    def test_should_skip_update_when_no_change(self, mock_esi):
+    @pook.on
+    def test_should_keep_mail_not_returned_from_esi(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_mail_entity_from_eve_entity(1002)
-        create_mailing_list(id=9001)
-        create_character_mail_label(character=self.character_1001, label_id=3)
-        self.character_1001.update_mail_headers()
-        obj = self.character_1001.mails.get(mail_id=1)
-        obj.is_read = False
-        obj.save()
+        character = CharacterFactory()
+        mail_1 = CharacterMailFactory(character=character)
+        sender = MailEntityCharacterFactory()
+        recipient = MailEntityCharacterFactory()
+        subject_2 = "subject"
+        mail_2_id = 42
+        timestamp_2 = now()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": sender.id,
+                    "is_read": True,
+                    "labels": [],
+                    "mail_id": mail_2_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": subject_2,
+                    "timestamp": timestamp_2.isoformat(),
+                }
+            ],
+        )
 
         # when
-        result = self.character_1001.update_mail_headers()
+        character.update_mail_headers()
 
-        # then
-        self.assertFalse(result.is_changed)
-        self.assertFalse(result.is_updated)
-
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertFalse(obj.is_read)
-
-    @patch(MODULE_PATH + ".data_retention_cutoff", lambda: None)
-    def test_should_always_update_when_forced(self, mock_esi):
         # given
-        mock_esi.client = esi_client_stub
-        create_mail_entity_from_eve_entity(1002)
-        create_mailing_list(id=9001)
-        create_character_mail_label(character=self.character_1001, label_id=3)
-        self.character_1001.update_mail_headers()
-        obj = self.character_1001.mails.get(mail_id=1)
-        obj.is_read = False
-        obj.save()
+        got = extract(character.mails, "mail_id")
+        self.assertSetEqual(got, {mail_2_id, mail_1.mail_id})
+
+    @pook.on
+    def test_should_ignore_and_delete_older_mail_when_data_retention_is_active(self):
+        # given
+        cutoff = now() - dt.timedelta(days=90)
+        character = CharacterFactory()
+        sender = MailEntityCharacterFactory()
+        recipient = MailEntityCharacterFactory()
+        subject = "subject"
+        mail_1_id = 1
+        timestamp_1 = cutoff - dt.timedelta(seconds=1)
+        mail_2_id = 2
+        timestamp_2 = now()
+        CharacterMailFactory(
+            character=character, mail_id=3, timestamp=cutoff - dt.timedelta(seconds=1)
+        )  # to be removed
+        mail_4 = CharacterMailFactory(character=character, mail_id=4)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": sender.id,
+                    "is_read": True,
+                    "labels": [],
+                    "mail_id": mail_2_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": subject,
+                    "timestamp": timestamp_2.isoformat(),
+                },
+                {
+                    "from": sender.id,
+                    "is_read": True,
+                    "labels": [],
+                    "mail_id": mail_1_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": subject,
+                    "timestamp": timestamp_1.isoformat(),
+                },
+            ],
+        )
 
         # when
-        result = self.character_1001.update_mail_headers(force_update=True)
+        with patch(MODULE_PATH + ".data_retention_cutoff", lambda: cutoff):
+            character.update_mail_headers()
 
         # then
-        self.assertFalse(result.is_changed)
-        self.assertTrue(result.is_updated)
+        got = extract(character.mails, "mail_id")
+        self.assertSetEqual(got, {mail_2_id, mail_4.mail_id})
 
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertTrue(obj.is_read)
 
-    @patch(
-        MODULE_PATH + ".data_retention_cutoff",
-        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=dt.timezone.utc)
-        - dt.timedelta(days=15),
-    )
-    def test_update_mail_headers_6(self, mock_esi):
-        """when data retention limit is set, then only fetch mails within that limit"""
-        mock_esi.client = esi_client_stub
-        create_mail_entity_from_eve_entity(1002)
-        create_mailing_list(id=9001)
-        create_character_mail_label(character=self.character_1001, label_id=3)
-
-        self.character_1001.update_mail_headers()
-
-        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
-        self.assertSetEqual(mail_ids, {2, 3})
-
-    @patch(
-        MODULE_PATH + ".data_retention_cutoff",
-        lambda: dt.datetime(2015, 9, 20, 20, 5, tzinfo=dt.timezone.utc)
-        - dt.timedelta(days=15),
-    )
-    def test_update_mail_headers_7(self, mock_esi):
-        """when data retention limit is set, then remove old data beyond that limit"""
+class TestCharacter_UpdateMailBody(TestCaseWithClearCache):
+    @pook.on
+    def test_should_update_existing_mail_body(self):
         # given
-        mock_esi.client = esi_client_stub
-        sender, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=1002)
-        create_character_mail(
-            character=self.character_1001,
-            mail_id=99,
-            sender=sender,
-            subject="Mail Old",
-            timestamp=parse_datetime("2015-09-02T14:02:00Z"),
-            is_read=False,
+        character = CharacterFactory()
+        mail = CharacterMailFactory(character=character)
+        recipient = mail.recipients.first()
+        body = "blah blah blah 😓"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail.mail_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": body,
+                "from": mail.sender.id,
+                "labels": [],
+                "read": mail.is_read,
+                "recipients": [
+                    {"recipient_id": recipient.id, "recipient_type": "character"}
+                ],
+                "subject": mail.subject,
+                "timestamp": mail.timestamp.isoformat(),
+            },
         )
-
-        create_mail_entity_from_eve_entity(1002)
-        create_mailing_list(id=9001)
-        create_character_mail_label(character=self.character_1001, label_id=3)
 
         # when
-        self.character_1001.update_mail_headers()
+        got = character.update_mail_body(mail)
 
         # then
-        mail_ids = set(self.character_1001.mails.values_list("mail_id", flat=True))
-        self.assertSetEqual(mail_ids, {2, 3})
+        self.assertTrue(got.is_changed)
+        self.assertTrue(got.is_updated)
+        mail.refresh_from_db()
+        self.assertEqual(mail.body, body)
 
-
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-@patch(MODULE_PATH + ".esi")
-class TestUpdateCharacterMailBody(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.corporation_2001 = EveEntity.objects.get(id=2001)
-        cls.corporation_2002 = EveEntity.objects.get(id=2002)
-
-    def test_should_update_existing_mail_body(self, mock_esi):
+    @pook.on
+    def test_should_not_update_when_body_has_not_changed(self):
         # given
-        mock_esi.client = esi_client_stub
-        sender = create_mail_entity_from_eve_entity(1002)
-        mail = create_character_mail(
-            character=self.character_1001,
-            mail_id=1,
-            sender=sender,
-            subject="Mail 1",
-            body="Update me",
-            is_read=False,
-            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        character = CharacterFactory()
+        mail = CharacterMailFactory(character=character)
+        body = mail.body
+        recipient = mail.recipients.first()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail.mail_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": mail.body,
+                "from": mail.sender.id,
+                "labels": [],
+                "read": mail.is_read,
+                "recipients": [
+                    {"recipient_id": recipient.id, "recipient_type": "character"}
+                ],
+                "subject": mail.subject,
+                "timestamp": mail.timestamp.isoformat(),
+            },
         )
-        recipient_1001 = create_mail_entity_from_eve_entity(1001)
-        recipient_9001 = create_mailing_list(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
-        )
-        mail.recipients.add(recipient_1001, recipient_9001)
 
         # when
-        result = self.character_1001.update_mail_body(mail)
+        got = character.update_mail_body(mail)
 
         # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertEqual(obj.body, "blah blah blah 😓")
+        self.assertFalse(got.is_changed)
+        self.assertFalse(got.is_updated)
+        mail.refresh_from_db()
+        self.assertEqual(mail.body, body)
 
-    def test_should_not_update_when_body_has_not_changed(self, mock_esi):
+    @pook.on
+    def test_should_update_when_body_has_not_changed_but_forced(self):
         # given
-        mock_esi.client = esi_client_stub
-        sender = create_mail_entity_from_eve_entity(1002)
-        mail = create_character_mail(
-            character=self.character_1001,
-            mail_id=1,
-            sender=sender,
-            subject="Mail 1",
-            body="blah blah blah 😓",
-            is_read=False,
-            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        character = CharacterFactory()
+        mail = CharacterMailFactory(character=character)
+        body = mail.body
+        recipient = mail.recipients.first()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail.mail_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": mail.body,
+                "from": mail.sender.id,
+                "labels": [],
+                "read": mail.is_read,
+                "recipients": [
+                    {"recipient_id": recipient.id, "recipient_type": "character"}
+                ],
+                "subject": mail.subject,
+                "timestamp": mail.timestamp.isoformat(),
+            },
         )
-        recipient_1001 = create_mail_entity_from_eve_entity(1001)
-        recipient_9001 = create_mailing_list(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
-        )
-        mail.recipients.add(recipient_1001, recipient_9001)
 
         # when
-        result = self.character_1001.update_mail_body(mail)
+        got = character.update_mail_body(mail, force_update=True)
 
         # then
-        self.assertFalse(result.is_changed)
-        self.assertFalse(result.is_updated)
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertEqual(obj.body, "blah blah blah 😓")
+        self.assertFalse(got.is_changed)
+        self.assertTrue(got.is_updated)
+        mail.refresh_from_db()
+        self.assertEqual(mail.body, body)
 
-    def test_should_update_when_body_has_not_changed_but_forced(self, mock_esi):
+    @pook.on
+    def test_should_delete_mail_when_fetching_body_returns_404(self):
         # given
-        mock_esi.client = esi_client_stub
-        sender = create_mail_entity_from_eve_entity(1002)
-        mail = create_character_mail(
-            character=self.character_1001,
-            mail_id=1,
-            sender=sender,
-            subject="Mail 1",
-            body="blah blah blah 😓",
-            is_read=False,
-            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
+        character = CharacterFactory()
+        mail = CharacterMailFactory(character=character)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail.mail_id}"),
+            reply=HTTPStatus.NOT_FOUND,
+            response_json={"error": "not found"},
         )
-        recipient_1001 = create_mail_entity_from_eve_entity(1001)
-        recipient_9001 = create_mailing_list(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
-        )
-        mail.recipients.add(recipient_1001, recipient_9001)
 
         # when
-        result = self.character_1001.update_mail_body(mail, force_update=True)
-
-        # then
-        self.assertFalse(result.is_changed)
-        self.assertTrue(result.is_updated)
-        obj = self.character_1001.mails.get(mail_id=1)
-        self.assertEqual(obj.body, "blah blah blah 😓")
-
-    @patch(MODULE_PATH + ".eve_xml_to_html")
-    def test_should_update_mail_body_from_scratch(self, mock_eve_xml_to_html, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-        mock_eve_xml_to_html.side_effect = lambda x: eve_xml_to_html(x)
-        sender = create_mail_entity_from_eve_entity(1002)
-        mail = create_character_mail(
-            character=self.character_1001,
-            mail_id=2,
-            sender=sender,
-            subject="Mail 1",
-            is_read=False,
-            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
-        )
-        recipient_1 = create_mail_entity_from_eve_entity(1001)
-        mail.recipients.add(recipient_1)
-
-        # when
-        result = self.character_1001.update_mail_body(mail)
-
-        # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        obj = self.character_1001.mails.get(mail_id=2)
-        self.assertTrue(obj.body)
-        self.assertTrue(mock_eve_xml_to_html.called)
-
-    def test_should_delete_mail_header_when_fetching_body_returns_404(self, mock_esi):
-        # given
-        mock_esi.client.Mail.get_characters_character_id_mail_mail_id.side_effect = (
-            build_http_error(404, "Test")
-        )
-        sender = create_mail_entity_from_eve_entity(1002)
-        mail = create_character_mail(
-            character=self.character_1001,
-            mail_id=1,
-            sender=sender,
-            subject="Mail 1",
-            is_read=False,
-            timestamp=parse_datetime("2015-09-30T16:07:00Z"),
-        )
-        recipient_1001 = create_mail_entity_from_eve_entity(1001)
-        recipient_9001 = create_mailing_list(
-            id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy 2"
-        )
-        mail.recipients.add(recipient_1001, recipient_9001)
-
-        # when
-        result = self.character_1001.update_mail_body(mail)
-
-        # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        self.assertFalse(self.character_1001.mails.filter(mail_id=1).exists())
-
-    @patch("memberaudit.models.MailEntity.objects.get_or_create_esi_async")
-    def test_can_preload_mail_senders(self, mock_get_or_create_esi_async, mock_esi):
-        # given
-        create_mailing_list(id=9001)
-        headers = {1: {"from": 9001, "mail_id": 1}, 2: {"from": 9002, "mail_id": 2}}
-        # when
-        CharacterMail.objects._preload_mail_senders(headers)
-        # then
-        self.assertTrue(mock_get_or_create_esi_async.called)
-        mail_entity_ids = {
-            o[1]["id"] for o in mock_get_or_create_esi_async.call_args_list
-        }
-        self.assertSetEqual(mail_entity_ids, {9002})
+        got = character.update_mail_body(mail)
+        self.assertTrue(got.is_changed)
+        self.assertTrue(got.is_updated)
+        self.assertFalse(character.mails.filter(mail_id=mail.mail_id).exists())
 
 
-@patch(MODULE_PATH + ".esi", esi_stub)
-class TestCharacterMailLabelManager(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-
-    def test_should_return_all_known_labels_1(self):
-        label_1 = create_character_mail_label(character=self.character_1001, label_id=1)
-        label_2 = create_character_mail_label(character=self.character_1001, label_id=2)
-        labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(
-            labels, {label_1.label_id: label_1, label_2.label_id: label_2}
-        )
-
-    def test_should_return_all_known_labels_2(self):
-        labels = CharacterMailLabel.objects.get_all_labels()
-        self.assertDictEqual(labels, {})
-
+class TestCharacter_UpdateMailLabels(TestCaseWithClearCache):
+    @pook.on
     def test_should_create_labels_from_scratch(self):
-        # when
-        result = self.character_1001.update_mail_labels()
-
-        # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        self.assertEqual(self.character_1001.unread_mail_count.total, 5)
-        label_ids = set(
-            self.character_1001.mail_labels.values_list("label_id", flat=True)
-        )
-        self.assertSetEqual(label_ids, {3, 17})
-
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
-        self.assertEqual(obj.unread_count, 4)
-        self.assertEqual(obj.color, "#660066")
-
-        obj = self.character_1001.mail_labels.get(label_id=17)
-        self.assertEqual(obj.name, "WHITE")
-        self.assertEqual(obj.unread_count, 1)
-        self.assertEqual(obj.color, "#ffffff")
-
-    def test_should_remove_obsolete_labels(self):
         # given
-        create_character_mail_label(
-            character=self.character_1001, label_id=666, name="Obsolete"
+        character = CharacterFactory()
+        total_unread_count = 5
+        unread_count = 4
+        color = "#660066"
+        name = "Special"
+        label_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [
+                    {
+                        "color": color,
+                        "label_id": label_id,
+                        "name": name,
+                        "unread_count": unread_count,
+                    }
+                ],
+                "total_unread_count": total_unread_count,
+            },
         )
 
         # when
-        result = self.character_1001.update_mail_labels()
+        character.update_mail_labels()
 
         # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        label_ids = set(
-            self.character_1001.mail_labels.values_list("label_id", flat=True)
-        )
-        self.assertSetEqual(label_ids, {3, 17})
+        self.assertEqual(character.unread_mail_count.total, total_unread_count)
+        self.assertEqual(character.mail_labels.count(), 1)
+        obj: CharacterMailLabel = character.mail_labels.first()
+        self.assertEqual(obj.name, name)
+        self.assertEqual(obj.unread_count, unread_count)
+        self.assertEqual(obj.color, color)
+        self.assertEqual(obj.label_id, label_id)
 
+    @pook.on
     def test_should_update_existing_labels(self):
         # given
-        create_character_mail_label(
-            character=self.character_1001,
-            label_id=3,
-            name="Update me",
-            unread_count=0,
-            color=0,
+        character = CharacterFactory()
+        label = CharacterMailLabelFactory(character=character)
+        total_unread_count = 5
+        unread_count = 4
+        color = "#660066"
+        name = "Special"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [
+                    {
+                        "color": color,
+                        "label_id": label.label_id,
+                        "name": name,
+                        "unread_count": unread_count,
+                    }
+                ],
+                "total_unread_count": total_unread_count,
+            },
         )
 
         # when
-        result = self.character_1001.update_mail_labels()
+        character.update_mail_labels()
 
         # then
-        self.assertTrue(result.is_changed)
-        self.assertTrue(result.is_updated)
-        self.assertSetEqual(
-            set(self.character_1001.mail_labels.values_list("label_id", flat=True)),
-            {3, 17},
+        self.assertEqual(character.unread_mail_count.total, total_unread_count)
+
+        label.refresh_from_db()
+        self.assertEqual(label.name, name)
+        self.assertEqual(label.unread_count, unread_count)
+        self.assertEqual(label.color, color)
+
+    @pook.on
+    def test_should_remove_stale_labels(self):
+        # given
+        character = CharacterFactory()
+        CharacterMailLabelFactory(character=character)  # to be removed
+        total_unread_count = 5
+        unread_count = 4
+        color = "#660066"
+        name = "Special"
+        label_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [
+                    {
+                        "color": color,
+                        "label_id": label_id,
+                        "name": name,
+                        "unread_count": unread_count,
+                    }
+                ],
+                "total_unread_count": total_unread_count,
+            },
         )
 
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
-        self.assertEqual(obj.unread_count, 4)
-        self.assertEqual(obj.color, "#660066")
+        # when
+        character.update_mail_labels()
 
-    def test_should_skip_update_when_esi_data_has_not_changed(self):
+        # then
+        got = extract(character.mail_labels, "label_id")
+        want = {label_id}
+        self.assertSetEqual(got, want)
+
+
+class TestCharacterMailLabelManager_GetAllLabels(NoSocketsTestCase):
+    def test_should_return_labels_for_all_characters(self):
         # given
-        self.character_1001.update_mail_labels()
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        obj.name = "MAGENTA"
-        obj.save()
+        label_1 = CharacterMailLabelFactory()
+        label_2 = CharacterMailLabelFactory()
 
         # when
-        result = self.character_1001.update_mail_labels()
+        got = CharacterMailLabel.objects.get_all_labels()
 
         # then
-        self.assertFalse(result.is_changed)
-        self.assertFalse(result.is_updated)
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "MAGENTA")
+        want = {label_1.label_id: label_1, label_2.label_id: label_2}
+        self.assertDictEqual(got, want)
 
-    def test_should_update_when_esi_data_has_not_changed_but_forced(self):
-        # given
-        self.character_1001.update_mail_labels()
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        obj.name = "MAGENTA"
-        obj.save()
+    def test_should_return_empty_when_no_labels_exist(self):
+        # when
+        got = CharacterMailLabel.objects.get_all_labels()
 
         # then
-        result = self.character_1001.update_mail_labels(force_update=True)
-
-        self.assertFalse(result.is_changed)
-        self.assertTrue(result.is_updated)
-        obj = self.character_1001.mail_labels.get(label_id=3)
-        self.assertEqual(obj.name, "PINK")
+        want = {}
+        self.assertDictEqual(got, want)
