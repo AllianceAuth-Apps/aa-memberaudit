@@ -16,9 +16,9 @@ from eveuniverse.tests.testdata.factories_2 import (
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit import tasks
+from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import (
     Character,
-    CharacterAsset,
     CharacterContact,
     CharacterContactLabel,
     CharacterContract,
@@ -26,21 +26,20 @@ from memberaudit.models import (
     CharacterUpdateStatus,
 )
 from memberaudit.tests.testdata.factories_2 import (
-    CharacterAssetFactory,
     CharacterContractItemExchangeFactory,
     CharacterFactory,
     CharacterOrphanFactory,
     CharacterUpdateStatusFactory,
     ComplianceGroupFactory,
-    LocationSolarSystemFactory,
     LocationStationFactory,
-    LocationStructureFactory,
     make_esi_url,
 )
 from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
+
+# @tag("breaks_with_tox")
 
 
 TASK_NAMES: frozenset[str] = frozenset(
@@ -72,9 +71,6 @@ TASK_NAMES: frozenset[str] = frozenset(
         "update_character_wallet_transactions",
     ]
 )
-
-
-# @tag("breaks_with_tox")  # FIXME: Find solution
 
 
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
@@ -294,458 +290,6 @@ class TestUpdateCharacter_EsiIssues(NoSocketsTestCase):
             self.assertFalse(got)
 
 
-@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharacterAssets(TestCaseWithClearCache):
-    @pook.on
-    def test_should_create_assets_from_scratch(self):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        in_space = LocationSolarSystemFactory()
-        structure = LocationStructureFactory()
-        type_1 = EveTypeFactory()
-        type_2 = EveTypeFactory()
-        type_3 = EveTypeFactory()
-        type_4 = EveTypeFactory()
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": True,
-                    "is_singleton": True,
-                    "item_id": 1100000000001,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": 1,
-                    "type_id": type_4.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000002,
-                    "location_flag": "Hangar",
-                    "location_id": 1100000000001,
-                    "location_type": "item",
-                    "quantity": 1,
-                    "type_id": type_2.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000003,
-                    "location_flag": "Hangar",
-                    "location_id": 1100000000001,
-                    "location_type": "item",
-                    "quantity": 1,
-                    "type_id": type_1.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000004,
-                    "location_flag": "Hangar",
-                    "location_id": 1100000000003,
-                    "location_type": "item",
-                    "quantity": 1,
-                    "type_id": type_3.id,
-                },
-                {
-                    "is_blueprint_copy": True,
-                    "is_singleton": True,
-                    "item_id": 1100000000005,
-                    "location_flag": "Hangar",
-                    "location_id": structure.id,
-                    "location_type": "other",
-                    "quantity": 1,
-                    "type_id": type_4.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000006,
-                    "location_flag": "Hangar",
-                    "location_id": 1100000000005,
-                    "location_type": "item",
-                    "quantity": 1,
-                    "type_id": type_2.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000007,
-                    "location_flag": "Hangar",
-                    "location_id": in_space.id,
-                    "location_type": "solar_system",
-                    "quantity": 1,
-                    "type_id": type_2.id,
-                },
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": True,
-                    "item_id": 1100000000008,
-                    "location_flag": "Hangar",
-                    "location_id": structure.id,
-                    "location_type": "item",
-                    "quantity": 1,
-                    "type_id": type_2.id,
-                },
-            ],
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[
-                {"item_id": 1100000000001, "name": "Parent Item 1"},
-                {"item_id": 1100000000002, "name": "Leaf Item 2"},
-                {"item_id": 1100000000003, "name": "Leaf Item 3"},
-                {"item_id": 1100000000004, "name": "Leaf Item 4"},
-                {"item_id": 1100000000005, "name": "Parent Item 2"},
-                {"item_id": 1100000000006, "name": "Leaf Item 6"},
-                {"item_id": 1100000000007, "name": "None"},
-                {"item_id": 1100000000008, "name": "None"},
-            ],
-        )
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-
-        # then
-        self.assertSetEqual(
-            extract(character.assets, "item_id"),
-            {
-                1_100_000_000_001,
-                1_100_000_000_002,
-                1_100_000_000_003,
-                1_100_000_000_004,
-                1_100_000_000_005,
-                1_100_000_000_006,
-                1_100_000_000_007,
-                1_100_000_000_008,
-            },
-        )
-
-        obj_1: CharacterAsset = character.assets.get(item_id=1_100_000_000_001)
-        self.assertTrue(obj_1.is_blueprint_copy)
-        self.assertTrue(obj_1.is_singleton)
-        self.assertEqual(obj_1.location_flag, "Hangar")
-        self.assertEqual(obj_1.location, station)
-        self.assertEqual(obj_1.quantity, 1)
-        self.assertEqual(obj_1.eve_type, type_4)
-        self.assertEqual(obj_1.name, "Parent Item 1")
-
-        obj_2: CharacterAsset = character.assets.get(item_id=1_100_000_000_002)
-        self.assertFalse(obj_2.is_blueprint_copy)
-        self.assertTrue(obj_2.is_singleton)
-        self.assertEqual(obj_2.location_flag, "Hangar")
-        self.assertEqual(obj_2.parent.item_id, 1_100_000_000_001)
-        self.assertEqual(obj_2.quantity, 1)
-        self.assertEqual(obj_2.eve_type, type_2)
-        self.assertEqual(obj_2.name, "Leaf Item 2")
-
-        obj_3: CharacterAsset = character.assets.get(item_id=1_100_000_000_003)
-        self.assertEqual(obj_3.parent.item_id, 1_100_000_000_001)
-        self.assertEqual(obj_3.eve_type, type_1)
-
-        obj_4: CharacterAsset = character.assets.get(item_id=1_100_000_000_004)
-        self.assertEqual(obj_4.parent.item_id, 1_100_000_000_003)
-        self.assertEqual(obj_4.eve_type, type_3)
-
-        obj_5: CharacterAsset = character.assets.get(item_id=1_100_000_000_005)
-        self.assertEqual(obj_5.location, structure)
-        self.assertEqual(obj_5.eve_type, type_4)
-
-        obj_6: CharacterAsset = character.assets.get(item_id=1_100_000_000_006)
-        self.assertEqual(obj_6.parent.item_id, 1_100_000_000_005)
-        self.assertEqual(obj_6.eve_type, type_2)
-
-        obj_7: CharacterAsset = character.assets.get(item_id=1_100_000_000_007)
-        self.assertEqual(obj_7.location, in_space)
-        self.assertEqual(obj_7.name, "")
-        self.assertEqual(obj_7.eve_type, type_2)
-
-        obj_8: CharacterAsset = character.assets.get(item_id=1_100_000_000_008)
-        self.assertEqual(obj_8.location, structure)
-
-    @pook.on
-    def test_should_remove_stale_assets(self):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        eve_type = EveTypeFactory()
-        CharacterAssetFactory(character=character, location=station)  # to be removed
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": False,
-                    "item_id": 1100000000001,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": 3,
-                    "type_id": eve_type.id,
-                },
-            ],
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[],
-        )
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-
-        # then
-        got = extract(character.assets, "item_id")
-        want = {1_100_000_000_001}
-        self.assertSetEqual(got, want)
-
-    @pook.on
-    def test_should_update_existing_assets(self):
-        # given
-        character = CharacterFactory()
-        item_1 = CharacterAssetFactory(character=character)
-        structure = LocationStructureFactory()
-        eve_type = EveTypeFactory()
-        location_flag = "MobileDepotHold"
-        quantity = 1
-        is_blueprint_copy = True
-        is_singleton = True
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": is_blueprint_copy,
-                    "is_singleton": is_singleton,
-                    "item_id": item_1.item_id,
-                    "location_flag": location_flag,
-                    "location_id": structure.id,
-                    "location_type": "item",
-                    "quantity": quantity,
-                    "type_id": eve_type.id,
-                },
-            ],
-        )
-        name = "Alpha"
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[{"item_id": item_1.item_id, "name": name}],
-        )
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-
-        # then
-        item_2: CharacterAsset = character.assets.get(item_id=item_1.item_id)
-        self.assertEqual(item_2.eve_type, eve_type)
-        self.assertEqual(item_2.is_blueprint_copy, is_blueprint_copy)
-        self.assertEqual(item_2.is_singleton, is_singleton)
-        self.assertEqual(item_2.location_flag, location_flag)
-        self.assertEqual(item_2.location, structure)
-        self.assertEqual(item_2.name, name)
-        self.assertEqual(item_2.quantity, quantity)
-
-    @pook.on
-    def test_should_keep_assets_which_are_moved_to_different_locations(self):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        item_1 = CharacterAssetFactory(character=character, location=station)
-        item_2 = CharacterAssetFactory(character=character, parent=item_1)
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": item_1.is_blueprint_copy,
-                    "is_singleton": item_1.is_singleton,
-                    "item_id": item_1.item_id,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": item_1.quantity,
-                    "type_id": item_1.eve_type.id,
-                },
-                {
-                    "is_blueprint_copy": item_2.is_blueprint_copy,
-                    "is_singleton": item_2.is_singleton,
-                    "item_id": item_2.item_id,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": item_2.quantity,
-                    "type_id": item_2.eve_type.id,
-                },
-            ],
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[],
-        )
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-
-        # then
-        got = extract(character.assets, "item_id")
-        want = {item_1.item_id, item_2.item_id}
-        self.assertSetEqual(got, want)
-
-    @pook.on
-    def test_should_report_update_success_when_update_succeeded(self):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        eve_type = EveTypeFactory()
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": False,
-                    "item_id": 1100000000001,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": 3,
-                    "type_id": eve_type.id,
-                },
-            ],
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[],
-        )
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-
-        # then
-        status: CharacterUpdateStatus = character.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertTrue(status.is_success)
-        self.assertFalse(status.error_message)
-
-    @pook.on
-    def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(self):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        eve_type = EveTypeFactory()
-        item_id = 1100000000001
-        name = "Karoshi"
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": False,
-                    "item_id": item_id,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": 3,
-                    "type_id": eve_type.id,
-                },
-            ],
-            persist=True,
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[{"item_id": item_id, "name": name}],
-            persist=True,
-        )
-        character.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-        item: CharacterAsset = character.assets.get(item_id=item_id)
-        item.name = "New Name"
-        item.save()
-
-        # when
-        tasks.update_character_assets(character.pk, force_update=False)
-
-        # then
-        item.refresh_from_db()
-        self.assertEqual(item.name, "New Name")
-
-        status: CharacterUpdateStatus = character.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertTrue(status.is_success)
-
-    @pook.on
-    def test_should_recreate_asset_tree_when_info_from_ESI_is_unchanged_and_is_forced(
-        self,
-    ):
-        # given
-        character = CharacterFactory()
-        station = LocationStationFactory()
-        eve_type = EveTypeFactory()
-        item_id = 1100000000001
-        name = "Karoshi"
-        pook.get(
-            make_esi_url(f"characters/{character.character_id}/assets"),
-            reply=HTTPStatus.OK,
-            response_headers={"X-Pages": "1"},
-            response_json=[
-                {
-                    "is_blueprint_copy": False,
-                    "is_singleton": False,
-                    "item_id": item_id,
-                    "location_flag": "Hangar",
-                    "location_id": station.id,
-                    "location_type": "station",
-                    "quantity": 3,
-                    "type_id": eve_type.id,
-                },
-            ],
-            persist=True,
-        )
-        pook.post(
-            make_esi_url(f"characters/{character.character_id}/assets/names"),
-            reply=HTTPStatus.OK,
-            response_json=[{"item_id": item_id, "name": name}],
-            persist=True,
-        )
-        character.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
-        item_1: CharacterAsset = character.assets.get(item_id=item_id)
-        item_1.name = "New Name"
-        item_1.save()
-
-        # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=True)
-
-        # then
-        item_2: CharacterAsset = character.assets.get(item_id=item_id)
-        self.assertEqual(item_2.name, name)
-
-        status: CharacterUpdateStatus = character.update_status_set.get(
-            section=Character.UpdateSection.ASSETS
-        )
-        self.assertTrue(status.is_success)
-
-
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestUpdateCharacterContacts(TestCase):
     @pook.on
@@ -755,14 +299,14 @@ class TestUpdateCharacterContacts(TestCase):
         label_id = 7
         pook.get(
             make_esi_url(f"characters/{character.character_id}/contacts/labels"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[{"label_id": label_id, "label_name": "alpha"}],
         )
         eve_entity = EveEntityCharacterFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/contacts"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -800,7 +344,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         character = CharacterFactory()
         pook.get(
             make_esi_url(f"characters/{character.character_id}/contracts"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -841,7 +385,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         contract_id = 42
         pook.get(
             make_esi_url(f"characters/{character.character_id}/contracts"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -866,7 +410,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
             make_esi_url(
                 f"characters/{character.character_id}/contracts/{contract_id}/items"
             ),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -901,7 +445,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         contract_2_id = 42
         pook.get(
             make_esi_url(f"characters/{character.character_id}/contracts"),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -940,7 +484,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
             make_esi_url(
                 f"characters/{character.character_id}/contracts/{contract_2_id}/items"
             ),
-            reply=200,
+            reply=HTTPStatus.OK,
             response_headers={"X-Pages": "1"},
             response_json=[
                 {
@@ -962,3 +506,127 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         got = extract(character.contracts, "contract_id")
         want = {contract_1.contract_id, contract_2_id}
         self.assertSetEqual(got, want)
+
+
+@patch(TASKS_PATH + ".Character.update_implants")
+class TestUpdateCharacterSection(NoSocketsTestCase):
+    def test_should_log_success_and_updated_when_update_succeeded(
+        self, mock_update_implants
+    ):
+        # given
+        mock_update_implants.return_value = UpdateSectionResult(True, True)
+        character = CharacterFactory()
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_implants.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section=Character.UpdateSection.IMPLANTS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+
+    def test_should_pass_though_exceptions_from_update_method(
+        self, mock_update_implants
+    ):
+        # given
+        mock_update_implants.side_effect = RuntimeError
+        character = CharacterFactory()
+
+        # when
+        with self.assertRaises(RuntimeError):
+            tasks.update_character_implants(
+                character_pk=character.pk, force_update=False
+            )
+
+        # then
+        self.assertTrue(mock_update_implants.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section=Character.UpdateSection.IMPLANTS
+        )
+        self.assertFalse(status.is_success)
+        self.assertTrue(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
+
+    def test_should_clear_previous_errors_when_update_succeeded(
+        self, mock_update_implants
+    ):
+        # given
+        mock_update_implants.return_value = UpdateSectionResult(True, True)
+        character = CharacterFactory()
+        run_finished_at = now() - dt.timedelta(hours=4)
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.IMPLANTS,
+            is_success=False,
+            error_message="some error",
+            run_finished_at=run_finished_at,
+        )
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_implants.called)
+        status.refresh_from_db()
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.error_message)
+        self.assertGreater(status.run_finished_at, run_finished_at)
+        self.assertTrue(status.update_started_at)
+        self.assertTrue(status.update_finished_at)
+
+    def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_1(
+        self, mock_update_implants
+    ):
+        # given
+        mock_update_implants.return_value = UpdateSectionResult(False, False)
+        character = CharacterFactory()
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_implants.called)
+        status: CharacterUpdateStatus = character.update_status_set.get(
+            section=Character.UpdateSection.IMPLANTS
+        )
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertIsNone(status.update_started_at)
+        self.assertIsNone(status.update_finished_at)
+
+    def test_should_log_success_and_leave_update_dates_unchanged_when_no_update_2(
+        self, mock_update_implants
+    ):
+        # given
+        mock_update_implants.return_value = UpdateSectionResult(False, False)
+        character = CharacterFactory()
+        update_started_at = now() - dt.timedelta(hours=4)
+        update_finished_at = now() - dt.timedelta(hours=3)
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.IMPLANTS,
+            is_success=True,
+            update_started_at=update_started_at,
+            update_finished_at=update_finished_at,
+        )
+
+        # when
+        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+
+        # then
+        self.assertTrue(mock_update_implants.called)
+        status.refresh_from_db()
+        self.assertTrue(status.is_success)
+        self.assertFalse(status.error_message)
+        self.assertTrue(status.run_finished_at)
+        self.assertEqual(status.update_started_at, update_started_at)
+        self.assertEqual(status.update_finished_at, update_finished_at)

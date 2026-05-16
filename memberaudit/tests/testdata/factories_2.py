@@ -770,7 +770,7 @@ class CharacterShipFactory(
 
     character = factory.SubFactory(CharacterFactory)
     eve_type = factory.SubFactory(ShipTypeFactory)
-    item_id = factory.Sequence(lambda n: 100_000_001 + n)
+    item_id = factory.Sequence(lambda n: 100_009_001 + n)
     name = factory.Faker("word")
 
 

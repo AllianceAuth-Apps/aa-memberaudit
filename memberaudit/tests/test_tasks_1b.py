@@ -42,7 +42,6 @@ from .testdata.load_locations import load_locations
 from .utils import create_memberaudit_character, reset_celery_once_locks
 
 MODELS_PATH = "memberaudit.models"
-MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 

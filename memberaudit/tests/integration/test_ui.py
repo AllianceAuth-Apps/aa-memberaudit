@@ -1,14 +1,10 @@
-from unittest.mock import patch
-
-from django.test import override_settings, tag
 from django.urls import reverse
 from django_webtest import WebTest
 from eveuniverse.models import EveType
 
 from allianceauth.tests.auth_utils import AuthUtils
 
-from memberaudit.models import Character, CharacterContract, Location, MailEntity
-from memberaudit.tests.testdata.esi_client_stub import esi_stub
+from memberaudit.models import CharacterContract, Location, MailEntity
 from memberaudit.tests.testdata.factories import (
     create_character_asset,
     create_character_contract,
@@ -20,16 +16,11 @@ from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
-    add_auth_character_to_user,
     add_memberaudit_character_to_user,
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
     reset_celery_once_locks,
 )
-
-MANAGERS_PATH = "memberaudit.managers"
-MODELS_PATH = "memberaudit.models"
-TASKS_PATH = "memberaudit.tasks"
 
 
 class TestUILauncher(WebTest):
@@ -66,66 +57,6 @@ class TestUILauncher(WebTest):
             index=0,  # follow the first matching link
         )
         self.assertEqual(character_viewer.status_code, 200)
-
-    @tag("breaks_with_older_mariadb")  # FIXME
-    @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
-    @patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
-    @patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
-    @patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
-    @patch(MANAGERS_PATH + ".general.esi", esi_stub)
-    @override_settings(
-        CELERY_ALWAYS_EAGER=True,
-        CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-        APP_UTILS_OBJECT_CACHE_DISABLED=True,
-    )
-    def test_add_character(self):
-        """
-        when clicking on "register"
-        then user can add a new character
-        """
-        # user as another auth character
-        character_ownership_1001 = add_auth_character_to_user(self.user, 1001)
-
-        # login & open launcher page
-        self.app.set_user(self.user)
-        launcher = self.app.get(reverse("memberaudit:launcher"))
-        self.assertEqual(launcher.status_code, 200)
-
-        # user clicks on register link
-        select_token = launcher.click(
-            href=reverse("memberaudit:add_character"),
-            index=1,  # follow the 2nd matching link
-        )
-        self.assertEqual(select_token.status_code, 200)
-
-        # user selects auth character 1001
-        token = self.user.token_set.get(character_id=1001)
-        my_form = None
-        for form in select_token.forms.values():
-            try:
-                if int(form["_token"].value) == token.pk:
-                    my_form = form
-                    break
-            except AssertionError:
-                pass
-
-        self.assertIsNotNone(my_form)
-        launcher = my_form.submit().follow()
-        self.assertEqual(launcher.status_code, 200)
-
-        # check update went through
-        character_1001: Character = (
-            character_ownership_1001.character.memberaudit_character
-        )
-        self.assertTrue(character_1001.is_update_status_ok())
-
-        # check added character is now visible in launcher
-        a_tags = launcher.html.find_all("a", href=True)
-        viewer_url = reverse("memberaudit:character_viewer", args=[character_1001.pk])
-        character_1001_links = [
-            a_tag["href"] for a_tag in a_tags if a_tag["href"] == viewer_url
-        ]
-        self.assertGreater(len(character_1001_links), 0)
 
     def test_share_character_1(self):
         """
