@@ -16,13 +16,9 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveEntityFactory,
 )
 
-from allianceauth.eveonline.models import EveCharacter
 from app_utils.esi_testing import build_http_error
-from app_utils.testing import (
-    NoSocketsTestCase,
-    create_user_from_evecharacter,
-    generate_invalid_pk,
-)
+from app_utils.testdata_factories import UserMainFactory
+from app_utils.testing import NoSocketsTestCase, generate_invalid_pk
 
 from memberaudit import tasks
 from memberaudit.helpers import UpdateSectionResult
@@ -30,16 +26,11 @@ from memberaudit.models import Character, CharacterMail, CharacterUpdateStatus
 from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
     CharacterMailFactory,
+    CharacterOrphanFactory,
     TokenFactory2,
     make_esi_url,
 )
 from memberaudit.tests.utils import TestCaseWithClearCache, extract
-
-from .testdata.factories import create_character
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
-from .utils import create_memberaudit_character, reset_celery_once_locks
 
 MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
@@ -392,18 +383,11 @@ class TestUpdateCharactersDoctrines(TestCaseWithClearCache):
 
 
 class TestDeleteCharacters(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        Character.objects.all().delete()
-
     def test_should_delete_a_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        character_1002 = create_memberaudit_character(1002)
+        character = CharacterFactory()
         # when
-        tasks.delete_objects("Character", [character_1001.pk, character_1002.pk])
+        tasks.delete_objects("Character", [character.pk])
         # then
         self.assertFalse(Character.objects.exists())
 
@@ -413,21 +397,12 @@ class TestDeleteCharacters(TestCase):
             tasks.delete_objects("MyUnknownMOdel", [1])
 
 
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestExportData(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-        reset_celery_once_locks()
-
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestExportData(NoSocketsTestCase):
     @patch(TASKS_PATH + ".data_exporters.export_topic_to_archive", spec=True)
     def test_should_export_all_topics(self, mock_export_topic_to_file):
+        # given
+        CharacterFactory()
         # when
         tasks.export_data()
         # then
@@ -442,7 +417,8 @@ class TestExportData(TestCase):
     @patch(TASKS_PATH + ".data_exporters.export_topic_to_archive", spec=True)
     def test_should_export_wallet_journal(self, mock_export_topic_to_file):
         # given
-        user = self.character.user
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        CharacterFactory(user=user)
         # when
         tasks.export_data_for_topic(topic="abc", user_pk=user.pk)
         # then
@@ -451,20 +427,11 @@ class TestExportData(TestCase):
         self.assertEqual(kwargs["topic"], "abc")
 
 
-class TestUpdateComplianceGroupDesignations(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
+class TestUpdateComplianceGroupDesignations(NoSocketsTestCase):
     @patch(TASKS_PATH + ".ComplianceGroupDesignation.objects.update_user", spec=True)
     def test_should_update_for_user(self, mock_update_user):
         # given
-        user, _ = create_user_from_evecharacter(
-            1001,
-            permissions=["memberaudit.basic_access"],
-            scopes=Character.esi_scopes(),
-        )
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
         # when
         tasks.update_compliance_groups_for_user(user.pk)
         # then
@@ -474,23 +441,14 @@ class TestUpdateComplianceGroupDesignations(TestCase):
 @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
 @patch(TASKS_PATH + ".check_character_consistency", spec=True)
 @patch(TASKS_PATH + ".update_character", spec=True)
-class TestUpdateAllCharacters(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-
+class TestUpdateAllCharacters(NoSocketsTestCase):
     def test_should_update_all_enabled_characters(
         self, mock_update_character, mock_check_character_consistency
     ):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        character_1002 = create_memberaudit_character(1002)
-        character_1003 = create_memberaudit_character(1003)
-        character_1003.is_disabled = True
-        character_1003.save()
+        character_1 = CharacterFactory()
+        character_2 = CharacterFactory()
+        CharacterFactory(is_disabled=True)
         # when
         tasks.update_all_characters()
         # then
@@ -499,40 +457,35 @@ class TestUpdateAllCharacters(TestCase):
             o[1]["kwargs"]["character_pk"]
             for o in mock_update_character.apply_async.call_args_list
         }
-        self.assertSetEqual(called_pks, {character_1001.pk, character_1002.pk})
+        self.assertSetEqual(called_pks, {character_1.pk, character_2.pk})
 
     def test_should_disable_orphaned_characters(
         self, mock_update_character, mock_check_character_consistency
     ):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        eve_character_1002 = EveCharacter.objects.get(character_id=1002)
-        character_1002 = create_character(eve_character_1002)
+        character_1 = CharacterFactory()
+        character_2 = CharacterOrphanFactory()
         # when
         tasks.update_all_characters()
         # then
-        character_1001.refresh_from_db()
-        self.assertFalse(character_1001.is_disabled)
-        character_1002.refresh_from_db()
-        self.assertTrue(character_1002.is_disabled)
+        character_1.refresh_from_db()
+        self.assertFalse(character_1.is_disabled)
+        character_2.refresh_from_db()
+        self.assertTrue(character_2.is_disabled)
 
     def test_should_unshare_characters_without_share_permission(
         self, mock_update_character, mock_check_character_consistency
     ):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        character_1001.is_shared = True
-        character_1001.save()
-        character_1002 = create_memberaudit_character(1002)
-        character_1002.is_shared = False
-        character_1002.save()
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user, is_shared=True)
         # when
         tasks.update_all_characters()
         # then
-        character_1001.refresh_from_db()
+        character.refresh_from_db()
         self.assertEqual(mock_check_character_consistency.apply_async.call_count, 1)
         _, kwargs = mock_check_character_consistency.apply_async.call_args
-        self.assertEqual(kwargs["kwargs"]["character_pk"], character_1001.pk)
+        self.assertEqual(kwargs["kwargs"]["character_pk"], character.pk)
 
 
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id", spec=True)
@@ -570,8 +523,7 @@ class TestUpdateUnresolvedEveEntities(TestCase):
 class TestCheckCharacterConsistency(TestCase):
     def test_should_run_checks(self, mock_check_character_consistency):
         # given
-        load_entities()
-        character = create_memberaudit_character(1001)
+        character = CharacterFactory()
         # when
         tasks.check_character_consistency(character.pk)
         # then

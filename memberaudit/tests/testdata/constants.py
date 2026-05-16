@@ -20,6 +20,12 @@ class EveCategoryId(IntEnum):
     SUBSYSTEM = 32
 
 
+class EveDogmaAttributeId(IntEnum):
+    """Eve Online named dogma attribute IDs"""
+
+    IMPLANT_SLOT = 331
+
+
 class EveFactionId(IntEnum):
     CALDARI_STATE = 500_001
 

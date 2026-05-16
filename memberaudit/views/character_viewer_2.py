@@ -84,16 +84,18 @@ def character_jump_clones_data(
             .all()
         ):
             if (
-                not jump_clone.location.is_empty
+                jump_clone.location
+                and not jump_clone.location.is_empty
                 and not jump_clone.location.is_unknown_location
+                and jump_clone.location.eve_solar_system
             ):
                 eve_solar_system = jump_clone.location.eve_solar_system
-                solar_system = eve_solar_system_to_html(
+                solar_system_html = eve_solar_system_to_html(
                     eve_solar_system, show_region=False
                 )
                 region = eve_solar_system.eve_constellation.eve_region.name
             else:
-                solar_system = "-"
+                solar_system_html = "-"
                 region = "-"
 
             implants_data = []
@@ -122,7 +124,7 @@ def character_jump_clones_data(
                 {
                     "id": jump_clone.pk,
                     "region": region,
-                    "solar_system": solar_system,
+                    "solar_system": solar_system_html,
                     "location": jump_clone.location.name_plus,
                     "implants": implants,
                 }

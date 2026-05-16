@@ -12,6 +12,7 @@ from esi.tests.factories_2 import TokenFactory as _TokenFactory
 from eveuniverse.tests.testdata.factories_2 import (
     CitadelTypeFactory,
     EveBloodlineFactory,
+    EveDogmaAttributeFactory,
     EveEntityCharacterFactory,
     EveEntityCorporationFactory,
     EveFactionFactory,
@@ -21,6 +22,7 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveSolarSystemFactory,
     EveTypeFactory,
     ShipTypeFactory,
+    SolarSystemTypeFactory,
     StationTypeFactory,
 )
 
@@ -69,7 +71,12 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-from memberaudit.tests.testdata.constants import EveCategoryId, EveGroupId, EveTypeId
+from memberaudit.tests.testdata.constants import (
+    EveCategoryId,
+    EveDogmaAttributeId,
+    EveGroupId,
+    EveTypeId,
+)
 
 T = TypeVar("T")
 _BASE_URL = "https://esi.evetech.net/"
@@ -125,6 +132,18 @@ class CyberimplantTypeFactory(EveTypeFactory):
         id=EveGroupId.CYBERIMPLANT,
         name="Cyberimplant",
     )
+    volume = 1.0
+
+    @factory.post_generation
+    def slot_num(obj, create, extracted, **kwargs):
+        if not create or extracted is False:
+            return
+
+        num = extracted or 1
+        da = EveDogmaAttributeFactory(id=EveDogmaAttributeId.IMPLANT_SLOT)
+        obj.dogma_attributes.get_or_create(
+            eve_dogma_attribute=da, defaults={"value": num}
+        )
 
 
 class NavigationSkillTypeFactory(EveTypeFactory):
@@ -200,6 +219,17 @@ class ComplianceGroupDesignationFactory(
     group = factory.SubFactory(GroupFactory)
 
 
+class LocationAssetSafetyFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Location]
+):
+    class Meta:
+        model = Location
+
+    id = Location.ASSET_SAFETY_ID
+    name = "ASSET SAFETY"
+    eve_type = factory.SubFactory(AssetSafetyWrapTypeFactory)
+
+
 class LocationStationFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Location]
 ):
@@ -240,6 +270,17 @@ class LocationSolarSystemFactory(
         eve_group__id=EveGroupId.SOLAR_SYSTEM,
         eve_group__eve_category__id=EveCategoryId.CELESTIAL,
     )
+
+
+class LocationUnknownFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Location]
+):
+    class Meta:
+        model = Location
+
+    id = Location.LOCATION_UNKNOWN_ID
+    name = "Location unknown"
+    eve_type = factory.SubFactory(SolarSystemTypeFactory)
 
 
 class MailEntityCharacterFactory(
@@ -602,7 +643,7 @@ class CharacterFwStatsFactory(
     character = factory.SubFactory(CharacterFactory)
     current_rank = factory.fuzzy.FuzzyInteger(0, 9)
     enlisted_on = factory.fuzzy.FuzzyDateTime(now() - dt.timedelta(days=1000), now())
-    faction = factory.SubFactory(EveFactionFactory)
+    faction = factory.SubFactory(EveFactionFactory, id=500001, name="Caldari State")
     highest_rank = factory.LazyAttribute(lambda o: o.current_rank)
     kills_last_week = factory.fuzzy.FuzzyInteger(0, 100)
     kills_total = factory.LazyAttribute(lambda o: o.kills_last_week + o.kills_yesterday)
@@ -708,7 +749,7 @@ class CharacterMailLabelFactory(
     character = factory.SubFactory(CharacterFactory)
     label_id = factory.Sequence(lambda n: 1 + n)
     name = factory.Faker("word")
-    color = factory.Faker("color_name")
+    color = factory.Faker("color")
     unread_count = 0
 
 

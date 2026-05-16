@@ -8,6 +8,12 @@ from django.urls import reverse
 from django.utils.html import strip_tags
 from django.utils.timezone import now
 from eveuniverse.models import EveEntity, EveType
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityCharacterFactory,
+    EveSolarSystemHighSecFactory,
+    EveSolarSystemLowSecFactory,
+    ShipTypeFactory,
+)
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import (
@@ -24,8 +30,6 @@ from memberaudit.models import (
     Location,
 )
 from memberaudit.tests.testdata.factories import (
-    create_character_jump_clone,
-    create_character_jump_clone_implant,
     create_character_mail,
     create_character_mail_label,
     create_character_mining_ledger_entry,
@@ -35,18 +39,25 @@ from memberaudit.tests.testdata.factories import (
     create_character_skillqueue_entry,
     create_character_standing,
     create_character_title,
-    create_character_wallet_journal_entry,
-    create_character_wallet_transaction,
-    create_location,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
     create_skill_set,
     create_skill_set_group,
     create_skill_set_skill,
 )
+from memberaudit.tests.testdata.factories_2 import (
+    BasicUserFactory,
+    CharacterFactory,
+    CharacterJumpCloneFactory,
+    CharacterJumpCloneImplantFactory,
+    CharacterWalletJournalEntryFactory,
+    CharacterWalletTransactionFactory,
+    CyberimplantTypeFactory,
+    LocationStationFactory,
+    LocationStructureFactory,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     create_memberaudit_character,
     json_response_to_dict_2,
@@ -78,36 +89,65 @@ class TestJumpClones(TestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.user
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.structure_1 = Location.objects.get(id=1000000000001)
+        cls.user = BasicUserFactory()
+        cls.character = CharacterFactory(user=cls.user)
+        jita = EveSolarSystemHighSecFactory(
+            id=30000142,
+            name="Jita",
+            eve_constellation__id=20000020,
+            eve_constellation__name="Kimotoro",
+            eve_constellation__eve_region__id=10000002,
+            eve_constellation__eve_region__name="The Forge",
+        )
+        cls.jita_44 = LocationStationFactory(
+            id=60003760,
+            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+            eve_solar_system=jita,
+        )
+        amamake = EveSolarSystemLowSecFactory(
+            id=30002537,
+            name="Amamake",
+            eve_constellation__id=20000372,
+            eve_constellation__name="Hed",
+            eve_constellation__eve_region__id=10000030,
+            eve_constellation__eve_region__name="Heimatar",
+            security_status=0.3,
+        )
+        cls.structure_1 = LocationStructureFactory(
+            id=1000000000001, name="Test Structure Alpha", eve_solar_system=amamake
+        )
+        cls.high_grade_snake_alpha_type = CyberimplantTypeFactory(
+            id=19540, name="High-grade Snake Alpha"
+        )
+        cls.high_grade_snake_beta_type = CyberimplantTypeFactory(
+            id=19551, name="High-grade Snake Beta"
+        )
 
     def test_character_jump_clones_data(self):
-        clone_1 = jump_clone = create_character_jump_clone(
+        # given
+        clone_1 = jump_clone = CharacterJumpCloneFactory(
             character=self.character, location=self.jita_44
         )
-        create_character_jump_clone_implant(
-            jump_clone=jump_clone,
-            eve_type=EveType.objects.get(name="High-grade Snake Alpha"),
+        CharacterJumpCloneImplantFactory(
+            jump_clone=jump_clone, eve_type=self.high_grade_snake_alpha_type
         )
-        create_character_jump_clone_implant(
-            jump_clone=jump_clone,
-            eve_type=EveType.objects.get(name="High-grade Snake Beta"),
+        CharacterJumpCloneImplantFactory(
+            jump_clone=jump_clone, eve_type=self.high_grade_snake_beta_type
         )
 
-        location_2 = create_location(id=123457890, eve_type=None, eve_solar_system=None)
-        clone_2 = jump_clone = create_character_jump_clone(
+        location_2 = Location.objects.create(id=123457890)
+        clone_2 = jump_clone = CharacterJumpCloneFactory(
             character=self.character, location=location_2
         )
         request = self.factory.get(
             reverse("memberaudit:character_jump_clones_data", args=[self.character.pk])
         )
         request.user = self.user
+
+        # when
         response = character_jump_clones_data(request, self.character.pk)
+
+        # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_dict_2(response)
         self.assertEqual(len(data), 2)
@@ -813,20 +853,19 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         self.assertEqual(data, [])
 
 
-class TestWallet(TestCase):
+class TestWalletJournal(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.eve_character.character_ownership.user
+        cls.user = BasicUserFactory()
+        cls.character = CharacterFactory(user=cls.user)
+        cls.entity_1001 = EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+        cls.entity_1002 = EveEntityCharacterFactory(id=1002, name="Clark Kent")
 
     def test_character_wallet_journal_data(self):
         # given
-        create_character_wallet_journal_entry(
+        CharacterWalletJournalEntryFactory(
             character=self.character,
             entry_id=1,
             amount=1000000,
@@ -834,8 +873,8 @@ class TestWallet(TestCase):
             context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED,
             date=now(),
             description="dummy",
-            first_party=EveEntity.objects.get(id=1001),
-            second_party=EveEntity.objects.get(id=1002),
+            first_party=self.entity_1001,
+            second_party=self.entity_1002,
         )
         request = self.factory.get(
             reverse(
@@ -853,15 +892,46 @@ class TestWallet(TestCase):
         self.assertEqual(row["amount"], 1000000.00)
         self.assertEqual(row["balance"], 10000000.00)
 
+
+class TestWalletTransactions(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.factory = RequestFactory()
+        cls.user = BasicUserFactory()
+        cls.character = CharacterFactory(user=cls.user)
+        jita = EveSolarSystemHighSecFactory(
+            id=30000142,
+            name="Jita",
+            eve_constellation__id=20000020,
+            eve_constellation__name="Kimotoro",
+            eve_constellation__eve_region__id=10000002,
+            eve_constellation__eve_region__name="The Forge",
+        )
+        cls.jita_44 = LocationStationFactory(
+            id=60003760,
+            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+            eve_solar_system=jita,
+        )
+        cls.merlin_type = ShipTypeFactory(
+            id=603,
+            name="Merlin",
+            eve_group__id=25,
+            eve_group__name="Frigate",
+            volume=16500.0,
+        )
+        cls.entity_1002 = EveEntityCharacterFactory(id=1002, name="Clark Kent")
+
     def test_character_wallet_transaction_data(self):
+        # given
         my_date = now()
-        create_character_wallet_transaction(
+        CharacterWalletTransactionFactory(
             character=self.character,
-            client=EveEntity.objects.get(id=1002),
+            client=self.entity_1002,
             date=my_date,
-            location=Location.objects.get(id=60003760),
+            location=self.jita_44,
             quantity=3,
-            eve_type=EveType.objects.get(id=603),
+            eve_type=self.merlin_type,
             unit_price=450000.99,
         )
         request = self.factory.get(
@@ -871,7 +941,11 @@ class TestWallet(TestCase):
             )
         )
         request.user = self.user
+
+        # when
         response = character_wallet_transactions_data(request, self.character.pk)
+
+        # then
         self.assertEqual(response.status_code, 200)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)

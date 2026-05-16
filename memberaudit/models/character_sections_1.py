@@ -402,7 +402,7 @@ class CharacterContract(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
 
     @property
     def hours_issued_2_completed(self) -> Optional[float]:
-        """Return amount of hours between issues and completed.
+        """Return amount of hours between issued and completed.
         Or return None if still pending.
         """
         if not self.date_completed:

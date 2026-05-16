@@ -144,7 +144,7 @@ class Location(AddGenericReprMixin, models.Model):
     """An Eve Online location: Station or Upwell Structure or Solar System."""
 
     LOCATION_UNKNOWN_ID = 888  # custom ID to signify a location that is not known
-    _ASSET_SAFETY_ID = 2004
+    ASSET_SAFETY_ID = 2004
     _SOLAR_SYSTEM_ID_START = 30_000_000
     _SOLAR_SYSTEM_ID_END = 33_000_000
     _STATION_ID_START = 60_000_000
@@ -271,7 +271,7 @@ class Location(AddGenericReprMixin, models.Model):
     @classmethod
     def is_asset_safety_id(cls, location_id: int) -> bool:
         """Return True, if this location ID is asset safety."""
-        return location_id == cls._ASSET_SAFETY_ID
+        return location_id == cls.ASSET_SAFETY_ID
 
     @classmethod
     def is_location_unknown_id(cls, location_id: int) -> bool:

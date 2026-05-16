@@ -2,16 +2,20 @@ import hashlib
 import json
 
 from django.utils.timezone import now
-from eveuniverse.models import EveSolarSystem
+from eveuniverse.tests.testdata.factories_2 import (
+    EveSolarSystemFactory,
+    SolarSystemTypeFactory,
+)
 
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.models import Character, Location
+from memberaudit.models import Character
 from memberaudit.tests.testdata.factories import create_character_update_status
-from memberaudit.tests.testdata.factories_2 import CharacterLocationFactory
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterLocationFactory,
+    LocationStationFactory,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import create_memberaudit_character
 
 
@@ -115,18 +119,10 @@ class TestCharacterUpdateStatus(NoSocketsTestCase):
 
 
 class TestCharacterLocation(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = create_memberaudit_character(1001)
-
     def test_should_return_location_when_it_exists(self):
         # given
-        location: Location = Location.objects.get(id=60003760)
-        obj = CharacterLocationFactory(character=self.character, location=location)
+        location = LocationStationFactory()
+        obj = CharacterLocationFactory(location=location)
         # when
         result = obj.location_safe()
         # then
@@ -134,10 +130,9 @@ class TestCharacterLocation(NoSocketsTestCase):
 
     def test_should_return_return_solar_system_when_location_does_not_exist(self):
         # given
-        eve_solar_system = EveSolarSystem.objects.get(name="Amamake")
-        obj = CharacterLocationFactory(
-            character=self.character, eve_solar_system=eve_solar_system, location=None
-        )
+        SolarSystemTypeFactory()
+        eve_solar_system = EveSolarSystemFactory()
+        obj = CharacterLocationFactory(eve_solar_system=eve_solar_system, location=None)
         # when
         result = obj.location_safe()
         # then

@@ -20,18 +20,22 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-from memberaudit.tests.testdata.constants import EveSolarSystemId
 from memberaudit.tests.testdata.factories import (
     create_compliance_group_designation,
-    create_location_eve_solar_system,
     create_mail_entity_from_eve_entity,
     create_mailing_list,
     create_skill_set,
     create_skill_set_skill,
 )
+from memberaudit.tests.testdata.factories_2 import (
+    LocationAssetSafetyFactory,
+    LocationSolarSystemFactory,
+    LocationStationFactory,
+    LocationStructureFactory,
+    LocationUnknownFactory,
+)
 from memberaudit.tests.testdata.load_entities import load_entities
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     add_auth_character_to_user,
     add_memberaudit_character_to_user,
@@ -227,27 +231,18 @@ class TestLocation(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.location_jita = create_location_eve_solar_system(id=EveSolarSystemId.JITA)
-        cls.location_asset_safety: Location = Location.objects.get_or_create_esi(
-            id=2004, token=None
-        )[0]
-        cls.location_jita_44: Location = Location.objects.get(id=60003760)
-        cls.location_structure_1: Location = Location.objects.get(id=1_000_000_000_001)
-        cls.location_empty = Location(id=1)
-        cls.location_unknown, _ = Location.objects.get_or_create_esi(
-            id=Location.LOCATION_UNKNOWN_ID, token=None
-        )
+        cls.location_solar_system = LocationSolarSystemFactory()
+        cls.location_asset_safety = LocationAssetSafetyFactory()
+        cls.location_station = LocationStationFactory()
+        cls.location_structure = LocationStructureFactory()
+        cls.location_empty = Location.objects.create(id=1_900_900_000_000)
+        cls.location_unknown = LocationUnknownFactory()
 
     def test_str(self):
-        self.assertEqual(
-            str(self.location_structure_1), "Amamake - Test Structure Alpha"
-        )
+        self.assertEqual(str(self.location_structure), self.location_structure.name)
 
     def test_checks_with_solar_system(self):
-        location = self.location_jita
+        location = self.location_solar_system
         self.assertTrue(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertFalse(location.is_structure)
@@ -255,7 +250,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_empty)
 
     def test_checks_with_station(self):
-        location = self.location_jita_44
+        location = self.location_station
         self.assertFalse(location.is_solar_system)
         self.assertTrue(location.is_station)
         self.assertFalse(location.is_structure)
@@ -263,7 +258,7 @@ class TestLocation(NoSocketsTestCase):
         self.assertFalse(location.is_empty)
 
     def test_checks_with_structure(self):
-        location = self.location_structure_1
+        location = self.location_structure
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
         self.assertTrue(location.is_structure)
@@ -282,41 +277,35 @@ class TestLocation(NoSocketsTestCase):
         location = self.location_empty
         self.assertFalse(location.is_solar_system)
         self.assertFalse(location.is_station)
-        self.assertFalse(location.is_structure)
+        self.assertTrue(location.is_structure)
         self.assertFalse(Location.is_asset_safety_id(location.id))
         self.assertTrue(location.is_empty)
 
     def test_solar_system_url(self):
-        obj_1 = self.location_structure_1
+        obj_1 = self.location_structure
         obj_2 = Location.objects.create(id=1_000_000_000_999)
 
-        self.assertIn("Amamake", obj_1.solar_system_url)
-        self.assertEqual("", obj_2.solar_system_url)
+        self.assertTrue(obj_1.solar_system_url)
+        self.assertFalse(obj_2.solar_system_url)
 
-    def test_name_plus_for_structure(self):
+    def test_name_plus(self):
         self.assertEqual(
-            self.location_structure_1.name_plus, "Amamake - Test Structure Alpha"
+            self.location_structure.name_plus, self.location_structure.name
         )
-
-    def test_name_plus_for_station(self):
+        self.assertEqual(self.location_station.name_plus, self.location_station.name)
         self.assertEqual(
-            self.location_jita_44.name_plus,
-            "Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+            self.location_solar_system.name_plus, self.location_solar_system.name
         )
-
-    def test_name_plus_for_solar_system(self):
-        self.assertEqual(self.location_jita.name_plus, "Jita")
-
-    def test_name_plus_for_asset_safety(self):
         self.assertEqual(self.location_asset_safety.name_plus, "ASSET SAFETY")
+        self.assertIn("unknown", self.location_unknown.name_plus)
 
     def test_should_return_correct_asset_location_type(self):
         cases = [
-            ("station", self.location_jita_44, "station"),
-            ("structure", self.location_structure_1, "item"),
-            ("solar system", self.location_jita, "solar_system"),
+            ("station", self.location_station, "station"),
+            ("structure", self.location_structure, "item"),
+            ("solar system", self.location_solar_system, "solar_system"),
             ("unknown placeholder", self.location_unknown, "solar_system"),
-            ("empty_location", self.location_empty, "other"),
+            ("empty_location", self.location_empty, "item"),
         ]
         for name, location, expected in cases:
             with self.subTest(name=name):

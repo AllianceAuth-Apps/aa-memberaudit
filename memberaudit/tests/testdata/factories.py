@@ -804,6 +804,7 @@ def create_skill_set_skill(skill_set, **kwargs) -> SkillSetSkill:
     return SkillSetSkill.objects.create(**params)
 
 
+@deprecated("Replaced by `EveMarketPriceFactory` from eveuniverse")
 def create_eve_market_price(**kwargs) -> EveMarketPrice:
     average_price = (
         kwargs.get("average_price")

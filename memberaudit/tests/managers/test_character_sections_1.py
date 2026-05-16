@@ -6,10 +6,10 @@ import pook
 from django.db import IntegrityError
 from django.test import TestCase
 from django.utils.timezone import now
-from eveuniverse.models import EveType
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCharacterFactory,
     EveEntityCorporationFactory,
+    EveMarketPriceFactory,
     EveTypeFactory,
 )
 
@@ -24,97 +24,89 @@ from memberaudit.models import (
     CharacterContract,
     CharacterContractBid,
     CharacterContractItem,
-    Location,
-)
-from memberaudit.tests.testdata.factories import (
-    build_character_asset,
-    create_character_asset,
-    create_character_from_user,
-    create_eve_market_price,
 )
 from memberaudit.tests.testdata.factories_2 import (
+    CharacterAssetFactory,
     CharacterAttributesFactory,
     CharacterContactFactory,
     CharacterContactLabelFactory,
     CharacterContractAuctionFactory,
     CharacterContractCourierFactory,
     CharacterContractItemExchangeFactory,
+    CharacterContractItemFactory,
     CharacterFactory,
     LocationStationFactory,
     make_esi_url,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
-from memberaudit.tests.utils import (
-    TestCaseWithClearCache,
-    create_user_from_evecharacter_with_access,
-    extract,
-)
+from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 MODULE_PATH = "memberaudit.managers.character_sections_1"
 
 
-class TestCharacterAssetManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = CharacterFactory(eve_character__character_id=1001)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.merlin = EveType.objects.get(id=603)
-
+class TestCharacterAssetManager_AnnotatePricing(NoSocketsTestCase):
     def test_can_calculate_pricing(self):
-        create_character_asset(
-            character=self.character, eve_type=self.merlin, quantity=5
-        )
-        create_eve_market_price(eve_type=self.merlin, average_price=500000)
+        # given
+        character = CharacterFactory()
+        ca = CharacterAssetFactory(character=character, quantity=5)
+        EveMarketPriceFactory(eve_type=ca.eve_type, average_price=500000)
+
+        # when
         asset = CharacterAsset.objects.annotate_pricing().first()
+
+        # then
         self.assertEqual(asset.price, 500000)
         self.assertEqual(asset.total, 2500000)
 
     def test_does_not_price_blueprint_copies(self):
-        create_character_asset(
-            character=self.character,
-            eve_type=self.merlin,
-            is_blueprint_copy=True,
-            quantity=1,
+        # given
+        character = CharacterFactory()
+        ca = CharacterAssetFactory(
+            character=character, is_blueprint_copy=True, quantity=1
         )
-        create_eve_market_price(eve_type=self.merlin, average_price=500000)
+        EveMarketPriceFactory(eve_type=ca.eve_type, average_price=500000)
+
+        # when
         asset = CharacterAsset.objects.annotate_pricing().first()
+
+        # then
         self.assertIsNone(asset.price)
         self.assertIsNone(asset.total)
 
 
-class TestCharacterAssetManagerBulkCreate2(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character = CharacterFactory(eve_character__character_id=1001)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.merlin = EveType.objects.get(id=603)
-
+class TestCharacterAssetManager_BulkCreateWithFallback(TestCase):
     def test_should_create_assets_in_bulk(self):
         # given
-        objs = [build_character_asset(self.character) for _ in range(5)]
+        character = CharacterFactory()
+        eve_type = EveTypeFactory()
+        location = LocationStationFactory()
+        objs = [
+            CharacterAssetFactory.build(
+                character=character, eve_type=eve_type, location=location
+            )
+            for _ in range(5)
+        ]
 
         # when
         new_objs = CharacterAsset.objects.bulk_create_with_fallback(objs)
 
         # then
         expected_ids = _extract_item_ids(objs)
-        existing_item_ids = extract(self.character.assets, "item_id")
+        existing_item_ids = extract(character.assets, "item_id")
         self.assertSetEqual(existing_item_ids, expected_ids)
         self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
 
     def test_should_create_all_assets_and_ignore_the_problem_obj(self):
         # given
-        objs = [build_character_asset(self.character) for _ in range(5)]
+        character = CharacterFactory()
+        character = CharacterFactory()
+        eve_type = EveTypeFactory()
+        location = LocationStationFactory()
+        objs = [
+            CharacterAssetFactory.build(
+                character=character, eve_type=eve_type, location=location
+            )
+            for _ in range(5)
+        ]
         problem_item_id = objs[3].item_id
 
         def my_save(obj: CharacterAsset, *args, **kwargs):
@@ -136,7 +128,7 @@ class TestCharacterAssetManagerBulkCreate2(TestCase):
         expected_ids = _extract_item_ids(objs) - {problem_item_id}
         self.assertSetEqual(_extract_item_ids(new_objs), expected_ids)
 
-        existing_item_ids = extract(self.character.assets, "item_id")
+        existing_item_ids = extract(character.assets, "item_id")
         self.assertSetEqual(existing_item_ids, expected_ids)
 
 
@@ -194,18 +186,11 @@ class TestCharacterAssetsManager_FetchFromEsi(TestCaseWithClearCache):
 @patch("memberaudit.models.Location.objects.create_missing_esi", spec=True)
 @patch(MODULE_PATH + ".EveType.objects.bulk_get_or_create_esi", spec=True)
 class TestCharacter_AssetsPreloadObjects(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
     def test_do_nothing_when_asset_list_is_empty(
         self, mock_eve_entity_create, mock_preload_locations
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory()
         asset_list = []
 
         # when
@@ -220,7 +205,7 @@ class TestCharacter_AssetsPreloadObjects(NoSocketsTestCase):
         self, mock_eve_entity_create, mock_preload_locations
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory()
         asset_list = [
             {"item_id": 1, "type_id": 3, "location_id": 420},
             {"item_id": 2, "type_id": 4, "location_id": 421},
@@ -243,7 +228,7 @@ class TestCharacter_AssetsPreloadObjects(NoSocketsTestCase):
         # given
         LocationStationFactory(id=420)
         LocationStationFactory(id=421)
-        character = create_character_from_user(self.user)
+        character = CharacterFactory()
         asset_list = [
             {"item_id": 1, "type_id": 3, "location_id": 420},
             {"item_id": 2, "type_id": 4, "location_id": 421},
@@ -1063,3 +1048,40 @@ class TestCharacter_UpdateContractBids(TestCaseWithClearCache):
         self.assertEqual(item.bid_id, bid_id)
         self.assertEqual(item.bidder, bidder)
         self.assertEqual(item.date_bid, date_bid)
+
+
+class TestCharacterContractItemManager_AnnotatePricing(NoSocketsTestCase):
+    def test_can_annotate_normal_item(self):
+        # given
+        contract = CharacterContractItemExchangeFactory(create_items=False)
+        item_1 = CharacterContractItemFactory(
+            contract=contract, is_included=True, quantity=2
+        )
+        EveMarketPriceFactory(eve_type=item_1.eve_type, average_price=5000000)
+
+        # when
+        qs = contract.items.annotate_pricing()
+
+        # then
+        item_2 = qs.first()
+        self.assertEqual(item_2.price, 5000000)
+        self.assertEqual(item_2.total, 10000000)
+
+    def test_should_not_annotate_bpos(self):
+        # given
+        contract = CharacterContractItemExchangeFactory(create_items=False)
+        item_1 = CharacterContractItemFactory(
+            contract=contract,
+            is_included=True,
+            is_singleton=False,
+            raw_quantity=-2,
+        )
+        EveMarketPriceFactory(eve_type=item_1.eve_type, average_price=5000000)
+
+        # when
+        qs = contract.items.annotate_pricing()
+
+        # then
+        item_2 = qs.first()
+        self.assertIsNone(item_2.price)
+        self.assertIsNone(item_2.total)
