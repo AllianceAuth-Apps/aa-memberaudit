@@ -38,7 +38,7 @@ from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, Location
 
 logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
@@ -191,6 +191,7 @@ class LocationManager(models.Manager):
         self, id: int, token: Token, update_async: bool
     ) -> Tuple[Any, bool]:
         id = int(id)
+        self.model: Location
         if self.model.is_location_unknown_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
@@ -585,12 +586,14 @@ class MailEntityManager(models.Manager):
         logger.info("%s: Updating %d mailing lists", character, len(mailing_lists))
         new_mailing_lists = []
         for list_id, mailing_list in mailing_lists.items():
-            mailing_list_obj, _ = self.model.objects.update_or_create(
-                id=list_id,
-                defaults={
-                    "category": self.model.Category.MAILING_LIST,
-                    "name": mailing_list.get("name"),
-                },
+            mailing_list_obj, _ = (
+                self.model.objects.update_or_create(  # FIXME: refactor?
+                    id=list_id,
+                    defaults={
+                        "category": self.model.Category.MAILING_LIST,
+                        "name": mailing_list.get("name"),
+                    },
+                )
             )
             new_mailing_lists.append(mailing_list_obj)
 

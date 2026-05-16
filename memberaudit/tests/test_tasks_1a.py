@@ -1,42 +1,80 @@
 import datetime as dt
-from typing import Dict
+from contextlib import ExitStack
+from http import HTTPStatus
 from unittest.mock import patch
 
-from django.test import TestCase, override_settings, tag
-from django.utils.dateparse import parse_datetime
-from django.utils.timezone import now
-from eveuniverse.models import EveSolarSystem, EveType
+import pook
 
-from allianceauth.eveonline.models import EveCharacter
-from app_utils.esi import reset_retry_task_on_esi_error_and_offline
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint
-from app_utils.testing import create_authgroup
+from django.test import TestCase, override_settings  # , tag
+from django.utils.timezone import now
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityCharacterFactory,
+    EveEntityCorporationFactory,
+    EveTypeFactory,
+)
+
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit import tasks
 from memberaudit.models import (
     Character,
+    CharacterAsset,
+    CharacterContact,
+    CharacterContactLabel,
     CharacterContract,
+    CharacterContractItem,
     CharacterUpdateStatus,
-    Location,
 )
-
-from .testdata.esi_client_stub import esi_client_stub, esi_stub
-from .testdata.factories import (
-    create_character,
-    create_character_asset,
-    create_character_contract,
-    create_character_contract_item,
-    create_character_update_status,
-    create_compliance_group_designation,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterAssetFactory,
+    CharacterContractItemExchangeFactory,
+    CharacterFactory,
+    CharacterOrphanFactory,
+    CharacterUpdateStatusFactory,
+    ComplianceGroupFactory,
+    LocationSolarSystemFactory,
+    LocationStationFactory,
+    LocationStructureFactory,
+    make_esi_url,
 )
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .testdata.load_locations import load_locations
-from .utils import create_memberaudit_character, reset_celery_once_locks
+from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 MODELS_PATH = "memberaudit.models"
-MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
+
+
+TASK_NAMES: frozenset[str] = frozenset(
+    [
+        "update_character_assets",
+        "update_character_attributes",
+        "update_character_character_details",
+        "update_character_contacts",
+        "update_character_contracts",
+        "update_character_corporation_history",
+        "update_character_fw_stats",
+        "update_character_implants",
+        "update_character_jump_clones",
+        "update_character_location",
+        "update_character_loyalty",
+        "update_character_mails",
+        "update_character_mining_ledger",
+        "update_character_online_status",
+        "update_character_planets",
+        "update_character_roles",
+        "update_character_ship",
+        "update_character_skill_queue",
+        "update_character_skill_sets",
+        "update_character_skills",
+        "update_character_standings",
+        "update_character_titles",
+        "update_character_wallet_balance",
+        "update_character_wallet_journal",
+        "update_character_wallet_transactions",
+    ]
+)
+
+
+# @tag("breaks_with_tox")  # FIXME: Find solution
 
 
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
@@ -51,6 +89,7 @@ class TestRegularUpdates(TestCase):
     ):
         # when
         tasks.run_regular_updates()
+
         # then
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
@@ -63,10 +102,11 @@ class TestRegularUpdates(TestCase):
         mock_update_compliance_groups_for_all,
     ):
         # given
-        group = create_authgroup(internal=False)
-        create_compliance_group_designation(group)
+        ComplianceGroupFactory()
+
         # when
         tasks.run_regular_updates()
+
         # then
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
@@ -74,267 +114,308 @@ class TestRegularUpdates(TestCase):
 
 
 @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
-@patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestUpdateCharacter(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        reset_celery_once_locks()
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateCharacter(NoSocketsTestCase):
+    def test_should_update_all_sections(self):
+        # given
+        character = CharacterFactory()
+        with patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True):
+            with ExitStack() as stack:
+                mocks = [
+                    stack.enter_context(patch(TASKS_PATH + f".{name}", name=name))
+                    for name in TASK_NAMES
+                ]
 
-    def setUp(self) -> None:
-        self.character_1001 = create_memberaudit_character(1001)
+                # when
+                result = tasks.update_character(character.pk)
 
-    @tag("breaks_with_tox")  # FIXME: Find solution
-    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
-    def test_should_update_all_sections_from_scratch(self):
-        # when
-        result = tasks.update_character(self.character_1001.pk)
+                # then
+                self.assertTrue(result)
+                for m in mocks:
+                    with self.subTest(name=m._mock_name):
+                        self.assertTrue(m.apply_async.called)
 
-        # then
-        self.assertTrue(result)
-
-        status_all: Dict[str, CharacterUpdateStatus] = {
-            obj.section: obj for obj in self.character_1001.update_status_set.all()
-        }
-        for section in Character.UpdateSection:
-            with self.subTest(section=section):
-                self.assertTrue(status_all[section].is_success)
-
-    @tag("breaks_with_tox")  # FIXME: Find solution
-    @patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_update_enabled_sections_only(self):
         # given
-        run_started_at = now() - dt.timedelta(hours=24)
-        for section in Character.UpdateSection:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                run_started_at=run_started_at,
-                run_finished_at=run_started_at,
+        character = CharacterFactory()
+        with patch(
+            MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", False
+        ):
+            with ExitStack() as stack:
+                mocks = [
+                    stack.enter_context(patch(TASKS_PATH + f".{name}", name=name))
+                    for name in TASK_NAMES - {"update_character_roles"}
+                ]
+
+                # when
+                result = tasks.update_character(character.pk)
+
+                # then
+                self.assertTrue(result)
+                for m in mocks:
+                    with self.subTest(name=m._mock_name):
+                        self.assertTrue(m.apply_async.called)
+
+    def test_should_not_update_when_sections_are_current(self):
+        # given
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(
+                character=character, section=section, is_success=True
             )
 
         # when
-        result = tasks.update_character(self.character_1001.pk)
+        got = tasks.update_character(character.pk)
 
         # then
-        self.assertTrue(result)
+        self.assertFalse(got)
 
-        for section in Character.UpdateSection.enabled_sections():
-            with self.subTest(section=section):
-                self.assertFalse(
-                    self.character_1001.is_update_needed_for_section(section=section)
-                )
-
-        self.assertTrue(
-            self.character_1001.is_update_needed_for_section(
-                section=Character.UpdateSection.ROLES
-            )
-        )
-
-    @patch(TASKS_PATH + ".Character.update_loyalty", spec=True)
-    def test_should_update_normal_section_only_when_stale(self, update_loyalty):
+    def test_should_update_section_when_stale(self):
         # given
-        create_character_update_status(
-            character=self.character_1001,
+        character = CharacterFactory()
+        sections = Character.UpdateSection.enabled_sections()
+        sections.remove(Character.UpdateSection.LOYALTY)
+        for section in sections:
+            CharacterUpdateStatusFactory(
+                character=character, section=section, is_success=True
+            )
+
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.LOYALTY,
             is_success=True,
-            run_started_at=now() - dt.timedelta(seconds=30),
-            run_finished_at=now(),
+            run_finished_at=now() - dt.timedelta(hours=24),
         )
-        # when
-        tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(update_loyalty.called)
 
-    @patch(TASKS_PATH + ".update_character_mails", spec=True)
-    def test_should_update_special_section_only_when_stale(
-        self, mock_update_character_mails
-    ):
-        # given
-        create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.MAILS,
-            is_success=True,
-            run_started_at=now() - dt.timedelta(seconds=30),
-            run_finished_at=now(),
-        )
-        # when
-        tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(mock_update_character_mails.apply_async.called)
+        with patch(TASKS_PATH + ".update_character_loyalty", spec=True) as m:
+            # when
+            got = tasks.update_character(character.pk)
 
-    def test_should_update_section_when_not_stale_but_force_update_requested(self):
-        # given
-        status = create_character_update_status(
-            character=self.character_1001,
-            section=Character.UpdateSection.SKILLS.value,
-            is_success=True,
-            run_started_at=now() - dt.timedelta(seconds=30),
-            run_finished_at=now(),
-        )
-        last_finished = status.run_finished_at
-        # when
-        tasks.update_character(
-            self.character_1001.pk, force_update=True, ignore_stale=True
-        )
-        # then
-        status.refresh_from_db()
-        self.assertGreater(status.run_finished_at, last_finished)
-        self.assertTrue(status.update_finished_at)
+            # then
+            self.assertTrue(got)
+            self.assertTrue(m.apply_async.called)
 
-    def test_should_update_section_when_not_stale_but_ignore_stale(self):
+    def test_should_update_section_when_previous_update_failed(self):
         # given
-        tasks.update_character_skills(self.character_1001.pk, force_update=True)
-        status = self.character_1001.update_status_for_section("skills")
-        status.update_finished_at = None
-        status.save()
-        # when
-        tasks.update_character(self.character_1001.pk, ignore_stale=True)
-        # then
-        status.refresh_from_db()
-        self.assertIsNone(status.update_finished_at)
-
-    def test_should_do_nothing_when_not_required(self):
-        # given
-        for section in Character.UpdateSection.values:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                run_started_at=now() - dt.timedelta(seconds=30),
-                run_finished_at=now(),
+        character = CharacterFactory()
+        sections = Character.UpdateSection.enabled_sections()
+        sections.remove(Character.UpdateSection.LOYALTY)
+        for section in sections:
+            CharacterUpdateStatusFactory(
+                character=character, section=section, is_success=True
             )
-        # when
-        result = tasks.update_character(self.character_1001.pk)
-        # then
-        self.assertFalse(result)
 
-    def test_can_do_forced_update(self):
-        # when
-        result = tasks.update_character(self.character_1001.pk, force_update=True)
-        # then
-        self.assertTrue(result)
-        self.assertTrue(self.character_1001.is_update_status_ok())
+        CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.LOYALTY,
+            is_success=False,
+        )
 
-    def test_skip_update_for_orphans(self):
+        with patch(TASKS_PATH + ".update_character_loyalty", spec=True) as m:
+            # when
+            got = tasks.update_character(character.pk)
+
+            # then
+            self.assertTrue(got)
+            self.assertTrue(m.apply_async.called)
+
+    def test_should_update_current_sections_when_requested(self):
         # given
-        character = create_character(EveCharacter.objects.get(character_id=1121))
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(
+                character=character, section=section, is_success=True
+            )
+
+        with patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True):
+            with ExitStack() as stack:
+                mocks = [
+                    stack.enter_context(patch(TASKS_PATH + f".{name}", name=name))
+                    for name in TASK_NAMES
+                ]
+
+                # when
+                result = tasks.update_character(character.pk, ignore_stale=True)
+
+                # then
+                self.assertTrue(result)
+                for m in mocks:
+                    with self.subTest(name=m._mock_name):
+                        self.assertTrue(m.apply_async.called)
+
+    def test_should_skip_update_for_orphans(self):
+        # given
+        character = CharacterOrphanFactory()
+
         # when
         result = tasks.update_character(character.pk)
+
         # then
         self.assertFalse(result)
-        self.assertIsNone(character.is_update_status_ok())
 
-    @tag("breaks_with_tox")  # FIXME: Find solution
-    def test_should_skip_updating_broken_sections(self):
+
+@patch(MODELS_PATH + ".characters.MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateCharacter_EsiIssues(NoSocketsTestCase):
+    def test_should_not_update_sections_where_esi_endpoint_is_down(self):
         # given
-        run_started_at = now() - dt.timedelta(hours=24)
-        for section in Character.UpdateSection:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                run_started_at=run_started_at,
-                run_finished_at=run_started_at,
-            )
-
-        # when
+        character = CharacterFactory()
         broken_section = Character.UpdateSection.LOYALTY
         with patch(
-            TASKS_PATH + ".esi_status.unavailable_sections",
-            lambda: {broken_section},
+            TASKS_PATH + ".esi_status.unavailable_sections", lambda: {broken_section}
         ):
-            result = tasks.update_character(self.character_1001.pk)
+            with ExitStack() as stack:
+                mocks = [
+                    stack.enter_context(patch(TASKS_PATH + f".{name}", name=name))
+                    for name in TASK_NAMES
+                ]
 
-        # then
-        self.assertTrue(result)
+                # when
+                result = tasks.update_character(character.pk, ignore_stale=True)
 
-        sections = Character.UpdateSection.enabled_sections()
-        sections.remove(broken_section)
-        for section in sections:
-            with self.subTest(section=section):
-                self.assertFalse(
-                    self.character_1001.is_update_needed_for_section(section=section)
-                )
+                # then
+                self.assertTrue(result)
+                for m in mocks:
+                    with self.subTest(name=m._mock_name):
+                        if m._mock_name == "update_character_loyalty":
+                            self.assertFalse(m.apply_async.called)
+                        else:
+                            self.assertTrue(m.apply_async.called)
 
-        self.assertTrue(
-            self.character_1001.is_update_needed_for_section(section=broken_section)
-        )
-
-    @tag("breaks_with_tox")  # FIXME: Find solution
-    def test_should_stop_updating_when_no_esi_status_available(self):
+    def test_should_not_update_when_no_esi_status_available(self):
         # given
-        run_started_at = now() - dt.timedelta(hours=24)
-        for section in Character.UpdateSection:
-            create_character_update_status(
-                character=self.character_1001,
-                section=section,
-                is_success=True,
-                run_started_at=run_started_at,
-                run_finished_at=run_started_at,
-            )
+        character = CharacterFactory()
 
-        # when
         with patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: None):
-            result = tasks.update_character(self.character_1001.pk)
+            # when
+            got = tasks.update_character(character.pk)
 
-        # then
-        self.assertFalse(result)
+            # then
+            self.assertFalse(got)
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-@patch(MANAGERS_PATH + ".character_sections_1.esi")
-class TestUpdateCharacterAssets(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
-        )
-        cls.jita = EveSolarSystem.objects.get(id=30000142)
-        cls.jita_44 = Location.objects.get(id=60003760)
-        cls.amamake = EveSolarSystem.objects.get(id=30002537)
-        cls.structure_1 = Location.objects.get(id=1_000_000_000_001)
-        reset_celery_once_locks()
-
-    def setUp(self):
-        reset_retry_task_on_esi_error_and_offline()
-
-    def test_should_create_assets_from_scratch(self, mock_esi):
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateCharacterAssets(TestCaseWithClearCache):
+    @pook.on
+    def test_should_create_assets_from_scratch(self):
         # given
-        mock_esi.client = esi_client_stub
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        in_space = LocationSolarSystemFactory()
+        structure = LocationStructureFactory()
+        type_1 = EveTypeFactory()
+        type_2 = EveTypeFactory()
+        type_3 = EveTypeFactory()
+        type_4 = EveTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": True,
+                    "is_singleton": True,
+                    "item_id": 1100000000001,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": 1,
+                    "type_id": type_4.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000002,
+                    "location_flag": "Hangar",
+                    "location_id": 1100000000001,
+                    "location_type": "item",
+                    "quantity": 1,
+                    "type_id": type_2.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000003,
+                    "location_flag": "Hangar",
+                    "location_id": 1100000000001,
+                    "location_type": "item",
+                    "quantity": 1,
+                    "type_id": type_1.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000004,
+                    "location_flag": "Hangar",
+                    "location_id": 1100000000003,
+                    "location_type": "item",
+                    "quantity": 1,
+                    "type_id": type_3.id,
+                },
+                {
+                    "is_blueprint_copy": True,
+                    "is_singleton": True,
+                    "item_id": 1100000000005,
+                    "location_flag": "Hangar",
+                    "location_id": structure.id,
+                    "location_type": "other",
+                    "quantity": 1,
+                    "type_id": type_4.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000006,
+                    "location_flag": "Hangar",
+                    "location_id": 1100000000005,
+                    "location_type": "item",
+                    "quantity": 1,
+                    "type_id": type_2.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000007,
+                    "location_flag": "Hangar",
+                    "location_id": in_space.id,
+                    "location_type": "solar_system",
+                    "quantity": 1,
+                    "type_id": type_2.id,
+                },
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": True,
+                    "item_id": 1100000000008,
+                    "location_flag": "Hangar",
+                    "location_id": structure.id,
+                    "location_type": "item",
+                    "quantity": 1,
+                    "type_id": type_2.id,
+                },
+            ],
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {"item_id": 1100000000001, "name": "Parent Item 1"},
+                {"item_id": 1100000000002, "name": "Leaf Item 2"},
+                {"item_id": 1100000000003, "name": "Leaf Item 3"},
+                {"item_id": 1100000000004, "name": "Leaf Item 4"},
+                {"item_id": 1100000000005, "name": "Parent Item 2"},
+                {"item_id": 1100000000006, "name": "Leaf Item 6"},
+                {"item_id": 1100000000007, "name": "None"},
+                {"item_id": 1100000000008, "name": "None"},
+            ],
+        )
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
 
         # then
         self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
+            extract(character.assets, "item_id"),
             {
                 1_100_000_000_001,
                 1_100_000_000_002,
@@ -347,267 +428,405 @@ class TestUpdateCharacterAssets(TestCase):
             },
         )
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        self.assertTrue(asset.is_blueprint_copy)
-        self.assertTrue(asset.is_singleton)
-        self.assertEqual(asset.location_flag, "Hangar")
-        self.assertEqual(asset.location_id, 60003760)
-        self.assertEqual(asset.quantity, 1)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
-        self.assertEqual(asset.name, "Parent Item 1")
+        obj_1: CharacterAsset = character.assets.get(item_id=1_100_000_000_001)
+        self.assertTrue(obj_1.is_blueprint_copy)
+        self.assertTrue(obj_1.is_singleton)
+        self.assertEqual(obj_1.location_flag, "Hangar")
+        self.assertEqual(obj_1.location, station)
+        self.assertEqual(obj_1.quantity, 1)
+        self.assertEqual(obj_1.eve_type, type_4)
+        self.assertEqual(obj_1.name, "Parent Item 1")
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_002)
-        self.assertFalse(asset.is_blueprint_copy)
-        self.assertTrue(asset.is_singleton)
-        self.assertEqual(asset.location_flag, "???")
-        self.assertEqual(asset.parent.item_id, 1_100_000_000_001)
-        self.assertEqual(asset.quantity, 1)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
-        self.assertEqual(asset.name, "Leaf Item 2")
+        obj_2: CharacterAsset = character.assets.get(item_id=1_100_000_000_002)
+        self.assertFalse(obj_2.is_blueprint_copy)
+        self.assertTrue(obj_2.is_singleton)
+        self.assertEqual(obj_2.location_flag, "Hangar")
+        self.assertEqual(obj_2.parent.item_id, 1_100_000_000_001)
+        self.assertEqual(obj_2.quantity, 1)
+        self.assertEqual(obj_2.eve_type, type_2)
+        self.assertEqual(obj_2.name, "Leaf Item 2")
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_003)
-        self.assertEqual(asset.parent.item_id, 1_100_000_000_001)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=23))
+        obj_3: CharacterAsset = character.assets.get(item_id=1_100_000_000_003)
+        self.assertEqual(obj_3.parent.item_id, 1_100_000_000_001)
+        self.assertEqual(obj_3.eve_type, type_1)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_004)
-        self.assertEqual(asset.parent.item_id, 1_100_000_000_003)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=19553))
+        obj_4: CharacterAsset = character.assets.get(item_id=1_100_000_000_004)
+        self.assertEqual(obj_4.parent.item_id, 1_100_000_000_003)
+        self.assertEqual(obj_4.eve_type, type_3)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_005)
-        self.assertEqual(asset.location, self.structure_1)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
+        obj_5: CharacterAsset = character.assets.get(item_id=1_100_000_000_005)
+        self.assertEqual(obj_5.location, structure)
+        self.assertEqual(obj_5.eve_type, type_4)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_006)
-        self.assertEqual(asset.parent.item_id, 1_100_000_000_005)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
+        obj_6: CharacterAsset = character.assets.get(item_id=1_100_000_000_006)
+        self.assertEqual(obj_6.parent.item_id, 1_100_000_000_005)
+        self.assertEqual(obj_6.eve_type, type_2)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_007)
-        self.assertEqual(asset.location_id, 30000142)
-        self.assertEqual(asset.name, "")
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=19540))
+        obj_7: CharacterAsset = character.assets.get(item_id=1_100_000_000_007)
+        self.assertEqual(obj_7.location, in_space)
+        self.assertEqual(obj_7.name, "")
+        self.assertEqual(obj_7.eve_type, type_2)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_008)
-        self.assertEqual(asset.location_id, 1_000_000_000_001)
+        obj_8: CharacterAsset = character.assets.get(item_id=1_100_000_000_008)
+        self.assertEqual(obj_8.location, structure)
 
-    def test_should_remove_obsolete_assets(self, mock_esi):
+    @pook.on
+    def test_should_remove_stale_assets(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_asset(
-            character=self.character_1001, item_id=1100000000666, location=self.jita_44
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        eve_type = EveTypeFactory()
+        CharacterAssetFactory(character=character, location=station)  # to be removed
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": False,
+                    "item_id": 1100000000001,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": 3,
+                    "type_id": eve_type.id,
+                },
+            ],
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[],
         )
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
-            {
-                1_100_000_000_001,
-                1_100_000_000_002,
-                1_100_000_000_003,
-                1_100_000_000_004,
-                1_100_000_000_005,
-                1_100_000_000_006,
-                1_100_000_000_007,
-                1_100_000_000_008,
-            },
-        )
+        got = extract(character.assets, "item_id")
+        want = {1_100_000_000_001}
+        self.assertSetEqual(got, want)
 
-    def test_should_update_existing_assets(self, mock_esi):
+    @pook.on
+    def test_should_update_existing_assets(self):
         # given
-        mock_esi.client = esi_client_stub
-        create_character_asset(
-            character=self.character_1001,
-            item_id=1_100_000_000_001,
-            location=self.jita_44,
-            eve_type=EveType.objects.get(id=20185),
-            is_singleton=True,
-            name="Parent Item 1",
-            quantity=10,
+        character = CharacterFactory()
+        item_1 = CharacterAssetFactory(character=character)
+        structure = LocationStructureFactory()
+        eve_type = EveTypeFactory()
+        location_flag = "MobileDepotHold"
+        quantity = 1
+        is_blueprint_copy = True
+        is_singleton = True
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": is_blueprint_copy,
+                    "is_singleton": is_singleton,
+                    "item_id": item_1.item_id,
+                    "location_flag": location_flag,
+                    "location_id": structure.id,
+                    "location_type": "item",
+                    "quantity": quantity,
+                    "type_id": eve_type.id,
+                },
+            ],
+        )
+        name = "Alpha"
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[{"item_id": item_1.item_id, "name": name}],
         )
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
-            {
-                1_100_000_000_001,
-                1_100_000_000_002,
-                1_100_000_000_003,
-                1_100_000_000_004,
-                1_100_000_000_005,
-                1_100_000_000_006,
-                1_100_000_000_007,
-                1_100_000_000_008,
-            },
-        )
+        item_2: CharacterAsset = character.assets.get(item_id=item_1.item_id)
+        self.assertEqual(item_2.eve_type, eve_type)
+        self.assertEqual(item_2.is_blueprint_copy, is_blueprint_copy)
+        self.assertEqual(item_2.is_singleton, is_singleton)
+        self.assertEqual(item_2.location_flag, location_flag)
+        self.assertEqual(item_2.location, structure)
+        self.assertEqual(item_2.name, name)
+        self.assertEqual(item_2.quantity, quantity)
 
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        self.assertTrue(asset.is_singleton)
-        self.assertEqual(asset.location_id, 60003760)
-        self.assertEqual(asset.quantity, 1)
-        self.assertEqual(asset.eve_type, EveType.objects.get(id=20185))
-        self.assertEqual(asset.name, "Parent Item 1")
-
-    def test_should_keep_assets_which_are_moved_to_different_locations(self, mock_esi):
+    @pook.on
+    def test_should_keep_assets_which_are_moved_to_different_locations(self):
         # given
-        mock_esi.client = esi_client_stub
-        parent_asset = create_character_asset(
-            character=self.character_1001,
-            item_id=1100000000666,
-            location=self.jita_44,
-            eve_type=EveType.objects.get(id=20185),
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        item_1 = CharacterAssetFactory(character=character, location=station)
+        item_2 = CharacterAssetFactory(character=character, parent=item_1)
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": item_1.is_blueprint_copy,
+                    "is_singleton": item_1.is_singleton,
+                    "item_id": item_1.item_id,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": item_1.quantity,
+                    "type_id": item_1.eve_type.id,
+                },
+                {
+                    "is_blueprint_copy": item_2.is_blueprint_copy,
+                    "is_singleton": item_2.is_singleton,
+                    "item_id": item_2.item_id,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": item_2.quantity,
+                    "type_id": item_2.eve_type.id,
+                },
+            ],
         )
-        create_character_asset(
-            character=self.character_1001,
-            item_id=1_100_000_000_002,
-            parent=parent_asset,
-            eve_type=EveType.objects.get(id=19540),
-            quantity=1,
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[],
         )
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
-            {
-                1_100_000_000_001,
-                1_100_000_000_002,
-                1_100_000_000_003,
-                1_100_000_000_004,
-                1_100_000_000_005,
-                1_100_000_000_006,
-                1_100_000_000_007,
-                1_100_000_000_008,
-            },
+        got = extract(character.assets, "item_id")
+        want = {item_1.item_id, item_2.item_id}
+        self.assertSetEqual(got, want)
+
+    @pook.on
+    def test_should_report_update_success_when_update_succeeded(self):
+        # given
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        eve_type = EveTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": False,
+                    "item_id": 1100000000001,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": 3,
+                    "type_id": eve_type.id,
+                },
+            ],
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[],
         )
 
-    def test_should_report_update_success_when_update_succeeded(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-
         # when
-        tasks.update_character_assets(self.character_1001.pk, True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
 
         # then
-        status = self.character_1001.update_status_set.get(
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
         self.assertFalse(status.error_message)
 
-    def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(
-        self, mock_esi
-    ):
+    @pook.on
+    def test_should_not_recreate_asset_tree_when_info_from_ESI_is_unchanged(self):
         # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(self.character_1001.pk, True)
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        asset.name = "New Name"
-        asset.save()
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        eve_type = EveTypeFactory()
+        item_id = 1100000000001
+        name = "Karoshi"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": False,
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": 3,
+                    "type_id": eve_type.id,
+                },
+            ],
+            persist=True,
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[{"item_id": item_id, "name": name}],
+            persist=True,
+        )
+        character.reset_update_section(Character.UpdateSection.ASSETS)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        item: CharacterAsset = character.assets.get(item_id=item_id)
+        item.name = "New Name"
+        item.save()
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, False)
+        tasks.update_character_assets(character.pk, force_update=False)
 
         # then
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        self.assertEqual(asset.name, "New Name")
+        item.refresh_from_db()
+        self.assertEqual(item.name, "New Name")
 
-        status = self.character_1001.update_status_set.get(
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
 
+    @pook.on
     def test_should_recreate_asset_tree_when_info_from_ESI_is_unchanged_and_is_forced(
-        self, mock_esi
+        self,
     ):
         # given
-        mock_esi.client = esi_client_stub
-        self.character_1001.reset_update_section(Character.UpdateSection.ASSETS)
-        tasks.update_character_assets(self.character_1001.pk, True)
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        asset.name = "New Name"
-        asset.save()
+        character = CharacterFactory()
+        station = LocationStationFactory()
+        eve_type = EveTypeFactory()
+        item_id = 1100000000001
+        name = "Karoshi"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/assets"),
+            reply=HTTPStatus.OK,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_blueprint_copy": False,
+                    "is_singleton": False,
+                    "item_id": item_id,
+                    "location_flag": "Hangar",
+                    "location_id": station.id,
+                    "location_type": "station",
+                    "quantity": 3,
+                    "type_id": eve_type.id,
+                },
+            ],
+            persist=True,
+        )
+        pook.post(
+            make_esi_url(f"characters/{character.character_id}/assets/names"),
+            reply=HTTPStatus.OK,
+            response_json=[{"item_id": item_id, "name": name}],
+            persist=True,
+        )
+        character.reset_update_section(Character.UpdateSection.ASSETS)
+        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        item_1: CharacterAsset = character.assets.get(item_id=item_id)
+        item_1.name = "New Name"
+        item_1.save()
 
         # when
-        tasks.update_character_assets(self.character_1001.pk, force_update=True)
+        tasks.update_character_assets(character_pk=character.pk, force_update=True)
 
         # then
-        asset = self.character_1001.assets.get(item_id=1_100_000_000_001)
-        self.assertEqual(asset.name, "Parent Item 1")
+        item_2: CharacterAsset = character.assets.get(item_id=item_id)
+        self.assertEqual(item_2.name, name)
 
-        status = self.character_1001.update_status_set.get(
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.ASSETS
         )
         self.assertTrue(status.is_success)
 
 
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-@patch(MANAGERS_PATH + ".character_sections_1.esi")
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestUpdateCharacterContacts(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
+    @pook.on
+    def test_should_report_success_when_update_ok(self):
+        # given
+        character = CharacterFactory()
+        label_id = 7
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contacts/labels"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[{"label_id": label_id, "label_name": "alpha"}],
         )
-        reset_celery_once_locks()
+        eve_entity = EveEntityCharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contacts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "contact_id": eve_entity.id,
+                    "contact_type": "character",
+                    "is_blocked": False,
+                    "is_watched": True,
+                    "label_ids": [label_id],
+                    "standing": 5.0,
+                }
+            ],
+        )
 
-    def test_update_ok(self, mock_esi):
-        """when update succeeded then report update success"""
-        mock_esi.client = esi_client_stub
+        # when
+        tasks.update_character_contacts(character.pk, True)
 
-        tasks.update_character_contacts(self.character_1001.pk, True)
-
-        status = self.character_1001.update_status_set.get(
+        # then
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.CONTACTS
         )
         self.assertTrue(status.is_success)
-        self.assertFalse(status.error_message)
+
+        contact: CharacterContact = character.contacts.first()
+        self.assertEqual(contact.eve_entity, eve_entity)
+
+        label: CharacterContactLabel = character.contact_labels.first()
+        self.assertEqual(label.label_id, label_id)
 
 
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_1.esi")
-class TestUpdateCharacterContracts(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        reset_celery_once_locks()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character_1001.eve_character.character_ownership.user.token_set.first()
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateCharacterContracts(TestCaseWithClearCache):
+    @pook.on
+    def test_should_record_success_when_update_completed_successfully(self):
+        # given
+        character = CharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contracts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "assignee_id": 0,
+                    "acceptor_id": 0,
+                    "availability": "public",
+                    "contract_id": 42,
+                    "date_expired": now().isoformat(),
+                    "date_issued": now().isoformat(),
+                    "end_location_id": LocationStationFactory().id,
+                    "for_corporation": False,
+                    "issuer_corporation_id": EveEntityCorporationFactory().id,
+                    "issuer_id": EveEntityCharacterFactory().id,
+                    "reward": 123.45,
+                    "start_location_id": LocationStationFactory().id,
+                    "status": "outstanding",
+                    "type": "courier",
+                },
+            ],
         )
 
-    def test_should_record_success_when_update_completed_successfully(self, mock_esi):
-        # given
-        mock_esi.client = esi_client_stub
-
         # when
-        tasks.update_character_contracts(self.character_1001.pk, True)
+        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
 
         # then
-        status = self.character_1001.update_status_set.get(
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.CONTRACTS
         )
         self.assertTrue(status.is_success)
@@ -615,221 +834,131 @@ class TestUpdateCharacterContracts(TestCase):
         self.assertTrue(status.run_finished_at)
         self.assertTrue(status.update_finished_at)
 
-    def test_should_store_new_item_exchange_contract_with_items(self, mock_esi):
+    @pook.on
+    def test_should_store_new_item_exchange_contract_with_items(self):
         # given
-        endpoints = [
-            EsiEndpoint(
-                "Contracts",
-                "get_characters_character_id_contracts",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {
-                            "acceptor_id": 1101,
-                            "assignee_id": 2101,
-                            "availability": "personal",
-                            "buyout": None,
-                            "collateral": 0.0,
-                            "contract_id": 100000011,
-                            "date_accepted": "2019-09-13T17:23:44Z",
-                            "date_completed": "2019-09-13T17:23:44Z",
-                            "date_expired": "2019-10-15T23:08:38Z",
-                            "date_issued": "2019-09-12T23:08:38Z",
-                            "days_to_complete": 0,
-                            "end_location_id": 1000000000001,
-                            "for_corporation": False,
-                            "issuer_corporation_id": 2001,
-                            "issuer_id": 1001,
-                            "price": 270000000.0,
-                            "reward": 0.0,
-                            "start_location_id": 1000000000001,
-                            "status": "finished",
-                            "title": "Alpha Contract",
-                            "type": "item_exchange",
-                            "volume": 486000.0,
-                        }
-                    ]
-                },
+        character = CharacterFactory()
+        contract_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contracts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "assignee_id": 0,
+                    "acceptor_id": 0,
+                    "availability": "public",
+                    "contract_id": contract_id,
+                    "date_expired": now().isoformat(),
+                    "date_issued": now().isoformat(),
+                    "for_corporation": False,
+                    "issuer_corporation_id": EveEntityCorporationFactory().id,
+                    "issuer_id": EveEntityCharacterFactory().id,
+                    "status": "outstanding",
+                    "type": "item_exchange",
+                }
+            ],
+        )
+        record_id = 1
+        quantity = 3
+        eve_type = EveTypeFactory()
+        pook.get(
+            make_esi_url(
+                f"characters/{character.character_id}/contracts/{contract_id}/items"
             ),
-            EsiEndpoint(
-                "Contracts",
-                "get_characters_character_id_contracts_contract_id_items",
-                ("character_id", "contract_id"),
-                needs_token=True,
-                data={
-                    "1001": {
-                        "100000011": [
-                            {
-                                "is_included": True,
-                                "is_singleton": False,
-                                "quantity": 3,
-                                "record_id": 1,
-                                "type_id": 19540,
-                            }
-                        ]
-                    }
-                },
-            ),
-        ]
-        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_included": True,
+                    "is_singleton": False,
+                    "quantity": quantity,
+                    "record_id": record_id,
+                    "type_id": eve_type.id,
+                }
+            ],
+        )
 
         # when
-        tasks.update_character_contracts(self.character_1001.pk, False)
+        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
 
         # then
-        self.assertEqual(self.character_1001.contracts.count(), 1)
-        contract = self.character_1001.contracts.get(contract_id=100000011)
-        self.assertEqual(contract.title, "Alpha Contract")
+        self.assertEqual(character.contracts.count(), 1)
+        contract: CharacterContract = character.contracts.first()
+        self.assertEqual(contract.contract_id, contract_id)
+
         self.assertEqual(contract.items.count(), 1)
-        item = contract.items.get(record_id=1)
-        self.assertEqual(item.quantity, 3)
+        item: CharacterContractItem = contract.items.first()
+        self.assertEqual(item.record_id, record_id)
 
-    def test_should_fetch_items_for_new_contracts_only(self, mock_esi):
-        # given esi has two contracts
-        endpoints = [
-            EsiEndpoint(
-                "Contracts",
-                "get_characters_character_id_contracts",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {
-                            "acceptor_id": 1101,
-                            "assignee_id": 2101,
-                            "availability": "personal",
-                            "buyout": None,
-                            "collateral": 0.0,
-                            "contract_id": 100000011,
-                            "date_accepted": "2019-09-13T17:23:44Z",
-                            "date_completed": "2019-09-13T17:23:44Z",
-                            "date_expired": "2019-10-15T23:08:38Z",
-                            "date_issued": "2019-09-12T23:08:38Z",
-                            "days_to_complete": 0,
-                            "end_location_id": 1000000000001,
-                            "for_corporation": False,
-                            "issuer_corporation_id": 2001,
-                            "issuer_id": 1001,
-                            "price": 1000000.0,
-                            "reward": 0.0,
-                            "start_location_id": 1000000000001,
-                            "status": "finished",
-                            "title": "Alpha Contract",
-                            "type": "item_exchange",
-                            "volume": 486000.0,
-                        },
-                        {
-                            "acceptor_id": 1101,
-                            "assignee_id": 2101,
-                            "availability": "personal",
-                            "buyout": None,
-                            "collateral": 0.0,
-                            "contract_id": 100000012,
-                            "date_accepted": "2019-09-13T17:23:44Z",
-                            "date_completed": "2019-09-13T17:23:44Z",
-                            "date_expired": "2019-10-15T23:08:38Z",
-                            "date_issued": "2019-09-12T23:08:38Z",
-                            "days_to_complete": 0,
-                            "end_location_id": 1000000000001,
-                            "for_corporation": False,
-                            "issuer_corporation_id": 2001,
-                            "issuer_id": 1001,
-                            "price": 2000000.0,
-                            "reward": 0.0,
-                            "start_location_id": 1000000000001,
-                            "status": "finished",
-                            "title": "Bravo Contract",
-                            "type": "item_exchange",
-                            "volume": 486000.0,
-                        },
-                    ]
-                },
-            ),
-            EsiEndpoint(
-                "Contracts",
-                "get_characters_character_id_contracts_contract_id_items",
-                ("character_id", "contract_id"),
-                needs_token=True,
-                data={
-                    "1001": {
-                        "100000011": [
-                            {
-                                "is_included": True,
-                                "is_singleton": False,
-                                "quantity": 3,
-                                "record_id": 1,
-                                "type_id": 19540,
-                            }
-                        ],
-                        "100000012": [
-                            {
-                                "is_included": True,
-                                "is_singleton": False,
-                                "quantity": 5,
-                                "record_id": 1,
-                                "type_id": 19551,
-                            }
-                        ],
-                    }
-                },
-            ),
-        ]
-        mock_esi.client = EsiClientStub.create_from_endpoints(endpoints)
-
-        # and one contract already exists in the database
-        contract_11 = create_character_contract(
-            character=self.character_1001,
-            contract_id=100000011,
-            availability=CharacterContract.AVAILABILITY_PERSONAL,
-            contract_type=CharacterContract.TYPE_ITEM_EXCHANGE,
-            date_accepted=parse_datetime("2019-09-13T17:23:44Z"),
-            date_completed=parse_datetime("2019-09-13T17:23:44Z"),
-            date_expired=parse_datetime("2019-10-15T23:08:38Z"),
-            date_issued=parse_datetime("2019-09-12T23:08:38Z"),
-            for_corporation=False,
-            issuer_id=1001,
-            issuer_corporation_id=2001,
-            status=CharacterContract.STATUS_FINISHED,
-            title="Old Alpha Contract",  # = "Alpha Contract" in esi data
-            end_location_id=1000000000001,
+    @pook.on
+    def test_should_fetch_items_for_new_contracts_only(self):
+        # given
+        character = CharacterFactory()
+        contract_1 = CharacterContractItemExchangeFactory(
+            character=character, contract_type=CharacterContract.TYPE_ITEM_EXCHANGE
         )
-        create_character_contract_item(
-            contract=contract_11,
-            record_id=1,
-            is_included=True,
-            is_singleton=False,
-            quantity=1,  # = 3 in esi data
-            eve_type_id=19540,
+        contract_2_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/contracts"),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "acceptor_id": 0,
+                    "assignee_id": 0,
+                    "availability": "public",
+                    "contract_id": contract_1.contract_id,
+                    "date_expired": contract_1.date_expired.isoformat(),
+                    "date_issued": contract_1.date_issued.isoformat(),
+                    "for_corporation": contract_1.for_corporation,
+                    "issuer_corporation_id": contract_1.issuer_corporation.id,
+                    "issuer_id": contract_1.issuer.id,
+                    "price": contract_1.price,
+                    "status": "outstanding",
+                    "type": "item_exchange",
+                },
+                {
+                    "assignee_id": 0,
+                    "acceptor_id": 0,
+                    "availability": "public",
+                    "contract_id": contract_2_id,
+                    "date_expired": now().isoformat(),
+                    "date_issued": now().isoformat(),
+                    "for_corporation": False,
+                    "issuer_corporation_id": EveEntityCorporationFactory().id,
+                    "issuer_id": EveEntityCharacterFactory().id,
+                    "status": "outstanding",
+                    "type": "item_exchange",
+                },
+            ],
         )
+        record_id = 1
+        quantity = 3
+        eve_type = EveTypeFactory()
+        pook.get(
+            make_esi_url(
+                f"characters/{character.character_id}/contracts/{contract_2_id}/items"
+            ),
+            reply=200,
+            response_headers={"X-Pages": "1"},
+            response_json=[
+                {
+                    "is_included": True,
+                    "is_singleton": False,
+                    "quantity": quantity,
+                    "record_id": record_id,
+                    "type_id": eve_type.id,
+                }
+            ],
+        )
+        # only the route for contract_2 is provided.
+        # Test would break when it tries to fetch items for contract 1.
 
-        # when contracts are updated
-        with patch(
-            TASKS_PATH + ".update_contract_items_esi",
-            wraps=tasks.update_contract_items_esi,
-        ) as spy_update_contract_items_esi:
-            tasks.update_character_contracts(self.character_1001.pk, False)
+        # when
+        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
 
-            # then we still have two contracts in the database
-            # and contract 11 still has the "old" data (= not updated)
-            self.assertEqual(self.character_1001.contracts.count(), 2)
-
-            contract_11 = self.character_1001.contracts.get(contract_id=100000011)
-            self.assertEqual(contract_11.title, "Old Alpha Contract")
-            self.assertEqual(contract_11.items.count(), 1)
-            item = contract_11.items.get(record_id=1)
-            self.assertEqual(item.quantity, 1)
-
-            contract_12 = self.character_1001.contracts.get(contract_id=100000012)
-            self.assertEqual(contract_12.title, "Bravo Contract")
-            self.assertEqual(contract_12.items.count(), 1)
-            item = contract_12.items.get(record_id=1)
-            self.assertEqual(item.quantity, 5)
-
-            # and the task for fetching contract items has been called
-            # for then new contract (#12) only
-            contract_pks = {
-                o[1]["kwargs"]["contract_pk"]
-                for o in spy_update_contract_items_esi.apply_async.call_args_list
-            }
-            self.assertSetEqual(contract_pks, {contract_12.pk})
+        # then
+        got = extract(character.contracts, "contract_id")
+        want = {contract_1.contract_id, contract_2_id}
+        self.assertSetEqual(got, want)

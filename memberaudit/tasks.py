@@ -157,7 +157,7 @@ def update_character(
     - ignore_stale: When True, will start updating all sections regardless
         of it's stale status
 
-    Return True when update of sections was started, else False.
+    Return True when update of any section was started, else False.
     """
     character: Character = Character.objects.prefetch_related("update_status_set").get(
         pk=character_pk
@@ -169,8 +169,8 @@ def update_character(
     character.reset_token_error_notified_if_status_ok()
     character.clear_cache()
 
-    character_needs_update = character.calc_update_needed()
-    if not ignore_stale and not character_needs_update:
+    character_update_status = character.calc_update_needed()
+    if not ignore_stale and not character_update_status.is_update_needed():
         logger.info("%s: No update required", character)
         return False
 
@@ -195,7 +195,8 @@ def update_character(
             )
             continue
 
-        if not ignore_stale and not character_needs_update.for_section(section):
+        is_update_needed = character_update_status.for_section(section)
+        if not ignore_stale and not is_update_needed:
             continue
 
         task_name = f"update_character_{section.value}"

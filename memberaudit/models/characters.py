@@ -59,7 +59,7 @@ class _CharacterNeedsUpdate:
     section_map: Dict["Character.UpdateSection", bool]
     character: "Character"
 
-    def __bool__(self) -> bool:
+    def is_update_needed(self) -> bool:
         """Return True if any section needs to be updated, else False."""
         return any(self.section_map.values())
 
@@ -367,7 +367,7 @@ class Character(
                 self.save(update_fields=["token_error_notified_at"])
 
     def calc_update_needed(self) -> _CharacterNeedsUpdate:
-        """Return map of section and if they need to be update."""
+        """Return map of section with information which need to be updated."""
         sections_needs_update = {
             section: True for section in self.UpdateSection.enabled_sections()
         }

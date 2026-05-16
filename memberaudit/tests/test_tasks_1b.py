@@ -1,29 +1,41 @@
+import datetime as dt
+from contextlib import nullcontext
+from http import HTTPStatus
 from unittest.mock import patch
 
+import pook
 from bravado.exception import HTTPError
 from celery.exceptions import Retry as CeleryRetry
 
 from django.test import TestCase, override_settings
-from django.utils.dateparse import parse_datetime
+from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity
-from eveuniverse.tests.testdata.factories_2 import EveEntityFactory
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityCharacterFactory,
+    EveEntityFactory,
+)
 
 from allianceauth.eveonline.models import EveCharacter
-from app_utils.esi import reset_retry_task_on_esi_error_and_offline
-from app_utils.esi_testing import EsiClientStub, EsiEndpoint, build_http_error
-from app_utils.testing import create_user_from_evecharacter, generate_invalid_pk
+from app_utils.esi_testing import build_http_error
+from app_utils.testing import (
+    NoSocketsTestCase,
+    create_user_from_evecharacter,
+    generate_invalid_pk,
+)
 
 from memberaudit import tasks
 from memberaudit.helpers import UpdateSectionResult
-from memberaudit.models import Character, CharacterUpdateStatus
-from memberaudit.tests.utils import extract
-
-from .testdata.factories import (
-    create_character,
-    create_character_mail,
-    create_mail_entity_from_eve_entity,
+from memberaudit.models import Character, CharacterMail, CharacterUpdateStatus
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterMailFactory,
+    TokenFactory2,
+    make_esi_url,
 )
+from memberaudit.tests.utils import TestCaseWithClearCache, extract
+
+from .testdata.factories import create_character
 from .testdata.load_entities import load_entities
 from .testdata.load_eveuniverse import load_eveuniverse
 from .testdata.load_locations import load_locations
@@ -34,126 +46,94 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.esi")
-@patch(MANAGERS_PATH + ".general.esi")
-class TestUpdateCharacterMails(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-        reset_celery_once_locks()
-
-        endpoints = [
-            EsiEndpoint(
-                "Mail",
-                "get_characters_character_id_mail_lists",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {
-                            "mailing_list_id": 9001,
-                            "name": "Dummy 1",
-                        }
-                    ]
-                },
-            ),
-            EsiEndpoint(
-                "Mail",
-                "get_characters_character_id_mail_labels",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": {
-                        "labels": [
-                            {
-                                "color": "#660066",
-                                "label_id": 1,
-                                "name": "PINK",
-                                "unread_count": 7,
-                            }
-                        ],
-                        "total_unread_count": 1,
-                    }
-                },
-            ),
-            EsiEndpoint(
-                "Mail",
-                "get_characters_character_id_mail",
-                "character_id",
-                needs_token=True,
-                data={
-                    "1001": [
-                        {
-                            "from": 1002,
-                            "labels": None,
-                            "mail_id": 1,
-                            "recipients": [
-                                {"recipient_id": 1001, "recipient_type": "character"}
-                            ],
-                            "subject": "subject 1",
-                            "timestamp": "2015-09-30T18:07:00Z",
-                        },
-                        {
-                            "from": 9001,
-                            "labels": [1],
-                            "mail_id": 2,
-                            "recipients": [
-                                {"recipient_id": 1001, "recipient_type": "character"}
-                            ],
-                            "subject": "subject 2",
-                            "timestamp": "2015-09-30T19:07:00Z",
-                        },
-                    ]
-                },
-            ),
-            EsiEndpoint(
-                "Mail",
-                "get_characters_character_id_mail_mail_id",
-                "mail_id",
-                needs_token=True,
-                data={
-                    "1": {
-                        "body": "body 1",
-                        "from": 1002,
-                        "labels": None,
-                        "read": True,
-                        "subject": "subject 1",
-                        "timestamp": "2015-09-30T18:07:00Z",
-                    },
-                    "2": {
-                        "body": "body 2",
-                        "from": 9001,
-                        "labels": [1],
-                        "read": False,
-                        "subject": "subject 2",
-                        "timestamp": "2015-09-30T18:07:00Z",
-                    },
-                },
-            ),
-        ]
-        cls.esi_client_stub = EsiClientStub.create_from_endpoints(endpoints)
-
-    def test_should_update_mails_from_scratch_and_report_success(
-        self, mock_esi_general, mock_esi_sections
-    ):
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestUpdateCharacterMails(TestCaseWithClearCache):
+    @pook.on
+    def test_should_update_mails_from_scratch_and_report_success(self):
         # given
-        mock_esi_general.client = self.esi_client_stub
-        mock_esi_sections.client = self.esi_client_stub
+        character = CharacterFactory()
+        timestamp = now() - dt.timedelta(hours=1)
+        character_1 = EveEntityCharacterFactory()
+        character_2 = EveEntityCharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "mailing_list_id": 9001,
+                    "name": "Dummy 1",
+                }
+            ],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [
+                    {
+                        "color": "#660066",
+                        "label_id": 1,
+                        "name": "PINK",
+                        "unread_count": 7,
+                    }
+                ],
+                "total_unread_count": 42,
+            },
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": character_2.id,
+                    "mail_id": 1,
+                    "recipients": [
+                        {"recipient_id": character_1.id, "recipient_type": "character"}
+                    ],
+                    "subject": "subject 1",
+                    "timestamp": timestamp.isoformat(),
+                },
+                {
+                    "from": 9001,
+                    "labels": [1],
+                    "mail_id": 2,
+                    "recipients": [
+                        {"recipient_id": character_1.id, "recipient_type": "character"}
+                    ],
+                    "subject": "subject 2",
+                    "timestamp": timestamp.isoformat(),
+                },
+            ],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/1"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": "body 1",
+                "from": character_2.id,
+                "read": True,
+                "subject": "subject 1",
+                "timestamp": timestamp.isoformat(),
+            },
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/2"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": "body 2",
+                "from": 9001,
+                "labels": [1],
+                "read": False,
+                "subject": "subject 2",
+                "timestamp": timestamp.isoformat(),
+            },
+        )
 
         # when
-        tasks.update_character_mails.delay(self.character_1001.pk, True)
+        tasks.update_character_mails.delay(character.pk, force_update=False)
 
         # then
-        status: CharacterUpdateStatus = self.character_1001.update_status_set.get(
+        status: CharacterUpdateStatus = character.update_status_set.get(
             section=Character.UpdateSection.MAILS
         )
         self.assertTrue(status.is_success)
@@ -163,14 +143,14 @@ class TestUpdateCharacterMails(TestCase):
         self.assertTrue(status.update_started_at)
         self.assertTrue(status.update_finished_at)
 
-        mail_ids = extract(self.character_1001.mails, "mail_id")
+        mail_ids = extract(character.mails, "mail_id")
         self.assertSetEqual(mail_ids, {1, 2})
 
-        mail = self.character_1001.mails.get(mail_id=1)
+        mail: CharacterMail = character.mails.get(mail_id=1)
         self.assertEqual(mail.subject, "subject 1")
         self.assertEqual(mail.body, "body 1")
 
-        mail = self.character_1001.mails.get(mail_id=2)
+        mail: CharacterMail = character.mails.get(mail_id=2)
         self.assertEqual(mail.subject, "subject 2")
         self.assertEqual(mail.body, "body 2")
         label_ids = extract(mail.labels, "label_id")
@@ -178,112 +158,170 @@ class TestUpdateCharacterMails(TestCase):
 
     # TODO: Add test to check force update works
 
-    def test_should_only_fetch_body_for_new_mails(
-        self, mock_esi_general, mock_esi_sections
-    ):
+    @pook.on
+    def test_should_only_fetch_body_for_new_mails(self):
         # given
-        mock_esi_general.client = self.esi_client_stub
-        mock_esi_sections.client = self.esi_client_stub
-
-        sender = create_mail_entity_from_eve_entity(1002)
-        recipient = create_mail_entity_from_eve_entity(1001)
-        create_character_mail(
-            character=self.character_1001,
-            recipients=[recipient],
-            mail_id=1,
-            sender=sender,
-            subject="subject 1",
-            body="body 1",
-            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
+        character = CharacterFactory()
+        mail_1 = CharacterMailFactory(character=character)
+        timestamp = now() - dt.timedelta(hours=1)
+        character_1 = EveEntityCharacterFactory()
+        character_2 = EveEntityCharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [],
+                "total_unread_count": 42,
+            },
+        )
+        mail_2_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": mail_1.sender.id,
+                    "mail_id": mail_1.mail_id,
+                    "recipients": [
+                        {
+                            "recipient_id": mail_1.recipients.first().id,
+                            "recipient_type": "character",
+                        }
+                    ],
+                    "subject": mail_1.subject,
+                    "timestamp": mail_1.timestamp.isoformat(),
+                },
+                {
+                    "from": character_2.id,
+                    "mail_id": mail_2_id,
+                    "recipients": [
+                        {"recipient_id": character_1.id, "recipient_type": "character"}
+                    ],
+                    "subject": "subject 1",
+                    "timestamp": timestamp.isoformat(),
+                },
+            ],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail_2_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": "body 2",
+                "from": character_2.id,
+                "read": True,
+                "subject": "subject 2",
+                "timestamp": timestamp.isoformat(),
+            },
         )
 
         # when
-        with patch(
-            TASKS_PATH + ".update_mail_body_esi", wraps=tasks.update_mail_body_esi
-        ) as spy_update_mail_body_esi:
-            tasks.update_character_mails.delay(
-                self.character_1001.pk, force_update=False
-            )
+        tasks.update_character_mails.delay(character.pk, force_update=False)
 
-            # then
-            mail_ids = extract(self.character_1001.mails, "mail_id")
-            self.assertSetEqual(mail_ids, {1, 2})
+        # then
+        mail_ids = extract(character.mails, "mail_id")
+        self.assertSetEqual(mail_ids, {mail_1.mail_id, mail_2_id})
+        mail_2: CharacterMail = character.mails.get(mail_id=mail_2_id)
+        self.assertTrue(mail_2.body)
 
-            mail = self.character_1001.mails.get(mail_id=1)
-            self.assertEqual(mail.subject, "subject 1")
-            self.assertEqual(mail.body, "body 1")
-
-            mail = self.character_1001.mails.get(mail_id=2)
-            self.assertEqual(mail.subject, "subject 2")
-            self.assertEqual(mail.body, "body 2")
-
-            self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 1)
-
-    def test_should_fetch_body_for_all_mails_from_header_when_forced(
-        self, mock_esi_general, mock_esi_sections
-    ):
+    @pook.on
+    def test_should_fetch_body_for_all_mails_when_forced(self):
         # given
-        mock_esi_general.client = self.esi_client_stub
-        mock_esi_sections.client = self.esi_client_stub
-
-        sender = create_mail_entity_from_eve_entity(1002)
-        recipient = create_mail_entity_from_eve_entity(1001)
-        create_character_mail(
-            character=self.character_1001,
-            recipients=[recipient],
-            mail_id=1,
-            sender=sender,
-            subject="subject 1",
-            body="body 1",
-            timestamp=parse_datetime("2015-09-30T18:07:00Z"),
+        character = CharacterFactory()
+        mail_1 = CharacterMailFactory(character=character)
+        timestamp = now() - dt.timedelta(hours=1)
+        character_1 = EveEntityCharacterFactory()
+        character_2 = EveEntityCharacterFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/labels"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "labels": [],
+                "total_unread_count": 42,
+            },
+        )
+        mail_2_id = 42
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=[
+                {
+                    "from": mail_1.sender.id,
+                    "mail_id": mail_1.mail_id,
+                    "recipients": [
+                        {
+                            "recipient_id": mail_1.recipients.first().id,
+                            "recipient_type": "character",
+                        }
+                    ],
+                    "subject": mail_1.subject,
+                    "timestamp": mail_1.timestamp.isoformat(),
+                },
+                {
+                    "from": character_2.id,
+                    "mail_id": mail_2_id,
+                    "recipients": [
+                        {"recipient_id": character_1.id, "recipient_type": "character"}
+                    ],
+                    "subject": "subject 1",
+                    "timestamp": timestamp.isoformat(),
+                },
+            ],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail_1.mail_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": "body 1",
+                "from": character_2.id,
+                "read": True,
+                "subject": "subject 1",
+                "timestamp": timestamp.isoformat(),
+            },
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/{mail_2_id}"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "body": "body 2",
+                "from": character_2.id,
+                "read": True,
+                "subject": "subject 2",
+                "timestamp": timestamp.isoformat(),
+            },
         )
 
         # when
-        with patch(
-            TASKS_PATH + ".update_mail_body_esi", wraps=tasks.update_mail_body_esi
-        ) as spy_update_mail_body_esi:
-            tasks.update_character_mails.delay(
-                self.character_1001.pk, force_update=True
-            )
+        tasks.update_character_mails.delay(character.pk, force_update=True)
 
-            # then
-            mail_ids = extract(self.character_1001.mails, "mail_id")
-            self.assertSetEqual(mail_ids, {1, 2})
+        # then
+        mail_ids = extract(character.mails, "mail_id")
+        self.assertSetEqual(mail_ids, {mail_1.mail_id, mail_2_id})
 
-            mail = self.character_1001.mails.get(mail_id=1)
-            self.assertEqual(mail.subject, "subject 1")
-            self.assertEqual(mail.body, "body 1")
+        mail_1.refresh_from_db()
+        self.assertTrue(mail_1.body)
 
-            mail = self.character_1001.mails.get(mail_id=2)
-            self.assertEqual(mail.subject, "subject 2")
-            self.assertEqual(mail.body, "body 2")
-
-            self.assertEqual(spy_update_mail_body_esi.apply_async.call_count, 2)
+        mail_2: CharacterMail = character.mails.get(mail_id=mail_2_id)
+        self.assertTrue(mail_2.body)
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
-class TestUpdateStructureEsi(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-        cls.token = (
-            cls.character.eve_character.character_ownership.user.token_set.first()
-        )
+class TestUpdateStructureEsi(TestCaseWithClearCache):
+    def test_should_complete_normally_when_no_issue(self, _):
+        token = TokenFactory2()
+        tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
 
-    def setUp(self):
-        reset_retry_task_on_esi_error_and_offline()
-
-    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.return_value = None
-        tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
-
-    def test_should_raise_exception_when_token_is_invalid(
-        self, mock_update_or_create_esi
-    ):
-        mock_update_or_create_esi.return_value = None
+    def test_should_raise_exception_when_token_is_invalid(self, _):
         with self.assertRaises(Token.DoesNotExist):
             tasks.update_structure_esi(
                 id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
@@ -291,33 +329,29 @@ class TestUpdateStructureEsi(TestCase):
 
     def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
         mock_update_or_create_esi.side_effect = build_http_error(502)
-
+        token = TokenFactory2()
         with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
 
     def test_should_retry_when_esi_error_limit_breached(
         self, mock_update_or_create_esi
     ):
         mock_update_or_create_esi.side_effect = build_http_error(420)
-
+        token = TokenFactory2()
         with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
 
     def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
         mock_update_or_create_esi.side_effect = build_http_error(400)
-
+        token = TokenFactory2()
         with self.assertRaises(HTTPError):
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=self.token.pk)
+            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
-class TestUpdateMailEntityEsi(TestCase):
-    def setUp(self):
-        reset_retry_task_on_esi_error_and_offline()
-
-    def test_should_complete_normally_when_no_issue(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.return_value = None
+class TestUpdateMailEntityEsi(TestCaseWithClearCache):
+    def test_should_complete_normally_when_no_issue(self, _):
         tasks.update_mail_entity_esi(1001)
 
     def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
@@ -341,31 +375,21 @@ class TestUpdateMailEntityEsi(TestCase):
             tasks.update_mail_entity_esi(1001)
 
 
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestUpdateCharactersDoctrines(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        reset_celery_once_locks()
-
+class TestUpdateCharactersDoctrines(TestCaseWithClearCache):
+    @patch(TASKS_PATH + ".update_character_skill_sets")
     @patch(MODELS_PATH + ".characters.Character.update_skill_sets")
-    def test_normal(self, mock_update_skill_sets):
+    def test_normal(self, mock_update_skill_sets, mock_update_character_skill_sets):
         # given
         mock_update_skill_sets.return_value = UpdateSectionResult(
             is_changed=True, is_updated=True
         )
-        create_memberaudit_character(1001)
+        CharacterFactory()
 
         # when
         tasks.update_characters_skill_checks()
 
         # then
-        self.assertTrue(mock_update_skill_sets.called)
+        self.assertTrue(mock_update_character_skill_sets.apply_async.called)
 
 
 class TestDeleteCharacters(TestCase):
@@ -520,7 +544,11 @@ class TestUpdateUnresolvedEveEntities(TestCase):
         # given
         EveEntityFactory(id=42, name="alpha")
         # when
-        tasks.update_unresolved_eve_entities()
+        with patch(
+            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
+            return_value=nullcontext(),
+        ):
+            tasks.update_unresolved_eve_entities()
         # then
         self.assertFalse(mock_update_from_esi_by_id.called)
 
@@ -528,7 +556,11 @@ class TestUpdateUnresolvedEveEntities(TestCase):
         # given
         EveEntity.objects.create(id=42)
         # when
-        tasks.update_unresolved_eve_entities()
+        with patch(
+            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
+            return_value=nullcontext(),
+        ):
+            tasks.update_unresolved_eve_entities()
         # then
         self.assertTrue(mock_update_from_esi_by_id.called)
         args, _ = mock_update_from_esi_by_id.call_args
@@ -547,8 +579,13 @@ class TestCheckCharacterConsistency(TestCase):
         self.assertTrue(mock_check_character_consistency.called)
 
 
-class TestUpdateMarketPrices(TestCase):
+class TestUpdateMarketPrices(NoSocketsTestCase):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
     def test_update_market_prices(self, mock_update_from_esi):
-        tasks.update_market_prices()
+        with patch(
+            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
+            return_value=nullcontext(),
+        ):
+            tasks.update_market_prices()
+
         self.assertTrue(mock_update_from_esi.called)

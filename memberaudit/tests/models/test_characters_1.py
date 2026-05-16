@@ -475,11 +475,10 @@ class TestCharacter_CalcUpdateNeeded(TestCase):
         for section in Character.UpdateSection.enabled_sections():
             CharacterUpdateStatusFactory(character=character, section=section)
 
-        # when
-        update_needed = character.calc_update_needed()
+        status = character.calc_update_needed()
 
-        # then
-        self.assertFalse(update_needed)
+        # when/then
+        self.assertFalse(status.is_update_needed())
 
     def test_should_return_true_when_one_section_is_outdated(self):
         # given
@@ -500,11 +499,10 @@ class TestCharacter_CalcUpdateNeeded(TestCase):
             run_finished_at=run_finished_at,
         )
 
-        # when
-        update_needed = character.calc_update_needed()
+        status = character.calc_update_needed()
 
-        # then
-        self.assertTrue(update_needed)
+        # when/then
+        self.assertTrue(status.is_update_needed())
 
 
 class TestCharacter_GenerateShipAsset(NoSocketsTestCase):

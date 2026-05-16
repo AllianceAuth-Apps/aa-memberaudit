@@ -4,6 +4,7 @@ from enum import IntEnum
 class EveCategoryId(IntEnum):
     """Eve Online named category IDs"""
 
+    ABSTRACT = 29
     ASTEROID = 25
     BLUEPRINT = 9
     CELESTIAL = 2
@@ -28,6 +29,7 @@ class EveGroupId(IntEnum):
 
     CAPSULE = 29
     CYBERIMPLANT = 300
+    MISCELLANEOUS = 1319
     NAVIGATION = 275
     SOLAR_SYSTEM = 5
     SPACESHIP_COMMAND = 257

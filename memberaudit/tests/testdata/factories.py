@@ -77,6 +77,7 @@ from .constants import (
 )
 
 
+@deprecated("Replaced by `CharacterFactory`")
 def create_character(eve_character: EveCharacter, **kwargs) -> Character:
     params = {"eve_character": eve_character}
     params.update(kwargs)
@@ -85,6 +86,7 @@ def create_character(eve_character: EveCharacter, **kwargs) -> Character:
     return obj
 
 
+@deprecated("Replaced by `CharacterFactory`")
 def create_character_from_user(user: User, **kwargs):
     """Create new Character object from user. The user needs to have a main character.
 
@@ -99,6 +101,7 @@ def create_character_from_user(user: User, **kwargs):
     return create_character(**kwargs)
 
 
+@deprecated("Replaced by `CharacterAssetFactory`")
 def build_character_asset(character: Character, **kwargs) -> CharacterAsset:
     item_id = kwargs.get("item_id") or next_number("asset_item_id") + 1_200_000_000_000
     params = {
@@ -115,6 +118,7 @@ def build_character_asset(character: Character, **kwargs) -> CharacterAsset:
     return CharacterAsset(**params)
 
 
+@deprecated("Replaced by `CharacterAssetFactory`")
 def create_character_asset(character: Character, **kwargs) -> CharacterAsset:
     obj = build_character_asset(character, **kwargs)
     obj.save()
@@ -565,6 +569,7 @@ def create_character_title(character: Character, **kwargs) -> CharacterRole:
     return CharacterTitle.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterUpdateStatusFactory`")
 def create_character_update_status(
     character: Character, **kwargs
 ) -> CharacterUpdateStatus:
@@ -635,12 +640,14 @@ def create_character_wallet_transaction(
     return CharacterWalletTransaction.objects.create(**params)
 
 
+@deprecated("Replaced by `ComplianceGroupFactory`")
 def create_compliance_group(states: Iterable[State] = None, **kwargs) -> Group:
     group = create_authgroup(states, internal=True, **kwargs)
     create_compliance_group_designation(group)
     return group
 
 
+@deprecated("Replaced by `ComplianceGroupDesignationFactory`")
 def create_compliance_group_designation(
     group: Group, **kwargs
 ) -> ComplianceGroupDesignation:
@@ -726,6 +733,7 @@ def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
     return obj
 
 
+@deprecated("Replaced by `MailEntityMailingListFactory`")
 def create_mailing_list(**kwargs) -> MailEntity:
     my_id = kwargs.get("id") or next_number("create_mail_entity_id") + 20_000_000
     params = {

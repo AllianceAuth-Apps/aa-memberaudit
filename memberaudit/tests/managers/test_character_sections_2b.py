@@ -14,6 +14,7 @@ from memberaudit.models import (
     CharacterLoyaltyEntry,
     CharacterMail,
     CharacterMailLabel,
+    MailEntity,
 )
 from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
@@ -25,6 +26,7 @@ from memberaudit.tests.testdata.factories_2 import (
     LocationStationFactory,
     LocationStructureFactory,
     MailEntityCharacterFactory,
+    MailEntityMailingListFactory,
     make_esi_url,
 )
 from memberaudit.tests.utils import TestCaseWithClearCache, extract
@@ -613,6 +615,75 @@ class TestCharacter_UpdateMailLabels(TestCaseWithClearCache):
         got = extract(character.mail_labels, "label_id")
         want = {label_id}
         self.assertSetEqual(got, want)
+
+
+class TestCharacter_UpdateMailingLists(TestCaseWithClearCache):
+    @pook.on
+    def test_can_create_new_mailing_list(self):
+        """can create new mailing lists from scratch"""
+        # given
+        character = CharacterFactory()
+        mailing_list_id = 9001
+        name = "Alpha"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[{"mailing_list_id": mailing_list_id, "name": name}],
+        )
+
+        # when
+        character.update_mailing_lists()
+
+        # then
+        self.assertEqual(character.mailing_lists.count(), 1)
+        obj: MailEntity = character.mailing_lists.first()
+        self.assertEqual(obj.id, mailing_list_id)
+        self.assertEqual(obj.name, name)
+
+    @pook.on
+    def test_should_remove_stale_lists_from_character_but_keep_object(self):
+        # given
+        character = CharacterFactory()
+        mailing_list_1 = MailEntityMailingListFactory()
+        character.mailing_lists.add(mailing_list_1)
+        mailing_list_2_id = 9001
+        name = "Alpha"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[{"mailing_list_id": mailing_list_2_id, "name": name}],
+        )
+
+        # when
+        character.update_mailing_lists()
+
+        # then
+        got_1 = extract(character.mailing_lists, "id")
+        want_1 = {mailing_list_2_id}
+        self.assertSetEqual(got_1, want_1)
+
+        got_2 = extract(MailEntity.objects, "id")
+        want_2 = {mailing_list_1.id, mailing_list_2_id}
+        self.assertSetEqual(got_2, want_2)
+
+    @pook.on
+    def test_can_update_existing_mailing_list(self):
+        # given
+        character = CharacterFactory()
+        obj = MailEntityMailingListFactory()
+        name = "new name"
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail/lists"),
+            reply=HTTPStatus.OK,
+            response_json=[{"mailing_list_id": obj.id, "name": name}],
+        )
+
+        # when
+        character.update_mailing_lists()
+
+        # then
+        obj.refresh_from_db()
+        self.assertEqual(obj.name, name)
 
 
 class TestCharacterMailLabelManager_GetAllLabels(NoSocketsTestCase):

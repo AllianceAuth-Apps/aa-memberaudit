@@ -26,6 +26,7 @@ from memberaudit.tests.testdata.load_locations import load_locations
 from memberaudit.tests.utils import (
     create_memberaudit_character,
     create_user_from_evecharacter_with_access,
+    extract,
     reset_celery_once_locks,
 )
 
@@ -289,7 +290,7 @@ class TestUpdateCharacterAssets2(TestCase):
 
         # then
         self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
+            extract(self.character_1001.assets, "item_id"),
             {
                 1_100_000_000_001,
                 1_100_000_000_002,
@@ -320,7 +321,7 @@ class TestUpdateCharacterAssets2(TestCase):
         tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
+            extract(self.character_1001.assets, "item_id"),
             {
                 1_100_000_000_001,
                 1_100_000_000_002,
@@ -436,7 +437,7 @@ class TestUpdateCharacterAssets2(TestCase):
 
         # then
         self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
+            extract(self.character_1001.assets, "item_id"),
             {1_100_000_000_001, 1_100_000_000_002},
         )
         self.assertTrue(mock_logger.warning.called)
@@ -462,7 +463,7 @@ class TestUpdateCharacterAssets2(TestCase):
 
         # then
         self.assertSetEqual(
-            self.character_1001.assets.item_ids(),
+            extract(self.character_1001.assets, "item_id"),
             {
                 1_100_000_000_001,
                 1_100_000_000_002,
@@ -513,7 +514,9 @@ class TestUpdateCharacterAssets2(TestCase):
             tasks.update_character_assets.delay(self.character_1001.pk, True)
 
         # then
-        self.assertSetEqual(self.character_1001.assets.item_ids(), {1_100_000_000_001})
+        self.assertSetEqual(
+            extract(self.character_1001.assets, "item_id"), {1_100_000_000_001}
+        )
         status = self.character_1001.update_status_for_section(
             Character.UpdateSection.ASSETS
         )

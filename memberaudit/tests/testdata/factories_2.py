@@ -6,7 +6,9 @@ from typing import Generic, TypeVar
 import factory
 import factory.fuzzy
 
+from django.contrib.auth.models import Group
 from django.utils.timezone import now
+from esi.tests.factories_2 import TokenFactory as _TokenFactory
 from eveuniverse.tests.testdata.factories_2 import (
     CitadelTypeFactory,
     EveBloodlineFactory,
@@ -22,11 +24,13 @@ from eveuniverse.tests.testdata.factories_2 import (
     StationTypeFactory,
 )
 
+from allianceauth.authentication.signals import post_save
 from app_utils.testdata_factories import EveCharacterFactory, UserMainFactory
 from app_utils.testing import add_character_to_user
 
 from memberaudit.models import (
     Character,
+    CharacterAsset,
     CharacterAttributes,
     CharacterCloneInfo,
     CharacterContact,
@@ -58,6 +62,7 @@ from memberaudit.models import (
     CharacterWalletBalance,
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
+    ComplianceGroupDesignation,
     Location,
     MailEntity,
     SkillSet,
@@ -85,7 +90,31 @@ class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
         return super().__call__(*args, **kwargs)
 
 
+# esi
+
+
+@factory.django.mute_signals(post_save)
+class TokenFactory2(_TokenFactory):
+    """Token factory that does not trigger the character ownership update
+    in Alliance Auth.
+    """
+
+    pass
+
+
 # eveuniverse
+
+
+class AssetSafetyWrapTypeFactory(EveTypeFactory):
+    eve_group = factory.SubFactory(
+        EveGroupFactory,
+        eve_category__id=EveCategoryId.ABSTRACT,
+        eve_category__name="Abstract",
+        id=EveGroupId.MISCELLANEOUS,
+        name="Miscellaneous",
+    )
+    id = EveTypeId.ASSET_SAFETY_WRAP
+    name = "Asset Safety Wrap"
 
 
 class CyberimplantTypeFactory(EveTypeFactory):
@@ -126,59 +155,49 @@ class BasicUserFactory(UserMainFactory):
     permissions__ = ["memberaudit.basic_access"]
 
 
-class CharacterFactory(
-    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Character]
-):
+class GroupFactory(factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Group]):
     class Meta:
-        model = Character
-        exclude = ("user",)
+        model = Group
 
-    class Params:
-        is_main = True
-        is_orphan = False
+    name = factory.Sequence(lambda n: f"group_{n + 1}")
 
-    user = factory.SubFactory(BasicUserFactory)
+    @factory.post_generation
+    def create_items(obj, create, extracted, **kwargs):
+        if not create:
+            return
 
-    @factory.lazy_attribute
-    def eve_character(self):
-        if self.is_orphan:
-            return EveCharacterFactory()
+        if extracted:
+            obj.auth_group = extracted
+            obj.save()
+            return
 
-        if self.is_main:
-            return self.user.profile.main_character
-
-        ec = EveCharacterFactory()
-        add_character_to_user(
-            self.user, ec, is_main=False, scopes=Character.esi_scopes()
-        )
-        return ec
-
-
-class CharacterOrphanFactory(
-    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Character]
-):
-    class Meta:
-        model = Character
-
-    eve_character = factory.SubFactory(EveCharacterFactory)
-
-
-class CharacterUpdateStatusFactory(
-    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterUpdateStatus]
-):
-    class Meta:
-        model = CharacterUpdateStatus
-
-    character = factory.SubFactory(CharacterFactory)
-    is_success = True
-    run_started_at = factory.fuzzy.FuzzyDateTime(
-        now() - dt.timedelta(minutes=5), now() - dt.timedelta(seconds=1)
-    )
-    run_finished_at = factory.LazyFunction(now)
-    section = factory.fuzzy.FuzzyChoice(Character.UpdateSection.values)
+        if kwargs:
+            auth_group = obj.auth_group
+            for field, value in kwargs.items():
+                setattr(auth_group, field, value)
+            auth_group.save()
 
 
 # General
+
+
+class ComplianceGroupFactory(GroupFactory):
+    @factory.post_generation
+    def create_items(obj, create, extracted, **kwargs):
+        if not create:
+            return
+
+        ComplianceGroupDesignationFactory(group=obj)
+
+
+class ComplianceGroupDesignationFactory(
+    factory.django.DjangoModelFactory,
+    metaclass=BaseMetaFactory[ComplianceGroupDesignation],
+):
+    class Meta:
+        model = ComplianceGroupDesignation
+
+    group = factory.SubFactory(GroupFactory)
 
 
 class LocationStationFactory(
@@ -299,7 +318,79 @@ class SkillSetSkillFactory(
     recommended_level = 1
 
 
+# Character
+
+
+class CharacterFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Character]
+):
+    class Meta:
+        model = Character
+        exclude = ("user",)
+
+    class Params:
+        is_main = True
+        is_orphan = False
+
+    user = factory.SubFactory(BasicUserFactory)
+
+    @factory.lazy_attribute
+    def eve_character(self):
+        if self.is_orphan:
+            return EveCharacterFactory()
+
+        if self.is_main:
+            return self.user.profile.main_character
+
+        ec = EveCharacterFactory()
+        add_character_to_user(
+            self.user, ec, is_main=False, scopes=Character.esi_scopes()
+        )
+        return ec
+
+
+class CharacterOrphanFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Character]
+):
+    class Meta:
+        model = Character
+
+    eve_character = factory.SubFactory(EveCharacterFactory)
+
+
+class CharacterUpdateStatusFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterUpdateStatus]
+):
+    class Meta:
+        model = CharacterUpdateStatus
+
+    character = factory.SubFactory(CharacterFactory)
+    is_success = True
+    run_started_at = factory.fuzzy.FuzzyDateTime(
+        now() - dt.timedelta(minutes=5), now() - dt.timedelta(seconds=1)
+    )
+    run_finished_at = factory.LazyFunction(now)
+    section = factory.fuzzy.FuzzyChoice(Character.UpdateSection.values)
+
+
 # Character Sections
+
+
+class CharacterAssetFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterAsset]
+):
+    class Meta:
+        model = CharacterAsset
+
+    character = factory.SubFactory(CharacterFactory)
+    eve_type = factory.SubFactory(EveTypeFactory)
+    is_blueprint_copy = False
+    is_singleton = False
+    item_id = factory.Sequence(lambda n: 1_200_000_000_000 + n)
+    location = factory.SubFactory(LocationStationFactory)
+    location_flag = "Hangar"
+    parent = None
+    quantity = factory.fuzzy.FuzzyInteger(1, 10_000)
 
 
 class CharacterAttributesFactory(
@@ -356,7 +447,7 @@ class CharacterContactLabelFactory(
 
     character = factory.SubFactory(CharacterFactory)
     label_id = factory.Sequence(lambda n: 1 + n)
-    name = factory.faker.Faker("color")
+    name = factory.Faker("color_name")
 
 
 class _CharacterContractFactory(
@@ -375,7 +466,7 @@ class _CharacterContractFactory(
     issuer = factory.SubFactory(EveEntityCharacterFactory)
     issuer_corporation = factory.SubFactory(EveEntityCorporationFactory)
     status = CharacterContract.STATUS_OUTSTANDING
-    title = factory.faker.Faker("words")
+    title = factory.Faker("words")
 
     class Params:
         accepted = factory.Trait(
@@ -542,7 +633,7 @@ class CharacterJumpCloneFactory(
     character = factory.SubFactory(CharacterFactory)
     jump_clone_id = factory.Sequence(lambda n: 1 + n)
     location = factory.SubFactory(LocationStationFactory)
-    name = factory.Faker("color")
+    name = factory.Faker("color_name")
 
 
 class CharacterJumpCloneImplantFactory(
@@ -617,7 +708,7 @@ class CharacterMailLabelFactory(
     character = factory.SubFactory(CharacterFactory)
     label_id = factory.Sequence(lambda n: 1 + n)
     name = factory.Faker("word")
-    color = factory.Faker("color")
+    color = factory.Faker("color_name")
     unread_count = 0
 
 
@@ -680,7 +771,7 @@ class CharacterShipFactory(
     character = factory.SubFactory(CharacterFactory)
     eve_type = factory.SubFactory(ShipTypeFactory)
     item_id = factory.Sequence(lambda n: 100_000_001 + n)
-    name = factory.faker.Faker("word")
+    name = factory.Faker("word")
 
 
 class CharacterSkillFactory(
@@ -750,7 +841,7 @@ class CharacterTitleFactory(
         model = CharacterTitle
 
     character = factory.SubFactory(CharacterFactory)
-    name = factory.faker.Faker("word")
+    name = factory.Faker("word")
     title_id = factory.Sequence(lambda n: 1 + n)
 
 
@@ -776,10 +867,10 @@ class CharacterWalletJournalEntryFactory(
     context_id_type = CharacterWalletJournalEntry.CONTEXT_ID_TYPE_UNDEFINED
     character = factory.SubFactory(CharacterFactory)
     date = factory.LazyFunction(now)
-    description = factory.faker.Faker("sentence")
+    description = factory.Faker("sentence")
     entry_id = factory.Sequence(lambda n: 1 + n)
     first_party = factory.SubFactory(EveEntityCharacterFactory)
-    reason = factory.faker.Faker("sentence")
+    reason = factory.Faker("sentence")
     ref_type = "player_donation"
     second_party = factory.SubFactory(EveEntityCharacterFactory)
 
