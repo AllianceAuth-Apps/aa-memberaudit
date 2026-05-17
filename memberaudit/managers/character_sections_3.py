@@ -43,7 +43,7 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 class CharacterMiningLedgerEntryQueryset(models.QuerySet):
     def annotate_pricing(self) -> models.QuerySet:
         """Annotate price and total columns."""
-        return (
+        qs = (
             self.select_related("eve_type__market_price")
             .annotate(price=F("eve_type__market_price__average_price"))
             .annotate(
@@ -53,6 +53,7 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
                 ),
             )
         )
+        return qs
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):

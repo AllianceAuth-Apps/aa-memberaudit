@@ -3,7 +3,6 @@
 import datetime as dt
 import random
 from itertools import count
-from pathlib import Path
 from typing import Iterable
 
 from typing_extensions import deprecated
@@ -393,12 +392,12 @@ def create_character_mail(
         "timestamp": timestamp,
     }
     if "sender" not in kwargs and "sender_id" not in kwargs:
-        params["sender"] = create_mail_entity_from_eve_entity(id=1002)
+        params["sender"] = _create_mail_entity_from_eve_entity(id=1002)
     params.update(kwargs)
     obj = CharacterMail.objects.create(**params)
     if not recipients:
         character_id = character.eve_character.character_id
-        recipients = [create_mail_entity_from_eve_entity(id=character_id)]
+        recipients = [_create_mail_entity_from_eve_entity(id=character_id)]
     obj.recipients.add(*recipients)
     if labels:
         obj.labels.add(*labels)
@@ -527,6 +526,7 @@ def create_character_skillqueue_entry(
     return CharacterSkillqueueEntry.objects.create(**params)
 
 
+@deprecated("Replaced by `CharacterSkillpointsFactory`")
 def create_character_skillpoints(
     character: Character, **kwargs
 ) -> CharacterSkillpoints:
@@ -684,13 +684,6 @@ def create_fitting(**kwargs):
     return Fitting(**params)
 
 
-def create_fitting_text(file_name: str) -> str:
-    testdata_folder = Path(__file__).parent / "fittings"
-    fitting_file = testdata_folder / file_name
-    with fitting_file.open("r") as file:
-        return file.read()
-
-
 @deprecated("Replaced by `LocationStationFactory`")
 def create_location(**kwargs) -> Location:
     location_id = kwargs.get("id") or next_number("location_id") + 1_700_000_000_000
@@ -728,7 +721,7 @@ def create_mail_entity(**kwargs) -> MailEntity:
     return MailEntity.objects.create(**params)
 
 
-def create_mail_entity_from_eve_entity(id: int) -> MailEntity:
+def _create_mail_entity_from_eve_entity(id: int) -> MailEntity:
     obj, _ = MailEntity.objects.update_or_create_from_eve_entity_id(id=id)
     return obj
 

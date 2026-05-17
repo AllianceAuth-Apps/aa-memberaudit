@@ -1,6 +1,7 @@
 import datetime as dt
 import math
 import urllib.parse
+from pathlib import Path
 from typing import Generic, TypeVar
 
 import factory
@@ -56,6 +57,7 @@ from memberaudit.models import (
     CharacterRole,
     CharacterShip,
     CharacterSkill,
+    CharacterSkillpoints,
     CharacterSkillqueueEntry,
     CharacterSkillSetCheck,
     CharacterStanding,
@@ -97,6 +99,13 @@ class BaseMetaFactory(Generic[T], factory.base.FactoryMetaClass):
         return super().__call__(*args, **kwargs)
 
 
+def create_fitting_text(file_name: str) -> str:
+    testdata_folder = Path(__file__).parent / "fittings"
+    fitting_file = testdata_folder / file_name
+    with fitting_file.open("r") as file:
+        return file.read()
+
+
 # esi
 
 
@@ -133,15 +142,16 @@ class CyberimplantTypeFactory(EveTypeFactory):
         name="Cyberimplant",
     )
     volume = 1.0
+    enabled_sections = 1  # Dogmas
 
     @factory.post_generation
-    def slot_num(obj, create, extracted, **kwargs):
+    def slot_num(self, create, extracted, **kwargs):
         if not create or extracted is False:
             return
 
         num = extracted or 1
         da = EveDogmaAttributeFactory(id=EveDogmaAttributeId.IMPLANT_SLOT)
-        obj.dogma_attributes.get_or_create(
+        self.dogma_attributes.get_or_create(
             eve_dogma_attribute=da, defaults={"value": num}
         )
 
@@ -169,44 +179,47 @@ class SpaceshipCommandSkillTypeFactory(EveTypeFactory):
 # allianceauth
 
 
-class BasicUserFactory(UserMainFactory):
-    main_character__scopes = Character.esi_scopes()
-    permissions__ = ["memberaudit.basic_access"]
-
-
 class GroupFactory(factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[Group]):
     class Meta:
         model = Group
 
-    name = factory.Sequence(lambda n: f"group_{n + 1}")
+    name = factory.Sequence(lambda n: f"Group #{n + 1}")
 
     @factory.post_generation
-    def create_items(obj, create, extracted, **kwargs):
+    def authgroup(self, create, extracted, **kwargs):
         if not create:
             return
 
         if extracted:
-            obj.auth_group = extracted
-            obj.save()
+            self.authgroup = extracted
+            self.save()
             return
 
         if kwargs:
-            auth_group = obj.auth_group
+            authgroup = self.authgroup
             for field, value in kwargs.items():
-                setattr(auth_group, field, value)
-            auth_group.save()
+                setattr(authgroup, field, value)
+            authgroup.save()
 
 
 # General
 
 
+class UserBasicFactory(UserMainFactory):
+    main_character__scopes = Character.esi_scopes()
+    permissions__ = ["memberaudit.basic_access"]
+
+
 class ComplianceGroupFactory(GroupFactory):
     @factory.post_generation
-    def create_items(obj, create, extracted, **kwargs):
+    def compliancegroupdesignation(self, create, extracted, **kwargs):
         if not create:
             return
 
-        ComplianceGroupDesignationFactory(group=obj)
+        if extracted:
+            self.compliancegroupdesignation = extracted
+        else:
+            ComplianceGroupDesignationFactory(group=self)
 
 
 class ComplianceGroupDesignationFactory(
@@ -283,6 +296,17 @@ class LocationUnknownFactory(
     eve_type = factory.SubFactory(SolarSystemTypeFactory)
 
 
+class MailEntityAllianceFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
+):
+    class Meta:
+        model = MailEntity
+
+    id = factory.Sequence(lambda n: 99_900_001 + n)
+    category = MailEntity.Category.ALLIANCE
+    name = factory.LazyAttribute(lambda o: f"Alliance #{o.id}")
+
+
 class MailEntityCharacterFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
 ):
@@ -291,7 +315,18 @@ class MailEntityCharacterFactory(
 
     id = factory.Sequence(lambda n: 90_900_001 + n)
     category = MailEntity.Category.CHARACTER
-    name = factory.Sequence(lambda n: f"character_name_{n}")
+    name = factory.LazyAttribute(lambda o: f"Character #{o.id}")
+
+
+class MailEntityCorporationFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[MailEntity]
+):
+    class Meta:
+        model = MailEntity
+
+    id = factory.Sequence(lambda n: 98_900_001 + n)
+    category = MailEntity.Category.CORPORATION
+    name = factory.LazyAttribute(lambda o: f"Corporation #{o.id}")
 
 
 class MailEntityMailingListFactory(
@@ -302,7 +337,7 @@ class MailEntityMailingListFactory(
 
     id = factory.Sequence(lambda n: 10_900_001 + n)
     category = MailEntity.Category.MAILING_LIST
-    name = factory.Sequence(lambda n: f"mailing_list_{n}")
+    name = factory.LazyAttribute(lambda o: f"Mailing List #{o.id}")
 
 
 class MailEntityUnknownFactory(
@@ -323,7 +358,7 @@ class SkillSetFactory(
 
     description = factory.Faker("paragraph")
     is_visible = True
-    name = factory.Sequence(lambda n: f"skill set #{1 + n}")
+    name = factory.Sequence(lambda n: f"Skill Set #{1 + n}")
     ship_type = None
 
 
@@ -336,15 +371,14 @@ class SkillSetGroupFactory(
     description = factory.Faker("paragraph")
     is_doctrine = False
     is_active = True
-    name = factory.Sequence(lambda n: f"skill group #{1 + n}")
+    name = factory.Sequence(lambda n: f"Skill Group #{1 + n}")
 
     @factory.post_generation
-    def create_items(obj, create, extracted, **kwargs):
+    def groups(self, create, extracted, **kwargs):
         if not create or not extracted:
             return
 
-        for o in extracted:
-            obj.groups.add(o)
+        self.groups.add(*extracted)
 
 
 class SkillSetSkillFactory(
@@ -373,7 +407,7 @@ class CharacterFactory(
         is_main = True
         is_orphan = False
 
-    user = factory.SubFactory(BasicUserFactory)
+    user = factory.SubFactory(UserBasicFactory)
 
     @factory.lazy_attribute
     def eve_character(self):
@@ -549,11 +583,13 @@ class CharacterContractItemExchangeFactory(_CharacterContractFactory):
     price = factory.fuzzy.FuzzyFloat(10_000, 10_000_000_000)
 
     @factory.post_generation
-    def create_items(obj, create, extracted, **kwargs):
+    def items(self, create, extracted, **kwargs):
         if not create or extracted is False:
             return
-
-        CharacterContractItemFactory(contract=obj)
+        if extracted:
+            self.contracts.add(*extracted)
+        else:
+            CharacterContractItemFactory(contract=self)
 
 
 class CharacterContractBidFactory(
@@ -577,19 +613,21 @@ class CharacterContractAuctionFactory(_CharacterContractFactory):
     buyout = factory.fuzzy.FuzzyFloat(10_000, 10_000_000_000)
 
     @factory.post_generation
-    def create_items(obj, create, extracted, **kwargs):
+    def items(self, create, extracted, **kwargs):
         if not create or extracted is False:
             return
-
-        CharacterContractItemFactory(contract=obj)
+        if extracted:
+            self.contracts.add(*extracted)
+        else:
+            CharacterContractItemFactory(contract=self)
 
     @factory.post_generation
-    def create_bids(obj, create, extracted, **kwargs):
+    def bids(self, create, extracted, **kwargs):
         if not create or not extracted:
             return
 
         for _ in range(extracted):
-            CharacterContractBidFactory(contract=obj)
+            CharacterContractBidFactory(contract=self)
 
 
 class CharacterContractCourierFactory(_CharacterContractFactory):
@@ -725,19 +763,21 @@ class CharacterMailFactory(
     timestamp = factory.LazyFunction(now)
 
     @factory.post_generation
-    def create_recipients(obj, create, extracted, **kwargs):
+    def recipients(self, create, extracted, **kwargs):
         if not create or extracted is False:
             return
 
-        obj.recipients.add(MailEntityCharacterFactory())
+        if extracted:
+            self.recipients.add(*extracted)
+        else:
+            self.recipients.add(MailEntityCharacterFactory())
 
     @factory.post_generation
-    def create_labels(obj, create, extracted, **kwargs):
+    def labels(self, create, extracted, **kwargs):
         if not create or not extracted:
             return
 
-        for label in extracted:
-            obj.labels.add(label)
+        self.labels.add(*extracted)
 
 
 class CharacterMailLabelFactory(
@@ -853,6 +893,16 @@ class CharacterSkillqueueEntryFactory(
         now() - dt.timedelta(days=15), now() - dt.timedelta(hours=1)
     )
     training_start_sp = 0
+
+
+class CharacterSkillpointsFactory(
+    factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[CharacterSkillpoints]
+):
+    class Meta:
+        model = CharacterSkillpoints
+
+    character = factory.SubFactory(CharacterFactory)
+    total = factory.fuzzy.FuzzyInteger(10_000, 10_000_000)
 
 
 class CharacterStandingFactory(

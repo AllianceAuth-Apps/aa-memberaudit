@@ -4,13 +4,9 @@ from app_utils.testing import NoSocketsTestCase
 
 from memberaudit import forms
 from memberaudit.core.fittings import Fitting
+from memberaudit.tests.testdata.factories_2 import create_fitting_text
 
-from .testdata.factories import (
-    create_fitting_text,
-    create_skill,
-    create_skill_plan,
-    create_skill_set,
-)
+from .testdata.factories import create_skill, create_skill_plan, create_skill_set
 from .testdata.load_eveuniverse import load_eveuniverse
 
 

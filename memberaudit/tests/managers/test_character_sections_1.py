@@ -905,7 +905,7 @@ class TestCharacter_UpdateContractItems(TestCaseWithClearCache):
     @pook.on
     def test_can_create_new_item_minimal(self):
         character = CharacterFactory()
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         quantity = 3
         record_id = 1
         eve_type = EveTypeFactory()
@@ -942,7 +942,7 @@ class TestCharacter_UpdateContractItems(TestCaseWithClearCache):
     @pook.on
     def test_can_create_new_item_full(self):
         character = CharacterFactory()
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         eve_type = EveTypeFactory()
         is_included = True
         is_singleton = True
@@ -1018,7 +1018,7 @@ class TestCharacter_UpdateContractBids(TestCaseWithClearCache):
     @pook.on
     def test_can_add_additional_bids(self):
         character = CharacterFactory()
-        contract = CharacterContractAuctionFactory(create_bids=3)
+        contract = CharacterContractAuctionFactory(bids=3)
         amount = 123.45
         bid_id = 42
         bidder = EveEntityCharacterFactory()
@@ -1053,7 +1053,7 @@ class TestCharacter_UpdateContractBids(TestCaseWithClearCache):
 class TestCharacterContractItemManager_AnnotatePricing(NoSocketsTestCase):
     def test_can_annotate_normal_item(self):
         # given
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         item_1 = CharacterContractItemFactory(
             contract=contract, is_included=True, quantity=2
         )
@@ -1069,7 +1069,7 @@ class TestCharacterContractItemManager_AnnotatePricing(NoSocketsTestCase):
 
     def test_should_not_annotate_bpos(self):
         # given
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         item_1 = CharacterContractItemFactory(
             contract=contract,
             is_included=True,

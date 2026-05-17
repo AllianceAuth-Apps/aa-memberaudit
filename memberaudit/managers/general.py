@@ -191,15 +191,15 @@ class LocationManager(models.Manager):
         self, id: int, token: Token, update_async: bool
     ) -> Tuple[Any, bool]:
         id = int(id)
-        self.model: Location
-        if self.model.is_location_unknown_id(id):
+        model: Location = self.model
+        if model.is_location_unknown_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
                 id=id,
                 defaults={"name": "Location unknown", "eve_type": eve_type},
             )
 
-        if self.model.is_asset_safety_id(id):
+        if model.is_asset_safety_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(
                 id=EveTypeId.ASSET_SAFETY_WRAP
             )
@@ -208,7 +208,7 @@ class LocationManager(models.Manager):
                 defaults={"name": "ASSET SAFETY", "eve_type": eve_type},
             )
 
-        if self.model.is_solar_system_id(id):
+        if model.is_solar_system_id(id):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=id)
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
@@ -220,14 +220,14 @@ class LocationManager(models.Manager):
                 },
             )
 
-        if self.model.is_station_id(id):
+        if model.is_station_id(id):
             logger.info("%s: Fetching station from ESI", id)
             station = esi.client.Universe.get_universe_stations_station_id(
                 station_id=id
             ).results()
             return self._station_update_or_create_dict(id=id, station=station)
 
-        if self.model.is_structure_id(id):
+        if model.is_structure_id(id):
             if not token:
                 raise ValueError(f"{id}: Need token to fetch this location from ESI")
 

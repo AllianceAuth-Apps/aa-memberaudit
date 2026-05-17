@@ -26,7 +26,6 @@ from memberaudit.models import (
 )
 from memberaudit.tests.testdata.constants import EveGroupId
 from memberaudit.tests.testdata.factories_2 import (
-    BasicUserFactory,
     CharacterFactory,
     CharacterLocationFactory,
     CharacterShipFactory,
@@ -34,6 +33,7 @@ from memberaudit.tests.testdata.factories_2 import (
     LocationSolarSystemFactory,
     LocationStationFactory,
     LocationStructureFactory,
+    UserBasicFactory,
 )
 from memberaudit.tests.utils import scope_names_set
 
@@ -169,21 +169,21 @@ class TestCharacter_IsOrphan(TestCase):
 class TestCharacter_UserIsOwner(TestCase):
     def test_should_return_true_when_owner(self):
         # given
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         # when/then
         self.assertTrue(character.user_is_owner(user))
 
     def test_should_return_false_when_not_owner(self):
         # given
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory()
         # when/then
         self.assertFalse(character.user_is_owner(user))
 
     def test_should_return_false_when_orphan(self):
         # given
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(is_orphan=True)
         # when/then
         self.assertFalse(character.user_is_owner(user))

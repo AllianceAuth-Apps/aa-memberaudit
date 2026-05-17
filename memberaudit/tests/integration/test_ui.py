@@ -6,13 +6,13 @@ from django_webtest import WebTest
 from app_utils.testdata_factories import UserMainFactory
 
 from memberaudit.tests.testdata.factories_2 import (
-    BasicUserFactory,
     CharacterAssetFactory,
     CharacterContractItemExchangeFactory,
     CharacterContractItemFactory,
     CharacterFactory,
     CharacterMailFactory,
     LocationStationFactory,
+    UserBasicFactory,
 )
 
 
@@ -26,7 +26,7 @@ class TestUILauncher(WebTest):
         then user is forwarded to character viewer
         """
         # setup
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
 
         # login & open launcher page
@@ -98,7 +98,7 @@ class TestUICharacterViewer(WebTest):
         then the contents of that asset container are shown
         """
         # setup data
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         station = LocationStationFactory()
         parent_asset = CharacterAssetFactory(character=character, location=station)
@@ -128,10 +128,10 @@ class TestUICharacterViewer(WebTest):
         then the items of that contact are shown
         """
         # setup data
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         contract = CharacterContractItemExchangeFactory(
-            character=character, create_items=False
+            character=character, items=False
         )
         item = CharacterContractItemFactory(contract=contract)
 
@@ -159,7 +159,7 @@ class TestUICharacterViewer(WebTest):
         then the mail body is shown
         """
         # setup data
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         body_text = "My text body"
         mail = CharacterMailFactory(character=character, body=body_text)

@@ -21,7 +21,6 @@ from app_utils.testing import NoSocketsTestCase, generate_invalid_pk, response_t
 
 from memberaudit.models import CharacterAsset, CharacterContract
 from memberaudit.tests.testdata.factories_2 import (
-    BasicUserFactory,
     CharacterAssetFactory,
     CharacterAttributesFactory,
     CharacterContactFactory,
@@ -37,6 +36,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CyberimplantTypeFactory,
     LocationStationFactory,
     LocationStructureFactory,
+    UserBasicFactory,
 )
 from memberaudit.tests.utils import json_response_to_dict_2, json_response_to_python_2
 from memberaudit.views.character_viewer_1 import (
@@ -67,7 +67,7 @@ class TestCharacterViewer(NoSocketsTestCase):
 
     def test_can_open_character_main_view_for_normal_character(self):
         # given
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         request = self.factory.get(
             reverse("memberaudit:character_viewer", args=[character.pk])
@@ -99,7 +99,7 @@ class TestCharacterViewer(NoSocketsTestCase):
 
     def test_character_attribute_data(self):
         # given
-        user = BasicUserFactory()
+        user = UserBasicFactory()
         character = CharacterFactory(user=user)
         CharacterAttributesFactory(
             character=character,
@@ -128,7 +128,7 @@ class TestCharacterFwStats(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = BasicUserFactory()
+        cls.user = UserBasicFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_load_with_stats(self):
@@ -164,7 +164,7 @@ class TestCharacterAssets(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = BasicUserFactory()
+        cls.user = UserBasicFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.structure_1 = LocationStructureFactory(id=1000000000001)
         jita = EveSolarSystemHighSecFactory(
@@ -464,7 +464,7 @@ class TestCharacterDataViewsOther(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = BasicUserFactory()
+        cls.user = UserBasicFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.entity_1101 = EveEntityCharacterFactory(id=1101, name="Lex Luther")
         cls.entity_2001 = EveEntityCorporationFactory(
@@ -619,7 +619,7 @@ class TestCharacterContracts(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = BasicUserFactory()
+        cls.user = UserBasicFactory()
         cls.character = CharacterFactory(user=cls.user)
         jita = EveSolarSystemHighSecFactory(
             id=30000142,
@@ -677,7 +677,7 @@ class TestCharacterContracts(NoSocketsTestCase):
             status=CharacterContract.STATUS_IN_PROGRESS,
             start_location=self.jita_44,
             title="Dummy info",
-            create_items=False,
+            items=False,
         )
         CharacterContractItemFactory(
             contract=contract, quantity=1, eve_type=self.high_grade_snake_alpha_type
@@ -734,7 +734,7 @@ class TestCharacterContracts(NoSocketsTestCase):
             status=CharacterContract.STATUS_IN_PROGRESS,
             title="Dummy info",
             start_location=self.jita_44,
-            create_items=False,
+            items=False,
         )
         CharacterContractItemFactory(
             contract=contract,
@@ -857,7 +857,7 @@ class TestCharacterContracts(NoSocketsTestCase):
             status=CharacterContract.STATUS_IN_PROGRESS,
             start_location=self.jita_44,
             title="Dummy info",
-            create_items=False,
+            items=False,
         )
         CharacterContractItemFactory(
             contract=contract,
@@ -922,7 +922,7 @@ class TestCharacterContracts(NoSocketsTestCase):
             status=CharacterContract.STATUS_IN_PROGRESS,
             start_location=self.jita_44,
             title="Dummy info",
-            create_items=False,
+            items=False,
         )
         CharacterContractItemFactory(
             contract=contract,
@@ -989,7 +989,7 @@ class TestCharacterContracts(NoSocketsTestCase):
             start_location=self.jita_44,
             end_location=self.jita_44,
             title="Dummy info",
-            create_items=False,
+            items=False,
         )
         CharacterContractItemFactory(
             contract=contract,

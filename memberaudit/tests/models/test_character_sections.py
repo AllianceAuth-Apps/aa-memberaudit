@@ -50,7 +50,7 @@ class TestCharacterContract_Misc(NoSocketsTestCase):
 
 class TestCharacterContract_Summary(NoSocketsTestCase):
     def test_summary_one_item_1(self):
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         eve_type = EveTypeFactory(name="High-grade Snake Alpha")
         CharacterContractItemFactory(
             contract=contract,
@@ -62,7 +62,7 @@ class TestCharacterContract_Summary(NoSocketsTestCase):
         self.assertEqual(contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_one_item_2(self):
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         eve_type_1 = EveTypeFactory(name="High-grade Snake Alpha")
         eve_type_2 = EveTypeFactory()
         CharacterContractItemFactory(
@@ -74,13 +74,13 @@ class TestCharacterContract_Summary(NoSocketsTestCase):
         self.assertEqual(contract.summary(), "High-grade Snake Alpha")
 
     def test_summary_multiple_item(self):
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         CharacterContractItemFactory(contract=contract),
         CharacterContractItemFactory(contract=contract)
         self.assertEqual(contract.summary(), "[Multiple Items]")
 
     def test_summary_no_items(self):
-        contract = CharacterContractItemExchangeFactory(create_items=False)
+        contract = CharacterContractItemExchangeFactory(items=False)
         self.assertEqual(contract.summary(), "(no items)")
 
 
