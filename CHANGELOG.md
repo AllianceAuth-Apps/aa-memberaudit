@@ -12,12 +12,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Removed command: memberaudit_fix_locations related to old isssue (#153)
 - Removed command: memberaudit_fix_eve_entities related to old isssue (#156)
 - Removed: CharacterAssetQuerySet.item_ids() (replaced by extract and only used in tests)
+- Tests now mostly use factories instead of fixtures
+- ESI tests now use pook and test with the Swagger client instead of a fake
+- Added local swagger spec file
 
 ### Fixed
 
 - Fails to read contracts without title
 - Fails when receiving roles response with only some role sections defined
 - Tax received for wallet journal entries not read from ESI
+- Protecting against missing string field in ESI responses not always working
 
 ## [4.3.1] - 2026-03-26
 

@@ -805,7 +805,7 @@ class CharacterWalletJournalEntryManager(models.Manager):
                     date=row.get("date"),
                     description=row.get("description"),
                     first_party=get_or_create_or_none("first_party_id", row, EveEntity),
-                    reason=row.get("reason", ""),
+                    reason=row.get("reason") or "",
                     ref_type=row.get("ref_type"),
                     second_party=get_or_create_or_none(
                         "second_party_id", row, EveEntity

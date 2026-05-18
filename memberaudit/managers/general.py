@@ -262,7 +262,7 @@ class LocationManager(models.Manager):
         return self.update_or_create(
             id=id,
             defaults={
-                "name": station.get("name", ""),
+                "name": station.get("name") or "",
                 "eve_solar_system": eve_solar_system,
                 "eve_type": eve_type,
                 "owner": owner,
@@ -324,7 +324,7 @@ class LocationManager(models.Manager):
         return self.update_or_create(
             id=id,
             defaults={
-                "name": structure.get("name", ""),
+                "name": structure.get("name") or "",
                 "eve_solar_system": eve_solar_system,
                 "eve_type": eve_type,
                 "owner": owner,

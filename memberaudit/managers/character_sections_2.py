@@ -115,9 +115,7 @@ class CharacterDetailsManager(models.Manager):
         return details
 
     def _update_or_create_objs(self, character: Character, details) -> Set[int]:
-        description = (
-            details.get("description", "") if details.get("description") else ""
-        )
+        description = details.get("description") or ""
 
         # TODO: remove when fixed
         # temporary fix to address u-bug in ESI endpoint for character bio
@@ -160,9 +158,9 @@ class CharacterDetailsManager(models.Manager):
                 ),
                 "description": description,
                 "gender": gender,
-                "name": details.get("name", ""),
+                "name": details.get("name") or "",
                 "security_status": details.get("security_status"),
-                "title": details.get("title", "") if details.get("title") else "",
+                "title": details.get("title") or "",
             },
         )
         return obj.eve_entity_ids()
@@ -577,7 +575,7 @@ class CharacterMailManager(models.Manager):
                     mail_id=mail_id,
                     sender=get_or_none("from", header, MailEntity),
                     is_read=bool(header.get("is_read")),
-                    subject=header.get("subject", ""),
+                    subject=header.get("subject") or "",
                     timestamp=header.get("timestamp"),
                 )
             )
@@ -733,7 +731,7 @@ class CharacterMailManager(models.Manager):
             token=token.valid_access_token(),
         ).result()
 
-        return mail_body.get("body", "")
+        return mail_body.get("body") or ""
 
 
 class CharacterMailLabelManager(models.Manager):
