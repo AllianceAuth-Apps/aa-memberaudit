@@ -1,7 +1,6 @@
 import datetime as dt
 from unittest.mock import patch
 
-from django.test import TestCase
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCharacterFactory,
     ShipTypeFactory,
@@ -31,7 +30,7 @@ class TaskStub:
         self.request = {"properties": properties}
 
 
-class TestDataRetentionCutoff(TestCase):
+class TestDataRetentionCutoff(NoSocketsTestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_DATA_RETENTION_LIMIT", 10)
     def test_limit_is_set(self):
         with patch(MODULE_PATH + ".now") as mock_now:
@@ -59,7 +58,7 @@ class TestImplantSlotNum(NoSocketsTestCase):
         self.assertEqual(implant_slot_num(implant), 0)
 
 
-class TestDetermineTaskPriority(TestCase):
+class TestDetermineTaskPriority(NoSocketsTestCase):
     def test_should_return_task_priority_when_it_exists(self):
         # given
         task = TaskStub(properties={"priority": 3})
@@ -73,7 +72,7 @@ class TestDetermineTaskPriority(TestCase):
         self.assertIsNone(determine_task_priority(task))
 
 
-class TestEveEntityIdsFromObjs(TestCase):
+class TestEveEntityIdsFromObjs(NoSocketsTestCase):
     def test_should_return_ids_from_all_objs(self):
         # given
         entity_1 = EveEntityCharacterFactory()
@@ -99,7 +98,7 @@ class TestEveEntityIdsFromObjs(TestCase):
         self.assertSetEqual(result, expected)
 
 
-class TestArabicNumberToRoman(TestCase):
+class TestArabicNumberToRoman(NoSocketsTestCase):
     def test_should_convert_correctly(self):
         # given
         cases = [

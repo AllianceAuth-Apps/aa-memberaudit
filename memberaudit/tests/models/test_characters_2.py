@@ -1,7 +1,6 @@
 import datetime as dt
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 
@@ -79,7 +78,7 @@ class TestCharacter_UserHasScope(NoSocketsTestCase):  # see also manager for mor
 
 @patch(MODULE_PATH + ".Character.update_section_content_hash")
 @patch(MODULE_PATH + ".Character.has_section_changed")
-class TestCharacterManager_UpdateSectionIfChanged(TestCase):
+class TestCharacterManager_UpdateSectionIfChanged(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -385,7 +384,7 @@ class TestCharacter_ResetTokenErrorNotifiedIfStatusOk(NoSocketsTestCase):
         self.assertIsNone(character.token_error_notified_at)
 
 
-class TestCharacter_EsiScopes(TestCase):
+class TestCharacter_EsiScopes(NoSocketsTestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_all_scopes(self):
         # when

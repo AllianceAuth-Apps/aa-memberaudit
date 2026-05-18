@@ -1,7 +1,6 @@
 import datetime as dt
 from typing import NamedTuple, Optional
 
-from django.test import TestCase
 from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCharacterFactory,
@@ -84,7 +83,7 @@ class TestCharacterContract_Summary(NoSocketsTestCase):
         self.assertEqual(contract.summary(), "(no items)")
 
 
-class TestCharacterFwStatsRankNameGeneric(TestCase):
+class TestCharacterFwStatsRankNameGeneric(NoSocketsTestCase):
     def test_should_return_rank_name_when_found(self):
         # when
         result = CharacterFwStats.rank_name_generic(EveFactionId.CALDARI_STATE, 4)
@@ -366,7 +365,7 @@ class TestCharacterStanding(NoSocketsTestCase):
         self.assertAlmostEqual(result, -1.81, 2)
 
 
-class TestCharacterTitle(TestCase):
+class TestCharacterTitle(NoSocketsTestCase):
     def test_should_return_str(self):
         # given
         obj = CharacterTitleFactory(name="Dummy")
@@ -376,7 +375,7 @@ class TestCharacterTitle(TestCase):
         self.assertIn("Dummy", result)
 
 
-class TestCharacterWalletJournals(TestCase):
+class TestCharacterWalletJournals(NoSocketsTestCase):
     def test_should_return_eve_entity_ids(self):
         # given
         party_1 = EveEntityCharacterFactory()

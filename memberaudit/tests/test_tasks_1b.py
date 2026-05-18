@@ -7,7 +7,7 @@ import pook
 from bravado.exception import HTTPError
 from celery.exceptions import Retry as CeleryRetry
 
-from django.test import TestCase, override_settings
+from django.test import override_settings
 from django.utils.timezone import now
 from esi.models import Token
 from eveuniverse.models import EveEntity
@@ -382,7 +382,7 @@ class TestUpdateCharactersDoctrines(TestCaseWithClearCache):
         self.assertTrue(mock_update_character_skill_sets.apply_async.called)
 
 
-class TestDeleteCharacters(TestCase):
+class TestDeleteCharacters(NoSocketsTestCase):
     def test_should_delete_a_character(self):
         # given
         character = CharacterFactory()
@@ -489,7 +489,7 @@ class TestUpdateAllCharacters(NoSocketsTestCase):
 
 
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id", spec=True)
-class TestUpdateUnresolvedEveEntities(TestCase):
+class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
     def test_should_not_attempt_to_update_when_no_unresolved_entities(
         self, mock_update_from_esi_by_id
     ):
@@ -520,7 +520,7 @@ class TestUpdateUnresolvedEveEntities(TestCase):
 
 
 @patch(TASKS_PATH + ".check_character_consistency", spec=True)
-class TestCheckCharacterConsistency(TestCase):
+class TestCheckCharacterConsistency(NoSocketsTestCase):
     def test_should_run_checks(self, mock_check_character_consistency):
         # given
         character = CharacterFactory()

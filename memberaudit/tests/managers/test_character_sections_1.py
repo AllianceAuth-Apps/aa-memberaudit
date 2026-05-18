@@ -4,7 +4,6 @@ from unittest.mock import patch
 import pook
 
 from django.db import IntegrityError
-from django.test import TestCase
 from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCharacterFactory,
@@ -73,7 +72,7 @@ class TestCharacterAssetManager_AnnotatePricing(NoSocketsTestCase):
         self.assertIsNone(asset.total)
 
 
-class TestCharacterAssetManager_BulkCreateWithFallback(TestCase):
+class TestCharacterAssetManager_BulkCreateWithFallback(NoSocketsTestCase):
     def test_should_create_assets_in_bulk(self):
         # given
         character = CharacterFactory()

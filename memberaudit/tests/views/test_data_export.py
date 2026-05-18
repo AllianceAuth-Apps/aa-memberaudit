@@ -4,10 +4,11 @@ from tempfile import TemporaryDirectory
 from unittest.mock import MagicMock, patch
 
 from django.http import Http404
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory
 from django.urls import reverse
 
 from app_utils.testdata_factories import UserMainFactory
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.views.data_export import (
     data_export,
@@ -18,7 +19,7 @@ from memberaudit.views.data_export import (
 MODULE_PATH = "memberaudit.views.data_export"
 
 
-class TestDataExport(TestCase):
+class TestDataExport(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()

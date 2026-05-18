@@ -3,7 +3,6 @@ import hashlib
 import json
 from unittest.mock import patch
 
-from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 from esi.models import Token
@@ -43,7 +42,7 @@ MANAGERS_PATH = "memberaudit.managers"
 TASKS_PATH = "memberaudit.tasks"
 
 
-class TestCharacter(TestCase):
+class TestCharacter(NoSocketsTestCase):
     def test_user_should_produce_str(self):
         # given
         character = CharacterFactory()
@@ -68,7 +67,7 @@ class TestCharacter(TestCase):
         self.assertTrue(kwargs["pk"], character.pk)
 
 
-class TestCharacter_User(TestCase):
+class TestCharacter_User(NoSocketsTestCase):
     def test_should_return_user(self):
         # given
         character = CharacterFactory()
@@ -85,7 +84,7 @@ class TestCharacter_User(TestCase):
         self.assertIsNone(character.user)
 
 
-class TestCharacter_MainCharacter(TestCase):
+class TestCharacter_MainCharacter(NoSocketsTestCase):
     def test_should_return_main_when_character_is_main(self):
         # given
         character = CharacterFactory()
@@ -124,7 +123,7 @@ class TestCharacter_MainCharacter(TestCase):
         self.assertIsNone(got)
 
 
-class TestCharacter_IsMain(TestCase):
+class TestCharacter_IsMain(NoSocketsTestCase):
     def test_should_return_true_when_main(self):
         # given
         character = CharacterFactory()
@@ -153,7 +152,7 @@ class TestCharacter_IsMain(TestCase):
         self.assertFalse(character.is_main)
 
 
-class TestCharacter_IsOrphan(TestCase):
+class TestCharacter_IsOrphan(NoSocketsTestCase):
     def test_should_be_true_when_orphan(self):
         # given
         character = CharacterOrphanFactory()
@@ -167,7 +166,7 @@ class TestCharacter_IsOrphan(TestCase):
         self.assertFalse(character.is_orphan)
 
 
-class TestCharacter_UserIsOwner(TestCase):
+class TestCharacter_UserIsOwner(NoSocketsTestCase):
     def test_should_return_true_when_owner(self):
         # given
         user = UserMainBasicAccessFactory()
@@ -190,7 +189,7 @@ class TestCharacter_UserIsOwner(TestCase):
         self.assertFalse(character.user_is_owner(user))
 
 
-class TestCharacter_UpdateSharingConsistency(TestCase):
+class TestCharacter_UpdateSharingConsistency(NoSocketsTestCase):
     def test_should_keep_sharing(self):
         # given
         user = UserMainFactory(
@@ -214,7 +213,7 @@ class TestCharacter_UpdateSharingConsistency(TestCase):
         self.assertFalse(character.is_shared)
 
 
-class TestCharacter_FetchToken2(TestCase):
+class TestCharacter_FetchToken2(NoSocketsTestCase):
     def test_should_return_token_with_default_scopes(self):
         # given
         character = CharacterFactory()
@@ -469,7 +468,7 @@ class TestCharacter_UpdateStatusForSection(NoSocketsTestCase):
             character.update_status_for_section("invalid")
 
 
-class TestCharacter_CalcUpdateNeeded(TestCase):
+class TestCharacter_CalcUpdateNeeded(NoSocketsTestCase):
     def test_should_return_false_when_all_sections_are_current(self):
         # given
         character = CharacterFactory()
@@ -657,7 +656,7 @@ class TestCharacter_GenerateShipAsset(NoSocketsTestCase):
         self.assertIsNone(obj)
 
 
-class TestCharacterUpdateSection_TimeUntilSectionUpdatesAreStale(TestCase):
+class TestCharacterUpdateSection_TimeUntilSectionUpdatesAreStale(NoSocketsTestCase):
     def test_method_name(self):
         # given
         section = Character.UpdateSection.CORPORATION_HISTORY
@@ -713,7 +712,7 @@ class TestCharacterUpdateSection_EnabledSections(NoSocketsTestCase):
         self.assertSetEqual(result, expected)
 
 
-class TestEnabledSectionsByStaleMinutes(TestCase):
+class TestEnabledSectionsByStaleMinutes(NoSocketsTestCase):
     def test_should_order_correctly(self):
         # when
         with patch(

@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 import pook
 
-from django.test import TestCase, override_settings  # , tag
+from django.test import override_settings
 from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityCharacterFactory,
@@ -38,8 +38,6 @@ from memberaudit.tests.utils import TestCaseWithClearCache, extract
 
 MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
-
-# @tag("breaks_with_tox")
 
 
 TASK_NAMES: frozenset[str] = frozenset(
@@ -76,7 +74,7 @@ TASK_NAMES: frozenset[str] = frozenset(
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
 @patch(TASKS_PATH + ".update_all_characters", spec=True)
 @patch(TASKS_PATH + ".update_market_prices", spec=True)
-class TestRegularUpdates(TestCase):
+class TestRegularUpdates(NoSocketsTestCase):
     def test_should_run_update_for_all_except_compliance_groups(
         self,
         mock_update_market_prices,
@@ -291,7 +289,7 @@ class TestUpdateCharacter_EsiIssues(NoSocketsTestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestUpdateCharacterContacts(TestCase):
+class TestUpdateCharacterContacts(TestCaseWithClearCache):
     @pook.on
     def test_should_report_success_when_update_ok(self):
         # given

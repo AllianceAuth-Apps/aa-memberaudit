@@ -3,7 +3,7 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-from django.test import TestCase
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character, _helpers
 from memberaudit.tests.testdata.factories_2 import CharacterFactory
@@ -12,7 +12,7 @@ MODULE_PATH = "memberaudit.models._helpers"
 
 
 @patch(MODULE_PATH + ".settings")
-class TestStoreCharacterData(TestCase):
+class TestStoreCharacterData(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
