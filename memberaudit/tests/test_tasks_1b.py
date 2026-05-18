@@ -7,6 +7,7 @@ import pook
 from bravado.exception import HTTPError
 from celery.exceptions import Retry as CeleryRetry
 
+from django.core.cache import cache
 from django.test import override_settings
 from django.utils.timezone import now
 from esi.models import Token
@@ -305,8 +306,14 @@ class TestUpdateCharacterMails(TestCaseWithClearCache):
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
+@override_settings(CELERY_ALWAYS_EAGER=True)
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
-class TestUpdateStructureEsi(TestCaseWithClearCache):
+class TestUpdateStructureEsi(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
     def test_should_complete_normally_when_no_issue(self, _):
         token = TokenFactory2()
         tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
@@ -339,8 +346,14 @@ class TestUpdateStructureEsi(TestCaseWithClearCache):
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
+@override_settings(CELERY_ALWAYS_EAGER=True)
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
-class TestUpdateMailEntityEsi(TestCaseWithClearCache):
+class TestUpdateMailEntityEsi(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
     def test_should_complete_normally_when_no_issue(self, _):
         tasks.update_mail_entity_esi(1001)
 

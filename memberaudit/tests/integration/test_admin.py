@@ -5,6 +5,7 @@ import pook
 from django.test import override_settings
 
 from app_utils.testdata_factories import UserFactory
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character, SkillSet
 from memberaudit.tests.testdata.factories_2 import (
@@ -17,7 +18,7 @@ from memberaudit.tests.utils import TestCaseWithClearCache
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestAdminSite(TestCaseWithClearCache):
+class TestAdminSite(NoSocketsTestCase):
     def test_should_delete_selected_characters(self):
         # given 2 characters
         character_1 = CharacterFactory()
@@ -86,6 +87,9 @@ class TestAdminSite(TestCaseWithClearCache):
         self.assertFalse(SkillSet.objects.filter(pk__in=[obj_1.pk, obj_2.pk]).exists())
         self.assertTrue(SkillSet.objects.filter(pk=obj_3.pk).exists())
 
+
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestAdminSite_2(TestCaseWithClearCache):
     @pook.on
     def test_should_update_location_for_characters(self):
         # given
