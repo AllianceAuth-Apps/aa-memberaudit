@@ -2,8 +2,6 @@
 
 # pylint: disable=missing-class-docstring
 
-from typing import Set
-
 from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.db.models import Case, Count, Q, Value, When
@@ -20,10 +18,6 @@ logger = LoggerAddTag(get_extension_logger(__name__), __title__)
 
 
 class CharacterQuerySet(models.QuerySet):
-    def eve_character_ids(self) -> Set[int]:
-        """Return EveCharacter IDs of all characters in this QuerySet."""
-        return set(self.values_list("eve_character__character_id", flat=True))
-
     def owned_by_user(self, user: User) -> models.QuerySet:
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)

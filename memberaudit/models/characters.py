@@ -68,9 +68,7 @@ class _CharacterNeedsUpdate:
         return self.section_map[Character.UpdateSection(section)]
 
 
-class Character(
-    AddGenericReprMixin, models.Model
-):  # pylint: disable=too-many-public-methods
+class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character in Eve Online managed by Member Audit."""
 
     # TODO: Maybe move this enum to outside, so it can be imported more easily

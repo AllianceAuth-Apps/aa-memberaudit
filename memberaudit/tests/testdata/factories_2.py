@@ -27,7 +27,9 @@ from eveuniverse.tests.testdata.factories_2 import (
     StationTypeFactory,
 )
 
+from allianceauth.authentication.models import State
 from allianceauth.authentication.signals import post_save
+from allianceauth.groupmanagement.models import AuthGroup
 from app_utils.testdata_factories import EveCharacterFactory, UserMainFactory
 from app_utils.testing import add_character_to_user
 
@@ -187,25 +189,68 @@ class GroupFactory(factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[
 
     @factory.post_generation
     def authgroup(self, create, extracted, **kwargs):
-        if not create:
-            return
-
-        if extracted:
-            self.authgroup = extracted
-            self.save()
-            return
+        authgroup: AuthGroup = self.authgroup
 
         if kwargs:
-            authgroup = self.authgroup
+            for field in ["states", "group_leaders", "group_leader_groups"]:
+                if field in kwargs:
+                    x = kwargs.pop(field)
+                    getattr(self.authgroup, field).add(*x)
+
             for field, value in kwargs.items():
                 setattr(authgroup, field, value)
-            authgroup.save()
+
+        authgroup.save()
+
+
+class StateFactory(factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[State]):
+    class Meta:
+        model = State
+
+    name = factory.LazyAttribute(lambda o: f"State #{o.priority}")
+    priority = factory.Sequence(lambda n: n + 900)
+    public = False
+
+    @factory.post_generation
+    def permissions(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.permissions.add(*extracted)
+
+    @factory.post_generation
+    def member_characters(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.member_characters.add(*extracted)
+
+    @factory.post_generation
+    def member_corporations(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.member_corporations.add(*extracted)
+
+    @factory.post_generation
+    def member_alliances(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.member_alliances.add(*extracted)
+
+    @factory.post_generation
+    def member_factions(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.member_factions.add(*extracted)
 
 
 # General
 
 
-class UserBasicFactory(UserMainFactory):
+class UserMainBasicAccessFactory(UserMainFactory):
     main_character__scopes = Character.esi_scopes()
     permissions__ = ["memberaudit.basic_access"]
 
@@ -405,19 +450,16 @@ class CharacterFactory(
 
     class Params:
         is_main = True
-        is_orphan = False
+        alt_character = None
 
-    user = factory.SubFactory(UserBasicFactory)
+    user = factory.SubFactory(UserMainBasicAccessFactory)
 
     @factory.lazy_attribute
     def eve_character(self):
-        if self.is_orphan:
-            return EveCharacterFactory()
-
         if self.is_main:
             return self.user.profile.main_character
 
-        ec = EveCharacterFactory()
+        ec = self.alt_character or EveCharacterFactory()
         add_character_to_user(
             self.user, ec, is_main=False, scopes=Character.esi_scopes()
         )

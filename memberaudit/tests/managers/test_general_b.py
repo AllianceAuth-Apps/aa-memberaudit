@@ -35,9 +35,6 @@ MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
 
 
-# @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-
-
 class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_does_not_update_existing_location_before_stale(self):

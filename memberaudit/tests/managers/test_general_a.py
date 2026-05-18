@@ -2,41 +2,33 @@ from unittest.mock import patch
 
 from celery_once import AlreadyQueued
 
-from django.test import TestCase, override_settings
-from eveuniverse.models import EveEntity, EveType
+from django.core.cache import cache
+from django.test import override_settings
+from eveuniverse.models import EveEntity
 from eveuniverse.tests.testdata.factories_2 import (
     EveEntityAllianceFactory,
     EveEntityCharacterFactory,
     EveEntityCorporationFactory,
 )
 
-from allianceauth.eveonline.models import EveCorporationInfo
 from allianceauth.notifications.models import Notification
-from app_utils.testing import (
-    NoSocketsTestCase,
-    create_authgroup,
-    create_state,
-    create_user_from_evecharacter,
+from app_utils.testdata_factories import (
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
 )
+from app_utils.testing import NoSocketsTestCase, add_character_to_user
 
-from memberaudit.models import ComplianceGroupDesignation, MailEntity, SkillSet
-from memberaudit.tests.testdata.factories import (
-    create_compliance_group,
-    create_fitting,
-    create_skill,
-    create_skill_plan,
-    create_skill_set_group,
-)
+from memberaudit.models import ComplianceGroupDesignation, MailEntity
 from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    ComplianceGroupFactory,
+    GroupFactory,
     MailEntityCharacterFactory,
     MailEntityMailingListFactory,
     MailEntityUnknownFactory,
-)
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import (
-    add_auth_character_to_user,
-    add_memberaudit_character_to_user,
+    StateFactory,
+    UserMainBasicAccessFactory,
 )
 
 MANAGERS_PATH = "memberaudit.managers.general"
@@ -47,22 +39,17 @@ TASKS_PATH = "memberaudit.tasks"
     "allianceauth.authentication.models.notify", lambda *args, **kwargs: None
 )  # state changes trigger notify
 @patch(MANAGERS_PATH + ".notify", spec=True)
-class TestComplianceGroupDesignation(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
+class TestComplianceGroupDesignation_UpdateUser(NoSocketsTestCase):
     def test_should_add_group_to_compliant_user_and_notify(self, mock_notify):
         # given
-        compliance_group = create_compliance_group()
-        other_group = create_authgroup(internal=True)
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
+        compliance_group = ComplianceGroupFactory()
+        other_group = GroupFactory(authgroup__internal=True)
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertIn(compliance_group, user.groups.all())
         self.assertNotIn(other_group, user.groups.all())
@@ -75,16 +62,16 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self, mock_notify
     ):
         # given
-        member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
-        my_state = create_state(member_corporations=[member_corporation], priority=200)
-        compliance_group = create_compliance_group(states=[my_state])
+        member_corporation = EveCorporationInfoFactory()
+        my_state = StateFactory(member_corporations=[member_corporation], priority=200)
+        compliance_group = ComplianceGroupFactory(authgroup__states=[my_state])
+        ec = EveCharacterFactory(corporation=member_corporation)
+        user = UserMainBasicAccessFactory(main_character__character=ec)
+        CharacterFactory(user=user)
 
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertIn(compliance_group, user.groups.all())
 
@@ -92,14 +79,14 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self, mock_notify
     ):
         # given
-        my_state = create_state(priority=200)
-        compliance_group = create_compliance_group(states=[my_state])
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
+        my_state = StateFactory(priority=200)
+        compliance_group = ComplianceGroupFactory(authgroup__states=[my_state])
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertNotIn(compliance_group, user.groups.all())
         self.assertFalse(user.notification_set.exists())
@@ -108,7 +95,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
     #     # given
     #     member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
     #     my_state = create_state(member_corporations=[member_corporation], priority=200)
-    #     compliance_group = create_compliance_group(states=[my_state])
+    #     compliance_group = ComplianceGroupFactory(states=[my_state])
     #     user, _ = create_user_from_evecharacter(
     #         1001, permissions=["memberaudit.basic_access"]
     #     )
@@ -120,28 +107,28 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
     def test_should_add_multiple_groups_to_compliant_user(self, mock_notify):
         # given
-        compliance_group_1 = create_compliance_group()
-        compliance_group_2 = create_compliance_group()
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
+        compliance_group_1 = ComplianceGroupFactory()
+        compliance_group_2 = ComplianceGroupFactory()
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertIn(compliance_group_1, user.groups.all())
         self.assertIn(compliance_group_2, user.groups.all())
 
     def test_should_remove_group_from_non_compliant_user_and_notify(self, mock_notify):
         # given
-        compliance_group = create_compliance_group()
-        other_group = create_authgroup(internal=True)
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
+        compliance_group = ComplianceGroupFactory()
+        other_group = GroupFactory(authgroup__internal=True)
+        user = UserMainBasicAccessFactory()
         user.groups.add(compliance_group, other_group)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertNotIn(compliance_group, user.groups.all())
         self.assertIn(other_group, user.groups.all())
@@ -151,14 +138,14 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 
     def test_should_remove_multiple_groups_from_non_compliant_user(self, mock_notify):
         # given
-        compliance_group_1 = create_compliance_group()
-        compliance_group_2 = create_compliance_group()
-        other_group = create_authgroup(internal=True)
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
+        compliance_group_1 = ComplianceGroupFactory()
+        compliance_group_2 = ComplianceGroupFactory()
+        other_group = GroupFactory(authgroup__internal=True)
+        user = UserMainBasicAccessFactory()
         user.groups.add(compliance_group_1, compliance_group_2, other_group)
+
         # when
+
         ComplianceGroupDesignation.objects.update_user(user)
         # then
         self.assertNotIn(compliance_group_1, user.groups.all())
@@ -169,41 +156,43 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self, mock_notify
     ):
         # given
-        compliance_group = create_compliance_group()
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
-        add_auth_character_to_user(user, 1002)
+        compliance_group = ComplianceGroupFactory()
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
+        add_character_to_user(user, EveCharacterFactory())
         user.groups.add(compliance_group)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
     def test_user_without_basic_permission_is_not_compliant(self, mock_notify):
         # given
-        compliance_group = create_compliance_group()
-        user, _ = create_user_from_evecharacter(1001)
-        add_memberaudit_character_to_user(user, 1001)
+        compliance_group = ComplianceGroupFactory()
+        user = UserMainFactory()
+        CharacterFactory(user=user)
         user.groups.add(compliance_group)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertNotIn(compliance_group, user.groups.all())
 
     def test_should_add_missing_groups_if_user_remains_compliant(self, mock_notify):
         # given
-        compliance_group_1 = create_compliance_group()
-        compliance_group_2 = create_compliance_group()
-        other_group = create_authgroup(internal=True)
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user, 1001)
+        compliance_group_1 = ComplianceGroupFactory()
+        compliance_group_2 = ComplianceGroupFactory()
+        other_group = GroupFactory(authgroup__internal=True)
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
         user.groups.add(compliance_group_1)
+
         # when
         ComplianceGroupDesignation.objects.update_user(user)
+
         # then
         self.assertIn(compliance_group_1, user.groups.all())
         self.assertIn(compliance_group_2, user.groups.all())
@@ -404,31 +393,35 @@ class TestMailEntityManager_BulkUpdateNames(NoSocketsTestCase):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestMailEntityManagerAsync(TestCase):
+class TestMailEntityManager_GetOrCreateMailEntityEsiAsync(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
+        cache.clear()
 
-    def test_get_or_create_esi_async_1(self):
-        """When entity already exists, return it"""
-
+    def test_should_return_obj_when_it_exists(self):
+        # given
         MailEntityCharacterFactory(
             id=1234, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
+        # when
         obj, created = MailEntity.objects.get_or_create_esi_async(id=1234)
 
+        # then
         self.assertFalse(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "John Doe")
 
-    def test_get_or_create_esi_async_2(self):
-        """When entity does not exist and no category specified,
-        then create it asynchronously from ESI / existing EveEntity
-        """
+    def test_should_create_obj_async_when_it_not_exists(self):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.get_or_create_esi_async(id=1001)
 
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
         self.assertEqual(obj.name, "")
@@ -437,23 +430,38 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    def test_get_or_create_esi_async_3(self):
-        """When entity does not exist and category is not mailing list,
-        then create it synchronously from ESI / existing EveEntity
-        """
+    def test_should_create_obj_sync_when_it_not_exists_and_not_mailing_list(self):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.get_or_create_esi_async(
             id=1001, category=MailEntity.Category.CHARACTER
         )
 
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    def test_update_or_create_esi_async_1(self):
-        """When entity does not exist, create empty object and run task to resolve"""
 
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestMailEntityManager_UpdateOrCreateEsiAsync(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+    def test_should_create_obj_async_when_it_not_exists(self):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(1001)
 
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
         self.assertEqual(obj.name, "")
@@ -462,55 +470,65 @@ class TestMailEntityManagerAsync(TestCase):
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    def test_update_or_create_esi_async_2(self):
-        """When entity exists and not a mailing list, then update synchronously"""
+    def test_should_update_obj_sync_when_it_exists_and_not_mailing_list(self):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
         MailEntityCharacterFactory(
             id=1001, category=MailEntity.Category.CHARACTER, name="John Doe"
         )
 
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(1001)
 
+        # then
         self.assertFalse(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
-    def test_update_or_create_esi_async_3(self):
-        """When entity exists and is a mailing list, then do nothing"""
+    def test_should_not_do_anything_when_obj_exists_and_is_mailing_list(self):
+        # given
         MailEntityCharacterFactory(
             id=9001, category=MailEntity.Category.MAILING_LIST, name="Dummy"
         )
 
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(9001)
 
+        # then
         self.assertFalse(created)
         self.assertEqual(obj.category, MailEntity.Category.MAILING_LIST)
         self.assertEqual(obj.name, "Dummy")
 
-    def test_update_or_create_esi_async_4(self):
-        """When entity does not exist and category is not a mailing list,
-        then create empty object from ESI synchronously
-        """
+    def test_should_create_obj_sync_when_it_not_exists_and_not_mailing_list(self):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
+        # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(
             1001, MailEntity.Category.CHARACTER
         )
 
+        # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.CHARACTER)
         self.assertEqual(obj.name, "Bruce Wayne")
 
 
-class TestMailEntityManagerAsync2(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
+class TestMailEntityManager_UpdateOrCreateEsiAsync2(NoSocketsTestCase):
     @patch(TASKS_PATH + ".update_mail_entity_esi", spec=True)
     def test_should_create_new_object_and_try_to_resolve(
         self, mock_task_update_mail_entity_esi
     ):
+        # given
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
         # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+
         # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
@@ -523,104 +541,14 @@ class TestMailEntityManagerAsync2(NoSocketsTestCase):
     ):
         # given
         mock_task_update_mail_entity_esi.apply_async.side_effect = AlreadyQueued(10)
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+
         # when
+        obj: MailEntity
         obj, created = MailEntity.objects.update_or_create_esi_async(1001)
+
         # then
         self.assertTrue(created)
         self.assertEqual(obj.category, MailEntity.Category.UNKNOWN)
         self.assertEqual(obj.name, "")
         self.assertTrue(mock_task_update_mail_entity_esi.apply_async.called)
-
-
-class TestSkillSetManager(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.fitting = create_fitting(name="My fitting")
-
-    def test_should_create_new_skill_set_from_fitting(self):
-        # when
-        skill_set, created = SkillSet.objects.update_or_create_from_fitting(
-            fitting=self.fitting
-        )
-        # then
-        self.assertTrue(created)
-        self.assertEqual(skill_set.name, "My fitting")
-        self.assertEqual(skill_set.ship_type.name, "Tristan")
-        skills_str = {skill.required_skill_str for skill in skill_set.skills.all()}
-        self.assertSetEqual(
-            skills_str,
-            {
-                "Small Autocannon Specialization I",
-                "Gunnery II",
-                "Weapon Upgrades IV",
-                "Light Drone Operation V",
-                "Small Projectile Turret V",
-                "Gallente Frigate I",
-                "Propulsion Jamming II",
-                "Drones V",
-                "Amarr Drone Specialization I",
-            },
-        )
-
-    def test_should_create_new_skill_set_from_fitting_and_assign_to_group(self):
-        # given
-        skill_set_group = create_skill_set_group()
-        # when
-        skill_set, created = SkillSet.objects.update_or_create_from_fitting(
-            fitting=self.fitting, skill_set_group=skill_set_group
-        )
-        # then
-        self.assertTrue(created)
-        self.assertIn(skill_set, skill_set_group.skill_sets.all())
-
-    def test_should_create_new_skill_set_from_skill_plan(self):
-        # given
-        skills = [
-            create_skill(
-                eve_type=EveType.objects.get(name="Small Autocannon Specialization"),
-                level=1,
-            ),
-            create_skill(
-                eve_type=EveType.objects.get(name="Light Drone Operation"),
-                level=5,
-            ),
-        ]
-        skill_plan = create_skill_plan(name="My skill plan", skills=skills)
-        # when
-        skill_set, created = SkillSet.objects.update_or_create_from_skill_plan(
-            skill_plan=skill_plan
-        )
-        # then
-        self.assertTrue(created)
-        self.assertEqual(skill_set.name, "My skill plan")
-        skills_str = {skill.required_skill_str for skill in skill_set.skills.all()}
-        self.assertSetEqual(
-            skills_str,
-            {"Small Autocannon Specialization I", "Light Drone Operation V"},
-        )
-
-    def test_should_create_new_skill_set_from_skill_plan_and_assign_to_group(self):
-        # given
-        # given
-        skills = [
-            create_skill(
-                eve_type=EveType.objects.get(name="Small Autocannon Specialization"),
-                level=1,
-            ),
-            create_skill(
-                eve_type=EveType.objects.get(name="Light Drone Operation"),
-                level=5,
-            ),
-        ]
-        skill_plan = create_skill_plan(name="My skill plan", skills=skills)
-        skill_set_group = create_skill_set_group()
-        # when
-        skill_set, created = SkillSet.objects.update_or_create_from_skill_plan(
-            skill_plan=skill_plan, skill_set_group=skill_set_group
-        )
-        # then
-        self.assertTrue(created)
-        self.assertIn(skill_set, skill_set_group.skill_sets.all())

@@ -34,7 +34,7 @@ from memberaudit.tests.testdata.factories_2 import (
     NavigationSkillTypeFactory,
     SkillSetFactory,
     SkillSetSkillFactory,
-    UserBasicFactory,
+    UserMainBasicAccessFactory,
 )
 from memberaudit.tests.utils import permissions_for_model
 
@@ -98,11 +98,11 @@ class TestGeneralOther(NoSocketsTestCase):
     def test_should_return_compliant_users_only(self):
         # given
 
-        user_compliant = UserBasicFactory()
+        user_compliant = UserMainBasicAccessFactory()
         CharacterFactory(user=user_compliant)
         CharacterFactory(user=user_compliant, is_main=False)
 
-        user_non_compliant = UserBasicFactory()
+        user_non_compliant = UserMainBasicAccessFactory()
         CharacterFactory(user=user_non_compliant)
         add_character_to_user(user=user_non_compliant, character=EveCharacterFactory())
 
@@ -117,10 +117,10 @@ class TestGeneralOther(NoSocketsTestCase):
 
     def test_should_add_group_to_compliant_user_only(self):
         # given
-        user_compliant = UserBasicFactory()
+        user_compliant = UserMainBasicAccessFactory()
         CharacterFactory(user=user_compliant)
 
-        user_non_compliant = UserBasicFactory()
+        user_non_compliant = UserMainBasicAccessFactory()
         add_character_to_user(user=user_non_compliant, character=EveCharacterFactory())
 
         group = GroupFactory(authgroup__internal=True)
@@ -319,7 +319,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
 class TestSkillSet(NoSocketsTestCase):
     def test_should_clone_a_skill_set(self):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         skill_set_1 = SkillSetFactory()
         skill_type = NavigationSkillTypeFactory()
         skill_1 = SkillSetSkillFactory(

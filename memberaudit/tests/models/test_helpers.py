@@ -6,8 +6,7 @@ from unittest.mock import patch
 from django.test import TestCase
 
 from memberaudit.models import Character, _helpers
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.testdata.factories_2 import CharacterFactory
 
 MODULE_PATH = "memberaudit.models._helpers"
 
@@ -17,8 +16,7 @@ class TestStoreCharacterData(TestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
+        cls.character = CharacterFactory()
 
     def setUp(self) -> None:
         self.root_path = tempfile.mkdtemp()

@@ -28,12 +28,13 @@ from memberaudit.tests.testdata.constants import EveGroupId
 from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
     CharacterLocationFactory,
+    CharacterOrphanFactory,
     CharacterShipFactory,
     CharacterUpdateStatusFactory,
     LocationSolarSystemFactory,
     LocationStationFactory,
     LocationStructureFactory,
-    UserBasicFactory,
+    UserMainBasicAccessFactory,
 )
 from memberaudit.tests.utils import scope_names_set
 
@@ -79,7 +80,7 @@ class TestCharacter_User(TestCase):
 
     def test_should_return_none_when_orphan(self):
         # given
-        character = CharacterFactory(is_orphan=True)
+        character = CharacterOrphanFactory()
         # when/then
         self.assertIsNone(character.user)
 
@@ -116,7 +117,7 @@ class TestCharacter_MainCharacter(TestCase):
 
     def test_should_return_none_when_orphan(self):
         # given
-        character = CharacterFactory(is_orphan=True)
+        character = CharacterOrphanFactory()
         # when
         got = character.main_character
         # then
@@ -147,7 +148,7 @@ class TestCharacter_IsMain(TestCase):
 
     def test_should_return_false_when_orphan(self):
         # given
-        character = CharacterFactory(is_orphan=True)
+        character = CharacterOrphanFactory()
         # when/then
         self.assertFalse(character.is_main)
 
@@ -155,7 +156,7 @@ class TestCharacter_IsMain(TestCase):
 class TestCharacter_IsOrphan(TestCase):
     def test_should_be_true_when_orphan(self):
         # given
-        character = CharacterFactory(is_orphan=True)
+        character = CharacterOrphanFactory()
         # when/then
         self.assertTrue(character.is_orphan)
 
@@ -169,22 +170,22 @@ class TestCharacter_IsOrphan(TestCase):
 class TestCharacter_UserIsOwner(TestCase):
     def test_should_return_true_when_owner(self):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user)
         # when/then
         self.assertTrue(character.user_is_owner(user))
 
     def test_should_return_false_when_not_owner(self):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory()
         # when/then
         self.assertFalse(character.user_is_owner(user))
 
     def test_should_return_false_when_orphan(self):
         # given
-        user = UserBasicFactory()
-        character = CharacterFactory(is_orphan=True)
+        user = UserMainBasicAccessFactory()
+        character = CharacterOrphanFactory()
         # when/then
         self.assertFalse(character.user_is_owner(user))
 
@@ -233,7 +234,7 @@ class TestCharacter_FetchToken2(TestCase):
 
     def test_should_raise_exception_with_scope_not_found_for_orphans(self):
         # given
-        character = CharacterFactory(is_orphan=True)
+        character = CharacterOrphanFactory()
         # when
         with self.assertRaises(TokenError):
             character.fetch_token()

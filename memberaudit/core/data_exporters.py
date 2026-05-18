@@ -9,8 +9,6 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
-from pytz import utc
-
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
@@ -97,7 +95,7 @@ def _compile_topics(export_files):
         export_file = export_files[topic] if topic in export_files.keys() else None
         if export_file:
             timestamp = export_file.stat().st_mtime
-            last_updated_at = dt.datetime.fromtimestamp(timestamp, tz=utc)
+            last_updated_at = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
             update_allowed = settings.DEBUG or (
                 now() - last_updated_at
             ).total_seconds() > (MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE * 60)

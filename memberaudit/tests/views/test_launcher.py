@@ -26,7 +26,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterWalletBalanceFactory,
     CharacterWalletJournalEntryFactory,
     ComplianceGroupFactory,
-    UserBasicFactory,
+    UserMainBasicAccessFactory,
 )
 from memberaudit.views.launcher import (
     _dashboard_panel,
@@ -92,7 +92,7 @@ class TestAddCharacter(NoSocketsTestCase):
 
     def test_should_add_character(self, mock_tasks, mock_messages):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         token = user.token_set.first()
         # when
         response = self._add_character(user, token)
@@ -108,7 +108,7 @@ class TestAddCharacter(NoSocketsTestCase):
 
     def test_should_reenable_disabled_character(self, mock_tasks, mock_messages):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user, is_disabled=True)
         token = user.token_set.first()
         # when
@@ -144,7 +144,7 @@ class TestRemoveCharacter(NoSocketsTestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user)
         auditor_character = CharacterFactory()
         auditor = auditor_character.eve_character.character_ownership.user
@@ -206,7 +206,7 @@ class TestRemoveCharacter(NoSocketsTestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory()
         # when
         response = self._remove_character(user, character.pk)
@@ -222,7 +222,7 @@ class TestRemoveCharacter(NoSocketsTestCase):
         self, mock_tasks, mock_messages
     ):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         invalid_character_pk = generate_invalid_pk(Character)
         # when
         response = self._remove_character(user, invalid_character_pk)
@@ -321,7 +321,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         cls.factory = RequestFactory()
 
     def test_normal(self):
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user, is_shared=True)
         request = self.factory.get(
             reverse("memberaudit:unshare_character", args=[character.pk])
@@ -333,7 +333,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         self.assertFalse(Character.objects.get(pk=character.pk).is_shared)
 
     def test_no_permission(self):
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(is_shared=True)
         request = self.factory.get(
             reverse("memberaudit:unshare_character", args=[character.pk])
@@ -344,7 +344,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         self.assertTrue(Character.objects.get(pk=character.pk).is_shared)
 
     def test_not_found(self):
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user, is_shared=True)
         invalid_character_pk = generate_invalid_pk(Character)
         request = self.factory.get(
@@ -367,7 +367,7 @@ class TestDashboardPanel(NoSocketsTestCase):
 
     def test_user_with_complete_data(self):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character_1 = CharacterFactory(user=user)
         character_2 = CharacterFactory(user=user, is_main=False)
         add_character_to_user(user=user, character=EveCharacterFactory())
@@ -452,7 +452,7 @@ class TestDashboardPanel(NoSocketsTestCase):
         self,
     ):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         character = CharacterFactory(user=user)
         not_this_month = now().date() - dt.timedelta(days=40)
         CharacterMiningLedgerEntryFactory(character=character, date=not_this_month)
@@ -480,7 +480,7 @@ class TestPlayerCountData(NoSocketsTestCase):
 
     def test_should_return_player_count(self, mock_player_count):
         # given
-        user = UserBasicFactory()
+        user = UserMainBasicAccessFactory()
         mock_player_count.return_value = 42
         request = self.factory.get("/")
         request.user = user

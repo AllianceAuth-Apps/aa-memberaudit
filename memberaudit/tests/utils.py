@@ -60,6 +60,7 @@ def create_memberaudit_character(
     return create_character(eve_character=character_ownership.character, **kwargs)
 
 
+@deprecated("Replaced by `app_utils.testing.add_character_to_user`")
 def add_auth_character_to_user(
     user: User, character_id: int, scopes=None, disconnect_signals=True
 ) -> CharacterOwnership:
@@ -76,6 +77,7 @@ def add_auth_character_to_user(
     )
 
 
+@deprecated("Replaced by `CharacterFactory")
 def add_memberaudit_character_to_user(
     user: User, character_id: int, disconnect_signals: bool = True, **kwargs
 ) -> Character:

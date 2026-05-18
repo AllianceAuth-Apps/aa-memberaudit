@@ -53,7 +53,7 @@ from memberaudit.tests.testdata.factories_2 import (
     SkillSetGroupFactory,
     SkillSetSkillFactory,
     SpaceshipCommandSkillTypeFactory,
-    UserBasicFactory,
+    UserMainBasicAccessFactory,
 )
 from memberaudit.tests.utils import json_response_to_dict_2, json_response_to_python_2
 from memberaudit.views.character_viewer_2 import (
@@ -82,7 +82,7 @@ class TestCharacterJumpClones(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         jita = EveSolarSystemHighSecFactory(
             id=30000142,
@@ -169,7 +169,7 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_return_data(self):
@@ -197,7 +197,7 @@ class TestCharacterPlanetData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_return_data(self):
@@ -223,7 +223,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_return_correct_character_roles(self):
@@ -268,7 +268,7 @@ class TestMailData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.label_1 = CharacterMailLabelFactory(character=cls.character)
         cls.label_2 = CharacterMailLabelFactory(character=cls.character)
@@ -407,7 +407,7 @@ class TestSkillSetsData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.amarr_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
             name="Amarr Carrier"
@@ -544,7 +544,7 @@ class TestSkillSetsDetails(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_show_details(self):
@@ -648,7 +648,7 @@ class TestSkills(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.amarr_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
             name="Amarr Carrier"
@@ -686,7 +686,7 @@ class TestSkillqueue(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.amarr_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
             name="Amarr Carrier"
@@ -788,7 +788,7 @@ class TestStandings(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_produce_character_standings_data(self):
@@ -819,7 +819,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
 
     def test_should_return_correct_character_titles(self):
@@ -857,7 +857,7 @@ class TestWalletJournal(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         cls.entity_1001 = EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
         cls.entity_1002 = EveEntityCharacterFactory(id=1002, name="Clark Kent")
@@ -897,7 +897,7 @@ class TestWalletTransactions(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserBasicFactory()
+        cls.user = UserMainBasicAccessFactory()
         cls.character = CharacterFactory(user=cls.user)
         jita = EveSolarSystemHighSecFactory(
             id=30000142,
