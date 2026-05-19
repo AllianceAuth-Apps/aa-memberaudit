@@ -7,9 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Sequence, Set
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.helpers import eve_entity_ids_from_objs
 
@@ -17,7 +15,7 @@ if TYPE_CHECKING:
     from memberaudit.models import Character
 
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class GenericUpdateSimpleObjMixin:

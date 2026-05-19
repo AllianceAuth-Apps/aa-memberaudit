@@ -13,12 +13,11 @@ from django.conf import settings
 from django.core.cache import cache
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, __version__
+from memberaudit import __version__
 from memberaudit.models import Character
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 _CACHE_KEY = "memberaudit-esi-status"
 _CACHE_TIMEOUT = 120

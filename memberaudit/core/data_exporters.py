@@ -14,10 +14,8 @@ from django.db import models
 from django.utils.timezone import now
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 from app_utils.views import yesno_str
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
 from memberaudit.models import (
     CharacterContract,
@@ -25,7 +23,7 @@ from memberaudit.models import (
     CharacterWalletJournalEntry,
 )
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def export_topic_to_archive(topic: str, destination_folder: str = None) -> str:

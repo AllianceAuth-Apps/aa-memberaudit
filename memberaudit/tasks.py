@@ -17,7 +17,6 @@ from eveuniverse.models import EveEntity, EveMarketPrice
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from allianceauth.services.tasks import QueueOnce
-from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, utils
 from memberaudit.app_settings import (
@@ -42,7 +41,7 @@ from memberaudit.models import (
     enabled_sections_by_stale_minutes,
 )
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 MAX_RETRIES_DEFAULT = 3
 MAX_RETRIES_STRUCTURES = 5

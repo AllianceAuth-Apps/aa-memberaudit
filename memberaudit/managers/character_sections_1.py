@@ -13,9 +13,7 @@ from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import chunks
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -38,7 +36,7 @@ if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterAsset, CharacterContract
 
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterAssetQuerySet(models.QuerySet):

@@ -12,9 +12,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.utils.timezone import now
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS,
     MEMBERAUDIT_STORE_ESI_DATA_ENABLED,
@@ -24,7 +22,7 @@ from memberaudit.app_settings import (
 if TYPE_CHECKING:
     from memberaudit.models import Character
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def store_character_data_to_disk_when_enabled(

@@ -20,7 +20,6 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
@@ -41,7 +40,7 @@ from memberaudit.utils import filter_groups_available_to_user
 if TYPE_CHECKING:
     from memberaudit.models import Character, Location
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class ComplianceGroupDesignationManager(models.Manager):

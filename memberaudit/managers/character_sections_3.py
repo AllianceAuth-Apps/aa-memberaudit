@@ -14,9 +14,7 @@ from esi.models import Token
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -37,7 +35,7 @@ from ._common import GenericUpdateSimpleObjMixin
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterSkillqueueEntry
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterMiningLedgerEntryQueryset(models.QuerySet):

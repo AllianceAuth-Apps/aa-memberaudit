@@ -10,11 +10,8 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.caching import ObjectCacheMixin
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterQuerySet(models.QuerySet):

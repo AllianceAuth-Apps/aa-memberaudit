@@ -6,12 +6,10 @@ from django.core.cache import cache
 from esi.exceptions import HTTPError
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.providers import esi
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 _CACHE_KEY = "memberaudit-player-count"
 _TIMEOUT = 1 * 60

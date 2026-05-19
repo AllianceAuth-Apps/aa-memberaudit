@@ -19,7 +19,6 @@ from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 from app_utils.views import (
     bootstrap_icon_plus_name_html,
     bootstrap_label_html,
@@ -28,7 +27,6 @@ from app_utils.views import (
     yesno_str,
 )
 
-from memberaudit import __title__
 from memberaudit.constants import (
     DATETIME_FORMAT,
     DEFAULT_ICON_SIZE,
@@ -54,7 +52,7 @@ from memberaudit.models import (
 
 from ._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 ICON_SIZE_64 = 64
 CHARACTER_VIEWER_DEFAULT_TAB = "mails"

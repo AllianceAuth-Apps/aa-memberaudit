@@ -15,9 +15,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.helpers import arabic_number_to_roman
 from memberaudit.managers.general import (
     ComplianceGroupDesignationManager,
@@ -31,7 +29,7 @@ from memberaudit.managers.general import (
 from ._helpers import AddGenericReprMixin
 from .constants import NAMES_MAX_LENGTH
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class General(models.Model):

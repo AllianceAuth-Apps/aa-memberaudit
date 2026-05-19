@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Tests now mostly use factories instead of fixtures
 - ESI tests now use pook and test with the Swagger client instead of a fake
 - Added local swagger spec file
+- Removed logger tag
+- Commands now also log to extension logger
 
 ### Fixed
 

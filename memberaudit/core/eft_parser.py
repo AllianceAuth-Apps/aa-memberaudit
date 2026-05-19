@@ -9,14 +9,12 @@ from esi.exceptions import HTTPClientError
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.constants import EveCategoryId, EveDogmaEffectId, EveGroupId
 
 from .fittings import Fitting, Item, Module
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class EftParserError(Exception):

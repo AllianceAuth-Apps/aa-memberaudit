@@ -22,9 +22,7 @@ from eveuniverse.models import (
 )
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_MAX_MAILS,
@@ -45,7 +43,7 @@ from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterMail
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Manager):

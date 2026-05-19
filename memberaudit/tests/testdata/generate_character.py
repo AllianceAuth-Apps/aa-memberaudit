@@ -41,11 +41,11 @@ from memberaudit.models import (
     CharacterLocation,
     CharacterWalletJournalEntry,
 )
-from memberaudit.tests.testdata.factories import (
-    create_character_planet,
-    create_character_wallet_journal_entry,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterPlanetFactory,
+    UserMainBasicAccessFactory,
 )
-from memberaudit.tests.utils import create_memberaudit_character
 
 WALLET_JOURNAL_ENTRIES = 1_000
 
@@ -78,7 +78,9 @@ def recreate_character():
     except ObjectDoesNotExist:
         pass
     Character.objects.get(eve_character=eve_character).delete()
-    character = create_memberaudit_character(92532650)
+    character = CharacterFactory(
+        user=UserMainBasicAccessFactory(main_character__character=eve_character)
+    )
     return eve_character, corporation, character
 
 
@@ -138,7 +140,7 @@ def create_wallet_journal(eve_character, character):
 
 def create_planets(character):
     for _ in range(6):
-        create_character_planet(character)
+        CharacterPlanetFactory(character=character)
 
 
 main()
