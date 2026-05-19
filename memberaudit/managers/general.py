@@ -5,15 +5,16 @@
 from __future__ import annotations
 
 import datetime as dt
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Set, Tuple
 
-from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
 
 from django.contrib.auth.models import Group, User
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils.timezone import now
+from esi.exceptions import HTTPClientError
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
@@ -222,10 +223,11 @@ class LocationManager(models.Manager):
 
         if model.is_station_id(id):
             logger.info("%s: Fetching station from ESI", id)
-            station = esi.client.Universe.get_universe_stations_station_id(
+            station = esi.client.Universe.GetUniverseStationsStationId(
                 station_id=id
-            ).results()
-            return self._station_update_or_create_dict(id=id, station=station)
+            ).result(use_etag=False)
+            station_data = station.model_dump()
+            return self._station_update_or_create_dict(id=id, station=station_data)
 
         if model.is_structure_id(id):
             if not token:
@@ -286,19 +288,23 @@ class LocationManager(models.Manager):
     def structure_update_or_create_esi(self, id: int, token: Token):
         """Update or creates structure from ESI."""
         try:
-            structure = esi.client.Universe.get_universe_structures_structure_id(
-                structure_id=id, token=token.valid_access_token()
-            ).results()
-        except (HTTPUnauthorized, HTTPForbidden) as http_error:
-            logger.warning(
-                "%s: No access to structure #%s: %s",
-                token.character_name,
-                id,
-                http_error,
-            )
-            return self.get_or_create(id=id)
+            structure = esi.client.Universe.GetUniverseStructuresStructureId(
+                structure_id=id, token=token
+            ).result(use_etag=False)
+        except HTTPClientError as ex:  # (HTTPUnauthorized, HTTPForbidden)
+            if ex.status_code in [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN]:
+                logger.warning(
+                    "%s: No access to structure #%s: %s",
+                    token.character_name,
+                    id,
+                    ex,
+                )
+                return self.get_or_create(id=id)
 
-        return self._structure_update_or_create_dict(id=id, structure=structure)
+            raise ex
+
+        structure_data = structure.model_dump()
+        return self._structure_update_or_create_dict(id=id, structure=structure_data)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
@@ -532,15 +538,16 @@ class MailEntityManager(models.Manager):
         since they might still be referenced by older mails.
         """
         logger.info("%s: Fetching mailing lists from ESI", character)
-        mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
+        mailing_lists_raw = esi.client.Mail.GetCharactersCharacterIdMailLists(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
+
         if mailing_lists_raw:
             mailing_lists = {
-                obj["mailing_list_id"]: obj
+                obj.mailing_list_id: obj.model_dump()
                 for obj in mailing_lists_raw
-                if "mailing_list_id" in obj
+                if obj.mailing_list_id
             }
         else:
             mailing_lists = {}

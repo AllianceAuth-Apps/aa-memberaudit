@@ -2,6 +2,7 @@
 
 import json
 import logging
+from http import HTTPStatus
 from typing import Any, Set, Tuple
 
 from typing_extensions import deprecated
@@ -11,6 +12,7 @@ from django.core.cache import cache
 from django.db.models import QuerySet
 from django.http import JsonResponse
 from django.test import TestCase
+from esi.exceptions import HTTPClientError, HTTPServerError
 from esi.models import Token
 
 from allianceauth.authentication.backends import StateBackend
@@ -140,3 +142,32 @@ class TestCaseWithClearCache(TestCase):
 def extract(qs: QuerySet, field: str) -> Set[int]:
     """Return the extracted fields from the items of a query set."""
     return set(qs.values_list(field, flat=True))
+
+
+def make_http_client_error(status_code: int, phrase: str = "") -> HTTPClientError:
+    code = int(status_code)
+    if code < 400 or code > 499:
+        raise ValueError("Invalid status code")
+    if not phrase:
+        try:
+            status = HTTPStatus(code)
+            phrase = status.phrase
+        except ValueError:
+            phrase = "???"
+
+    return HTTPClientError(status_code=code, headers={}, data=f"{code} {phrase}")
+
+
+def make_http_server_error(status_code: int, phrase: str = "") -> HTTPServerError:
+    code = int(status_code)
+    if code < 500 or code > 599:
+        raise ValueError("Invalid status code")
+
+    if not phrase:
+        try:
+            status = HTTPStatus(code)
+            phrase = status.phrase
+        except ValueError:
+            phrase = "???"
+
+    return HTTPServerError(status_code=code, headers={}, data=f"{code} {phrase}")

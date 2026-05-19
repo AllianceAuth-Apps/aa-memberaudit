@@ -507,6 +507,48 @@ class TestCharacter_UpdateMailBody(TestCaseWithClearCache):
         self.assertTrue(got.is_updated)
         self.assertFalse(character.mails.filter(mail_id=mail.mail_id).exists())
 
+    @pook.on
+    def test_can_fetch_mails_with_paging(self):
+        # given
+        character = CharacterFactory()
+        sender = MailEntityCharacterFactory()
+        recipient = MailEntityCharacterFactory()
+        last_mail_id = 1_000
+        timestamp = now()
+        mails = []
+        for _ in range(60):
+            mails.append(
+                {
+                    "from": sender.id,
+                    "is_read": False,
+                    "labels": [],
+                    "mail_id": last_mail_id,
+                    "recipients": [
+                        {"recipient_id": recipient.id, "recipient_type": "character"},
+                    ],
+                    "subject": f"subject {last_mail_id}",
+                    "timestamp": (timestamp - dt.timedelta(seconds=1)).isoformat(),
+                }
+            )
+            last_mail_id -= 1
+
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=mails[:50],
+        )
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/mail"),
+            reply=HTTPStatus.OK,
+            response_json=mails[50:],
+        )
+
+        # when
+        character.update_mail_headers()
+
+        # then
+        self.assertEqual(character.mails.count(), 60)
+
 
 class TestCharacter_UpdateMailLabels(TestCaseWithClearCache):
     @pook.on

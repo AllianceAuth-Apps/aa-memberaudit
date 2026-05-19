@@ -95,7 +95,7 @@ def main():
     ):
         try:
             eve_character, created = get_or_create_eve_character(character_id)
-        except OSError:
+        except Exception:
             continue
         if created:
             created_count += 1

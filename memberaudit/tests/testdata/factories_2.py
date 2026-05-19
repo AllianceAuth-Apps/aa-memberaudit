@@ -9,6 +9,7 @@ import factory.fuzzy
 
 from django.contrib.auth.models import Group
 from django.utils.timezone import now
+from esi.tests.factories_2 import ScopeFactory
 from esi.tests.factories_2 import TokenFactory as _TokenFactory
 from eveuniverse.tests.testdata.factories_2 import (
     CitadelTypeFactory,
@@ -92,7 +93,7 @@ def make_esi_url(path: str) -> str:
     if path.endswith("/"):
         raise ValueError("path can not end with a slash")
 
-    url = urllib.parse.urljoin(_BASE_URL, "latest/" + path + "/")
+    url = urllib.parse.urljoin(_BASE_URL, path)
     return url
 
 
@@ -117,7 +118,13 @@ class TokenFactory2(_TokenFactory):
     in Alliance Auth.
     """
 
-    pass
+    @factory.post_generation
+    def scopes(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        for name in extracted:
+            self.scopes.add(ScopeFactory(name=name))
 
 
 # eveuniverse

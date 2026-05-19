@@ -3,11 +3,11 @@ from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
 import pook
-from bravado.exception import HTTPNotFound
 from celery_once import AlreadyQueued
 
 from django.test import override_settings
 from django.utils.timezone import now
+from esi.exceptions import HTTPClientError
 from eveuniverse.tests.testdata.factories_2 import (
     CitadelTypeFactory,
     EveEntityCorporationFactory,
@@ -34,6 +34,8 @@ from memberaudit.tests.utils import TestCaseWithClearCache
 MANAGERS_PATH = "memberaudit.managers.general"
 TASKS_PATH = "memberaudit.tasks"
 
+_ESI_SCOPES = ["esi-universe.read_structures.v1"]
+
 
 class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
@@ -51,7 +53,7 @@ class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
                 "type_id": location.eve_type.id,
             },
         )
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
 
         # when
         obj, created = Location.objects.get_or_create_esi(id=location.id, token=token)
@@ -84,7 +86,7 @@ class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
                 "type_id": eve_type.id,
             },
         )
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
 
         # when
         obj: Location
@@ -101,7 +103,7 @@ class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_should_not_update_empty_locations_during_grace_period(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         location = Location.objects.create(id=1000000000001)
         pook.get(
             make_esi_url(f"universe/structures/{location.id}"),
@@ -124,7 +126,7 @@ class TestLocationManager_GetOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_should_update_empty_locations_after_grace_period(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         deadline = now() - dt.timedelta(minutes=6)
         with patch("django.utils.timezone.now", MagicMock(return_value=deadline)):
             location = Location.objects.create(id=1000000000001)
@@ -162,7 +164,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_create_minimal_structure(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         solar_system = EveSolarSystemFactory()
         name = f"{solar_system.name} - Alpha"
         structure_id = 1000000000001
@@ -195,7 +197,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_create_full_structure(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         solar_system = EveSolarSystemFactory()
         name = f"{solar_system.name} - Alpha"
         structure_id = 1000000000001
@@ -229,7 +231,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_can_update_structure(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         location = LocationStructureFactory()
         solar_system = EveSolarSystemFactory()
         name = f"{solar_system.name} - Alpha"
@@ -264,7 +266,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_should_propagates_http_error_on_structure_create(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         structure_id = 1000000000001
         pook.get(
             make_esi_url(f"universe/structures/{structure_id}"),
@@ -273,13 +275,13 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
         )
 
         # when/Then
-        with self.assertRaises(HTTPNotFound):
+        with self.assertRaises(HTTPClientError):
             Location.objects.update_or_create_esi(id=structure_id, token=token)
 
     @pook.on
     def test_should_create_empty_location_for_invalid_id(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         structure_id = 80000000
         pook.get(
             make_esi_url(f"universe/structures/{structure_id}"),
@@ -298,7 +300,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_should_create_empty_location_on_access_error_1(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         structure_id = 1000000000001
         pook.get(
             make_esi_url(f"universe/structures/{structure_id}"),
@@ -318,7 +320,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsi(TestCaseWithClearCache):
     @pook.on
     def test_should_create_empty_location_on_access_error_2(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         structure_id = 1000000000001
         pook.get(
             make_esi_url(f"universe/structures/{structure_id}"),
@@ -347,7 +349,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsiAsync(TestCaseWithClearCach
     @pook.on
     def test_can_create_full_structure(self):
         # given
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
         solar_system = EveSolarSystemFactory()
         name = f"{solar_system.name} - Alpha"
         structure_id = 1000000000001
@@ -389,7 +391,7 @@ class TestLocationManager_Structure_UpdateOrCreateEsiAsync(TestCaseWithClearCach
     ):
         # given
         mock_task_update_structure_esi.apply_async.side_effect = AlreadyQueued(10)
-        token = TokenFactory2()
+        token = TokenFactory2(scopes=_ESI_SCOPES)
 
         # when
         obj: Location
@@ -525,7 +527,7 @@ class TestLocationManager_Station_UpdateOrCreateEsi(TestCaseWithClearCache):
         )
 
         # when/Then
-        with self.assertRaises(HTTPNotFound):
+        with self.assertRaises(HTTPClientError):
             Location.objects.update_or_create_esi(id=location_id, token=None)
 
 

@@ -2,10 +2,10 @@
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from bravado.exception import HTTPNotFound
-
+from esi.exceptions import HTTPClientError
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
@@ -122,10 +122,14 @@ class _EveTypes:
                 obj, _ = EveType.objects.get_or_create_esi(
                     id=entity_id, enabled_sections=[EveType.Section.DOGMAS]
                 )
-            except HTTPNotFound:
+            except HTTPClientError as ex:
+                if ex.status_code != HTTPStatus.NOT_FOUND:
+                    raise ex
                 pass
+
             else:
                 eve_types[obj.name] = obj  # type: ignore
+
         return eve_types
 
     # @classmethod

@@ -7,9 +7,8 @@ import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set
-
-from bravado.exception import HTTPInternalServerError
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -19,6 +18,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
+from esi.exceptions import HTTPServerError
 from esi.models import Token
 from eveuniverse.models import EveEntity
 
@@ -456,16 +456,19 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         section = self.UpdateSection(section)
         try:
             data = fetch_func(character=self)
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error "
-                "when trying to fetch %s: %s ",
-                self,
-                section,
-                ex,
-            )
-            return UpdateSectionResult(is_changed=None, is_updated=False)
+        except HTTPServerError as ex:
+            if ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
+                # handle the occasional occurring http 500 error from this endpoint
+                logger.warning(
+                    "%s: Received an HTTP internal server error "
+                    "when trying to fetch %s: %s ",
+                    self,
+                    section,
+                    ex,
+                )
+                return UpdateSectionResult(is_changed=None, is_updated=False)
+
+            raise ex
 
         store_character_data_to_disk_when_enabled(
             character=self,

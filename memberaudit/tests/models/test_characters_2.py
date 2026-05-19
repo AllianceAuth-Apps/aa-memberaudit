@@ -1,10 +1,10 @@
 import datetime as dt
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
 from django.utils.timezone import now
 from esi.errors import TokenError
 
-from app_utils.esi_testing import build_http_error
 from app_utils.testdata_factories import UserMainFactory
 from app_utils.testing import NoSocketsTestCase
 
@@ -15,6 +15,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterUpdateStatusFactory,
     UserMainBasicAccessFactory,
 )
+from memberaudit.tests.utils import make_http_server_error
 
 MODULE_PATH = "memberaudit.models.characters"
 
@@ -171,7 +172,9 @@ class TestCharacterManager_UpdateSectionIfChanged(NoSocketsTestCase):
     ):
         # given
         character = CharacterFactory(user=self.user, is_main=False)
-        fetch_func_mock = MagicMock(side_effect=build_http_error(500, "Test exception"))
+        fetch_func_mock = MagicMock(
+            side_effect=make_http_server_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+        )
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when

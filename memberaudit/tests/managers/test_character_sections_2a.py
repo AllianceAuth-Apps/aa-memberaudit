@@ -154,7 +154,6 @@ class TestCharacter_UpdateCharacterDetails(TestCaseWithClearCache):
         pook.get(
             make_esi_url(f"characters/{character.character_id}"),
             reply=200,
-            response_headers={"X-Pages": "1"},
             response_json={
                 "birthday": birthday.isoformat(),
                 "bloodline_id": bloodline.id,

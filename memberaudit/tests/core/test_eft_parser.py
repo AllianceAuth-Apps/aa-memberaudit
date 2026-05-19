@@ -1,10 +1,8 @@
+from http import HTTPStatus
 from unittest.mock import patch
-
-from bravado.exception import HTTPNotFound
 
 from eveuniverse.models import EveEntity, EveType
 
-from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.eft_parser import (
@@ -21,6 +19,7 @@ from memberaudit.core.eft_parser import (
 )
 from memberaudit.tests.testdata.factories_2 import create_fitting_text
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import make_http_client_error
 
 MODULE_PATH = "memberaudit.core.eft_parser"
 
@@ -236,9 +235,8 @@ class TestEveTypes(NoSocketsTestCase):
 
     def test_should_handle_type_not_found(self):
         # given
-        http404 = HTTPNotFound(
-            BravadoResponseStub(status_code=404), message="Test exception"
-        )
+        http_404 = make_http_client_error(HTTPStatus.NOT_FOUND)
+
         # when
         with patch(
             MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
@@ -248,8 +246,9 @@ class TestEveTypes(NoSocketsTestCase):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
-            mock_get_or_create_esi.side_effect = http404
+            mock_get_or_create_esi.side_effect = http_404
             eve_types, unknown_types = _EveTypes.create_from_names(["Unknown-Type"])
+
         # then
         self.assertIsNone(eve_types.from_name("Unknown-Type"))
         self.assertIn("Unknown-Type", unknown_types)

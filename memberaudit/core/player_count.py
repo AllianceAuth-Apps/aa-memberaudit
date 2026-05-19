@@ -2,9 +2,8 @@
 
 from typing import Optional
 
-from bravado.exception import HTTPError
-
 from django.core.cache import cache
+from esi.exceptions import HTTPError
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.logging import LoggerAddTag
@@ -32,8 +31,8 @@ def clear_cache():
 
 def _fetch_player_count() -> Optional[int]:
     try:
-        result: dict = esi.client.Status.get_status().results()
+        status = esi.client.Status.GetStatus().result(use_etag=False)
     except HTTPError:
         return None
 
-    return result.get("players")
+    return status.players

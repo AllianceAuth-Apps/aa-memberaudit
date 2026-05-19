@@ -1,15 +1,13 @@
 import datetime as dt
-from contextlib import nullcontext
 from http import HTTPStatus
 from unittest.mock import patch
 
 import pook
-from bravado.exception import HTTPError
-from celery.exceptions import Retry as CeleryRetry
 
 from django.core.cache import cache
 from django.test import override_settings
 from django.utils.timezone import now
+from esi.exceptions import HTTPError
 from esi.models import Token
 from eveuniverse.models import EveEntity
 from eveuniverse.tests.testdata.factories_2 import (
@@ -17,7 +15,6 @@ from eveuniverse.tests.testdata.factories_2 import (
     EveEntityFactory,
 )
 
-from app_utils.esi_testing import build_http_error
 from app_utils.testdata_factories import UserMainFactory
 from app_utils.testing import NoSocketsTestCase, generate_invalid_pk
 
@@ -31,7 +28,11 @@ from memberaudit.tests.testdata.factories_2 import (
     TokenFactory2,
     make_esi_url,
 )
-from memberaudit.tests.utils import TestCaseWithClearCache, extract
+from memberaudit.tests.utils import (
+    TestCaseWithClearCache,
+    extract,
+    make_http_client_error,
+)
 
 MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
@@ -324,22 +325,10 @@ class TestUpdateStructureEsi(NoSocketsTestCase):
                 id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
             )
 
-    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.side_effect = build_http_error(502)
-        token = TokenFactory2()
-        with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
-
-    def test_should_retry_when_esi_error_limit_breached(
-        self, mock_update_or_create_esi
-    ):
-        mock_update_or_create_esi.side_effect = build_http_error(420)
-        token = TokenFactory2()
-        with self.assertRaises(CeleryRetry):
-            tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
-
     def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.side_effect = build_http_error(400)
+        mock_update_or_create_esi.side_effect = make_http_client_error(
+            HTTPStatus.BAD_REQUEST
+        )
         token = TokenFactory2()
         with self.assertRaises(HTTPError):
             tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
@@ -357,22 +346,10 @@ class TestUpdateMailEntityEsi(NoSocketsTestCase):
     def test_should_complete_normally_when_no_issue(self, _):
         tasks.update_mail_entity_esi(1001)
 
-    def test_should_retry_when_esi_is_offline(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.side_effect = build_http_error(502)
-
-        with self.assertRaises(CeleryRetry):
-            tasks.update_mail_entity_esi(1001)
-
-    def test_should_retry_when_esi_error_limit_breached(
-        self, mock_update_or_create_esi
-    ):
-        mock_update_or_create_esi.side_effect = build_http_error(420)
-
-        with self.assertRaises(CeleryRetry):
-            tasks.update_mail_entity_esi(1001)
-
     def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
-        mock_update_or_create_esi.side_effect = build_http_error(400)
+        mock_update_or_create_esi.side_effect = make_http_client_error(
+            HTTPStatus.BAD_REQUEST
+        )
 
         with self.assertRaises(HTTPError):
             tasks.update_mail_entity_esi(1001)
@@ -509,11 +486,7 @@ class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
         # given
         EveEntityFactory(id=42, name="alpha")
         # when
-        with patch(
-            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
-            return_value=nullcontext(),
-        ):
-            tasks.update_unresolved_eve_entities()
+        tasks.update_unresolved_eve_entities()
         # then
         self.assertFalse(mock_update_from_esi_by_id.called)
 
@@ -521,11 +494,7 @@ class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
         # given
         EveEntity.objects.create(id=42)
         # when
-        with patch(
-            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
-            return_value=nullcontext(),
-        ):
-            tasks.update_unresolved_eve_entities()
+        tasks.update_unresolved_eve_entities()
         # then
         self.assertTrue(mock_update_from_esi_by_id.called)
         args, _ = mock_update_from_esi_by_id.call_args
@@ -546,10 +515,5 @@ class TestCheckCharacterConsistency(NoSocketsTestCase):
 class TestUpdateMarketPrices(NoSocketsTestCase):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
     def test_update_market_prices(self, mock_update_from_esi):
-        with patch(
-            TASKS_PATH + ".retry_task_on_esi_error_and_offline",
-            return_value=nullcontext(),
-        ):
-            tasks.update_market_prices()
-
+        tasks.update_market_prices()
         self.assertTrue(mock_update_from_esi.called)
