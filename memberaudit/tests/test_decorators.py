@@ -12,8 +12,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
     UserMainBasicAccessFactory,
 )
-
-from .utils import scope_names_set
+from memberaudit.tests.utils import scope_names_set
 
 MODULE_PATH = "memberaudit.decorators"
 

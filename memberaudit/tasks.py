@@ -211,262 +211,231 @@ def update_character(
 # Updating sections with simple update logic
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_attributes(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_attributes(character_pk: int, force_update: bool) -> None:
     """Update attributes for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ATTRIBUTES,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_character_details(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_character_details(character_pk: int, force_update: bool) -> None:
     """Update character_details for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.CHARACTER_DETAILS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_corporation_history(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_corporation_history(character_pk: int, force_update: bool) -> None:
     """Update corporation_history for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.CORPORATION_HISTORY,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_fw_stats(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
     """Update fw_stats for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.FW_STATS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_implants(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_implants(character_pk: int, force_update: bool) -> None:
     """Update implants for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.IMPLANTS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_jump_clones(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
     """Update jump_clones for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.JUMP_CLONES,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_location(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_location(character_pk: int, force_update: bool) -> None:
     """Update location for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.LOCATION,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_loyalty(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_loyalty(character_pk: int, force_update: bool) -> None:
     """Update loyalty for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.LOYALTY,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_mining_ledger(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_mining_ledger(character_pk: int, force_update: bool) -> None:
     """Update mining_ledger for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.MINING_LEDGER,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_online_status(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_online_status(character_pk: int, force_update: bool) -> None:
     """Update online_status for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ONLINE_STATUS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_planets(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_planets(character_pk: int, force_update: bool) -> None:
     """Update planets for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.PLANETS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_roles(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_roles(character_pk: int, force_update: bool) -> None:
     """Update roles for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.ROLES,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_ship(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_ship(character_pk: int, force_update: bool) -> None:
     """Update ship for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SHIP,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_skill_queue(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
     """Update skill_queue for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_QUEUE,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_skill_sets(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
     """Update skill_sets for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILL_SETS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_skills(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_skills(character_pk: int, force_update: bool) -> None:
     """Update skills for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.SKILLS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_standings(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_standings(character_pk: int, force_update: bool) -> None:
     """Update standings for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.STANDINGS,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_titles(self: Task, character_pk: int, force_update: bool) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_titles(character_pk: int, force_update: bool) -> None:
     """Update titles for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.TITLES,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_wallet_balance(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_wallet_balance(character_pk: int, force_update: bool) -> None:
     """Update wallet_balance for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_BALLANCE,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
-def update_character_wallet_journal(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@rate_limit_retry_task
+def update_character_wallet_journal(character_pk: int, force_update: bool) -> None:
     """Update wallet_journal for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_JOURNAL,
         force_update=force_update,
     )
 
 
-@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_wallet_transactions(
-    self: Task, character_pk: int, force_update: bool
-) -> None:
+def update_character_wallet_transactions(character_pk: int, force_update: bool) -> None:
     """Update wallet_transactions for a character from ESI."""
     _update_character_section(
-        task=self,
         character_pk=character_pk,
         section=Character.UpdateSection.WALLET_TRANSACTIONS,
         force_update=force_update,
@@ -474,7 +443,7 @@ def update_character_wallet_transactions(
 
 
 def _update_character_section(
-    task: Task, character_pk: int, section: str, force_update: bool
+    character_pk: int, section: str, force_update: bool
 ) -> None:
     """Update a section for a character from ESI."""
     section = Character.UpdateSection(section)
