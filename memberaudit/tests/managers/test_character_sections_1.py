@@ -114,10 +114,11 @@ class TestCharacterAssetManager_BulkCreateWithFallback(NoSocketsTestCase):
             super(CharacterAsset, obj).save(*args, **kwargs)
 
         # when
-        with patch.object(
-            CharacterAsset.objects, "bulk_create"
-        ) as mock_bulk_create, patch(
-            "memberaudit.models.character_sections_1.CharacterAsset.save", my_save
+        with (
+            patch.object(CharacterAsset.objects, "bulk_create") as mock_bulk_create,
+            patch(
+                "memberaudit.models.character_sections_1.CharacterAsset.save", my_save
+            ),
         ):
             mock_bulk_create.side_effect = IntegrityError("Test exception")
 

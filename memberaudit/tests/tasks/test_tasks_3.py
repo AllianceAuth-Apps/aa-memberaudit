@@ -755,12 +755,17 @@ class TestUpdateCharacterAssets2(TestCaseWithClearCache):
             response_json=[],
         )
 
-        with patch(TASKS_PATH + ".MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 1), patch(
-            TASKS_PATH + ".assets_create_children", wraps=tasks.assets_create_children
-        ) as mock_assets_create_parents_chunk, patch(
-            TASKS_PATH + "._assets_create_parents_chunk",
-            wraps=tasks._assets_create_parents_chunk,
-        ) as mock_assets_create_children:
+        with (
+            patch(TASKS_PATH + ".MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS", 1),
+            patch(
+                TASKS_PATH + ".assets_create_children",
+                wraps=tasks.assets_create_children,
+            ) as mock_assets_create_parents_chunk,
+            patch(
+                TASKS_PATH + "._assets_create_parents_chunk",
+                wraps=tasks._assets_create_parents_chunk,
+            ) as mock_assets_create_children,
+        ):
             # when
             tasks.update_character_assets.delay(character.pk, True)
 

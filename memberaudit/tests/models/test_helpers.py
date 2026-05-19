@@ -51,8 +51,9 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -85,8 +86,11 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["other_section"]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(
+                MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["other_section"]
+            ),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -103,8 +107,12 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [self.character.id]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(
+                MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS",
+                [self.character.id],
+            ),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -121,8 +129,9 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [-1]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [-1]),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -173,9 +182,10 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".json.dump"
-        ) as mock:
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".json.dump") as mock,
+        ):
             mock.side_effect = TypeError
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -192,9 +202,10 @@ class TestStoreCharacterData(NoSocketsTestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".json.dump"
-        ) as mock:
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".json.dump") as mock,
+        ):
             mock.side_effect = OSError
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,

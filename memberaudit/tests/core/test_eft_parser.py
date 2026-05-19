@@ -221,11 +221,14 @@ class TestEveTypes(NoSocketsTestCase):
         # given
         unknown_type = EveType(id=99, name="Unknown-Type")
         # when
-        with patch(
-            MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
-        ) as mock_fetch_by_names_esi, patch(
-            MODULE_PATH + ".EveType.objects.get_or_create_esi"
-        ) as mock_get_or_create_esi:
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
@@ -239,11 +242,14 @@ class TestEveTypes(NoSocketsTestCase):
         http_404 = make_http_client_error(HTTPStatus.NOT_FOUND)
 
         # when
-        with patch(
-            MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
-        ) as mock_fetch_by_names_esi, patch(
-            MODULE_PATH + ".EveType.objects.get_or_create_esi"
-        ) as mock_get_or_create_esi:
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
@@ -259,11 +265,14 @@ class TestEveTypes(NoSocketsTestCase):
         http_400 = make_http_client_error(HTTPStatus.BAD_REQUEST)
 
         # when
-        with patch(
-            MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
-        ) as mock_fetch_by_names_esi, patch(
-            MODULE_PATH + ".EveType.objects.get_or_create_esi"
-        ) as mock_get_or_create_esi:
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
