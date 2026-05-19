@@ -158,8 +158,9 @@ def _fetch_status() -> Optional[List[Dict[str, Any]]]:
         r.raise_for_status()
         status = r.json()
     except RequestException as exc:
-        logger.warning(f"Failed to get ESI status. Error: {exc}")
+        logger.warning("Failed to get ESI status. Error: %s", exc)
         return None
+
     return status
 
 

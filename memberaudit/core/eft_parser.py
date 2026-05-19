@@ -121,12 +121,12 @@ class _EveTypes:
                     id=entity_id, enabled_sections=[EveType.Section.DOGMAS]
                 )
             except HTTPClientError as ex:
-                if ex.status_code != HTTPStatus.NOT_FOUND:
-                    raise ex
-                pass
+                if ex.status_code == HTTPStatus.NOT_FOUND:
+                    continue
 
-            else:
-                eve_types[obj.name] = obj  # type: ignore
+                raise ex
+
+            eve_types[obj.name] = obj  # type: ignore
 
         return eve_types
 
