@@ -5,11 +5,11 @@
 from __future__ import annotations
 
 import ast
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Dict, List, Set
 
-from bravado.exception import HTTPNotFound
-
 from django.db import models, transaction
+from esi.exceptions import HTTPClientError
 from esi.models import Token
 from eveuniverse.models import (
     EveAncestry,
@@ -22,9 +22,7 @@ from eveuniverse.models import (
 )
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_MAX_MAILS,
@@ -45,7 +43,7 @@ from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterMail
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Manager):
@@ -63,11 +61,10 @@ class CharacterCorporationHistoryManager(GenericUpdateComplexObjMixin, models.Ma
 
     def _fetch_data_from_esi(self, character: Character) -> List[dict]:
         logger.info("%s: Fetching corporation history from ESI", character)
-        history = esi.client.Character.get_characters_character_id_corporationhistory(
+        history = esi.client.Character.GetCharactersCharacterIdCorporationhistory(
             character_id=character.eve_character.character_id,
-        ).results()
-
-        return history
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in history]
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
@@ -106,18 +103,15 @@ class CharacterDetailsManager(models.Manager):
             force_update=force_update,
         )
 
-    def _fetch_data_from_esi(self, character: Character):
+    def _fetch_data_from_esi(self, character: Character) -> Dict[str, Any]:
         logger.info("%s: Fetching character details from ESI", character)
-        details = esi.client.Character.get_characters_character_id(
+        details = esi.client.Character.GetCharactersCharacterId(
             character_id=character.eve_character.character_id,
-        ).results()
-
-        return details
+        ).result(use_etag=False)
+        return details.model_dump()
 
     def _update_or_create_objs(self, character: Character, details) -> Set[int]:
-        description = (
-            details.get("description", "") if details.get("description") else ""
-        )
+        description = details.get("description") or ""
 
         # TODO: remove when fixed
         # temporary fix to address u-bug in ESI endpoint for character bio
@@ -160,9 +154,9 @@ class CharacterDetailsManager(models.Manager):
                 ),
                 "description": description,
                 "gender": gender,
-                "name": details.get("name", ""),
+                "name": details.get("name") or "",
                 "security_status": details.get("security_status"),
-                "title": details.get("title", "") if details.get("title") else "",
+                "title": details.get("title") or "",
             },
         )
         return obj.eve_entity_ids()
@@ -184,11 +178,11 @@ class CharacterFwStatsManager(models.Manager):
     @fetch_token_for_character("esi-characters.read_fw_stats.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching FW stats from ESI", character)
-        stats = esi.client.Faction_Warfare.get_characters_character_id_fw_stats(
+        stats = esi.client.Faction_Warfare.GetCharactersCharacterIdFwStats(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return stats
+            token=token,
+        ).result(use_etag=False)
+        return stats.model_dump()
 
     def _update_or_create_objs(self, character: Character, stats: dict):
         if faction_id := stats.get("faction_id"):
@@ -227,10 +221,10 @@ class CharacterImplantManager(models.Manager):
     @fetch_token_for_character("esi-clones.read_implants.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> List[int]:
         logger.info("%s: Fetching implants from ESI", character)
-        implant_type_ids = esi.client.Clones.get_characters_character_id_implants(
+        implant_type_ids = esi.client.Clones.GetCharactersCharacterIdImplants(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
         return implant_type_ids
 
     def _update_or_create_objs(self, character: Character, implant_type_ids: List[int]):
@@ -270,11 +264,11 @@ class CharacterJumpCloneManager(models.Manager):
     @fetch_token_for_character("esi-clones.read_clones.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching jump clones from ESI", character)
-        jump_clones_info = esi.client.Clones.get_characters_character_id_clones(
+        jump_clones_info = esi.client.Clones.GetCharactersCharacterIdClones(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return jump_clones_info
+            token=token,
+        ).result(use_etag=False)
+        return jump_clones_info.model_dump()
 
     # TODO: Replace delete & create with update
     @fetch_token_for_character("esi-universe.read_structures.v1")
@@ -389,11 +383,11 @@ class CharacterLocationManager(models.Manager):
     )
     def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching location from ESI", character)
-        location_info = esi.client.Location.get_characters_character_id_location(
+        location_info = esi.client.Location.GetCharactersCharacterIdLocation(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return location_info
+            token=token,
+        ).result(use_etag=False)
+        return location_info.model_dump()
 
     @fetch_token_for_character(
         ["esi-location.read_location.v1", "esi-universe.read_structures.v1"]
@@ -440,12 +434,11 @@ class CharacterLoyaltyEntryManager(GenericUpdateSimpleObjMixin, models.Manager):
     @fetch_token_for_character("esi-characters.read_loyalty.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
         logger.info("%s: Fetching loyalty entries from ESI", character)
-        loyalty_entries = esi.client.Loyalty.get_characters_character_id_loyalty_points(
+        loyalty_entries = esi.client.Loyalty.GetCharactersCharacterIdLoyaltyPoints(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-
-        return loyalty_entries
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in loyalty_entries]
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
@@ -487,12 +480,18 @@ class CharacterMailManager(models.Manager):
         page = 1
         while True:
             logger.info("%s: Fetching mail headers from ESI - page %s", character, page)
-            mail_headers = esi.client.Mail.get_characters_character_id_mail(
-                character_id=character.eve_character.character_id,
-                last_mail_id=last_mail_id,
-                token=token.valid_access_token(),
-            ).results()
+            params = {
+                "character_id": character.eve_character.character_id,
+                "token": token,
+            }
+            if last_mail_id:
+                params["last_mail_id"] = last_mail_id
 
+            headers = esi.client.Mail.GetCharactersCharacterIdMail(**params).result(
+                use_etag=False
+            )
+
+            mail_headers = [obj.model_dump() for obj in headers]
             mail_headers_all += mail_headers
             if len(mail_headers) < 50 or len(mail_headers_all) >= MEMBERAUDIT_MAX_MAILS:
                 break
@@ -577,7 +576,7 @@ class CharacterMailManager(models.Manager):
                     mail_id=mail_id,
                     sender=get_or_none("from", header, MailEntity),
                     is_read=bool(header.get("is_read")),
-                    subject=header.get("subject", ""),
+                    subject=header.get("subject") or "",
                     timestamp=header.get("timestamp"),
                 )
             )
@@ -693,14 +692,17 @@ class CharacterMailManager(models.Manager):
         """Update or create mail body for a character from ESI."""
         try:
             mail_body = self._fetch_mail_body_from_esi(character, mail)
-        except HTTPNotFound:
-            logger.info(
-                "%s: Mail %s was deleted in game. Removing mail header.",
-                character,
-                mail,
-            )
-            mail.delete()
-            return UpdateSectionResult(is_changed=True, is_updated=True)
+        except HTTPClientError as ex:
+            if ex.status_code == HTTPStatus.NOT_FOUND:
+                logger.info(
+                    "%s: Mail %s was deleted in game. Removing mail header.",
+                    character,
+                    mail,
+                )
+                mail.delete()
+                return UpdateSectionResult(is_changed=True, is_updated=True)
+
+            raise ex
 
         is_changed = mail.body != mail_body
         if is_changed or force_update:
@@ -727,13 +729,13 @@ class CharacterMailManager(models.Manager):
             "%s: Fetching mail body from ESI for mail ID %d", character, mail.mail_id
         )
         token = character.fetch_token("esi-mail.read_mail.v1")
-        mail_body = esi.client.Mail.get_characters_character_id_mail_mail_id(
+        mail = esi.client.Mail.GetCharactersCharacterIdMailMailId(
             character_id=character.eve_character.character_id,
             mail_id=mail.mail_id,
-            token=token.valid_access_token(),
-        ).result()
+            token=token,
+        ).result(use_etag=False)
 
-        return mail_body.get("body", "")
+        return mail.body or ""
 
 
 class CharacterMailLabelManager(models.Manager):
@@ -755,25 +757,30 @@ class CharacterMailLabelManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-mail.read_mail.v1")
-    def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
+    def _fetch_data_from_esi(
+        self, character: Character, token: Token
+    ) -> Dict[int, dict]:
         from memberaudit.models import CharacterMailUnreadCount
 
         logger.info("%s: Fetching mail labels from ESI", character)
-        mail_labels_info = esi.client.Mail.get_characters_character_id_mail_labels(
+        mail_labels_info = esi.client.Mail.GetCharactersCharacterIdMailLabels(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
 
-        if mail_labels_info.get("total_unread_count"):
+        if total := mail_labels_info.total_unread_count:
             CharacterMailUnreadCount.objects.update_or_create(
-                character=character,
-                defaults={"total": mail_labels_info.get("total_unread_count")},
+                character=character, defaults={"total": total}
             )
 
-        mail_labels = mail_labels_info.get("labels")
-        if not mail_labels:
+        if not mail_labels_info.labels:
             return {}
-        return {obj["label_id"]: obj for obj in mail_labels if "label_id" in obj}
+
+        return {
+            obj.label_id: obj.model_dump()
+            for obj in mail_labels_info.labels
+            if obj.label_id
+        }
 
     @transaction.atomic()
     def _update_or_create_objs(self, character: Character, mail_labels_list: dict):

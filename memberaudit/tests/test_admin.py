@@ -1,17 +1,18 @@
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
-from django.test import RequestFactory, TestCase, override_settings
+from django.test import RequestFactory, override_settings
 from django.urls import reverse
 from django.utils.timezone import now
 
-from allianceauth.eveonline.models import EveCorporationInfo
-from app_utils.testdata_factories import UserFactory
-from app_utils.testing import (
-    create_authgroup,
-    create_state,
-    create_user_from_evecharacter,
+from app_utils.testdata_factories import (
+    EveAllianceInfoFactory,
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserFactory,
+    UserMainFactory,
 )
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.admin import (
     CharacterAdmin,
@@ -26,18 +27,15 @@ from memberaudit.models import (
     SkillSet,
     SkillSetGroup,
 )
-
-from .testdata.factories import (
-    create_character_update_status,
-    create_compliance_group,
-    create_skill_set,
-)
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .utils import (
-    add_memberaudit_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterUpdateStatusFactory,
+    ComplianceGroupFactory,
+    GroupFactory,
+    NavigationSkillTypeFactory,
+    SkillSetFactory,
+    StateFactory,
+    UserMainBasicAccessFactory,
 )
 
 ADMIN_PATH = "memberaudit.admin"
@@ -53,48 +51,45 @@ class MockRequest(object):
 
 
 @override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestComplianceGroupDesignationAdmin(TestCase):
+class TestComplianceGroupDesignationAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.modeladmin = ComplianceGroupDesignationAdmin(
             model=ComplianceGroupDesignation, admin_site=AdminSite()
         )
-        load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_should_remove_deleted_compliance_group_from_users(self):
         # given
-        compliance_group = create_compliance_group()
+        compliance_group = ComplianceGroupFactory()
         obj = compliance_group.compliancegroupdesignation
-        user_compliant, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user_compliant, 1001)
+        user_compliant = UserMainFactory(permissions=["memberaudit.basic_access"])
+        CharacterFactory(user=user_compliant)
         user_compliant.groups.add(compliance_group)
         request = MockRequest(user=user_compliant)
         queryset = ComplianceGroupDesignation.objects.filter(pk=obj.pk)
+
         # when
         self.modeladmin.delete_queryset(request, queryset)
+
         # then
         self.assertFalse(ComplianceGroupDesignation.objects.filter(pk=obj.pk).exists())
         self.assertNotIn(compliance_group, user_compliant.groups.all())
 
     def test_should_add_group_to_compliant_users_when_created(self):
         # given
-        compliance_group = create_authgroup(internal=True)
-        user_compliant, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
-        )
-        add_memberaudit_character_to_user(user_compliant, 1001)
-        user_non_compliant, _ = create_user_from_evecharacter(
-            1002, permissions=["memberaudit.basic_access"]
-        )
+        compliance_group = GroupFactory(authgroup__internal=True)
+        user_compliant = UserMainFactory(permissions=["memberaudit.basic_access"])
+        CharacterFactory(user=user_compliant)
+        user_non_compliant = UserMainFactory(permissions=["memberaudit.basic_access"])
         request = MockRequest(user=user_compliant)
         obj = ComplianceGroupDesignation(group=compliance_group)
         form = ComplianceGroupDesignationForm()
+
         # when
         self.modeladmin.save_model(request, obj, form, False)
+
         # then
         self.assertTrue(ComplianceGroupDesignation.objects.filter(pk=obj.pk).exists())
         self.assertIn(compliance_group, user_compliant.groups.all())
@@ -102,18 +97,25 @@ class TestComplianceGroupDesignationAdmin(TestCase):
 
     def test_should_add_state_group_to_compliant_users_when_state_is_matching(self):
         # given
-        member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
-        my_state = create_state(member_corporations=[member_corporation], priority=200)
-        compliance_group = create_authgroup(internal=True, states=[my_state])
-        user_compliant, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
+        member_corporation = EveCorporationInfoFactory()
+        my_state = StateFactory(member_corporations=[member_corporation])
+        compliance_group = GroupFactory(
+            authgroup__internal=True, authgroup__states=[my_state]
         )
-        add_memberaudit_character_to_user(user_compliant, 1001)
+        user_compliant = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=member_corporation
+            ),
+            permissions=["memberaudit.basic_access"],
+        )
+        CharacterFactory(user=user_compliant)
         request = MockRequest(user=user_compliant)
         obj = ComplianceGroupDesignation(group=compliance_group)
         form = ComplianceGroupDesignationForm()
+
         # when
         self.modeladmin.save_model(request, obj, form, False)
+
         # then
         self.assertTrue(ComplianceGroupDesignation.objects.filter(pk=obj.pk).exists())
         self.assertIn(compliance_group, user_compliant.groups.all())
@@ -122,58 +124,73 @@ class TestComplianceGroupDesignationAdmin(TestCase):
         self,
     ):
         # given
-        my_state = create_state(priority=200)
-        compliance_group = create_authgroup(internal=True, states=[my_state])
-        user_compliant, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access"]
+        my_state = StateFactory()
+        compliance_group = GroupFactory(
+            authgroup__internal=True, authgroup__states=[my_state]
         )
-        add_memberaudit_character_to_user(user_compliant, 1001)
+        user_compliant = UserMainFactory(permissions=["memberaudit.basic_access"])
+        CharacterFactory(user=user_compliant)
         request = MockRequest(user=user_compliant)
         obj = ComplianceGroupDesignation(group=compliance_group)
         form = ComplianceGroupDesignationForm()
+
         # when
         self.modeladmin.save_model(request, obj, form, False)
+
         # then
         self.assertNotIn(compliance_group, user_compliant.groups.all())
 
     def test_should_return_group_name(self):
         # given
-        compliance_group = create_compliance_group(name="alpha")
+        compliance_group = ComplianceGroupFactory(name="alpha")
         obj = compliance_group.compliancegroupdesignation
+
         # when
         result = self.modeladmin._group_name(obj)
+
         # then
         self.assertEqual(result, "alpha")
 
     def test_should_return_states_when_defined(self):
         # given
-        my_state = create_state(priority=200, name="bravo")
-        compliance_group = create_compliance_group(states=[my_state])
+        my_state = StateFactory(name="bravo")
+        compliance_group = ComplianceGroupFactory(authgroup__states=[my_state])
         obj = compliance_group.compliancegroupdesignation
+
         # when
         result = self.modeladmin._states(obj)
+
         # then
         self.assertIn("bravo", result)
 
     def test_should_return_empty_when_no_state_defined(self):
         # given
-        compliance_group = create_compliance_group()
+        compliance_group = ComplianceGroupFactory()
         obj = compliance_group.compliancegroupdesignation
+
         # when
         result = self.modeladmin._states(obj)
+
         # then
         self.assertEqual(result, "-")
 
 
-class TestCharacterAdmin(TestCase):
+class TestCharacterAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.modeladmin = CharacterAdmin(model=Character, admin_site=AdminSite())
-        load_eveuniverse()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-        cls.user = cls.character.eve_character.character_ownership.user
+        cls.user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                character_name="Bruce Wayne",
+                corporation=EveCorporationInfoFactory(
+                    corporation_name="Wayne Technologies",
+                    alliance=EveAllianceInfoFactory(alliance_ticker="WYN"),
+                ),
+            ),
+            permissions=["memberaudit.basic_access"],
+        )
+        cls.character = CharacterFactory(user=cls.user)
 
     def test_column_character(self):
         self.assertEqual(self.modeladmin._character(self.character), "Bruce Wayne")
@@ -183,10 +200,9 @@ class TestCharacterAdmin(TestCase):
 
     def test_column_main_no_main(self):
         # given
-        character = create_memberaudit_character(1002)
-        user = character.eve_character.character_ownership.user
-        user.profile.main_character = None
-        user.profile.save()
+        user = UserFactory()
+        character = CharacterFactory(user=user, is_main=False)
+
         # when
         self.assertIsNone(self.modeladmin._main(character))
 
@@ -200,17 +216,16 @@ class TestCharacterAdmin(TestCase):
 
     def test_column_organization_no_main(self):
         # given
-        character = create_memberaudit_character(1002)
-        user = character.eve_character.character_ownership.user
-        user.profile.main_character = None
-        user.profile.save()
+        user = UserFactory()
+        character = CharacterFactory(user=user, is_main=False)
+
         # when
         self.assertIsNone(self.modeladmin._organization(character))
 
     def test_column_missing_sections_none(self):
         # given
         for section in Character.UpdateSection:
-            create_character_update_status(character=self.character, section=section)
+            CharacterUpdateStatusFactory(character=self.character, section=section)
         self.assertIsNone(self.modeladmin._missing_sections(self.character))
 
     def test_column_missing_sections_two_missing(self):
@@ -222,7 +237,7 @@ class TestCharacterAdmin(TestCase):
             and obj is not Character.UpdateSection.CONTRACTS
         ]
         for section in sections:
-            create_character_update_status(character=self.character, section=section)
+            CharacterUpdateStatusFactory(character=self.character, section=section)
         self.assertListEqual(
             self.modeladmin._missing_sections(self.character), ["assets", "contracts"]
         )
@@ -244,13 +259,11 @@ class TestCharacterAdmin(TestCase):
 
 @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
 @patch(ADMIN_PATH + ".tasks.delete_objects")
-class TestCharacterDeleteCharactersAdmin(TestCase):
+class TestCharacterDeleteCharactersAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.modeladmin = CharacterAdmin(model=Character, admin_site=AdminSite())
-        load_eveuniverse()
-        load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_should_delete_characters_1(
@@ -259,10 +272,12 @@ class TestCharacterDeleteCharactersAdmin(TestCase):
         # given
         factory = RequestFactory()
         request = factory.get(reverse("admin:memberaudit_character_changelist"))
-        create_memberaudit_character(1001)
+        CharacterFactory()
         queryset = Character.objects.all()
+
         # when
         response = self.modeladmin.delete_objects(request, queryset)
+
         # then
         self.assertEqual(response.status_code, 200)
 
@@ -271,25 +286,25 @@ class TestCharacterDeleteCharactersAdmin(TestCase):
     ):
         # given
         request = MockRequest(user=self.user, post="apply")
-        create_memberaudit_character(1001)
+        CharacterFactory()
         queryset = Character.objects.all()
+
         # when
         self.modeladmin.delete_objects(request, queryset)
+
         # then
         self.assertEqual(mock_task_delete_characters.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
 
 @patch(ADMIN_PATH + ".tasks.update_characters_skill_checks")
-class TestSkillSetAdmin(TestCase):
+class TestSkillSetAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
         cls.modeladmin = SkillSetAdmin(model=SkillSet, admin_site=AdminSite())
-        load_eveuniverse()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user = UserMainBasicAccessFactory()
 
     def test_save_model(self, mock_update_characters_skill_checks):
         # given
@@ -297,9 +312,11 @@ class TestSkillSetAdmin(TestCase):
         request = MockRequest(self.user)
         form = self.modeladmin.get_form(request)
         my_now = now()
+
         # when
         with patch(ADMIN_PATH + ".now", lambda: my_now):
             self.modeladmin.save_model(request, obj, form, True)
+
         # then
         obj_2: SkillSet = SkillSet.objects.get(name="Dummy")
         self.assertEqual(obj_2.last_modified_by, self.user)
@@ -308,7 +325,7 @@ class TestSkillSetAdmin(TestCase):
 
     def test_delete_model(self, mock_update_characters_skill_checks):
         # given
-        obj = create_skill_set(name="Dummy")
+        obj = SkillSetFactory(name="Dummy")
         request = MockRequest(self.user)
         # when
         self.modeladmin.delete_model(request, obj)
@@ -353,12 +370,13 @@ class TestSkillSetAdmin(TestCase):
     #     self.assertSetEqual(set(queryset), expected)
 
 
-class TestSkillSetSkillAdmin(TestCase):
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestSkillSetSkillAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_eveuniverse()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
+        NavigationSkillTypeFactory(id=24311)
 
     def test_should_create_new_skill_set_with_required_level_only(self):
         # given
@@ -383,6 +401,7 @@ class TestSkillSetSkillAdmin(TestCase):
     def test_should_create_new_skill_set_with_recommended_level_only(self):
         # given
         self.client.force_login(self.user)
+
         # when
         response = self.client.post(
             "/admin/memberaudit/skillset/add/",
@@ -420,14 +439,12 @@ class TestSkillSetSkillAdmin(TestCase):
         self.assertIn("error", response.content.decode("utf-8"))
 
 
-class TestSkillSetGroupAdmin(TestCase):
+class TestSkillSetGroupAdmin(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
         cls.modeladmin = SkillSetGroupAdmin(model=SkillSetGroup, admin_site=AdminSite())
-        load_eveuniverse()
-        load_entities()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
 
     def test_save_model(self):
@@ -436,29 +453,34 @@ class TestSkillSetGroupAdmin(TestCase):
         request = MockRequest(self.user)
         form = self.modeladmin.get_form(request)
         my_now = now()
+
         # when
         with patch(ADMIN_PATH + ".now", lambda: my_now):
             self.modeladmin.save_model(request, obj, form, True)
+
         # then
         obj_2: SkillSetGroup = SkillSetGroup.objects.get(name="Dummy")
         self.assertEqual(obj_2.last_modified_by, self.user)
         self.assertEqual(obj_2.last_modified_at, my_now)
 
 
-class TestCharacterAdminUi(TestCase):
+class TestCharacterAdminUi(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_eveuniverse()
         cls.user = UserFactory(is_staff=True, is_superuser=True)
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(character_name="Bruce Wayne")
+        )
+        cls.character = CharacterFactory(user=user)
 
     def test_should_render_list_view(self):
         # given
         self.client.force_login(self.user)
+
         # when
         response = self.client.get("/admin/memberaudit/character/")
+
         # then
         self.assertEqual(response.status_code, 200)
         self.assertIn("Bruce Wayne", response.content.decode("utf-8"))
@@ -466,10 +488,12 @@ class TestCharacterAdminUi(TestCase):
     def test_should_render_change_view(self):
         # given
         self.client.force_login(self.user)
+
         # when
         response = self.client.get(
             f"/admin/memberaudit/character/{self.character.pk}/change/"
         )
+
         # then
         self.assertEqual(response.status_code, 200)
         self.assertIn("Bruce Wayne", response.content.decode("utf-8"))

@@ -5,13 +5,12 @@ from tqdm import tqdm
 from django.core.management.base import BaseCommand, CommandError
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, tasks
+from memberaudit import tasks
 from memberaudit.constants import IS_TESTING
 from memberaudit.models import Character
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class Command(BaseCommand):

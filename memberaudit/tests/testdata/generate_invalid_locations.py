@@ -19,10 +19,10 @@ def main():
         create_character_contract_courier,
         create_character_jump_clone,
         create_character_jump_clone_implant,
-        create_character_location,
         create_character_wallet_transaction,
         create_location,
     )
+    from memberaudit.tests.testdata.factories_2 import CharacterLocationFactory
 
     EVE_CHARACTER_ID = 91224790  # CCP Seagull
 
@@ -97,7 +97,7 @@ def main():
             client=corporation_entity,
         )
 
-    create_character_location(character=character, location=invalid_location_1)
+    CharacterLocationFactory(character=character, location=invalid_location_1)
     create_character_contract_courier(
         character=character,
         assignee=None,

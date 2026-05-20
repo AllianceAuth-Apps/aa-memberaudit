@@ -2,8 +2,6 @@
 
 # pylint: disable=missing-class-docstring
 
-from typing import Set
-
 from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.db.models import Case, Count, Q, Value, When
@@ -12,18 +10,11 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.caching import ObjectCacheMixin
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterQuerySet(models.QuerySet):
-    def eve_character_ids(self) -> Set[int]:
-        """Return EveCharacter IDs of all characters in this QuerySet."""
-        return set(self.values_list("eve_character__character_id", flat=True))
-
     def owned_by_user(self, user: User) -> models.QuerySet:
         """Filter character owned by user."""
         return self.filter(eve_character__character_ownership__user__pk=user.pk)

@@ -14,9 +14,7 @@ from esi.models import Token
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -37,13 +35,13 @@ from ._common import GenericUpdateSimpleObjMixin
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterSkillqueueEntry
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterMiningLedgerEntryQueryset(models.QuerySet):
     def annotate_pricing(self) -> models.QuerySet:
         """Annotate price and total columns."""
-        return (
+        qs = (
             self.select_related("eve_type__market_price")
             .annotate(price=F("eve_type__market_price__average_price"))
             .annotate(
@@ -53,6 +51,7 @@ class CharacterMiningLedgerEntryQueryset(models.QuerySet):
                 ),
             )
         )
+        return qs
 
 
 class CharacterMiningLedgerEntryManagerBase(models.Manager):
@@ -71,11 +70,11 @@ class CharacterMiningLedgerEntryManagerBase(models.Manager):
     @fetch_token_for_character("esi-industry.read_character_mining.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching mining ledger from ESI", character)
-        entries = esi.client.Industry.get_characters_character_id_mining(
+        entries = esi.client.Industry.GetCharactersCharacterIdMining(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return entries
+            token=token,
+        ).results(use_etag=False)
+        return [obj.model_dump() for obj in entries]
 
     def _update_or_create_objs(self, character: Character, entries):
         # preload solar systems
@@ -119,12 +118,11 @@ class CharacterOnlineStatusManager(models.Manager):
     @fetch_token_for_character("esi-location.read_online.v1")
     def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching online status from ESI", character)
-        online_info = esi.client.Location.get_characters_character_id_online(
+        online_info = esi.client.Location.GetCharactersCharacterIdOnline(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-
-        return online_info
+            token=token,
+        ).result(use_etag=False)
+        return online_info.model_dump()
 
     def _update_or_create_objs(self, character: Character, online_info):
         self.update_or_create(
@@ -155,11 +153,11 @@ class CharacterRoleManager(models.Manager):
         """Update the character's roles"""
 
         logger.info("%s: Fetching roles from ESI", character)
-        roles_data = esi.client.Character.get_characters_character_id_roles(
+        roles_data = esi.client.Character.GetCharactersCharacterIdRoles(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return roles_data
+            token=token,
+        ).result(use_etag=False)
+        return roles_data.model_dump()
 
     @transaction.atomic()
     def _update_or_create_objs(self, character: Character, roles_data: dict):
@@ -234,6 +232,9 @@ class CharacterRoleManager(models.Manager):
         )
         to_add = []
         for location_name, roles in roles_data.items():
+            if not roles:
+                continue
+
             location = location_map[location_name]
             for role_name in roles:
                 try:
@@ -275,14 +276,11 @@ class CharacterPlanetManager(GenericUpdateComplexObjMixin, models.Manager):
     @fetch_token_for_character("esi-planets.manage_planets.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
         logger.info("%s: Fetching planets from ESI", character)
-        planets_data = (
-            esi.client.Planetary_Interaction.get_characters_character_id_planets(
-                character_id=character.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-
-        return planets_data
+        planets_data = esi.client.Planetary_Interaction.GetCharactersCharacterIdPlanets(
+            character_id=character.eve_character.character_id,
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in planets_data]
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
@@ -322,19 +320,14 @@ class CharacterShipManager(models.Manager):
     @fetch_token_for_character("esi-location.read_ship_type.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching ship from ESI", character)
-        ship_info = esi.client.Location.get_characters_character_id_ship(
+        ship_info = esi.client.Location.GetCharactersCharacterIdShip(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return ship_info
+            token=token,
+        ).result(use_etag=False)
+        return ship_info.model_dump()
 
     def _update_or_create_objs(self, character: Character, ship_info):
-        ship_type_id = ship_info.get("ship_type_id")
-        if not ship_type_id:
-            self.filter(character=character).delete()
-            return
-
-        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_type_id)
+        eve_type, _ = EveType.objects.get_or_create_esi(id=ship_info["ship_type_id"])
         self.update_or_create(
             character=character,
             defaults={
@@ -381,12 +374,11 @@ class CharacterSkillqueueEntryManagerBase(models.Manager):
     @fetch_token_for_character("esi-skills.read_skillqueue.v1")
     def _fetch_data_from_esi(self, character: Character, token) -> List[dict]:
         logger.info("%s: Fetching skill queue from ESI", character)
-        skillqueue = esi.client.Skills.get_characters_character_id_skillqueue(
+        skillqueue = esi.client.Skills.GetCharactersCharacterIdSkillqueue(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-
-        return skillqueue
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in skillqueue]
 
     def _update_or_create_objs(self, character: Character, skillqueue: List[dict]):
         entries = self._compile_objs(character, skillqueue)
@@ -445,11 +437,11 @@ class CharacterSkillManager(models.Manager):
     @fetch_token_for_character("esi-skills.read_skills.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         logger.info("%s: Fetching skills from ESI", character)
-        skills_info = esi.client.Skills.get_characters_character_id_skills(
+        skills_info = esi.client.Skills.GetCharactersCharacterIdSkills(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return skills_info
+            token=token,
+        ).result(use_etag=False)
+        return skills_info.model_dump()
 
     def _preload_types(self, skills_list: dict):
         if skills_list:
@@ -653,12 +645,11 @@ class CharacterStandingManager(GenericUpdateSimpleObjMixin, models.Manager):
     @fetch_token_for_character("esi-characters.read_standings.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
         logger.info("%s: Fetching character standings from ESI", character)
-        standings = esi.client.Character.get_characters_character_id_standings(
+        standings = esi.client.Character.GetCharactersCharacterIdStandings(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-
-        return standings
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in standings]
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
@@ -699,12 +690,22 @@ class CharacterTitleManager(GenericUpdateSimpleObjMixin, models.Manager):
         """Fetch character title from ESI."""
 
         logger.info("%s: Fetching titles from ESI", character)
-        titles_data = esi.client.Character.get_characters_character_id_titles(
+        titles = esi.client.Character.GetCharactersCharacterIdTitles(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        for r in titles_data:
-            r["name"] = strip_tags(r["name"]).strip()[:100]
+            token=token,
+        ).result(use_etag=False)
+        titles_data = []
+        for obj in titles:
+            if not obj.title_id or not obj.name:
+                continue
+
+            titles_data.append(
+                {
+                    "title_id": obj.title_id,
+                    "name": strip_tags(obj.name).strip()[:100],
+                }
+            )
+
         return titles_data
 
     def _update_or_create_objs(
@@ -736,12 +737,12 @@ class CharacterWalletBalanceManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
-    def _fetch_data_from_esi(self, character: Character, token):
+    def _fetch_data_from_esi(self, character: Character, token) -> float:
         logger.info("%s: Fetching wallet balance from ESI", character)
-        balance = esi.client.Wallet.get_characters_character_id_wallet(
+        balance = esi.client.Wallet.GetCharactersCharacterIdWallet(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
         return balance
 
     def _update_or_create_objs(self, character: Character, balance):
@@ -766,11 +767,11 @@ class CharacterWalletJournalEntryManager(models.Manager):
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching wallet journal from ESI", character)
-        journal = esi.client.Wallet.get_characters_character_id_wallet_journal(
+        journal = esi.client.Wallet.GetCharactersCharacterIdWalletJournal(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return journal
+            token=token,
+        ).results(use_etag=False)
+        return [obj.model_dump() for obj in journal]
 
     def _update_or_create_objs(self, character: Character, journal):
         cutoff_datetime = data_retention_cutoff()
@@ -806,13 +807,15 @@ class CharacterWalletJournalEntryManager(models.Manager):
                     date=row.get("date"),
                     description=row.get("description"),
                     first_party=get_or_create_or_none("first_party_id", row, EveEntity),
-                    reason=row.get("reason", ""),
+                    reason=row.get("reason") or "",
                     ref_type=row.get("ref_type"),
                     second_party=get_or_create_or_none(
                         "second_party_id", row, EveEntity
                     ),
                     tax=row.get("tax"),
-                    tax_receiver=row.get("tax_receiver"),
+                    tax_receiver=get_or_create_or_none(
+                        "tax_receiver_id", row, EveEntity
+                    ),
                 )
                 for entry_id, row in entries_list.items()
                 if entry_id in create_ids
@@ -837,13 +840,11 @@ class CharacterWalletTransactionManager(models.Manager):
     @fetch_token_for_character("esi-wallet.read_character_wallet.v1")
     def _fetch_data_from_esi(self, character: Character, token):
         logger.info("%s: Fetching wallet transactions from ESI", character)
-        transactions = (
-            esi.client.Wallet.get_characters_character_id_wallet_transactions(
-                character_id=character.eve_character.character_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
-        return transactions
+        transactions = esi.client.Wallet.GetCharactersCharacterIdWalletTransactions(
+            character_id=character.eve_character.character_id,
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in transactions]
 
     @fetch_token_for_character("esi-universe.read_structures.v1")
     def _update_or_create_objs(

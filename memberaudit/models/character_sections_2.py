@@ -15,9 +15,7 @@ from eveuniverse.models import (
 )
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.constants import EveFactionId
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.helpers import EveEntityIdsMixin
@@ -38,7 +36,7 @@ from .characters import Character
 from .constants import NAMES_MAX_LENGTH
 from .general import Location
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterCorporationHistory(EveEntityIdsMixin, AddGenericReprMixin, models.Model):

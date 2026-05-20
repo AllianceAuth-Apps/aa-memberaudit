@@ -7,16 +7,15 @@ from django.shortcuts import redirect, render
 from django.utils.translation import gettext_lazy as _
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, tasks
+from memberaudit import tasks
 from memberaudit.app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
 from memberaudit.core import data_exporters
 from memberaudit.models import Character
 
 from ._common import add_common_context
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @login_required

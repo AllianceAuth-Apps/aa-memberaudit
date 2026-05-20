@@ -1,7 +1,6 @@
 """Return current statistics about Member Audit."""
 
 import datetime as dt
-import logging
 
 from tqdm import tqdm
 
@@ -9,9 +8,9 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.db.models import Avg, Count, F, Max, Min
 
-from app_utils.logging import LoggerAddTag
+from allianceauth.services.hooks import get_extension_logger
 
-from memberaudit import __title__, app_settings
+from memberaudit import app_settings
 from memberaudit.constants import IS_TESTING
 from memberaudit.helpers import character_section_models
 from memberaudit.management.commands._helpers import Table
@@ -19,7 +18,7 @@ from memberaudit.models import Character, CharacterUpdateStatus, characters
 
 from . import get_input
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class Command(BaseCommand):

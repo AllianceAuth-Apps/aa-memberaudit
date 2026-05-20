@@ -13,9 +13,7 @@ from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import chunks
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_BULK_METHODS_BATCH_SIZE
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import (
@@ -35,17 +33,13 @@ from memberaudit.utils import (
 from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character, CharacterAsset
+    from memberaudit.models import Character, CharacterAsset, CharacterContract
 
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterAssetQuerySet(models.QuerySet):
-    def item_ids(self) -> Set[int]:
-        """Return item IDs for objects in this queryset."""
-        return set(self.values_list("item_id", flat=True))
-
     def annotate_pricing(self) -> models.QuerySet:
         """Return qs with annotated price and total columns."""
         return (
@@ -99,11 +93,10 @@ class CharacterAssetManagerBase(models.Manager):
 
     def _fetching_assets_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching assets from ESI", character)
-        asset_list = esi.client.Assets.get_characters_character_id_assets(
-            character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        asset_data = {int(item["item_id"]): item for item in asset_list}
+        asset_list = esi.client.Assets.GetCharactersCharacterIdAssets(
+            character_id=character.eve_character.character_id, token=token
+        ).results(use_etag=False)
+        asset_data = {item.item_id: item.model_dump() for item in asset_list}
         return asset_data
 
     def _fetching_asset_names_from_esi(
@@ -112,17 +105,13 @@ class CharacterAssetManagerBase(models.Manager):
         logger.info("%s: Fetching asset names from ESI", character)
         names = []
         for asset_ids_chunk in chunks(item_ids, 999):
-            names += esi.client.Assets.post_characters_character_id_assets_names(
+            names += esi.client.Assets.PostCharactersCharacterIdAssetsNames(
                 character_id=character.eve_character.character_id,
-                token=token.valid_access_token(),
-                item_ids=asset_ids_chunk,
-            ).results()
+                token=token,
+                body=asset_ids_chunk,
+            ).results(use_etag=False)
 
-        asset_names = {
-            int(item["item_id"]): item["name"]
-            for item in names
-            if item["name"] != "None"
-        }
+        asset_names = {item.item_id: item.name for item in names if item.name != "None"}
 
         return asset_names
 
@@ -226,13 +215,13 @@ class CharacterAttributesManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-skills.read_skills.v1")
-    def _fetch_data_from_esi(self, character: Character, token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching attributes from ESI", character)
-        attribute_data = esi.client.Skills.get_characters_character_id_attributes(
+        attributes = esi.client.Skills.GetCharactersCharacterIdAttributes(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return attribute_data
+            token=token,
+        ).result(use_etag=False)
+        return attributes.model_dump()
 
     def _update_or_create_objs(self, character: Character, attribute_data):
         self.update_or_create(
@@ -267,13 +256,13 @@ class CharacterContactLabelManager(GenericUpdateSimpleObjMixin, models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def _fetch_data_from_esi(self, character: Character, token) -> List[dict]:
+    def _fetch_data_from_esi(self, character: Character, token: Token) -> List[dict]:
         logger.info("%s: Fetching contact labels from ESI", character)
-        labels = esi.client.Contacts.get_characters_character_id_contacts_labels(
+        labels = esi.client.Contacts.GetCharactersCharacterIdContactsLabels(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return labels
+            token=token,
+        ).result(use_etag=False)
+        return [obj.model_dump() for obj in labels]
 
     def _update_or_create_objs(
         self, character: Character, esi_data: List[dict]
@@ -304,13 +293,13 @@ class CharacterContactManager(models.Manager):
         )
 
     @fetch_token_for_character("esi-characters.read_contacts.v1")
-    def _fetch_data_from_esi(self, character: Character, token):
+    def _fetch_data_from_esi(self, character: Character, token: Token):
         logger.info("%s: Fetching contacts from ESI", character)
-        contacts_data = esi.client.Contacts.get_characters_character_id_contacts(
+        contacts_data = esi.client.Contacts.GetCharactersCharacterIdContacts(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
-        return contacts_data
+            token=token,
+        ).results(use_etag=False)
+        return [obj.model_dump() for obj in contacts_data]
 
     @transaction.atomic()
     def _update_or_create_objs(self, character: Character, contacts_data) -> Set[int]:
@@ -454,10 +443,12 @@ class CharacterContractManager(models.Manager):
     @fetch_token_for_character("esi-contracts.read_character_contracts.v1")
     def _fetch_data_from_esi(self, character: Character, token: Token) -> dict:
         logger.info("%s: Fetching contracts from ESI", character)
-        contracts_data = esi.client.Contracts.get_characters_character_id_contracts(
+        contracts = esi.client.Contracts.GetCharactersCharacterIdContracts(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).results(use_etag=False)
+
+        contracts_data = [obj.model_dump() for obj in contracts]
 
         store_character_data_to_disk_when_enabled(
             character=character, data=contracts_data, section="contracts"
@@ -484,17 +475,18 @@ class CharacterContractManager(models.Manager):
         if cutoff_datetime := data_retention_cutoff():
             character.contracts.filter(date_expired__lt=cutoff_datetime).delete()
 
-        existing_ids = set(character.contracts.values_list("contract_id", flat=True))
-        incoming_location_ids = {
-            obj["start_location_id"]
-            for contract_id, obj in contracts_list.items()
-            if contract_id not in existing_ids
-        }
-        incoming_location_ids |= {
-            obj["end_location_id"] for obj in contracts_list.values()
-        }
-        Location.objects.create_missing_esi(incoming_location_ids, token)
+        incoming_location_ids = set()
+        for obj in contracts_list.values():
+            if location_id := obj.get("start_location_id"):
+                incoming_location_ids.add(location_id)
 
+            if location_id := obj.get("end_location_id"):
+                incoming_location_ids.add(location_id)
+
+        if incoming_location_ids:
+            Location.objects.create_missing_esi(incoming_location_ids, token)
+
+        existing_ids = set(character.contracts.values_list("contract_id", flat=True))
         with transaction.atomic():
             incoming_ids = set(contracts_list.keys())
             existing_ids = set(
@@ -569,7 +561,7 @@ class CharacterContractManager(models.Manager):
                             "start_location_id", contract_data, Location
                         ),
                         status=self.model.ESI_STATUS_MAP[contract_data.get("status")],
-                        title=contract_data.get("title", ""),
+                        title=contract_data.get("title") or "",
                         volume=contract_data.get("volume"),
                     )
                 )
@@ -587,6 +579,7 @@ class CharacterContractManager(models.Manager):
             )
         )
         contracts = self.in_bulk(update_contract_pks)
+        contract: CharacterContract
         for contract in contracts.values():
             contract_data = contracts_list.get(contract.contract_id)
             if contract_data:
@@ -628,13 +621,13 @@ class CharacterContractBidManager(models.Manager):
         logger.info(
             "%s, %s: Fetching contract bids from ESI", character, contract.contract_id
         )
-        bids_data = (
-            esi.client.Contracts.get_characters_character_id_contracts_contract_id_bids(
-                character_id=character.eve_character.character_id,
-                contract_id=contract.contract_id,
-                token=token.valid_access_token(),
-            ).results()
-        )
+        bids = esi.client.Contracts.GetCharactersCharacterIdContractsContractIdBids(
+            character_id=character.eve_character.character_id,
+            contract_id=contract.contract_id,
+            token=token,
+        ).result(use_etag=False)
+
+        bids_data = [obj.model_dump() for obj in bids]
 
         store_character_data_to_disk_when_enabled(
             character=character, data=bids_data, section="contracts", suffix="bids"
@@ -731,16 +724,19 @@ class CharacterContractItemManagerBase(models.Manager):
         items_data = self._fetch_data_from_esi(character, token, contract)
         self._update_or_create_objs(contract, items_data)
 
-    def _fetch_data_from_esi(self, character: Character, token: Token, contract):
+    def _fetch_data_from_esi(
+        self, character: Character, token: Token, contract: CharacterContract
+    ):
         logger.info(
             "%s, %s: Fetching contract items from ESI", character, contract.contract_id
         )
-        my_esi = esi.client.Contracts
-        items_data = my_esi.get_characters_character_id_contracts_contract_id_items(
+        items = esi.client.Contracts.GetCharactersCharacterIdContractsContractIdItems(
             character_id=character.eve_character.character_id,
             contract_id=contract.contract_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
+
+        items_data = [obj.model_dump() for obj in items]
 
         store_character_data_to_disk_when_enabled(
             character=character, data=items_data, section="contracts", suffix="items"

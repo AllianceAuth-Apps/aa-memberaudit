@@ -2,21 +2,19 @@
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
+from http import HTTPStatus
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from bravado.exception import HTTPNotFound
-
+from esi.exceptions import HTTPClientError
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.constants import EveCategoryId, EveDogmaEffectId, EveGroupId
 
 from .fittings import Fitting, Item, Module
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class EftParserError(Exception):
@@ -122,10 +120,14 @@ class _EveTypes:
                 obj, _ = EveType.objects.get_or_create_esi(
                     id=entity_id, enabled_sections=[EveType.Section.DOGMAS]
                 )
-            except HTTPNotFound:
-                pass
-            else:
-                eve_types[obj.name] = obj  # type: ignore
+            except HTTPClientError as ex:
+                if ex.status_code == HTTPStatus.NOT_FOUND:
+                    continue
+
+                raise ex
+
+            eve_types[obj.name] = obj  # type: ignore
+
         return eve_types
 
     # @classmethod

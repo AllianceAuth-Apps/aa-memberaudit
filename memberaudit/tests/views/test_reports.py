@@ -1,37 +1,33 @@
-from django.contrib.auth.models import Group
-from django.test import RequestFactory, TestCase
-from django.urls import reverse
-from eveuniverse.models import EveType
+from http import HTTPStatus
 
-from allianceauth.authentication.models import State
-from allianceauth.eveonline.models import (
-    EveAllianceInfo,
-    EveCharacter,
-    EveCorporationInfo,
-)
+from django.contrib.auth.models import User
+from django.test import RequestFactory
+from django.urls import reverse
+
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.testdata_factories import (
+    EveAllianceInfoFactory,
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
+)
 from app_utils.testing import (
-    create_user_from_evecharacter,
+    NoSocketsTestCase,
+    add_character_to_user,
     multi_assert_in,
     multi_assert_not_in,
 )
 
 from memberaudit.models import Character, CharacterSkill, SkillSetGroup
-from memberaudit.tests.testdata.factories import (
-    create_character,
-    create_skill_set,
-    create_skill_set_group,
-    create_skill_set_skill,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterOrphanFactory,
+    NavigationSkillTypeFactory,
+    SkillSetFactory,
+    SkillSetGroupFactory,
+    SkillSetSkillFactory,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import (
-    add_auth_character_to_user,
-    add_memberaudit_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-    json_response_to_dict_2,
-)
+from memberaudit.tests.utils import json_response_to_dict_2
 from memberaudit.views.reports import (
     corporation_compliance_report_data,
     reports,
@@ -40,205 +36,276 @@ from memberaudit.views.reports import (
 )
 
 
-class TestReports(TestCase):
+class TestReports(NoSocketsTestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_entities()
 
     def test_can_open_reports_view(self):
         # given
-        user, _ = create_user_from_evecharacter(
-            1001, permissions=["memberaudit.basic_access", "memberaudit.reports_access"]
+        user = UserMainFactory(
+            permissions__=["memberaudit.basic_access", "memberaudit.reports_access"]
         )
         request = self.factory.get(reverse("memberaudit:reports"))
         request.user = user
         # when
         response = reports(request)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
 
-class TestUserComplianceReportTestData(TestCase):
+class TestUserComplianceReportTestData_UserFilter(NoSocketsTestCase):
+    user_compliance_report_data_view_name = "memberaudit:user_compliance_report_data"
+
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        # given
-        state = AuthUtils.get_member_state()
-        state_alliance = EveAllianceInfo.objects.get(alliance_id=3001)
-        state.member_alliances.add(state_alliance)
-        state_corporation = EveCorporationInfo.objects.get(corporation_id=2103)
-        state.member_corporations.add(state_corporation)
-        cls.character_1001 = create_memberaudit_character(
-            1001, disconnect_signals=False
-        )
-        cls.character_1002 = create_memberaudit_character(
-            1002, disconnect_signals=False
-        )
-        cls.character_1003 = create_memberaudit_character(
-            1003, disconnect_signals=False
-        )
-        cls.character_1101 = create_memberaudit_character(
-            1101, disconnect_signals=False
-        )
-        cls.user_1103 = create_user_from_evecharacter_with_access(
-            1103, disconnect_signals=False
-        )[0]
-        cls.user = cls.character_1001.eve_character.character_ownership.user
-        cls.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.reports_access", cls.user
-        )
-        AuthUtils.create_user("John Doe")  # this user should not show up in view
 
-    def _execute_request(self) -> dict:
-        request = self.factory.get(reverse("memberaudit:user_compliance_report_data"))
-        request.user = self.user
+        cls.alliance_3001 = EveAllianceInfoFactory()
+        cls.corporation_2001 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
+        cls.corporation_2002 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
+        cls.corporation_2103 = EveCorporationInfoFactory()
+        cls.member_state = AuthUtils.get_member_state()
+        cls.member_state.member_alliances.add(cls.alliance_3001)
+        cls.member_state.member_corporations.add(cls.corporation_2103)
+
+        cls.user_1001 = UserMainFactory(
+            username="user_1001",
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1001, user=cls.user_1001)
+
+        cls.user_1002 = UserMainFactory(
+            username="user_1002",
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1002, user=cls.user_1002)
+
+        cls.user_1003 = UserMainFactory(
+            username="user_1003",
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2002
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1003, user=cls.user_1003)
+
+        cls.user_1101 = UserMainFactory(
+            username="user_1101",
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2103
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1101, user=cls.user_1101)
+
+        cls.user_1103 = UserMainFactory(
+            username="user_1103",
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1103, user=cls.user_1103)
+
+        UserMainFactory(username="user_XXX")  # this user should not show up in any view
+
+    def _execute_request(self, user) -> list[User]:
+        request = self.factory.get(reverse(self.user_compliance_report_data_view_name))
+        request.user = user
         response = user_compliance_report_data(request)
-        self.assertEqual(response.status_code, 200)
-        return json_response_to_dict_2(response)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        result = json_response_to_dict_2(response)
+        return [User.objects.get(pk=pk) for pk in result.keys()]
 
-    def test_should_show_own_user_only(self):
+    def test_should_show_own_user_only_when_member_and_reports_access(self):
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__alliance=self.alliance_3001
+            ),
+            permissions__=["memberaudit.basic_access", "memberaudit.reports_access"],
+        )
+        CharacterFactory(user=user)
+
         # when
-        result = self._execute_request()
+        got = self._execute_request(user)
+
         # then
-        self.assertSetEqual(set(result.keys()), {self.user.pk})
+        self.assertCountEqual(got, [user])
 
     def test_should_return_non_guests_only(self):
         # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", self.user
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__alliance=self.alliance_3001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.reports_access",
+                "memberaudit.view_everything",
+            ],
         )
         # when
-        result = self._execute_request()
+        got = self._execute_request(user)
+
         # then
-        self.assertSetEqual(
-            set(result.keys()),
-            {
-                self.character_1001.eve_character.character_ownership.user.pk,
-                self.character_1002.eve_character.character_ownership.user.pk,
-                self.character_1003.eve_character.character_ownership.user.pk,
-                self.user_1103.pk,
-            },
-        )
+        want = [
+            user,
+            self.user_1001,
+            self.user_1002,
+            self.user_1003,
+            self.user_1101,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_should_include_character_links(self):
         # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", self.user
-        )
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", self.user
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__alliance=self.alliance_3001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.reports_access",
+                "memberaudit.view_everything",
+                "memberaudit.characters_access",
+            ],
         )
         # when
-        result = self._execute_request()
+        got = self._execute_request(user)
+
         # then
-        self.assertSetEqual(
-            set(result.keys()),
-            {
-                self.character_1001.eve_character.character_ownership.user.pk,
-                self.character_1002.eve_character.character_ownership.user.pk,
-                self.character_1003.eve_character.character_ownership.user.pk,
-                self.user_1103.pk,
-            },
-        )
+        want = [
+            user,
+            self.user_1001,
+            self.user_1002,
+            self.user_1003,
+            self.user_1101,
+        ]
+        self.assertCountEqual(got, want)
+
+
+class TestUserComplianceReportTestData_Counts(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.factory = RequestFactory()
 
     def test_char_counts(self):
         # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", self.user
+        corporation = EveCorporationInfoFactory()
+        member_state = AuthUtils.get_member_state()
+        member_state.member_corporations.add(corporation)
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation=corporation),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.reports_access",
+                "memberaudit.view_everything",
+            ],
         )
-        user = self.character_1002.eve_character.character_ownership.user
-        add_auth_character_to_user(user, 1103, disconnect_signals=False)
-        group, _ = Group.objects.get_or_create(name="Test Group")
-        AuthUtils.add_permissions_to_groups(
-            [AuthUtils.get_permission_by_name("memberaudit.basic_access")], [group]
-        )
-        user.groups.add(group)
+        CharacterFactory(user=user)
+        add_character_to_user(user=user, character=EveCharacterFactory())
+
         # when
-        result = self._execute_request()
+        request = self.factory.get(reverse("memberaudit:user_compliance_report_data"))
+        request.user = user
+        response = user_compliance_report_data(request)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        result = json_response_to_dict_2(response)
+
         # then
         result_1002 = result[user.pk]
         self.assertEqual(result_1002["total_chars"], 2)
         self.assertEqual(result_1002["unregistered_chars"], 1)
 
 
-class TestCorporationComplianceReportTestData(TestCase):
+class TestCorporationComplianceReportTestData(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
-        # given
-        member_state = State.objects.get(name="Member")
-        member_state.member_alliances.add(EveAllianceInfo.objects.get(alliance_id=3001))
-        member_state.member_corporations.add(
-            EveCorporationInfo.objects.get(corporation_id=2110)
-        )
-        cls.character_1001 = create_memberaudit_character(
-            1001, disconnect_signals=False
-        )
-        add_auth_character_to_user(
-            cls.character_1001.eve_character.character_ownership.user, 1107
-        )
-        cls.character_1002 = create_memberaudit_character(
-            1002, disconnect_signals=False
-        )
-        add_memberaudit_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1104
-        )
-        add_auth_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1105
-        )
-        add_auth_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1106
-        )
-        cls.character_1003 = create_memberaudit_character(
-            1003, disconnect_signals=False
-        )
-        add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user,
-            1101,
-            disconnect_signals=False,
-        )
-        add_memberaudit_character_to_user(
-            cls.character_1003.eve_character.character_ownership.user,
-            1102,
-            disconnect_signals=False,
-        )
-        cls.user_1103 = create_user_from_evecharacter_with_access(
-            1103, disconnect_signals=False
-        )[0]
-        cls.user = cls.character_1001.eve_character.character_ownership.user
-        cls.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.reports_access", cls.user
-        )
-        cls.character_1110 = create_memberaudit_character(
-            1110, disconnect_signals=False
-        )
-
-    def _corporation_compliance_report_data(self, user) -> dict:
-        request = self.factory.get(
-            reverse("memberaudit:corporation_compliance_report_data")
-        )
-        request.user = user
-        response = corporation_compliance_report_data(request)
-        self.assertEqual(response.status_code, 200)
-        return json_response_to_dict_2(response)
 
     def test_should_return_full_list(self):
         # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", self.user
+        alliance_3001 = EveAllianceInfoFactory()
+        corporation_2001 = EveCorporationInfoFactory(
+            corporation_id=2001,
+            corporation_name="Wayne Technologies",
+            alliance=alliance_3001,
         )
+        corporation_2002 = EveCorporationInfoFactory(
+            corporation_id=2002, corporation_name="Wayne Foods", alliance=alliance_3001
+        )
+        corporation_2110 = EveCorporationInfoFactory(corporation_id=2110)
+        member_state = AuthUtils.get_member_state()
+        member_state.member_alliances.add(alliance_3001)
+        member_state.member_corporations.add(corporation_2110)
+
+        user_1001 = UserMainFactory(
+            username="user_1001",
+            main_character__character=EveCharacterFactory(corporation=corporation_2001),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.reports_access",
+                "memberaudit.view_everything",
+            ],
+        )
+        CharacterFactory(id=1001, user=user_1001)
+        CharacterFactory(id=1011, user=user_1001, is_main=False)
+
+        user_1002 = UserMainFactory(
+            username="user_1002",
+            main_character__character=EveCharacterFactory(corporation=corporation_2001),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1002, user=user_1002)
+        add_character_to_user(user_1002, EveCharacterFactory())
+        add_character_to_user(user_1002, EveCharacterFactory())
+        add_character_to_user(user_1002, EveCharacterFactory())
+
+        user_1003 = UserMainFactory(
+            username="user_1003",
+            main_character__character=EveCharacterFactory(corporation=corporation_2002),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1003, user=user_1003, is_main=True)
+        CharacterFactory(id=1031, user=user_1003, is_main=False)
+        CharacterFactory(id=1032, user=user_1003, is_main=False)
+
+        user_1101 = UserMainFactory(
+            username="user_1101",
+            main_character__character=EveCharacterFactory(corporation=corporation_2110),
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1101, user=user_1101)
+
+        user_1103 = UserMainFactory(
+            username="user_1103",
+            permissions__=["memberaudit.basic_access"],
+        )
+        CharacterFactory(id=1103, user=user_1103)
+
+        UserMainFactory(username="user_XXX")  # this user should not show up in any view
+
         # when
-        result = self._corporation_compliance_report_data(self.user)
+        request = self.factory.get(
+            reverse("memberaudit:corporation_compliance_report_data")
+        )
+        request.user = user_1001
+        response = corporation_compliance_report_data(request)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        result = json_response_to_dict_2(response)
+
         # then
         self.assertSetEqual(set(result.keys()), {2001, 2002, 2110})
+
         row = result[2001]
         self.assertEqual(row["corporation_name"], "Wayne Technologies")
         self.assertEqual(row["mains_count"], 2)
@@ -247,8 +314,9 @@ class TestCorporationComplianceReportTestData(TestCase):
         self.assertEqual(row["compliance_percent"], 50)
         self.assertFalse(row["is_compliant"])
         self.assertFalse(row["is_partly_compliant"])
+
         row = result[2002]
-        self.assertEqual(row["corporation_name"], "Wayne Food")
+        self.assertEqual(row["corporation_name"], "Wayne Foods")
         self.assertEqual(row["mains_count"], 1)
         self.assertEqual(row["characters_count"], 3)
         self.assertEqual(row["unregistered_count"], 0)
@@ -256,90 +324,85 @@ class TestCorporationComplianceReportTestData(TestCase):
         self.assertTrue(row["is_compliant"])
         self.assertTrue(row["is_partly_compliant"])
 
-    def test_should_return_my_corporation_only(self):
-        # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", self.user
-        )
-        # when
-        result = self._corporation_compliance_report_data(self.user)
-        # then
-        self.assertSetEqual(set(result.keys()), {2001})
 
-
-class TestSkillSetReportData(TestCase):
+class TestSkillSetReportData(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_eveuniverse()
-        load_entities()
+
+        alliance_3001 = EveAllianceInfoFactory()
+        corporation_2001 = EveCorporationInfoFactory(alliance=alliance_3001)
+        corporation_2002 = EveCorporationInfoFactory(alliance=alliance_3001)
         state = AuthUtils.get_member_state()
-        state.member_alliances.add(EveAllianceInfo.objects.get(alliance_id=3001))
+        state.member_alliances.add(alliance_3001)
 
-        # user 1 is manager requesting the report
-        cls.character_1001 = create_memberaudit_character(
-            1001, disconnect_signals=False
+        cls.user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                character_name="Bruce Wayne", corporation=corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.reports_access",
+                "memberaudit.view_everything",
+            ],
         )
-        cls.user = cls.character_1001.eve_character.character_ownership.user
-        cls.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.reports_access", cls.user
-        )
-        cls.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", cls.user
-        )
+        cls.character_1001 = CharacterFactory(id=1001, user=cls.user)
 
-        # user 2 is normal user and has two characters
-        cls.character_1002 = create_memberaudit_character(
-            1002, disconnect_signals=False
+        user_1002 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                character_name="Clark Kent", corporation=corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
         )
-        cls.character_1101 = add_memberaudit_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user,
-            1101,
-            disconnect_signals=False,
-        )
-        # cls.character_1003 = create_memberaudit_character(1003)
-
-        cls.skill_type_1 = EveType.objects.get(id=24311)
-        cls.skill_type_2 = EveType.objects.get(id=24312)
-
-        AuthUtils.create_user("John Doe")  # this user should not show up in view
-        cls.character_1103 = create_memberaudit_character(
-            1103, disconnect_signals=False
+        cls.character_1002 = CharacterFactory(id=1002, user=user_1002, is_main=True)
+        cls.character_1101 = CharacterFactory(
+            id=1101,
+            alt_character=EveCharacterFactory(character_name="Lex Luther"),
+            user=user_1002,
+            is_main=False,
         )
 
-        # orphaned character, i.e. without a user
-        create_character(EveCharacter.objects.get(character_id=1121))
+        user_1003 = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation=corporation_2002),
+            permissions__=["memberaudit.basic_access"],
+        )
+        cls.character_1003 = CharacterFactory(id=1003, user=user_1003)
+
+        user_1103 = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        cls.character_1103 = CharacterFactory(id=1103, user=user_1103)
+
+        cls.skill_type_1 = NavigationSkillTypeFactory()
+        cls.skill_type_2 = NavigationSkillTypeFactory()
+
+        UserMainFactory(username="user_XXX")  # this user should not show up in any view
+        CharacterOrphanFactory(id=1121)
 
     def test_normal(self):
-        def make_data_id(doctrine: SkillSetGroup, character: Character) -> str:
-            doctrine_pk = doctrine.pk if doctrine else 0
-            return f"{doctrine_pk}_{character.pk}"
-
         # define doctrines
-        ship_1 = create_skill_set(name="Ship 1")
-        create_skill_set_skill(
+        ship_1 = SkillSetFactory(name="Ship 1")
+        SkillSetSkillFactory(
             skill_set=ship_1, eve_type=self.skill_type_1, required_level=3
         )
 
-        ship_2 = create_skill_set(name="Ship 2")
-        create_skill_set_skill(
+        ship_2 = SkillSetFactory(name="Ship 2")
+        SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.skill_type_1, required_level=5
         )
-        create_skill_set_skill(
+        SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.skill_type_2, required_level=3
         )
 
-        ship_3 = create_skill_set(name="Ship 3")
-        create_skill_set_skill(
+        ship_3 = SkillSetFactory(name="Ship 3")
+        SkillSetSkillFactory(
             skill_set=ship_3, eve_type=self.skill_type_1, required_level=1
         )
 
-        doctrine_1 = create_skill_set_group(name="Alpha")
+        doctrine_1 = SkillSetGroupFactory(name="Alpha")
         doctrine_1.skill_sets.add(ship_1)
         doctrine_1.skill_sets.add(ship_2)
 
-        doctrine_2 = create_skill_set_group(name="Bravo", is_doctrine=True)
+        doctrine_2 = SkillSetGroupFactory(name="Bravo", is_doctrine=True)
         doctrine_2.skill_sets.add(ship_1)
 
         # character 1002
@@ -383,7 +446,7 @@ class TestSkillSetReportData(TestCase):
         request.user = self.user
         response = skill_sets_report_data(request)
 
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_dict_2(response)
         self.assertEqual(len(data), 9)
 
@@ -429,16 +492,16 @@ class TestSkillSetReportData(TestCase):
         self.assertTrue(multi_assert_in(["Ship 3"], row["has_required"]))
 
     # def test_can_handle_user_without_main(self):
-    #     character = create_memberaudit_character(1102)
+    #     character = CharacterFactory(1102)
     #     user = character.eve_character.character_ownership.user
     #     user.profile.main_character = None
     #     user.profile.save()
 
-    #     ship_1 = create_skill_set(name="Ship 1")
-    #     create_skill_set_skill(
+    #     ship_1 = SkillSetFactory(name="Ship 1")
+    #     SkillSetSkillFactory(
     #         skill_set=ship_1, eve_type=self.skill_type_1, required_level=3
     #     )
-    #     doctrine_1 = create_skill_set_group(name="Alpha")
+    #     doctrine_1 = SkillSetGroupFactory(name="Alpha")
     #     doctrine_1.skill_sets.add(ship_1)
 
     #     request = self.factory.get(reverse("memberaudit:skill_sets_report_data"))
@@ -446,3 +509,8 @@ class TestSkillSetReportData(TestCase):
     #     response = skill_sets_report_data(request)
     #     data = json_response_to_dict_2(response)
     #     self.assertEqual(len(data), 4)
+
+
+def make_data_id(doctrine: SkillSetGroup, character: Character) -> str:
+    doctrine_pk = doctrine.pk if doctrine else 0
+    return f"{doctrine_pk}_{character.pk}"

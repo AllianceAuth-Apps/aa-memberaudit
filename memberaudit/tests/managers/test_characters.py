@@ -1,80 +1,65 @@
 from unittest.mock import patch
 
-from django.test import TestCase
-
-from allianceauth.eveonline.models import EveAllianceInfo, EveCharacter
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.testdata_factories import (
+    EveAllianceInfoFactory,
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
+)
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character
-from memberaudit.tests.testdata.factories import (
-    create_character,
-    create_character_from_user,
-    create_character_update_status,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterOrphanFactory,
+    CharacterUpdateStatusFactory,
+    UserMainBasicAccessFactory,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import (
-    add_auth_character_to_user,
-    add_memberaudit_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-)
+from memberaudit.tests.utils import extract
 
 MODELS_PATH = "memberaudit.models.characters"
 
 
-class TestCharacterQuerySet(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
-    def test_should_return_set_of_eve_character_ids(self):
-        # given
-        create_memberaudit_character(1001)
-        create_memberaudit_character(1002)
-        # when/then
-        self.assertSetEqual(Character.objects.all().eve_character_ids(), {1001, 1002})
-
+class TestCharacterManager_OwnedByUser(NoSocketsTestCase):
     def test_should_return_characters_owner_by_user_only(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        user = character_1001.character_ownership.user
-        create_memberaudit_character(1002)
-        # when
-        result = Character.objects.owned_by_user(user)
-        # then
-        character_ids = {
-            obj.character_ownership.character.character_id for obj in result
-        }
-        self.assertSetEqual(character_ids, {1001})
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user)
+        CharacterFactory()
 
-    def test_should_return_no_characters(self):
-        # given
-        user = AuthUtils.create_user("dummy")
-        create_memberaudit_character(1001)
         # when
-        result = Character.objects.owned_by_user(user)
+        got = Character.objects.owned_by_user(user)
+
         # then
-        character_ids = {
-            obj.character_ownership.character.character_id for obj in result
-        }
-        self.assertSetEqual(character_ids, set())
+        want = [character]
+        self.assertCountEqual(got, want)
+
+    def test_should_return_empty_when_user_has_no_characters(self):
+        # given
+        user = UserMainFactory()
+        CharacterFactory()
+
+        # when
+        got = Character.objects.owned_by_user(user)
+
+        # then
+        self.assertFalse(got)
 
 
 # Includes testing of Character.calc_total_update_status() to ensure they are in sync
-class TestCharacterAnnotateTotalUpdateStatus(TestCase):
+class TestCharacterAnnotateTotalUpdateStatus(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user = UserMainBasicAccessFactory()
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_ok(self):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user)
         for section in Character.UpdateSection:
-            create_character_update_status(character, section=section)
+            CharacterUpdateStatusFactory(character=character, section=section)
         # when/then
         self.assertEqual(
             character.calc_total_update_status(), Character.TotalUpdateStatus.OK
@@ -88,11 +73,13 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_annotate_ok_when_all_enabled_sections_are_ok(self):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user)
         for section in Character.UpdateSection.enabled_sections():
-            create_character_update_status(character, section=section)
-        create_character_update_status(
-            character=character, is_success=False, section=Character.UpdateSection.ROLES
+            CharacterUpdateStatusFactory(character=character, section=section)
+        CharacterUpdateStatusFactory(
+            character=character,
+            is_success=False,
+            section=Character.UpdateSection.ROLES,
         )
         # when/then
         self.assertEqual(
@@ -107,9 +94,11 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error(self):
         # given
-        character = create_character_from_user(self.user)
-        create_character_update_status(
-            character, section=Character.UpdateSection.ASSETS, is_success=False
+        character = CharacterFactory(user=self.user)
+        CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
         )
         # when/then
         self.assertEqual(
@@ -124,14 +113,14 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_incomplete(self):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user)
         sections_to_update = [
             obj
             for obj in Character.UpdateSection
             if obj != Character.UpdateSection.ASSETS
         ]
         for section in sections_to_update:
-            create_character_update_status(character, section=section)
+            CharacterUpdateStatusFactory(character=character, section=section)
         # when/then
         self.assertEqual(
             character.calc_total_update_status(), Character.TotalUpdateStatus.INCOMPLETE
@@ -147,14 +136,14 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_in_progress(self):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user)
         for section in Character.UpdateSection:
             if section == Character.UpdateSection.ASSETS:
-                create_character_update_status(
-                    character, section=section, is_success=None
+                CharacterUpdateStatusFactory(
+                    character=character, section=section, is_success=None
                 )
             else:
-                create_character_update_status(character, section=section)
+                CharacterUpdateStatusFactory(character=character, section=section)
         # when/then
         self.assertEqual(
             character.calc_total_update_status(),
@@ -170,7 +159,7 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
 
     def test_should_annotate_disabled(self):
         # given
-        character = create_character_from_user(self.user, is_disabled=True)
+        character = CharacterFactory(user=self.user, is_disabled=True)
         # when/then
         self.assertEqual(
             character.calc_total_update_status(), Character.TotalUpdateStatus.DISABLED
@@ -184,9 +173,9 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_limited_token_when_one_token_issue_only(self):
         # given
-        character = create_character_from_user(self.user)
-        create_character_update_status(
-            character,
+        character = CharacterFactory(user=self.user)
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
@@ -207,15 +196,15 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_annotate_error_when_several_token_issues(self):
         # given
-        character = create_character_from_user(self.user)
-        create_character_update_status(
-            character,
+        character = CharacterFactory(user=self.user)
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
         )
-        create_character_update_status(
-            character,
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.LOCATION,
             is_success=False,
             has_token_error=True,
@@ -231,76 +220,132 @@ class TestCharacterAnnotateTotalUpdateStatus(TestCase):
         self.assertEqual(obj.total_update_status, Character.TotalUpdateStatus.ERROR)
 
 
-class TestCharacterUserHasScope(TestCase):
+class TestCharacterManager_UserHasScope(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        # main character with alts
-        cls.character_1001 = create_memberaudit_character(1001)  # main
-        cls.character_1110 = add_memberaudit_character_to_user(  # alt
-            cls.character_1001.eve_character.character_ownership.user, 1110
-        )
-        cls.character_1121 = add_memberaudit_character_to_user(  # alt
-            cls.character_1001.eve_character.character_ownership.user, 1121
-        )
-        # main character with alts
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.character_1002.is_shared = True
-        cls.character_1002.save()
-        cls.character_1103 = add_memberaudit_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1103
-        )
-        # main characters
-        cls.character_1003 = create_memberaudit_character(1003)
-        cls.character_1101 = create_memberaudit_character(1101)
-        cls.character_1102 = create_memberaudit_character(1102)
-        cls.character_1102.is_shared = True
-        cls.character_1102.save()
-        cls.character_1111 = create_memberaudit_character(1111)
-        cls.character_1122 = create_memberaudit_character(1122)
+        cls.alliance_3001 = EveAllianceInfoFactory()
+        cls.corporation_2001 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
+        cls.corporation_2002 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
         cls.member_state = AuthUtils.get_member_state()
-        cls.member_state.member_alliances.add(
-            EveAllianceInfo.objects.get(alliance_id=3001)
+        cls.member_state.member_alliances.add(cls.alliance_3001)
+
+        cls.user_1001 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
         )
+        cls.character_1001 = CharacterFactory(id=1001, user=cls.user_1001, is_main=True)
+        cls.character_1110 = CharacterFactory(
+            id=1110, user=cls.user_1001, is_main=False
+        )
+        cls.character_1121 = CharacterFactory(
+            id=1121, user=cls.user_1001, is_main=False
+        )
+
+        user_1002 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        cls.character_1002 = CharacterFactory(id=1002, user=user_1002, is_main=True)
+        cls.character_1103 = CharacterFactory(id=1103, user=user_1002, is_main=False)
+
+        user_1003 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2002
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        cls.character_1003 = CharacterFactory(id=1003, user=user_1003)
+
+        cls.character_1101 = CharacterFactory(id=1101)
+
+        user_1102 = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        cls.character_1102 = CharacterFactory(id=1102, user=user_1102)
+
+        cls.character_1111 = CharacterFactory(id=1111)
+
+        cls.character_1122 = CharacterFactory(id=1122)
 
     def test_user_owning_character_has_scope(self):
         """
         when user is the owner of characters
         then include those characters only
         """
-        result_qs = Character.objects.user_has_scope(
+        # given
+        got = Character.objects.user_has_scope(
             user=self.character_1001.eve_character.character_ownership.user
         )
-        self.assertSetEqual(result_qs.eve_character_ids(), {1001, 1110, 1121})
+
+        # then
+        want = [self.character_1001, self.character_1110, self.character_1121]
+        self.assertCountEqual(got, want)
 
     def test_view_own_corporation_1(self):
         """
         when user has scope to view own corporation
         then include characters of corporations members (mains + alts)
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_corporation",
+            ],
         )
-        result_qs = Character.objects.user_has_scope(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(), {1001, 1110, 1121, 1002, 1103}
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_scope(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1002,
+            self.character_1103,
+            self.character_1110,
+            self.character_1121,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_view_own_alliance_1(self):
         """
         when user has scope to view own alliance
         then include characters of alliance members (mains + alts)
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_alliance",
+            ],
         )
-        result_qs = Character.objects.user_has_scope(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(), {1001, 1110, 1121, 1002, 1003, 1103}
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_scope(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1110,
+            self.character_1121,
+            self.character_1002,
+            self.character_1003,
+            self.character_1103,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_view_own_alliance_2(self):
         """
@@ -308,137 +353,231 @@ class TestCharacterUserHasScope(TestCase):
         and does not belong to any alliance
         then do not include any alliance characters
         """
-        user = self.character_1102.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation__alliance=None),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_alliance",
+            ],
         )
-        result_qs = Character.objects.user_has_scope(user=user)
-        self.assertSetEqual(result_qs.eve_character_ids(), {1102})
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_scope(user=user)
+
+        # then
+        want = [character]
+        self.assertCountEqual(got, want)
 
     def test_view_everything_1(self):
         """
         when user has scope to view everything
         then include all characters
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", user
+        # given
+        user = UserMainFactory(
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_everything",
+                "memberaudit.characters_access",
+            ],
         )
-        result_qs = Character.objects.user_has_scope(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(),
-            {1001, 1002, 1003, 1101, 1102, 1103, 1110, 1111, 1121, 1122},
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_scope(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1002,
+            self.character_1003,
+            self.character_1101,
+            self.character_1102,
+            self.character_1103,
+            self.character_1110,
+            self.character_1111,
+            self.character_1121,
+            self.character_1122,
+        ]
+        self.assertCountEqual(got, want)
 
 
-class TestCharacterUserHasAccess(TestCase):
+class TestCharacterManager_UserHasAccess(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        # main character with alts
-        cls.character_1001 = create_memberaudit_character(1001)  # main
-        cls.character_1110 = add_memberaudit_character_to_user(  # alt
-            cls.character_1001.eve_character.character_ownership.user, 1110
-        )
-        cls.character_1121 = add_memberaudit_character_to_user(  # alt
-            cls.character_1001.eve_character.character_ownership.user, 1121
-        )
-        # main character with alts
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.character_1002.is_shared = True
-        cls.character_1002.save()
-        AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.share_characters",
-            cls.character_1002.eve_character.character_ownership.user,
-        )
-        cls.character_1103 = add_memberaudit_character_to_user(
-            cls.character_1002.eve_character.character_ownership.user, 1103
-        )
-        # main characters
-        cls.character_1003 = create_memberaudit_character(1003)
-        cls.character_1101 = create_memberaudit_character(1101)
-        cls.character_1102 = create_memberaudit_character(1102)
-        cls.character_1102.is_shared = True
-        cls.character_1102.save()
-        AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.share_characters",
-            cls.character_1102.eve_character.character_ownership.user,
-        )
-        cls.character_1111 = create_memberaudit_character(1111)
-        cls.character_1122 = create_memberaudit_character(1122)
+        cls.alliance_3001 = EveAllianceInfoFactory()
+        cls.corporation_2001 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
+        cls.corporation_2002 = EveCorporationInfoFactory(alliance=cls.alliance_3001)
         cls.member_state = AuthUtils.get_member_state()
-        cls.member_state.member_alliances.add(
-            EveAllianceInfo.objects.get(alliance_id=3001)
+        cls.member_state.member_alliances.add(cls.alliance_3001)
+
+        cls.user_1001 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        cls.character_1001 = CharacterFactory(id=1001, user=cls.user_1001, is_main=True)
+        cls.character_1110 = CharacterFactory(
+            id=1110, user=cls.user_1001, is_main=False
+        )
+        cls.character_1121 = CharacterFactory(
+            id=1121, user=cls.user_1001, is_main=False
         )
 
-    def test_user_owning_character_has_access(self):
-        """
-        when user is the owner of characters
-        then include those characters only
-        """
-        result_qs = Character.objects.user_has_access(
-            user=self.character_1001.eve_character.character_ownership.user
+        user_1002 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2001
+            ),
+            permissions__=["memberaudit.basic_access", "memberaudit.share_characters"],
         )
-        self.assertSetEqual(result_qs.eve_character_ids(), {1001, 1110, 1121})
+        cls.character_1002 = CharacterFactory(
+            id=1002, user=user_1002, is_main=True, is_shared=True
+        )
+        cls.character_1103 = CharacterFactory(id=1103, user=user_1002, is_main=False)
+
+        user_1003 = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=cls.corporation_2002
+            ),
+            permissions__=["memberaudit.basic_access"],
+        )
+        cls.character_1003 = CharacterFactory(id=1003, user=user_1003)
+
+        cls.character_1101 = CharacterFactory(id=1101)
+
+        user_1102 = UserMainFactory(
+            permissions__=["memberaudit.basic_access", "memberaudit.share_characters"]
+        )
+        cls.character_1102 = CharacterFactory(id=1102, user=user_1102, is_shared=True)
+
+        cls.character_1111 = CharacterFactory(id=1111)
+
+        cls.character_1122 = CharacterOrphanFactory(id=1122)
+
+    def test_should_return_own_characters_only_when_user_has_basic_access(self):
+        # when
+        got = Character.objects.user_has_access(user=self.user_1001)
+
+        # then
+        want = [self.character_1001, self.character_1110, self.character_1121]
+        self.assertCountEqual(got, want)
 
     def test_view_own_corporation_1(self):
         """
         when user has permission to view own corporation and not characters_access
         then include own characters only
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_corporation",
+            ],
         )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(result_qs.eve_character_ids(), {1001, 1110, 1121})
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [character]
+        self.assertCountEqual(got, want)
 
     def test_view_own_corporation_2(self):
         """
         when user has permission to view own corporation and characters_access
         then include characters of corporations members (mains + alts)
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_corporation",
+                "memberaudit.characters_access",
+            ],
         )
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user
-        )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(), {1001, 1110, 1121, 1002, 1103}
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1002,
+            self.character_1103,
+            self.character_1110,
+            self.character_1121,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_view_own_alliance_1a(self):
         """
         when user has permission to view own alliance and not characters_access
         then include own character only
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_alliance",
+            ],
         )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(result_qs.eve_character_ids(), {1001, 1110, 1121})
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [character]
+        self.assertCountEqual(got, want)
 
     def test_view_own_alliance_1b(self):
         """
         when user has permission to view own alliance and characters_access
         then include characters of alliance members (mains + alts)
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation=self.corporation_2001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_alliance",
+                "memberaudit.characters_access",
+            ],
         )
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user
-        )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(), {1001, 1110, 1121, 1002, 1003, 1103}
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1110,
+            self.character_1121,
+            self.character_1002,
+            self.character_1003,
+            self.character_1103,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_view_own_alliance_2(self):
         """
@@ -446,143 +585,208 @@ class TestCharacterUserHasAccess(TestCase):
         and does not belong to any alliance
         then do not include any alliance characters
         """
-        user = self.character_1102.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation__alliance=None),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_same_alliance",
+                "memberaudit.characters_access",
+            ],
         )
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user
-        )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(result_qs.eve_character_ids(), {1102})
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [character]
+        self.assertCountEqual(got, want)
 
     def test_view_everything_1(self):
         """
         when user has permission to view everything and no characters_access
         then include own character only
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", user
+        # given
+        user = UserMainFactory(
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_everything",
+            ],
         )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(result_qs.eve_character_ids(), {1001, 1110, 1121})
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [character]
+        self.assertCountEqual(got, want)
 
     def test_view_everything_2(self):
         """
         when user has permission to view everything and characters_access
-        then include all characters
+        then include all characters including orphans
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_everything", user
+        # given
+        user = UserMainFactory(
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_everything",
+                "memberaudit.characters_access",
+            ],
         )
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user
-        )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(),
-            {1001, 1002, 1003, 1101, 1102, 1103, 1110, 1111, 1121, 1122},
-        )
+        character = CharacterFactory(user=user)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1001,
+            self.character_1002,
+            self.character_1003,
+            self.character_1101,
+            self.character_1102,
+            self.character_1103,
+            self.character_1110,
+            self.character_1111,
+            self.character_1121,
+            self.character_1122,
+        ]
+        self.assertCountEqual(got, want)
 
     def test_recruiter_access(self):
         """
         when user has recruiter permission
-        then include own character plus shared characters from members
+        then include own character plus shared characters from member and guest state
         """
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user
-        )
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertSetEqual(
-            result_qs.eve_character_ids(), {1001, 1002, 1102, 1110, 1121}
-        )
-
-    def test_recruiter_should_loose_access_once_recruit_becomes_member(self):
         # given
-        character_1107 = create_memberaudit_character(1107)
-        character_1107.is_shared = True
-        character_1107.save()
-        user = self.character_1001.eve_character.character_ownership.user
-        user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__alliance=self.alliance_3001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_shared_characters",
+            ],
         )
+        character = CharacterFactory(user=user)
+
         # when
-        result_qs = Character.objects.user_has_access(user=user)
-        self.assertNotIn(1107, result_qs.eve_character_ids())
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        want = [
+            character,
+            self.character_1002,  # member
+            self.character_1102,  # guest
+        ]
+        self.assertCountEqual(got, want)
+
+    def test_recruiter_should_loose_access_once_recruit_looses_share_permission(self):
+        # given
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(
+                corporation__alliance=self.alliance_3001
+            ),
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_shared_characters",
+            ],
+        )
+        CharacterFactory(user=user)
+        user_1107 = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character_1107 = CharacterFactory(id=1107, user=user_1107, is_shared=True)
+
+        # when
+        got = Character.objects.user_has_access(user=user)
+
+        # then
+        self.assertNotIn(character_1107, got)
+
+        # # given
+        # character_1107 = CharacterFactory(id=1107, is_shared=True)
+        # user = self.character_1001.eve_character.character_ownership.user
+        # user = AuthUtils.add_permission_to_user_by_name(
+        #     "memberaudit.view_shared_characters", user
+        # )
+        # # when
+        # result_qs = Character.objects.user_has_access(user=user)
+        # self.assertNotIn(1107, extract(result_qs, "eve_character__character_id"))
 
 
-class TestCharacterUnregisteredCharacterCount(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        # main character with alts
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.user = cls.character_1001.character_ownership.user
-
+class TestCharacterManager_CharactersOfUserToRegisterCount(NoSocketsTestCase):
     def test_should_return_zero_when_no_unregistered(self):
+        # given
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user)
+
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
+
         # then
         self.assertEqual(result, 0)
 
     def test_should_return_count_including_unregistered(self):
         # given
-        add_auth_character_to_user(self.user, 1002)
+        user = UserMainBasicAccessFactory()
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
         # then
         self.assertEqual(result, 1)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_count_including_registered_with_token_error(self):
         # given
-        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
-        create_character_update_status(
-            character_1002,
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user)
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
             error_message="TokenError 1",
         )
-        create_character_update_status(
-            character_1002,
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.CONTRACTS,
             is_success=False,
             error_message="TokenError 2",
         )
+
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
+
         # then
         self.assertEqual(result, 1)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_count_not_including_token_errors_for_disabled_sections(self):
         # given
-        character_1002 = add_memberaudit_character_to_user(self.user, 1002)
-        create_character_update_status(
-            character_1002,
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user)
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ROLES,
             is_success=False,
             has_token_error=True,
             error_message="TokenError 1",
         )
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
+
         # then
         self.assertEqual(result, 0)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_count_disabled_characters(self):
         # given
-        character_1002 = add_memberaudit_character_to_user(
-            self.user, 1002, is_disabled=True
-        )
-        create_character_update_status(
-            character_1002,
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user, is_disabled=True)
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
@@ -590,112 +794,107 @@ class TestCharacterUnregisteredCharacterCount(TestCase):
         )
 
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
+
         # then
         self.assertEqual(result, 1)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_not_count_disabled_and_token_errors_twice(self):
         # given
-        add_memberaudit_character_to_user(self.user, 1002, is_disabled=True)
+        user = UserMainBasicAccessFactory()
+        CharacterFactory(user=user, is_disabled=True)
+
         # when
-        result = Character.objects.characters_of_user_to_register_count(self.user)
+        result = Character.objects.characters_of_user_to_register_count(user)
+
         # then
         self.assertEqual(result, 1)
 
 
-class TestCharacterDisableCharacterWithoutOwner(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
+class TestCharacterManager_DisableCharactersWithNoOwner(NoSocketsTestCase):
     def test_should_disable_orphans(self):
         # given
-        orphan_1 = create_character(
-            EveCharacter.objects.get(character_id=1121), is_disabled=False
-        )
-        orphan_2 = create_character(
-            EveCharacter.objects.get(character_id=1111), is_disabled=False
-        )
+        character = CharacterFactory()
+        orphan_1 = CharacterOrphanFactory()
+        orphan_2 = CharacterOrphanFactory()
+
         # when
         result = Character.objects.disable_characters_with_no_owner()
+
         # then
         self.assertEqual(result, 2)
         orphan_1.refresh_from_db()
         self.assertTrue(orphan_1.is_disabled)
         orphan_2.refresh_from_db()
         self.assertTrue(orphan_2.is_disabled)
-        self.assertFalse(self.character.is_disabled)
+        self.assertFalse(character.is_disabled)
 
     def test_should_ignore_already_disables_orphans(self):
         # given
-        orphan_disabled = create_character(
-            EveCharacter.objects.get(character_id=1121), is_disabled=True
-        )
-        orphan_enabled = create_character(
-            EveCharacter.objects.get(character_id=1111), is_disabled=False
-        )
+        character = CharacterFactory()
+        orphan_disabled = CharacterOrphanFactory(is_disabled=True)
+        orphan_enabled = CharacterOrphanFactory(is_disabled=False)
+
         # when
         result = Character.objects.disable_characters_with_no_owner()
+
         # then
         self.assertEqual(result, 1)
         orphan_disabled.refresh_from_db()
         self.assertTrue(orphan_disabled.is_disabled)
         orphan_enabled.refresh_from_db()
         self.assertTrue(orphan_enabled.is_disabled)
-        self.assertFalse(self.character.is_disabled)
+        self.assertFalse(character.is_disabled)
 
     def test_should_return_zero_when_nothing_to_disable(self):
         # given
-        orphan_disabled = create_character(
-            EveCharacter.objects.get(character_id=1121), is_disabled=True
-        )
+        character = CharacterFactory()
+        orphan_disabled = CharacterOrphanFactory(is_disabled=True)
+
         # when
         result = Character.objects.disable_characters_with_no_owner()
+
         # then
         self.assertEqual(result, 0)
         orphan_disabled.refresh_from_db()
         self.assertTrue(orphan_disabled.is_disabled)
-        self.assertFalse(self.character.is_disabled)
+        self.assertFalse(character.is_disabled)
 
 
-class TestCharacterUpdateStatusFilterEnabledSections(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character_1001 = create_memberaudit_character(1001)
-
+class TestCharacterUpdateStatusManager_FilterEnabledSections(NoSocketsTestCase):
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", True)
     def test_should_return_enabled_sections_only_1(self):
         # given
-        create_character_update_status(
-            self.character_1001, section=Character.UpdateSection.ASSETS
+        character = CharacterFactory()
+        CharacterUpdateStatusFactory(
+            character=character, section=Character.UpdateSection.ASSETS
         )
-        create_character_update_status(
-            self.character_1001, section=Character.UpdateSection.ROLES
+        CharacterUpdateStatusFactory(
+            character=character, section=Character.UpdateSection.ROLES
         )
+
         # when
-        result = self.character_1001.update_status_set.filter_enabled_sections()
+        result = character.update_status_set.filter_enabled_sections()
+
         # then
         expected = {Character.UpdateSection.ASSETS, Character.UpdateSection.ROLES}
-        sections = set(result.values_list("section", flat=True))
+        sections = extract(result, "section")
         self.assertSetEqual(sections, expected)
 
     @patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_enabled_sections_only_2(self):
         # given
-        create_character_update_status(
-            self.character_1001, section=Character.UpdateSection.ASSETS
+        character = CharacterFactory()
+        CharacterUpdateStatusFactory(
+            character=character, section=Character.UpdateSection.ASSETS
         )
-        create_character_update_status(
-            self.character_1001, section=Character.UpdateSection.ROLES
+        CharacterUpdateStatusFactory(
+            character=character, section=Character.UpdateSection.ROLES
         )
         # when
-        result = self.character_1001.update_status_set.filter_enabled_sections()
+        result = character.update_status_set.filter_enabled_sections()
         # then
         expected = {Character.UpdateSection.ASSETS}
-        sections = set(result.values_list("section", flat=True))
+        sections = extract(result, "section")
         self.assertSetEqual(sections, expected)

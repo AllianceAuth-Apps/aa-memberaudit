@@ -1,89 +1,74 @@
+import datetime as dt
+from http import HTTPStatus
 from unittest.mock import patch
 
-import requests_mock
+import pook
 
-from django.test import TestCase, override_settings
-
-from app_utils.esi import reset_retry_task_on_esi_error_and_offline
+from django.test import override_settings
+from django.utils.timezone import now
+from eveuniverse.tests.testdata.factories_2 import ShipTypeFactory
 
 from memberaudit import tasks
-from memberaudit.core import esi_status
-from memberaudit.tests.testdata.esi_client_stub import esi_stub
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
-from memberaudit.tests.utils import (
-    create_memberaudit_character,
-    reset_celery_once_locks,
-)
+from memberaudit.models import Character, CharacterUpdateStatus
+from memberaudit.tests.testdata.factories_2 import CharacterFactory, make_esi_url
+from memberaudit.tests.utils import TestCaseWithClearCache
 
-MANAGERS_PATH = "memberaudit.managers"
-MODELS_PATH = "memberaudit.models"
 TASKS_PATH = "memberaudit.tasks"
 
 
-# TODO: Replace esi_stubs with http request mocks
-@patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
-@patch(MANAGERS_PATH + ".character_sections_1.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_2.data_retention_cutoff", lambda: None)
-@patch(MANAGERS_PATH + ".character_sections_3.data_retention_cutoff", lambda: None)
-@patch("app_utils.esi._esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_1.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_2.esi", esi_stub)
-@patch(MANAGERS_PATH + ".character_sections_3.esi", esi_stub)
-@patch(MANAGERS_PATH + ".general.esi", esi_stub)
-@requests_mock.Mocker()
-@override_settings(
-    CELERY_ALWAYS_EAGER=True,
-    CELERY_EAGER_PROPAGATES_EXCEPTIONS=True,
-    APP_UTILS_OBJECT_CACHE_DISABLED=True,
-)
-class TestTasksIntegration(TestCase):
-    fixtures = ["disable_analytics.json"]
-
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-        reset_celery_once_locks()
-        esi_status.clear_cache()
-
-    def setUp(self):
-        reset_retry_task_on_esi_error_and_offline()
-
-    def test_should_update_all_characters(self, requests_mocker):
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
+class TestTasks(TestCaseWithClearCache):
+    @pook.on
+    def test_can_update_character(self):
         # given
-        character_1001 = create_memberaudit_character(1001)
-        requests_mocker.register_uri(
-            "GET",
-            url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            json={
+        character = CharacterFactory()
+        section = Character.UpdateSection.SHIP
+        pook.get(
+            "https://esi.evetech.net/meta/status",
+            reply=HTTPStatus.OK,
+            response_headers={"X-Compatibility-Date": "2025-12-16"},
+            response_json={
                 "routes": [
                     {
                         "method": "GET",
-                        "path": "/characters/{character_id}/mail",
+                        "path": "/characters/{character_id}/ship",
                         "status": "OK",
                     }
                 ]
             },
         )
-        requests_mocker.register_uri(
-            "GET",
-            url="https://esi.evetech.net/latest/status/",
-            headers={
+        start_time = now() - dt.timedelta(hours=3)
+        pook.get(
+            "https://esi.evetech.net/latest/status/",
+            reply=HTTPStatus.OK,
+            response_headers={
                 "X-Esi-Error-Limit-Remain": "40",
                 "X-Esi-Error-Limit-Reset": "30",
             },
-            json={
+            response_json={
                 "players": 12345,
                 "server_version": "1132976",
-                "start_time": "2017-01-02T12:34:56Z",
+                "start_time": start_time.isoformat(),
             },
         )
+        ship_item_id = 1000000016991
+        ship_name = "Shooter Boy"
+        ship_type = ShipTypeFactory()
+        pook.get(
+            make_esi_url(f"characters/{character.character_id}/ship"),
+            reply=HTTPStatus.OK,
+            response_json={
+                "ship_item_id": ship_item_id,
+                "ship_name": ship_name,
+                "ship_type_id": ship_type.id,
+            },
+        )
+
         # when
-        tasks.update_all_characters()
+        with patch(TASKS_PATH + ".enabled_sections_by_stale_minutes") as m:
+            m.return_value = [section]
+            tasks.update_all_characters()
+
         # then
-        self.assertTrue(character_1001.is_update_status_ok())
+        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
+        self.assertTrue(status.is_success)

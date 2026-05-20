@@ -23,7 +23,6 @@ from allianceauth.eveonline.models import EveCharacter
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__, tasks
 from memberaudit.app_settings import MEMBERAUDIT_TASKS_NORMAL_PRIORITY
@@ -39,7 +38,7 @@ from memberaudit.models import (
 
 from ._common import add_common_context
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @login_required
@@ -177,7 +176,7 @@ def _characters_panel(request: HttpRequest) -> dict:
 
 @login_required
 @permission_required("memberaudit.basic_access")
-@token_required(scopes=Character.get_esi_scopes())
+@token_required(scopes=Character.esi_scopes())
 def add_character(request, token) -> HttpResponse:
     """Render add character view."""
     eve_character = get_object_or_404(EveCharacter, character_id=token.character_id)

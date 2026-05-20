@@ -1,14 +1,12 @@
-import logging
 from pathlib import Path
 
 from django.core.management.base import BaseCommand
 
-from app_utils.logging import LoggerAddTag
+from allianceauth.services.hooks import get_extension_logger
 
-from memberaudit import __title__
 from memberaudit.core.data_exporters import DataExporter
 
-logger = LoggerAddTag(logging.getLogger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class Command(BaseCommand):

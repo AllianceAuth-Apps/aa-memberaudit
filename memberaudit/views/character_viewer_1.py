@@ -20,14 +20,12 @@ from eveuniverse.models import EveType
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.helpers import humanize_number
-from app_utils.logging import LoggerAddTag
 from app_utils.views import (
     bootstrap_icon_plus_name_html,
     bootstrap_label_html,
     yesno_str,
 )
 
-from memberaudit import __title__
 from memberaudit.constants import (
     DEFAULT_ICON_SIZE,
     MAIL_LABEL_ID_ALL_MAILS,
@@ -49,7 +47,7 @@ from memberaudit.models import (
 
 from ._common import add_common_context
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def item_icon_plus_name_html(item, size=DEFAULT_ICON_SIZE) -> Tuple[str, str]:

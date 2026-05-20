@@ -1,5 +1,3 @@
-# from django.test import TestCase
-
 from eveuniverse.models import EveType
 
 from app_utils.testing import NoSocketsTestCase

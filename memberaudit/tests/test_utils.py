@@ -1,18 +1,16 @@
 from unittest.mock import patch
 
 from django.contrib.auth.models import Group
-from django.db import models
-from django.test import TestCase
 from eveuniverse.models import EveEntity
 
-from allianceauth.eveonline.models import EveCorporationInfo
-from app_utils.testing import (
-    NoSocketsTestCase,
-    create_authgroup,
-    create_state,
-    create_user_from_evecharacter,
+from app_utils.testdata_factories import (
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
 )
+from app_utils.testing import NoSocketsTestCase
 
+from memberaudit.tests.testdata.factories_2 import GroupFactory, StateFactory
 from memberaudit.utils import (
     clear_users_from_group,
     filter_groups_available_to_user,
@@ -22,75 +20,60 @@ from memberaudit.utils import (
     get_unidecoded_slug,
 )
 
-from .testdata.load_entities import load_entities
 
-MODULE_PATH = "memberaudit.utils"
-
-
-def querysets_pks(qs1: models.QuerySet, qs2: models.QuerySet) -> tuple:
-    """Two querysets as set of pks for comparison with assertSetEqual()."""
-    qs1_pks = set(qs1.values_list("pk", flat=True))
-    qs2_pks = set(qs2.values_list("pk", flat=True))
-    return (qs1_pks, qs2_pks)
-
-
-class TestHelpers(TestCase):
+class TestFilterGroupsAvailableToUser(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        member_corporation = EveCorporationInfo.objects.get(corporation_id=2001)
-        cls.my_state = create_state(
-            member_corporations=[member_corporation], priority=200
-        )
-        cls.normal_group = create_authgroup()
-        cls.state_group = create_authgroup(states=[cls.my_state])
+        cls.corporation = EveCorporationInfoFactory()
+        cls.my_state = StateFactory(member_corporations=[cls.corporation], priority=200)
+        cls.normal_group = GroupFactory()
+        cls.state_group = GroupFactory(authgroup__states=[cls.my_state])
 
     def test_should_include_state_group_for_members(self):
         # given
-        user, _ = create_user_from_evecharacter(1001)  # in member corporation
-        # when
-        result_qs = filter_groups_available_to_user(Group.objects.all(), user)
-        # then
-        self.assertSetEqual(
-            *querysets_pks(
-                Group.objects.filter(
-                    pk__in=[self.normal_group.pk, self.state_group.pk]
-                ),
-                result_qs,
-            )
+        user = UserMainFactory(
+            main_character__character=EveCharacterFactory(corporation=self.corporation)
         )
+
+        # when
+        got = filter_groups_available_to_user(Group.objects.all(), user)
+
+        # then
+        want = [self.normal_group, self.state_group]
+        self.assertCountEqual(got, want)
 
     def test_should_not_include_state_group_for_non_members(self):
         # given
-        user, _ = create_user_from_evecharacter(1101)  # not in member corporation
-        # when
-        result_qs = filter_groups_available_to_user(Group.objects.all(), user)
-        # then
-        self.assertSetEqual(
-            *querysets_pks(
-                Group.objects.filter(pk__in=[self.normal_group.pk]), result_qs
-            )
-        )
+        user = UserMainFactory()
 
+        # when
+        got = filter_groups_available_to_user(Group.objects.all(), user)
+
+        # then
+        want = [self.normal_group]
+        self.assertCountEqual(got, want)
+
+
+class TestClearUsersFromGroup(NoSocketsTestCase):
     def test_should_clear_users_from_group(self):
         # given
-        group_1 = create_authgroup()
-        group_2 = create_authgroup()
-        user_1001, _ = create_user_from_evecharacter(1001)
-        user_1001.groups.add(group_1, group_2)
-        user_1002, _ = create_user_from_evecharacter(1002)
-        user_1002.groups.add(group_1, group_2)
+        group_1 = GroupFactory()
+        group_2 = GroupFactory()
+        user_1 = UserMainFactory()
+        user_1.groups.add(group_1, group_2)
+        user_2 = UserMainFactory()
+        user_2.groups.add(group_1, group_2)
+
         # when
         clear_users_from_group(group_1)
-        # then
-        self.assertSetEqual(
-            {group_2.pk}, set(user_1001.groups.values_list("pk", flat=True))
-        )
-        self.assertSetEqual(
-            {group_2.pk}, set(user_1002.groups.values_list("pk", flat=True))
-        )
 
+        # then
+        self.assertCountEqual(user_1.groups.all(), [group_2])
+        self.assertCountEqual(user_2.groups.all(), [group_2])
+
+
+class TestGetUnidecodedSlug(NoSocketsTestCase):
     def test_get_unidecoded_slug_with_default_app_name(self):
         """Test get_unidecoded_slug with default app name"""
 
@@ -171,7 +154,7 @@ class TestGetOrCreateEsiOrNone(NoSocketsTestCase):
                 self.assertIsNone(result)
 
 
-class TestGetOrCreateOrNone(TestCase):
+class TestGetOrCreateOrNone(NoSocketsTestCase):
     def test_should_get_and_return_obj_when_it_exists(self):
         # given
         obj = EveEntity.objects.create(id=42)
@@ -200,7 +183,7 @@ class TestGetOrCreateOrNone(TestCase):
                 self.assertIsNone(result)
 
 
-class TestGetOrNone(TestCase):
+class TestGetOrNone(NoSocketsTestCase):
     def test_should_return_obj_when_it_exists(self):
         # given
         obj = EveEntity.objects.create(id=42)

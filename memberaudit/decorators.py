@@ -5,11 +5,8 @@ from functools import wraps
 from django.http import HttpResponseForbidden, HttpResponseNotFound
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 ESI_STATUS_CACHE_TIMEOUT = 5
 """Calls to the ESI status endpoint by the when_esi_is_available decorator
