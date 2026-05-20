@@ -7,16 +7,23 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [5.0.0a1] - 2026-05-20
+
 ### Changed
 
-- Removed command: memberaudit_fix_locations related to old isssue (#153)
-- Removed command: memberaudit_fix_eve_entities related to old isssue (#156)
+- BREAKING CHANGE: Removed support for Python 3.8
+- BREAKING CHANGE: Removed support for Python 3.9
+- Added support for AA 5
+- Migrated ESI client to OpenAPI
+- Removed: memberaudit_fix_locations related to old issue (#153)
+- Removed: memberaudit_fix_eve_entities related to old issue (#156)
 - Removed: CharacterAssetQuerySet.item_ids() (replaced by extract and only used in tests)
 - Tests now mostly use factories instead of fixtures
-- ESI tests now use pook and test with the Swagger client instead of a fake
-- Added local swagger spec file
+- ESI tests now use pook and test with the full django-esi client instead of a fake
+- Added local spec file for django-esi
 - Removed logger tag
 - Commands now also log to extension logger
+- Deprecated old test factories
 
 ### Fixed
 
