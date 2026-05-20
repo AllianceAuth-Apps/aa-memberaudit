@@ -35,14 +35,14 @@ dependencies = [
     "django-esi>=8,<10",
     "bleach",
     "dj-datatables-view",
-    "django-eveuniverse>=2.0.0a6",
+    "django-eveuniverse>=2.0.0a7",
     "humanize>=4.7.0",
     "unidecode",
     "tqdm>=4.66",
     "typing_extensions"
 ]
 [project.optional-dependencies]
-test = ["coverage", "factory_boy", "django-webtest", "requests-mock", "pook"]
+test = ["coverage", "factory_boy", "django-webtest", "pook"]
 
 [project.urls]
 Homepage = "https://gitlab.com/ErikKalkoken/aa-memberaudit"
