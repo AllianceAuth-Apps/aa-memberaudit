@@ -9,11 +9,8 @@ from django.db import models
 from django.utils.text import slugify
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def get_or_create_esi_or_none(

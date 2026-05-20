@@ -1,14 +1,16 @@
 import json
 from contextlib import contextmanager
+from http import HTTPStatus
 from pathlib import Path
 from unittest.mock import patch
 
-import requests_mock
+import pook
 
 from app_utils.testing import CacheFake, NoSocketsTestCase
 
 from memberaudit.core import esi_status
 from memberaudit.models import Character
+from memberaudit.tests.utils import TestCaseWithClearCache
 
 MODULE_PATH = "memberaudit.core.esi_status"
 
@@ -76,17 +78,14 @@ class TestUnavailableSections(NoSocketsTestCase):
         self.assertIsNone(x)
 
 
-@requests_mock.Mocker()
-class TestUnavailableSections2(NoSocketsTestCase):
-    def test_should_return_fetch_unavailable_sections_as_reported_by_ESI(
-        self, requests_mocker
-    ):
+class TestUnavailableSections2(TestCaseWithClearCache):
+    @pook.on
+    def test_should_return_fetch_unavailable_sections_as_reported_by_ESI(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            json={
+            reply=HTTPStatus.OK,
+            response_json={
                 "routes": [
                     {
                         "method": "GET",
@@ -106,21 +105,21 @@ class TestUnavailableSections2(NoSocketsTestCase):
                 ]
             },
         )
+
         # when
         got = esi_status._fetch_unavailable_sections()
+
         # then
         want = {Character.UpdateSection.LOYALTY}
         self.assertEqual(want, got)
 
-    def test_should_return_an_empty_set_when_all_sections_available(
-        self, requests_mocker
-    ):
+    @pook.on
+    def test_should_return_an_empty_set_when_all_sections_available(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            json={
+            reply=HTTPStatus.OK,
+            response_json={
                 "routes": [
                     {
                         "method": "GET",
@@ -141,28 +140,26 @@ class TestUnavailableSections2(NoSocketsTestCase):
         want = set()
         self.assertEqual(want, got)
 
-    def test_should_report_when_esi_status_could_not_be_fetched(self, requests_mocker):
+    @pook.on
+    def test_should_report_when_esi_status_could_not_be_fetched(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            status_code=500,
+            reply=HTTPStatus.INTERNAL_SERVER_ERROR,
+            response_json={"error": "some error"},
         )
         # when
         got = esi_status._fetch_unavailable_sections()
         # then
         self.assertIsNone(got)
 
-    def test_should_return_as_error_when_no_endpoints_are_returned(
-        self, requests_mocker
-    ):
+    @pook.on
+    def test_should_return_as_error_when_no_endpoints_are_returned(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            json={"routes": []},
+            reply=HTTPStatus.OK,
+            response_json={"routes": []},
         )
         # when
         got = esi_status._fetch_unavailable_sections()
@@ -170,15 +167,14 @@ class TestUnavailableSections2(NoSocketsTestCase):
         self.assertIsNone(got)
 
 
-@requests_mock.Mocker()
-class TestFetchStatus(NoSocketsTestCase):
-    def test_can_fetch_status(self, requests_mocker):
+class TestFetchStatus(TestCaseWithClearCache):
+    @pook.on
+    def test_can_fetch_status(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            json={
+            reply=HTTPStatus.OK,
+            response_json={
                 "routes": [
                     {
                         "method": "GET",
@@ -202,26 +198,26 @@ class TestFetchStatus(NoSocketsTestCase):
         }
         self.assertEqual(want, got)
 
-    def test_should_report_http_error(self, requests_mocker):
+    @pook.on
+    def test_should_report_http_error(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            status_code=500,
+            reply=HTTPStatus.INTERNAL_SERVER_ERROR,
+            response_json={"error": "some error"},
         )
         # when
         got = esi_status._fetch_status()
         # then
         self.assertIsNone(got)
 
-    def test_should_report_json_error(self, requests_mocker):
+    @pook.on
+    def test_should_report_json_error(self):
         # given
-        requests_mocker.register_uri(
-            "GET",
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            text="this is not json",
+            reply=HTTPStatus.OK,
+            response_body="this is not json",
         )
         # when
         got = esi_status._fetch_status()
@@ -230,47 +226,47 @@ class TestFetchStatus(NoSocketsTestCase):
 
 
 @patch(MODULE_PATH + ".sleep", lambda x: None)
-@requests_mock.Mocker()
-class TestGetEsiStatus(NoSocketsTestCase):
-    def test_should_return_response_when_ok(self, requests_mocker):
-        requests_mocker.register_uri(
-            "GET",
+class TestGetEsiStatus(TestCaseWithClearCache):
+    @pook.on
+    def test_should_return_response_when_ok(self):
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            text="ok",
+            reply=HTTPStatus.OK,
+            response_body="ok",
         )
         # when
         got = esi_status._get_esi_status()
         # then
         self.assertTrue(got.ok)
         self.assertEqual(got.text, "ok")
-        self.assertEqual(requests_mocker.call_count, 1)
+        self.assertTrue(pook.isdone())
 
-    def test_should_return_most_errors_directly(self, requests_mocker):
-        requests_mocker.register_uri(
-            "GET",
+    @pook.on
+    def test_should_return_most_errors_directly(self):
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            status_code=500,
+            reply=HTTPStatus.INTERNAL_SERVER_ERROR,
+            response_json={"error": "some error"},
         )
         # when
         got = esi_status._get_esi_status()
         # then
         self.assertEqual(got.status_code, 500)
-        self.assertEqual(requests_mocker.call_count, 1)
+        self.assertTrue(pook.isdone())
 
-    def test_should_retry_on_specific_errors(self, requests_mocker):
-        requests_mocker.register_uri(
-            "GET",
+    @pook.on
+    def test_should_retry_on_specific_errors(self):
+        pook.get(
             url="https://esi.evetech.net/meta/status",
-            request_headers={"X-Compatibility-Date": "2025-12-16"},
-            status_code=503,
+            reply=HTTPStatus.SERVICE_UNAVAILABLE,
+            response_json={"error": "some error"},
+            times=3,
         )
         # when
         got = esi_status._get_esi_status()
         # then
         self.assertEqual(got.status_code, 503)
-        self.assertEqual(requests_mocker.call_count, 3)
+        self.assertTrue(pook.isdone())
 
 
 class TestSectionEndpointsDef(NoSocketsTestCase):

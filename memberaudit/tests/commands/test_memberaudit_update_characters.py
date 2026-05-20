@@ -5,22 +5,16 @@ from django.core.management import call_command
 
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.testdata.factories_2 import CharacterFactory
 
 MODULE_PATH = "memberaudit.management.commands.memberaudit_update_characters"
 
 
 @patch(MODULE_PATH + ".tasks")
 class TestUpdateCharacters(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-
     def test_should_reset_section_data_for_characters(self, mock_tasks):
         # given
-        create_memberaudit_character(1001)
+        CharacterFactory()
         out = StringIO()
 
         # when

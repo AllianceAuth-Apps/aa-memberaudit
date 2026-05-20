@@ -1,13 +1,18 @@
-"""Shared utils for tests."""
+"""Helpers used in tests."""
 
 import json
 import logging
-from typing import Any, Tuple
+from http import HTTPStatus
+from typing import Any, Set, Tuple
+
+from typing_extensions import deprecated
 
 from django.contrib.auth.models import Permission, User
+from django.core.cache import cache
 from django.db.models import QuerySet
 from django.http import JsonResponse
 from django.test import TestCase
+from esi.exceptions import HTTPClientError, HTTPServerError
 from esi.models import Token
 
 from allianceauth.authentication.backends import StateBackend
@@ -24,7 +29,7 @@ from .testdata.factories import create_character
 logger = logging.getLogger(__name__)
 
 
-def create_user_from_evecharacter_with_access(
+def _create_user_from_evecharacter_with_access(
     character_id: int, disconnect_signals: bool = True
 ) -> Tuple[User, CharacterOwnership]:
     """Create user with access from an existing eve character and use it as main."""
@@ -38,30 +43,32 @@ def create_user_from_evecharacter_with_access(
         user,
         auth_character,
         is_main=True,
-        scopes=Character.get_esi_scopes(),
+        scopes=Character.esi_scopes(),
         disconnect_signals=disconnect_signals,
     )
     return user, character_ownership
 
 
+@deprecated("Use `CharacterFactory`")
 def create_memberaudit_character(
     character_id: int, disconnect_signals: bool = True, **kwargs
 ) -> Character:
     """Create a memberaudit character from an existing auth character
     incl. user and making it the main.
     """
-    _, character_ownership = create_user_from_evecharacter_with_access(
+    _, character_ownership = _create_user_from_evecharacter_with_access(
         character_id, disconnect_signals=disconnect_signals
     )
     return create_character(eve_character=character_ownership.character, **kwargs)
 
 
+@deprecated("Replaced by `app_utils.testing.add_character_to_user`")
 def add_auth_character_to_user(
     user: User, character_id: int, scopes=None, disconnect_signals=True
 ) -> CharacterOwnership:
     auth_character = EveCharacter.objects.get(character_id=character_id)
     if not scopes:
-        scopes = Character.get_esi_scopes()
+        scopes = Character.esi_scopes()
 
     return add_character_to_user(
         user,
@@ -72,6 +79,7 @@ def add_auth_character_to_user(
     )
 
 
+@deprecated("Replaced by `CharacterFactory")
 def add_memberaudit_character_to_user(
     user: User, character_id: int, disconnect_signals: bool = True, **kwargs
 ) -> Character:
@@ -122,3 +130,44 @@ def reset_celery_once_locks():
         logger.info("Removed %d stuck celery once keys", deleted_count)
     else:
         deleted_count = 0
+
+
+class TestCaseWithClearCache(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cache.clear()
+
+
+def extract(qs: QuerySet, field: str) -> Set[int]:
+    """Return the extracted fields from the items of a query set."""
+    return set(qs.values_list(field, flat=True))
+
+
+def make_http_client_error(status_code: int, phrase: str = "") -> HTTPClientError:
+    code = int(status_code)
+    if code < 400 or code > 499:
+        raise ValueError("Invalid status code")
+    if not phrase:
+        try:
+            status = HTTPStatus(code)
+            phrase = status.phrase
+        except ValueError:
+            phrase = "???"
+
+    return HTTPClientError(status_code=code, headers={}, data=f"{code} {phrase}")
+
+
+def make_http_server_error(status_code: int, phrase: str = "") -> HTTPServerError:
+    code = int(status_code)
+    if code < 500 or code > 599:
+        raise ValueError("Invalid status code")
+
+    if not phrase:
+        try:
+            status = HTTPStatus(code)
+            phrase = status.phrase
+        except ValueError:
+            phrase = "???"
+
+    return HTTPServerError(status_code=code, headers={}, data=f"{code} {phrase}")

@@ -1,10 +1,9 @@
+from http import HTTPStatus
 from unittest.mock import patch
 
-from bravado.exception import HTTPNotFound
-
+from esi.exceptions import HTTPClientError
 from eveuniverse.models import EveEntity, EveType
 
-from app_utils.esi_testing import BravadoResponseStub
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.eft_parser import (
@@ -19,8 +18,9 @@ from memberaudit.core.eft_parser import (
     _EveTypes,
     create_fitting_from_eft,
 )
-from memberaudit.tests.testdata.factories import create_fitting_text
+from memberaudit.tests.testdata.factories_2 import create_fitting_text
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
+from memberaudit.tests.utils import make_http_client_error
 
 MODULE_PATH = "memberaudit.core.eft_parser"
 
@@ -221,11 +221,14 @@ class TestEveTypes(NoSocketsTestCase):
         # given
         unknown_type = EveType(id=99, name="Unknown-Type")
         # when
-        with patch(
-            MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
-        ) as mock_fetch_by_names_esi, patch(
-            MODULE_PATH + ".EveType.objects.get_or_create_esi"
-        ) as mock_get_or_create_esi:
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
@@ -236,23 +239,47 @@ class TestEveTypes(NoSocketsTestCase):
 
     def test_should_handle_type_not_found(self):
         # given
-        http404 = HTTPNotFound(
-            BravadoResponseStub(status_code=404), message="Test exception"
-        )
+        http_404 = make_http_client_error(HTTPStatus.NOT_FOUND)
+
         # when
-        with patch(
-            MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
-        ) as mock_fetch_by_names_esi, patch(
-            MODULE_PATH + ".EveType.objects.get_or_create_esi"
-        ) as mock_get_or_create_esi:
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
             mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
                 99
             ]
-            mock_get_or_create_esi.side_effect = http404
+            mock_get_or_create_esi.side_effect = http_404
             eve_types, unknown_types = _EveTypes.create_from_names(["Unknown-Type"])
+
         # then
         self.assertIsNone(eve_types.from_name("Unknown-Type"))
         self.assertIn("Unknown-Type", unknown_types)
+
+    def test_should_raise_other_http_client_errors(self):
+        # given
+        http_400 = make_http_client_error(HTTPStatus.BAD_REQUEST)
+
+        # when
+        with (
+            patch(
+                MODULE_PATH + ".EveEntity.objects.fetch_by_names_esi"
+            ) as mock_fetch_by_names_esi,
+            patch(
+                MODULE_PATH + ".EveType.objects.get_or_create_esi"
+            ) as mock_get_or_create_esi,
+        ):
+            mock_fetch_by_names_esi.return_value.filter.return_value.values_list.return_value = [
+                99
+            ]
+            mock_get_or_create_esi.side_effect = http_400
+
+            with self.assertRaises(HTTPClientError):
+                _EveTypes.create_from_names(["Unknown-Type"])
 
     def test_should_handle_unknown_types(self):
         # given
@@ -656,7 +683,7 @@ class TestCreateFittingFromEft(NoSocketsTestCase):
         # then
         self.assertEqual(fitting_text_original, fitting_text_generated)
 
-    def test_eft_parser_rountrip_archon_max(self):
+    def test_eft_parser_roundtrip_archon_max(self):
         # given
         self.maxDiff = None
         fitting_text_original = create_fitting_text("fitting_archon_max.txt")
@@ -666,7 +693,7 @@ class TestCreateFittingFromEft(NoSocketsTestCase):
         # then
         self.assertEqual(fitting_text_original, fitting_text_generated)
 
-    def test_eft_parser_rountrip_tristan(self):
+    def test_eft_parser_roundtrip_tristan(self):
         # given
         self.maxDiff = None
         fitting_text_original = create_fitting_text("fitting_tristan.txt")
@@ -676,7 +703,7 @@ class TestCreateFittingFromEft(NoSocketsTestCase):
         # then
         self.assertEqual(fitting_text_original, fitting_text_generated)
 
-    def test_eft_parser_rountrip_svipul_empty_slots_and_offline(self):
+    def test_eft_parser_roundtrip_svipul_empty_slots_and_offline(self):
         # given
         self.maxDiff = None
         fitting_text_original = create_fitting_text("fitting_svipul_2.txt")
@@ -686,7 +713,7 @@ class TestCreateFittingFromEft(NoSocketsTestCase):
         # then
         self.assertEqual(fitting_text_original, fitting_text_generated)
 
-    def test_eft_parser_rountrip_tengu(self):
+    def test_eft_parser_roundtrip_tengu(self):
         # given
         self.maxDiff = None
         fitting_text_original = create_fitting_text("fitting_tengu.txt")
@@ -699,7 +726,7 @@ class TestCreateFittingFromEft(NoSocketsTestCase):
         # then
         self.assertEqual(fitting_text_original, fitting_text_generated)
 
-    def test_eft_parser_rountrip_empty(self):
+    def test_eft_parser_roundtrip_empty(self):
         # given
         self.maxDiff = None
         fitting_text_original = create_fitting_text("fitting_empty.txt")

@@ -9,17 +9,13 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import List
 
-from pytz import utc
-
 from django.conf import settings
 from django.db import models
 from django.utils.timezone import now
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 from app_utils.views import yesno_str
 
-from memberaudit import __title__
 from memberaudit.app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
 from memberaudit.models import (
     CharacterContract,
@@ -27,7 +23,7 @@ from memberaudit.models import (
     CharacterWalletJournalEntry,
 )
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def export_topic_to_archive(topic: str, destination_folder: str = None) -> str:
@@ -97,7 +93,7 @@ def _compile_topics(export_files):
         export_file = export_files[topic] if topic in export_files.keys() else None
         if export_file:
             timestamp = export_file.stat().st_mtime
-            last_updated_at = dt.datetime.fromtimestamp(timestamp, tz=utc)
+            last_updated_at = dt.datetime.fromtimestamp(timestamp, tz=dt.timezone.utc)
             update_allowed = settings.DEBUG or (
                 now() - last_updated_at
             ).total_seconds() > (MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE * 60)

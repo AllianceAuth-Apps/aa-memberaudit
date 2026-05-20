@@ -1,17 +1,18 @@
 from django.http import HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory
 from esi.errors import TokenError
 from esi.models import Token
 
-from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.testdata_factories import UserMainFactory
 from app_utils.testing import NoSocketsTestCase, generate_invalid_pk
 
 from memberaudit.decorators import fetch_character_if_allowed, fetch_token_for_character
 from memberaudit.models import Character
-
-from .testdata.factories import create_character_from_user
-from .testdata.load_entities import load_entities
-from .utils import create_user_from_evecharacter_with_access, scope_names_set
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    UserMainBasicAccessFactory,
+)
+from memberaudit.tests.utils import scope_names_set
 
 MODULE_PATH = "memberaudit.decorators"
 
@@ -23,8 +24,7 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user = UserMainBasicAccessFactory()
 
     def test_passthrough_when_fetch_owner_if_allowed(self):
         @fetch_character_if_allowed()
@@ -34,12 +34,13 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             return HttpResponse("ok")
 
         # given
-        my_character = create_character_from_user(self.user)
-        user = my_character.eve_character.character_ownership.user
+        my_character = CharacterFactory(user=self.user)
         request = self.factory.get(DUMMY_URL)
-        request.user = user
+        request.user = self.user
+
         # when
         response = dummy(request, my_character.pk)
+
         # then
         self.assertEqual(response.status_code, 200)
 
@@ -49,12 +50,13 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             self.assertTrue(False)
 
         # given
-        my_character = create_character_from_user(self.user)
-        user = my_character.eve_character.character_ownership.user
+        CharacterFactory(user=self.user)
         request = self.factory.get(DUMMY_URL)
-        request.user = user
+        request.user = self.user
+
         # when
         response = dummy(request, generate_invalid_pk(Character))
+
         # then
         self.assertEqual(response.status_code, 404)
 
@@ -64,12 +66,14 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
             self.assertTrue(False)
 
         # given
-        my_character = create_character_from_user(self.user)
-        user_2 = AuthUtils.create_user("Lex Luthor")
+        my_character = CharacterFactory(user=self.user)
+        user = UserMainFactory()
         request = self.factory.get(DUMMY_URL)
-        request.user = user_2
+        request.user = user
+
         # when
         response = dummy(request, my_character.pk)
+
         # then
         self.assertEqual(response.status_code, 403)
 
@@ -87,23 +91,15 @@ class TestFetchOwnerIfAllowed(NoSocketsTestCase):
     #     dummy(request, self.character.pk)
 
 
-class TestFetchToken(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
-    def setUp(self) -> None:
-        self.character = create_character_from_user(self.user)
-
+class TestFetchToken(NoSocketsTestCase):
     def test_defaults(self):
         @fetch_token_for_character()
         def dummy(self, character, token):
             self.assertIsInstance(token, Token)
-            self.assertSetEqual(scope_names_set(token), set(Character.get_esi_scopes()))
+            self.assertSetEqual(scope_names_set(token), set(Character.esi_scopes()))
 
-        dummy(self, self.character)
+        character = CharacterFactory()
+        dummy(self, character)
 
     def test_specified_scope(self):
         @fetch_token_for_character("esi-mail.read_mail.v1")
@@ -111,12 +107,14 @@ class TestFetchToken(TestCase):
             self.assertIsInstance(token, Token)
             self.assertIn("esi-mail.read_mail.v1", scope_names_set(token))
 
-        dummy(self, self.character)
+        character = CharacterFactory()
+        dummy(self, character)
 
     def test_exceptions_if_not_found(self):
         @fetch_token_for_character("invalid_scope")
         def dummy(self, character, token):
             pass
 
+        character = CharacterFactory()
         with self.assertRaises(TokenError):
-            dummy(self, self.character)
+            dummy(self, character)

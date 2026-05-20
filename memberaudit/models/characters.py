@@ -7,9 +7,8 @@ import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
+from http import HTTPStatus
 from typing import Any, Callable, Dict, List, Optional, Set
-
-from bravado.exception import HTTPInternalServerError
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
@@ -19,6 +18,7 @@ from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.errors import TokenError
+from esi.exceptions import HTTPServerError
 from esi.models import Token
 from eveuniverse.models import EveEntity
 
@@ -26,7 +26,6 @@ from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
@@ -49,7 +48,7 @@ from memberaudit.models._helpers import (
     store_character_data_to_disk_when_enabled,
 )
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -59,7 +58,7 @@ class _CharacterNeedsUpdate:
     section_map: Dict["Character.UpdateSection", bool]
     character: "Character"
 
-    def __bool__(self) -> bool:
+    def is_update_needed(self) -> bool:
         """Return True if any section needs to be updated, else False."""
         return any(self.section_map.values())
 
@@ -68,9 +67,7 @@ class _CharacterNeedsUpdate:
         return self.section_map[Character.UpdateSection(section)]
 
 
-class Character(
-    AddGenericReprMixin, models.Model
-):  # pylint: disable=too-many-public-methods
+class Character(models.Model):  # pylint: disable=too-many-public-methods
     """A character in Eve Online managed by Member Audit."""
 
     # TODO: Maybe move this enum to outside, so it can be imported more easily
@@ -245,6 +242,11 @@ class Character(
             self.clear_cache()
 
     @cached_property
+    def character_id(self) -> int:
+        """Return the eve character ID of this character."""
+        return self.eve_character.character_id
+
+    @cached_property
     def name(self) -> str:
         """Return the name of this character."""
         return str(self.eve_character.character_name)
@@ -362,7 +364,7 @@ class Character(
                 self.save(update_fields=["token_error_notified_at"])
 
     def calc_update_needed(self) -> _CharacterNeedsUpdate:
-        """Return map of section and if they need to be update."""
+        """Return map of section with information which need to be updated."""
         sections_needs_update = {
             section: True for section in self.UpdateSection.enabled_sections()
         }
@@ -453,16 +455,19 @@ class Character(
         section = self.UpdateSection(section)
         try:
             data = fetch_func(character=self)
-        except HTTPInternalServerError as ex:
-            # handle the occasional occurring http 500 error from this endpoint
-            logger.warning(
-                "%s: Received an HTTP internal server error "
-                "when trying to fetch %s: %s ",
-                self,
-                section,
-                ex,
-            )
-            return UpdateSectionResult(is_changed=None, is_updated=False)
+        except HTTPServerError as ex:
+            if ex.status_code == HTTPStatus.INTERNAL_SERVER_ERROR:
+                # handle the occasional occurring http 500 error from this endpoint
+                logger.warning(
+                    "%s: Received an HTTP internal server error "
+                    "when trying to fetch %s: %s ",
+                    self,
+                    section,
+                    ex,
+                )
+                return UpdateSectionResult(is_changed=None, is_updated=False)
+
+            raise ex
 
         store_character_data_to_disk_when_enabled(
             character=self,
@@ -580,7 +585,7 @@ class Character(
         token = (
             Token.objects.prefetch_related("scopes")
             .filter(user=self.user, character_id=self.eve_character.character_id)
-            .require_scopes(scopes if scopes else self.get_esi_scopes())
+            .require_scopes(scopes if scopes else self.esi_scopes())
             .require_valid()
             .first()
         )
@@ -828,7 +833,7 @@ class Character(
         Character.objects.clear_cache(pk=self.pk)
 
     @staticmethod
-    def get_esi_scopes() -> List[str]:
+    def esi_scopes() -> List[str]:
         """Return all enabled ESI scopes required to update this character."""
         scopes = [
             "esi-assets.read_assets.v1",

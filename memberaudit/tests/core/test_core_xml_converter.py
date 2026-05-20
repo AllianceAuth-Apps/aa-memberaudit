@@ -1,21 +1,24 @@
+from eveuniverse.models import EveEntity
+from eveuniverse.tests.testdata.factories_2 import (
+    AllianceTypeFactory,
+    CharacterTypeFactory,
+    CorporationTypeFactory,
+    EveEntityAllianceFactory,
+    EveEntityCharacterFactory,
+    EveEntityCorporationFactory,
+    EveEntityFactory,
+    SolarSystemTypeFactory,
+    StationTypeFactory,
+)
+
 from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.xml_converter import DEFAULT_FONT_SIZE, eve_xml_to_html
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.testdata.load_locations import load_locations
 
 MODULE_PATH = "memberaudit.core.xml_converter"
 
 
 class TestXMLConversion(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        load_locations()
-
     def test_should_convert_font_tag(self):
         input = '<font size="13" color="#b3ffffff">Character</font>'
         expected = '<span style="font-size: 13px">Character</span>'
@@ -33,41 +36,87 @@ class TestXMLConversion(NoSocketsTestCase):
         self.assertHTMLEqual(eve_xml_to_html(input), input)
 
     def test_should_convert_character_link(self):
+        # given
+        CharacterTypeFactory(id=1376)
+        EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
         input = '<a href="showinfo:1376//1001">Bruce Wayne</a>'
-        expected = '<a href="https://evewho.com/character/1001" target="_blank">Bruce Wayne</a>'
-        self.assertHTMLEqual(eve_xml_to_html(input), expected)
+
+        # when
+        got = eve_xml_to_html(input)
+
+        # then
+        want = '<a href="https://evewho.com/character/1001" target="_blank">Bruce Wayne</a>'
+        self.assertHTMLEqual(got, want)
 
     def test_should_convert_corporation_link(self):
+        # given
+        CorporationTypeFactory()
+        EveEntityCorporationFactory(id=2001, name="Wayne Technologies")
         input = '<a href="showinfo:2//2001">Wayne Technologies</a>'
-        expected = (
+
+        # when
+        got = eve_xml_to_html(input)
+
+        # then
+        want = (
             '<a href="https://evemaps.dotlan.net/corp/Wayne_Technologies" '
             'target="_blank">Wayne Technologies</a>'
         )
-        self.assertHTMLEqual(eve_xml_to_html(input), expected)
+        self.assertHTMLEqual(got, want)
 
     def test_should_convert_alliance_link(self):
+        # given
+        AllianceTypeFactory()
+        EveEntityAllianceFactory(id=3001, name="Wayne Enterprises")
         input = '<a href="showinfo:16159//3001">Wayne Enterprises</a>'
-        expected = (
+
+        # when
+        got = eve_xml_to_html(input)
+
+        # then
+        want = (
             '<a href="https://evemaps.dotlan.net/alliance/Wayne_Enterprises" '
             'target="_blank">Wayne Enterprises</a>'
         )
-        self.assertHTMLEqual(eve_xml_to_html(input), expected)
+        self.assertHTMLEqual(got, want)
 
     def test_should_convert_solar_system_link(self):
+        # given
+        SolarSystemTypeFactory()
+        EveEntityFactory(
+            id=30004984, name="Abune", category=EveEntity.CATEGORY_SOLAR_SYSTEM
+        )
         input = '<a href="showinfo:5//30004984">Abune</a>'
-        expected = '<a href="https://evemaps.dotlan.net/system/Abune" target="_blank">Abune</a>'
-        self.assertHTMLEqual(eve_xml_to_html(input), expected)
+
+        # when
+        got = eve_xml_to_html(input)
+
+        # then
+        want = '<a href="https://evemaps.dotlan.net/system/Abune" target="_blank">Abune</a>'
+        self.assertHTMLEqual(got, want)
 
     def test_should_convert_station_link(self):
+        # given
+        StationTypeFactory(id=52678)
+        EveEntityFactory(
+            id=60003760,
+            name="Jita IV - Moon 4 - Caldari Navy Assembly Plant",
+            category=EveEntity.CATEGORY_STATION,
+        )
         input = (
             '<a href="showinfo:52678//60003760">'
             "Jita IV - Moon 4 - Caldari Navy Assembly Plant</a>"
         )
-        expected = (
+
+        # when
+        got = eve_xml_to_html(input)
+
+        # then
+        want = (
             '<a href="https://evemaps.dotlan.net/station/Jita_IV_-_Moon_4_-_Caldari_Navy_Assembly_Plant" '
             'target="_blank">Jita IV - Moon 4 - Caldari Navy Assembly Plant</a>'
         )
-        self.assertHTMLEqual(eve_xml_to_html(input), expected)
+        self.assertHTMLEqual(got, want)
 
     def test_should_convert_kill_link(self):
         input = (

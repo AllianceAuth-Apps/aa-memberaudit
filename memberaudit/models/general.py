@@ -15,9 +15,7 @@ from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.helpers import arabic_number_to_roman
 from memberaudit.managers.general import (
     ComplianceGroupDesignationManager,
@@ -31,7 +29,7 @@ from memberaudit.managers.general import (
 from ._helpers import AddGenericReprMixin
 from .constants import NAMES_MAX_LENGTH
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class General(models.Model):
@@ -144,7 +142,7 @@ class Location(AddGenericReprMixin, models.Model):
     """An Eve Online location: Station or Upwell Structure or Solar System."""
 
     LOCATION_UNKNOWN_ID = 888  # custom ID to signify a location that is not known
-    _ASSET_SAFETY_ID = 2004
+    ASSET_SAFETY_ID = 2004
     _SOLAR_SYSTEM_ID_START = 30_000_000
     _SOLAR_SYSTEM_ID_END = 33_000_000
     _STATION_ID_START = 60_000_000
@@ -271,7 +269,7 @@ class Location(AddGenericReprMixin, models.Model):
     @classmethod
     def is_asset_safety_id(cls, location_id: int) -> bool:
         """Return True, if this location ID is asset safety."""
-        return location_id == cls._ASSET_SAFETY_ID
+        return location_id == cls.ASSET_SAFETY_ID
 
     @classmethod
     def is_location_unknown_id(cls, location_id: int) -> bool:

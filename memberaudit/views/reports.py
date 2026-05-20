@@ -17,10 +17,8 @@ from eveuniverse.models import EveType
 from allianceauth.authentication.models import get_guest_state_pk
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 from app_utils.views import bootstrap_icon_plus_name_html, yesno_str
 
-from memberaudit import __title__
 from memberaudit.constants import DEFAULT_ICON_SIZE, SKILL_SET_DEFAULT_ICON_TYPE_ID
 from memberaudit.models import (
     Character,
@@ -33,7 +31,7 @@ from memberaudit.models import (
 
 from ._common import UNGROUPED_SKILL_SET, add_common_context
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 def create_organization_html(eve_character: EveCharacter) -> str:
@@ -156,7 +154,7 @@ def corporation_compliance_report_data(request) -> JsonResponse:
             "userprofile__user__character_ownerships__character",
             "userprofile__user__character_ownerships",
         )
-        .filter(userprofile__in=relevant_user_ids)
+        .filter(userprofile__user__in=relevant_user_ids)
         .values(
             "corporation_id",
             "corporation_name",

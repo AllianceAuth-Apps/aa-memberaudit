@@ -1,8 +1,12 @@
 import datetime as dt
 from unittest.mock import patch
 
-from django.test import TestCase
-from eveuniverse.models import EveType
+from eveuniverse.tests.testdata.factories_2 import (
+    EveEntityCharacterFactory,
+    ShipTypeFactory,
+)
+
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.helpers import (
     arabic_number_to_roman,
@@ -11,11 +15,10 @@ from memberaudit.helpers import (
     eve_entity_ids_from_objs,
     implant_slot_num,
 )
-
-from .testdata.factories import create_character_wallet_journal_entry
-from .testdata.load_entities import load_entities
-from .testdata.load_eveuniverse import load_eveuniverse
-from .utils import create_memberaudit_character
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterWalletJournalEntryFactory,
+    CyberimplantTypeFactory,
+)
 
 MODULE_PATH = "memberaudit.helpers"
 
@@ -27,7 +30,7 @@ class TaskStub:
         self.request = {"properties": properties}
 
 
-class TestDataRetentionCutoff(TestCase):
+class TestDataRetentionCutoff(NoSocketsTestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_DATA_RETENTION_LIMIT", 10)
     def test_limit_is_set(self):
         with patch(MODULE_PATH + ".now") as mock_now:
@@ -41,26 +44,21 @@ class TestDataRetentionCutoff(TestCase):
             self.assertIsNone(data_retention_cutoff())
 
 
-class TestImplantSlotNum(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-
+class TestImplantSlotNum(NoSocketsTestCase):
     def test_should_return_slot_num(self):
         # given
-        implant = EveType.objects.get(name="High-grade Snake Beta")
+        implant = CyberimplantTypeFactory(slot_num=2)
         # when/then
         self.assertEqual(implant_slot_num(implant), 2)
 
     def test_should_return_0_when_no_slot_found(self):
         # given
-        implant = EveType.objects.get(name="Merlin")
+        implant = ShipTypeFactory()
         # when/then
         self.assertEqual(implant_slot_num(implant), 0)
 
 
-class TestDetermineTaskPriority(TestCase):
+class TestDetermineTaskPriority(NoSocketsTestCase):
     def test_should_return_task_priority_when_it_exists(self):
         # given
         task = TaskStub(properties={"priority": 3})
@@ -74,26 +72,22 @@ class TestDetermineTaskPriority(TestCase):
         self.assertIsNone(determine_task_priority(task))
 
 
-class TestEveEntityIdsFromObjs(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_eveuniverse()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
+class TestEveEntityIdsFromObjs(NoSocketsTestCase):
     def test_should_return_ids_from_all_objs(self):
         # given
-        obj_1 = create_character_wallet_journal_entry(
-            character=self.character, first_party_id=1001, second_party_id=1002
+        entity_1 = EveEntityCharacterFactory()
+        entity_2 = EveEntityCharacterFactory()
+        entity_3 = EveEntityCharacterFactory()
+        obj_1 = CharacterWalletJournalEntryFactory(
+            first_party=entity_1, second_party=entity_2
         )
-        obj_2 = create_character_wallet_journal_entry(
-            character=self.character, first_party_id=1101, second_party_id=1002
+        obj_2 = CharacterWalletJournalEntryFactory(
+            first_party=entity_3, second_party=entity_2
         )
         # when
         result = eve_entity_ids_from_objs([obj_1, obj_2])
         # then
-        expected = {1001, 1002, 1101}
+        expected = {entity_1.id, entity_2.id, entity_3.id}
         self.assertSetEqual(result, expected)
 
     def test_should_return_empty_set_when_no_objs_provided(self):
@@ -104,7 +98,7 @@ class TestEveEntityIdsFromObjs(TestCase):
         self.assertSetEqual(result, expected)
 
 
-class TestArabicNumberToRoman(TestCase):
+class TestArabicNumberToRoman(NoSocketsTestCase):
     def test_should_convert_correctly(self):
         # given
         cases = [

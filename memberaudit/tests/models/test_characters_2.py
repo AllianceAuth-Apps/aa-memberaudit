@@ -1,465 +1,90 @@
 import datetime as dt
+from http import HTTPStatus
 from unittest.mock import MagicMock, patch
 
-from django.test import TestCase
 from django.utils.timezone import now
 from esi.errors import TokenError
 
-from allianceauth.eveonline.models import EveCharacter
-from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.esi_testing import build_http_error
-from app_utils.testing import NoSocketsTestCase, create_user_from_evecharacter
+from app_utils.testdata_factories import UserMainFactory
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import Character, CharacterUpdateStatus
-from memberaudit.tests.testdata.factories import (
-    create_character,
-    create_character_from_user,
-    create_character_update_status,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    CharacterUpdateStatusFactory,
+    UserMainBasicAccessFactory,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import (
-    add_memberaudit_character_to_user,
-    create_memberaudit_character,
-    create_user_from_evecharacter_with_access,
-)
+from memberaudit.tests.utils import make_http_server_error
 
 MODULE_PATH = "memberaudit.models.characters"
 
 
-class TestCharacterUserHasAccess(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
-
+class TestCharacter_UserHasAccess(NoSocketsTestCase):  # see also manager for more tests
     def test_user_owning_character_has_access(self):
         # given
-        character_1001 = create_character_from_user(self.user_1001)
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
         # when/then
-        self.assertTrue(character_1001.user_has_access(self.user_1001))
+        self.assertTrue(character.user_has_access(user))
 
     def test_other_user_has_no_access(self):
         # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_lex = AuthUtils.create_user("Lex_Luthor")
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory()
         # when/then
-        self.assertFalse(character_1001.user_has_access(user_lex))
-
-    def test_has_no_access_for_view_everything_without_scope_permission(self):
-        # given
-        character_1101 = create_memberaudit_character(1101)
-        user_1002, _ = create_user_from_evecharacter(
-            1002,
-            permissions=["memberaudit.basic_access", "memberaudit.view_everything"],
-        )
-        # when/then
-        self.assertFalse(character_1101.user_has_access(user_1002))
+        self.assertFalse(character.user_has_access(user))
 
     def test_has_access_for_view_everything_with_scope_permission(self):
         # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter(
-            1002,
-            permissions=[
+        user = UserMainFactory(
+            permissions__=[
                 "memberaudit.basic_access",
                 "memberaudit.view_everything",
                 "memberaudit.characters_access",
             ],
         )
+        character = CharacterFactory()
         # when/then
-        self.assertTrue(character_1001.user_has_access(user_1002))
-
-    def test_has_access_for_view_everything_with_scope_permission_to_orphan(self):
-        # given
-        character_1121 = create_character(EveCharacter.objects.get(character_id=1121))
-        user_1002, _ = create_user_from_evecharacter(
-            1002,
-            permissions=[
-                "memberaudit.basic_access",
-                "memberaudit.view_everything",
-                "memberaudit.characters_access",
-            ],
-        )
-        # when/then
-        self.assertTrue(character_1121.user_has_access(user_1002))
-
-    def test_view_same_corporation_1a(self):
-        """
-        when user has view_same_corporation permission and not characters_access
-        and is in the same corporation as the character owner (main)
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter(
-            1002,
-            permissions=[
-                "memberaudit.basic_access",
-                "memberaudit.view_same_corporation",
-            ],
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_access(user_1002))
-
-    def test_view_same_corporation_1b(self):
-        """
-        when user has view_same_corporation permission and characters_access
-        and is in the same corporation as the character owner (main)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1002
-        )
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1002
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_access(user_1002))
-
-    def test_view_same_corporation_2a(self):
-        """
-        when user has view_same_corporation permission and not characters_access
-        and is in the same corporation as the character owner (alt)
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1002
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        # when/then
-        self.assertFalse(character_1103.user_has_access(user_1002))
-
-    def test_view_same_corporation_2b(self):
-        """
-        when user has view_same_corporation permission and characters_access
-        and is in the same corporation as the character owner (alt)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1002
-        )
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1002
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        self.assertTrue(character_1103.user_has_access(user_1002))
-
-    def test_view_same_corporation_3(self):
-        """
-        when user has view_same_corporation permission and characters_access
-        and is NOT in the same corporation as the character owner
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1003
-        )
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1003
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_access(user_1003))
-
-    def test_view_same_alliance_1a(self):
-        """
-        when user has view_same_alliance permission and not characters_access
-        and is in the same alliance as the character's owner (main)
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_access(user_1003))
-
-    def test_view_same_alliance_1b(self):
-        """
-        when user has view_same_alliance permission and characters_access
-        and is in the same alliance as the character's owner (main)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1003
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_access(user_1003))
-
-    def test_view_same_alliance_2a(self):
-        """
-        when user has view_same_alliance permission and not characters_access
-        and is in the same alliance as the character's owner (alt)
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        # when/then
-        self.assertFalse(character_1103.user_has_access(user_1003))
-
-    def test_view_same_alliance_2b(self):
-        """
-        when user has view_same_alliance permission and characters_access
-        and is in the same alliance as the character's owner (alt)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1003
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        # when/then
-        self.assertTrue(character_1103.user_has_access(user_1003))
-
-    def test_view_same_alliance_3(self):
-        """
-        when user has view_same_alliance permission and characters_access
-        and is NOT in the same alliance as the character owner
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1101, _ = create_user_from_evecharacter_with_access(1101)
-        user_1101 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1101
-        )
-        user_1101 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.characters_access", user_1101
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_access(user_1101))
-
-    def test_recruiter_access_1(self):
-        """
-        when user has recruiter permission
-        and character is shared
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        character_1001.is_shared = True
-        character_1001.save()
-        AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.share_characters",
-            character_1001.eve_character.character_ownership.user,
-        )
-        user_1101, _ = create_user_from_evecharacter_with_access(1101)
-        user_1101 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user_1101
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_access(user_1101))
-
-    def test_recruiter_access_2(self):
-        """
-        when user has recruiter permission
-        and character is NOT shared
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        character_1001.is_shared = False
-        character_1001.save()
-        AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.share_characters",
-            character_1001.eve_character.character_ownership.user,
-        )
-        user_1101, _ = create_user_from_evecharacter_with_access(1101)
-        user_1101 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_shared_characters", user_1101
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_access(user_1101))
+        self.assertTrue(character.user_has_access(user))
 
 
-class TestCharacterUserHasScope(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user_1001, _ = create_user_from_evecharacter_with_access(1001)
-
+class TestCharacter_UserHasScope(NoSocketsTestCase):  # see also manager for more tests
     def test_user_owning_character_has_scope(self):
         # given
-        character_1001 = create_character_from_user(self.user_1001)
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
         # when/then
-        self.assertTrue(character_1001.user_has_scope(self.user_1001))
+        self.assertTrue(character.user_has_scope(user))
 
-    def test_other_user_has_no_scope(self):
+    def test_other_user_has_no_access(self):
         # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_lex = AuthUtils.create_user("Lex Luthor")
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory()
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user_lex))
+        self.assertFalse(character.user_has_scope(user))
 
-    def test_has_no_scope_for_view_everything_without_scope_permission(self):
+    def test_has_access_for_view_everything_with_scope_permission(self):
         # given
-        character_1001 = create_memberaudit_character(1101)
-        user_1002, _ = create_user_from_evecharacter(1002)
+        user = UserMainFactory(
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.view_everything",
+            ],
+        )
+        character = CharacterFactory()
         # when/then
-        self.assertFalse(character_1001.user_has_scope(user_1002))
-
-    def test_has_scope_for_view_everything_with_scope_permission(self):
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter(
-            1002, permissions=["memberaudit.view_everything"]
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_scope(user_1002))
-
-    def test_has_scope_for_view_everything_with_scope_permission_to_orphan(self):
-        # given
-        character_1121 = create_character(EveCharacter.objects.get(character_id=1121))
-        user_1002, _ = create_user_from_evecharacter(
-            1002, permissions=["memberaudit.view_everything"]
-        )
-        # when/then
-        self.assertTrue(character_1121.user_has_scope(user_1002))
-
-    def test_view_same_corporation_1(self):
-        """
-        when user has view_same_corporation permission
-        and is in the same corporation as the character owner (main)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1002
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_scope(user_1002))
-
-    def test_view_same_corporation_2(self):
-        """
-        when user has view_same_corporation permission
-        and is in the same corporation as the character owner (alt)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1002, _ = create_user_from_evecharacter_with_access(1002)
-        user_1002 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1002
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        self.assertTrue(character_1103.user_has_scope(user_1002))
-
-    def test_view_same_corporation_3(self):
-        """
-        when user has view_same_corporation permission
-        and is NOT in the same corporation as the character owner
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_corporation", user_1003
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_scope(user_1003))
-
-    def test_view_same_alliance_1(self):
-        """
-        when user has view_same_alliance permission
-        and is in the same alliance as the character's owner (main)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        # when/then
-        self.assertTrue(character_1001.user_has_scope(user_1003))
-
-    def test_view_same_alliance_2(self):
-        """
-        when user has view_same_alliance permission
-        and is in the same alliance as the character's owner (alt)
-        then return True
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1003, _ = create_user_from_evecharacter_with_access(1003)
-        user_1003 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1003
-        )
-        character_1103 = add_memberaudit_character_to_user(
-            character_1001.eve_character.character_ownership.user, 1103
-        )
-        # when/then
-        self.assertTrue(character_1103.user_has_scope(user_1003))
-
-    def test_view_same_alliance_3(self):
-        """
-        when user has view_same_alliance permission
-        and is NOT in the same alliance as the character owner
-        then return False
-        """
-        # given
-        character_1001 = create_character_from_user(self.user_1001)
-        user_1101, _ = create_user_from_evecharacter_with_access(1101)
-        user_1101 = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_same_alliance", user_1101
-        )
-        # when/then
-        self.assertFalse(character_1001.user_has_scope(user_1101))
+        self.assertTrue(character.user_has_scope(user))
 
 
 @patch(MODULE_PATH + ".Character.update_section_content_hash")
 @patch(MODULE_PATH + ".Character.has_section_changed")
-class TestCharacterUpdateDataIfChangedOrForced(TestCase):
+class TestCharacterManager_UpdateSectionIfChanged(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        cls.character_1002 = create_memberaudit_character(1002)
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
+        cls.user = UserMainBasicAccessFactory()
+        cls.character_1002 = CharacterFactory(id=1002, user=cls.user)
 
     @staticmethod
     def _fetch_func_template(character):
@@ -473,7 +98,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user, is_main=False)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
@@ -500,7 +125,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user, is_main=False)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
@@ -523,7 +148,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user, is_main=False)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = False
@@ -546,8 +171,10 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
-        fetch_func_mock = MagicMock(side_effect=build_http_error(500, "Test exception"))
+        character = CharacterFactory(user=self.user, is_main=False)
+        fetch_func_mock = MagicMock(
+            side_effect=make_http_server_error(HTTPStatus.INTERNAL_SERVER_ERROR)
+        )
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.side_effect = RuntimeError("Should not be called")
         # when
@@ -568,7 +195,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user, is_main=False)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         store_func_mock = MagicMock(side_effect=self._store_func_template)
         mock_has_section_changed.return_value = True
@@ -594,7 +221,7 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self, mock_has_section_changed, mock_update_section_content_hash
     ):
         # given
-        character = create_character_from_user(self.user)
+        character = CharacterFactory(user=self.user, is_main=False)
         fetch_func_mock = MagicMock(side_effect=self._fetch_func_template)
         mock_has_section_changed.return_value = True
         # when
@@ -661,67 +288,64 @@ class TestCharacterUpdateDataIfChangedOrForced(TestCase):
         self.assertFalse(mock_bulk_resolve_ids.called)
 
 
-class TestCharacterHasTokenError(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
+class TestCharacter_HasTokenIssue(NoSocketsTestCase):
     def test_should_return_false_when_no_error(self):
+        # given
+        character = CharacterFactory()
+
         # when/then
-        self.assertFalse(self.character.has_token_issue())
+        self.assertFalse(character.has_token_issue())
 
     def test_should_return_true_when_token_error(self):
         # given
-        create_character_update_status(
-            self.character,
+        character = CharacterFactory()
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
             error_message="TokenError",
         )
         # when/then
-        self.assertTrue(self.character.has_token_issue())
+        self.assertTrue(character.has_token_issue())
 
     def test_should_return_false_when_other_error(self):
         # given
-        create_character_update_status(
-            self.character,
+        character = CharacterFactory()
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=False,
             error_message="other error",
         )
         # when/then
-        self.assertFalse(self.character.has_token_issue())
+        self.assertFalse(character.has_token_issue())
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_false_when_token_error_for_disabled_section(self):
         # given
-        create_character_update_status(
-            self.character,
+        character = CharacterFactory()
+        CharacterUpdateStatusFactory(
+            character=character,
             section=Character.UpdateSection.ROLES,
             is_success=False,
             has_token_error=True,
             error_message="TokenError",
         )
         # when/then
-        self.assertFalse(self.character.has_token_issue())
+        self.assertFalse(character.has_token_issue())
 
 
-class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.user, _ = create_user_from_evecharacter_with_access(1001)
-
+class TestCharacter_ResetTokenErrorNotifiedIfStatusOk(NoSocketsTestCase):
     def test_should_reset_when_ok_again(self):
         # given
-        character = create_character_from_user(self.user, token_error_notified_at=now())
+        character = CharacterFactory(token_error_notified_at=now())
         for section in Character.UpdateSection:
-            create_character_update_status(character, section=section)
+            CharacterUpdateStatusFactory(
+                character=character,
+                section=section,
+            )
 
         # when
         character.reset_token_error_notified_if_status_ok()
@@ -732,9 +356,11 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
 
     def test_should_not_reset_when_not_yet_ok(self):
         # given
-        character = create_character_from_user(self.user, token_error_notified_at=now())
-        create_character_update_status(
-            character, section=Character.UpdateSection.ASSETS, is_success=False
+        character = CharacterFactory(token_error_notified_at=now())
+        CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
         )
 
         # when
@@ -746,9 +372,11 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
 
     def test_should_ignore_when_not_set(self):
         # given
-        character = create_character_from_user(self.user, token_error_notified_at=None)
-        create_character_update_status(
-            character, section=Character.UpdateSection.ASSETS, is_success=False
+        character = CharacterFactory(token_error_notified_at=None)
+        CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
         )
 
         # when
@@ -759,11 +387,11 @@ class TestCharacterResetTokenErrorNotifiedIfStatusOk(TestCase):
         self.assertIsNone(character.token_error_notified_at)
 
 
-class TestCharacterGetEsiScopes(TestCase):
+class TestCharacter_EsiScopes(NoSocketsTestCase):
     @patch(MODULE_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
     def test_should_return_all_scopes(self):
         # when
-        result = Character.get_esi_scopes()
+        result = Character.esi_scopes()
         # then
         expected = {
             "esi-assets.read_assets.v1",
@@ -803,16 +431,7 @@ class TestCharacterGetEsiScopes(TestCase):
         self.assertSetEqual(set(result), expected)
 
 
-class TestCharacterPerformUpdateWithErrorLogging(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
-    def setUp(self) -> None:
-        self.character.update_status_set.all().delete()
-
+class TestCharacter_PerformUpdateWithErrorLogging(NoSocketsTestCase):
     def test_should_execute_method_and_return_value(self):
         # given
         def my_method(dummy):
@@ -820,11 +439,14 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
                 data=f"return-value-{dummy}", is_changed=True, is_updated=True
             )
 
+        character = CharacterFactory()
         section = Character.UpdateSection.LOCATION
+
         # when
-        result = self.character.perform_update_with_error_logging(
+        result = character.perform_update_with_error_logging(
             section=section, method=my_method, dummy="alpha"
         )
+
         # then
         self.assertEqual(result.data, "return-value-alpha")
         self.assertTrue(result.is_updated)
@@ -834,16 +456,17 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         def my_method():
             raise RuntimeError("Test exception")
 
+        character = CharacterFactory()
         section = Character.UpdateSection.LOCATION
-        # when/then
+
+        # when
         with self.assertRaises(RuntimeError):
-            self.character.perform_update_with_error_logging(
+            character.perform_update_with_error_logging(
                 section=section, method=my_method
             )
+
         # then
-        status: CharacterUpdateStatus = self.character.update_status_set.get(
-            section=section
-        )
+        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
         self.assertFalse(status.is_success)
         self.assertFalse(status.has_token_error)
         self.assertIn("RuntimeError", status.error_message)
@@ -854,60 +477,57 @@ class TestCharacterPerformUpdateWithErrorLogging(TestCase):
         def my_method():
             raise TokenError("Test exception")
 
+        character = CharacterFactory()
         section = Character.UpdateSection.LOCATION
+
         # when/then
         with self.assertRaises(TokenError):
-            self.character.perform_update_with_error_logging(
+            character.perform_update_with_error_logging(
                 section=section, method=my_method
             )
         # then
-        status: CharacterUpdateStatus = self.character.update_status_set.get(
-            section=section
-        )
+        status: CharacterUpdateStatus = character.update_status_set.get(section=section)
         self.assertFalse(status.is_success)
         self.assertTrue(status.has_token_error)
         self.assertIn("TokenError", status.error_message)
         self.assertTrue(status.run_finished_at)
 
 
-class TestCharacterUpdateStatusAsDict(TestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
-
+class TestCharacter_UpdateStatusAsDict(NoSocketsTestCase):
     def test_should_return_dict_with_status(self):
         # given
-        status = create_character_update_status(
-            self.character, section=Character.UpdateSection.LOCATION, is_success=True
+        character = CharacterFactory()
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.LOCATION,
+            is_success=True,
         )
+
         # when
-        result = self.character.update_status_as_dict()
+        result = character.update_status_as_dict()
+
         # then
         self.assertDictEqual(result, {"location": status})
 
     def test_should_return_empty_dict(self):
+        # given
+        character = CharacterFactory()
+
         # when
-        result = self.character.update_status_as_dict()
+        result = character.update_status_as_dict()
+
         # then
         self.assertDictEqual(result, {})
 
 
 @patch(MODULE_PATH + ".section_time_until_stale", {"assets": 640})
-class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        cls.section = Character.UpdateSection.ASSETS
-        cls.character = create_memberaudit_character(1001)
-
+class TestCharacter_IsUpdateNeeded(NoSocketsTestCase):
     def test_should_report_false_when_section_not_stale(self):
         # given
-        status = create_character_update_status(
-            character=self.character,
-            section=self.section,
+        character = CharacterFactory()
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
             is_success=True,
             run_started_at=now() - dt.timedelta(seconds=30),
             run_finished_at=now(),
@@ -917,19 +537,23 @@ class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
 
     def test_should_report_true_when_section_has_error(self):
         # given
-        status = create_character_update_status(
-            character=self.character, section=self.section, is_success=False
+        character = CharacterFactory()
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
+            is_success=False,
         )
         # when/then
         self.assertTrue(status.is_update_needed())
 
     def test_should_report_true_when_section_is_stale(self):
         # given
+        character = CharacterFactory()
         run_started_at = now() - dt.timedelta(hours=12)
         run_finished_at = run_started_at + dt.timedelta(minutes=10)
-        status = create_character_update_status(
-            character=self.character,
-            section=self.section,
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
             is_success=True,
             run_started_at=run_started_at,
             run_finished_at=run_finished_at,
@@ -939,10 +563,11 @@ class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
 
     def test_should_report_false_when_section_has_token_error_and_stale(self):
         # given
+        character = CharacterFactory()
         run_started_at = now() - dt.timedelta(hours=12)
-        status = create_character_update_status(
-            character=self.character,
-            section=self.section,
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
             is_success=False,
             run_started_at=run_started_at,
             has_token_error=True,
@@ -952,9 +577,10 @@ class TestCharacterUpdateStatusIsUpdateNeeded(NoSocketsTestCase):
 
     def test_should_report_false_when_section_has_token_error_and_not_stale(self):
         # given
-        status = create_character_update_status(
-            character=self.character,
-            section=self.section,
+        character = CharacterFactory()
+        status = CharacterUpdateStatusFactory(
+            character=character,
+            section=Character.UpdateSection.ASSETS,
             is_success=False,
             has_token_error=True,
         )

@@ -5,21 +5,21 @@
 from __future__ import annotations
 
 import datetime as dt
+from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Set, Tuple
 
-from bravado.exception import HTTPForbidden, HTTPUnauthorized
 from celery_once import AlreadyQueued
 
 from django.contrib.auth.models import Group, User
 from django.db import models, transaction
 from django.db.models import Q
 from django.utils.timezone import now
+from esi.exceptions import HTTPClientError
 from esi.models import Token
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.notifications import notify
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
 from memberaudit import __title__
 from memberaudit.app_settings import (
@@ -38,9 +38,9 @@ from memberaudit.providers import esi
 from memberaudit.utils import filter_groups_available_to_user
 
 if TYPE_CHECKING:
-    from memberaudit.models import Character
+    from memberaudit.models import Character, Location
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class ComplianceGroupDesignationManager(models.Manager):
@@ -191,14 +191,15 @@ class LocationManager(models.Manager):
         self, id: int, token: Token, update_async: bool
     ) -> Tuple[Any, bool]:
         id = int(id)
-        if self.model.is_location_unknown_id(id):
+        model: Location = self.model
+        if model.is_location_unknown_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
                 id=id,
                 defaults={"name": "Location unknown", "eve_type": eve_type},
             )
 
-        if self.model.is_asset_safety_id(id):
+        if model.is_asset_safety_id(id):
             eve_type, _ = EveType.objects.get_or_create_esi(
                 id=EveTypeId.ASSET_SAFETY_WRAP
             )
@@ -207,7 +208,7 @@ class LocationManager(models.Manager):
                 defaults={"name": "ASSET SAFETY", "eve_type": eve_type},
             )
 
-        if self.model.is_solar_system_id(id):
+        if model.is_solar_system_id(id):
             eve_solar_system, _ = EveSolarSystem.objects.get_or_create_esi(id=id)
             eve_type, _ = EveType.objects.get_or_create_esi(id=EveTypeId.SOLAR_SYSTEM)
             return self.update_or_create(
@@ -219,14 +220,15 @@ class LocationManager(models.Manager):
                 },
             )
 
-        if self.model.is_station_id(id):
+        if model.is_station_id(id):
             logger.info("%s: Fetching station from ESI", id)
-            station = esi.client.Universe.get_universe_stations_station_id(
+            station = esi.client.Universe.GetUniverseStationsStationId(
                 station_id=id
-            ).results()
-            return self._station_update_or_create_dict(id=id, station=station)
+            ).result(use_etag=False)
+            station_data = station.model_dump()
+            return self._station_update_or_create_dict(id=id, station=station_data)
 
-        if self.model.is_structure_id(id):
+        if model.is_structure_id(id):
             if not token:
                 raise ValueError(f"{id}: Need token to fetch this location from ESI")
 
@@ -261,7 +263,7 @@ class LocationManager(models.Manager):
         return self.update_or_create(
             id=id,
             defaults={
-                "name": station.get("name", ""),
+                "name": station.get("name") or "",
                 "eve_solar_system": eve_solar_system,
                 "eve_type": eve_type,
                 "owner": owner,
@@ -285,19 +287,23 @@ class LocationManager(models.Manager):
     def structure_update_or_create_esi(self, id: int, token: Token):
         """Update or creates structure from ESI."""
         try:
-            structure = esi.client.Universe.get_universe_structures_structure_id(
-                structure_id=id, token=token.valid_access_token()
-            ).results()
-        except (HTTPUnauthorized, HTTPForbidden) as http_error:
-            logger.warning(
-                "%s: No access to structure #%s: %s",
-                token.character_name,
-                id,
-                http_error,
-            )
-            return self.get_or_create(id=id)
+            structure = esi.client.Universe.GetUniverseStructuresStructureId(
+                structure_id=id, token=token
+            ).result(use_etag=False)
+        except HTTPClientError as ex:  # (HTTPUnauthorized, HTTPForbidden)
+            if ex.status_code in [HTTPStatus.UNAUTHORIZED, HTTPStatus.FORBIDDEN]:
+                logger.warning(
+                    "%s: No access to structure #%s: %s",
+                    token.character_name,
+                    id,
+                    ex,
+                )
+                return self.get_or_create(id=id)
 
-        return self._structure_update_or_create_dict(id=id, structure=structure)
+            raise ex
+
+        structure_data = structure.model_dump()
+        return self._structure_update_or_create_dict(id=id, structure=structure_data)
 
     def _structure_update_or_create_dict(
         self, id: int, structure: dict
@@ -323,7 +329,7 @@ class LocationManager(models.Manager):
         return self.update_or_create(
             id=id,
             defaults={
-                "name": structure.get("name", ""),
+                "name": structure.get("name") or "",
                 "eve_solar_system": eve_solar_system,
                 "eve_type": eve_type,
                 "owner": owner,
@@ -531,15 +537,16 @@ class MailEntityManager(models.Manager):
         since they might still be referenced by older mails.
         """
         logger.info("%s: Fetching mailing lists from ESI", character)
-        mailing_lists_raw = esi.client.Mail.get_characters_character_id_mail_lists(
+        mailing_lists_raw = esi.client.Mail.GetCharactersCharacterIdMailLists(
             character_id=character.eve_character.character_id,
-            token=token.valid_access_token(),
-        ).results()
+            token=token,
+        ).result(use_etag=False)
+
         if mailing_lists_raw:
             mailing_lists = {
-                obj["mailing_list_id"]: obj
+                obj.mailing_list_id: obj.model_dump()
                 for obj in mailing_lists_raw
-                if "mailing_list_id" in obj
+                if obj.mailing_list_id
             }
         else:
             mailing_lists = {}
@@ -585,12 +592,14 @@ class MailEntityManager(models.Manager):
         logger.info("%s: Updating %d mailing lists", character, len(mailing_lists))
         new_mailing_lists = []
         for list_id, mailing_list in mailing_lists.items():
-            mailing_list_obj, _ = self.model.objects.update_or_create(
-                id=list_id,
-                defaults={
-                    "category": self.model.Category.MAILING_LIST,
-                    "name": mailing_list.get("name"),
-                },
+            mailing_list_obj, _ = (
+                self.model.objects.update_or_create(  # FIXME: refactor?
+                    id=list_id,
+                    defaults={
+                        "category": self.model.Category.MAILING_LIST,
+                        "name": mailing_list.get("name"),
+                    },
+                )
             )
             new_mailing_lists.append(mailing_list_obj)
 

@@ -22,4 +22,5 @@ starbases_raw*.json
 memberaudit_log/
 _build/
 .ruff_cache/
-alliance_auth.sqlite3
+.env
+.temp/

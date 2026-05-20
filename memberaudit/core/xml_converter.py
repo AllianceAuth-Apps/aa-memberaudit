@@ -8,11 +8,8 @@ import bs4
 from eveuniverse.core import evexml
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
-
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 DEFAULT_FONT_SIZE = 13
 

@@ -11,10 +11,10 @@ from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import SkillSet
 from memberaudit.tests.testdata.factories import (
-    create_fitting_text,
     create_skill_set,
     create_skill_set_group,
 )
+from memberaudit.tests.testdata.factories_2 import create_fitting_text
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 from memberaudit.views import admin
 

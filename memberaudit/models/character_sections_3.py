@@ -10,9 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveEntity, EvePlanet, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.core import standings
 from memberaudit.helpers import EveEntityIdsMixin, arabic_number_to_roman
 from memberaudit.managers.character_sections_3 import (
@@ -36,7 +34,7 @@ from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterMiningLedgerEntry(AddGenericReprMixin, models.Model):
@@ -659,7 +657,7 @@ class CharacterWalletJournalEntry(EveEntityIdsMixin, AddGenericReprMixin, models
     CONTEXT_ID_TYPE_PLANET_ID = "PLN"
     CONTEXT_ID_TYPE_SYSTEM_ID = "SYS"
     CONTEXT_ID_TYPE_TYPE_ID = "TYP"
-    CONTEXT_ID_CHOICES = (
+    CONTEXT_ID_CHOICES = (  # FIXME: structure id is missing
         (CONTEXT_ID_TYPE_UNDEFINED, _("undefined")),
         (CONTEXT_ID_TYPE_STATION_ID, _("station ID")),
         (CONTEXT_ID_TYPE_MARKET_TRANSACTION_ID, _("market transaction ID")),

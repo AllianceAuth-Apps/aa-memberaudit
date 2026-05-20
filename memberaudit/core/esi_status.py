@@ -13,12 +13,11 @@ from django.conf import settings
 from django.core.cache import cache
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, __version__
+from memberaudit import __version__
 from memberaudit.models import Character
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 _CACHE_KEY = "memberaudit-esi-status"
 _CACHE_TIMEOUT = 120
@@ -159,8 +158,9 @@ def _fetch_status() -> Optional[List[Dict[str, Any]]]:
         r.raise_for_status()
         status = r.json()
     except RequestException as exc:
-        logger.warning(f"Failed to get ESI status. Error: {exc}")
+        logger.warning("Failed to get ESI status. Error: %s", exc)
         return None
+
     return status
 
 

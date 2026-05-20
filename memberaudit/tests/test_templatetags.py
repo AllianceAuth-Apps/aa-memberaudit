@@ -1,11 +1,13 @@
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory
 from django.urls import reverse
+
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character, CharacterUpdateStatus
 from memberaudit.templatetags.memberaudit import navactive_2, tab_status_indicator
 
 
-class TestNavactive2(TestCase):
+class TestNavactive2(NoSocketsTestCase):
     def setUp(self) -> None:
         self.factory = RequestFactory()
 
@@ -25,7 +27,7 @@ class TestNavactive2(TestCase):
         self.assertEqual(result, "active")
 
 
-class TestTabStatusIndicator(TestCase):
+class TestTabStatusIndicator(NoSocketsTestCase):
     def test_should_not_report_error_when_section_ok(self):
         # given
         status = CharacterUpdateStatus(

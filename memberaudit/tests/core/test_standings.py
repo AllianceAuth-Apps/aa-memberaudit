@@ -1,10 +1,11 @@
 from typing import NamedTuple
-from unittest import TestCase
+
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.standings import Standing, calc_effective_standing
 
 
-class TestCharacterContactStandingLevel(TestCase):
+class TestCharacterContactStandingLevel(NoSocketsTestCase):
     class MyTestCase(NamedTuple):
         standing: float
         expected_result: str
@@ -26,7 +27,7 @@ class TestCharacterContactStandingLevel(TestCase):
                 self.assertEqual(standing, test_case.expected_result)
 
 
-class TestCalcEffectiveStanding(TestCase):
+class TestCalcEffectiveStanding(NoSocketsTestCase):
     def test_should_calc_correct_standing(self):
         # given
         class MyTestCase(NamedTuple):

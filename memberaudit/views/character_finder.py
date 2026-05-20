@@ -15,19 +15,17 @@ from django.utils.translation import gettext_lazy as _
 
 from allianceauth.eveonline.models import EveCharacter
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 from app_utils.views import (
     bootstrap_icon_plus_name_html,
     fontawesome_link_button_html,
     yesno_str,
 )
 
-from memberaudit import __title__
 from memberaudit.models import General
 
 from ._common import add_common_context
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @login_required

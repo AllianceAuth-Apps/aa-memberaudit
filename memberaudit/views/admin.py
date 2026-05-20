@@ -11,13 +11,12 @@ from django.utils.translation import gettext_lazy as _
 
 from allianceauth import NAME as site_header
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__, tasks
+from memberaudit import tasks
 from memberaudit.forms import ImportFittingForm, ImportSkillPlanForm
 from memberaudit.models import SkillSet
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 @login_required

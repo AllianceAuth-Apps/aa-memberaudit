@@ -39,7 +39,10 @@ from memberaudit.tests.testdata.factories import (
     create_character_skill_set_check,
     create_location,
 )
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterFactory,
+    UserMainBasicAccessFactory,
+)
 
 # configuration
 CHARACTER_COUNT = 100  # max number of characters to generate
@@ -95,12 +98,13 @@ def main():
     ):
         try:
             eve_character, created = get_or_create_eve_character(character_id)
-        except OSError:
+        except Exception:
             continue
         if created:
             created_count += 1
             my_state.member_characters.add(eve_character)
-            character = create_memberaudit_character(character_id, is_disabled=True)
+            user = UserMainBasicAccessFactory(main_character__character=eve_character)
+            character = CharacterFactory(user=user, is_disabled=True)
             if CREATE_SKILL_SET_SKILLS:
                 set_character_skill_set_checks(character)
             if CORRUPTED_ASSETS_PER_CHARACTER:

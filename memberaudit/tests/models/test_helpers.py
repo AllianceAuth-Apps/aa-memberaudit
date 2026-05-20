@@ -3,22 +3,20 @@ import shutil
 import tempfile
 from unittest.mock import patch
 
-from django.test import TestCase
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.models import Character, _helpers
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.utils import create_memberaudit_character
+from memberaudit.tests.testdata.factories_2 import CharacterFactory
 
 MODULE_PATH = "memberaudit.models._helpers"
 
 
 @patch(MODULE_PATH + ".settings")
-class TestStoreCharacterData(TestCase):
+class TestStoreCharacterData(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        cls.character = create_memberaudit_character(1001)
+        cls.character = CharacterFactory()
 
     def setUp(self) -> None:
         self.root_path = tempfile.mkdtemp()
@@ -53,8 +51,9 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["assets"]),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -87,8 +86,11 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["other_section"]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(
+                MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_SECTIONS", ["other_section"]
+            ),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -105,8 +107,12 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [self.character.id]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(
+                MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS",
+                [self.character.id],
+            ),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -123,8 +129,9 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [-1]
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_CHARACTERS", [-1]),
         ):
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -175,9 +182,10 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".json.dump"
-        ) as mock:
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".json.dump") as mock,
+        ):
             mock.side_effect = TypeError
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,
@@ -194,9 +202,10 @@ class TestStoreCharacterData(TestCase):
         data = [{"dummy": 1}]
 
         # when
-        with patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True), patch(
-            MODULE_PATH + ".json.dump"
-        ) as mock:
+        with (
+            patch(MODULE_PATH + ".MEMBERAUDIT_STORE_ESI_DATA_ENABLED", True),
+            patch(MODULE_PATH + ".json.dump") as mock,
+        ):
             mock.side_effect = OSError
             result = _helpers.store_character_data_to_disk_when_enabled(
                 character=self.character,

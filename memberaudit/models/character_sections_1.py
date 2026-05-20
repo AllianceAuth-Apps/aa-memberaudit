@@ -10,9 +10,7 @@ from django.utils.translation import gettext_lazy as _
 from eveuniverse.models import EveEntity, EveType
 
 from allianceauth.services.hooks import get_extension_logger
-from app_utils.logging import LoggerAddTag
 
-from memberaudit import __title__
 from memberaudit.helpers import EveEntityIdsMixin
 from memberaudit.managers.character_sections_1 import (
     CharacterAssetManager,
@@ -29,7 +27,7 @@ from .characters import Character
 from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
 from .general import Location
 
-logger = LoggerAddTag(get_extension_logger(__name__), __title__)
+logger = get_extension_logger(__name__)
 
 
 class CharacterAsset(AddGenericReprMixin, models.Model):
@@ -402,7 +400,7 @@ class CharacterContract(EveEntityIdsMixin, AddGenericReprMixin, models.Model):
 
     @property
     def hours_issued_2_completed(self) -> Optional[float]:
-        """Return amount of hours between issues and completed.
+        """Return amount of hours between issued and completed.
         Or return None if still pending.
         """
         if not self.date_completed:

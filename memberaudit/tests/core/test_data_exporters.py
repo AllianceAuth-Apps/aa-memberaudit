@@ -6,12 +6,16 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 from zipfile import ZipFile
 
-from pytz import utc
-
-from django.test import TestCase
 from django.utils.timezone import now
+from eveuniverse.tests.testdata.factories_2 import EveEntityCharacterFactory
 
-from allianceauth.eveonline.models import EveCharacter
+from app_utils.testdata_factories import (
+    EveAllianceInfoFactory,
+    EveCharacterFactory,
+    EveCorporationInfoFactory,
+    UserMainFactory,
+)
+from app_utils.testing import NoSocketsTestCase
 
 from memberaudit.core.data_exporters import (
     ContractExporter,
@@ -23,32 +27,28 @@ from memberaudit.core.data_exporters import (
     topics_and_export_files,
 )
 from memberaudit.models import CharacterWalletJournalEntry
-from memberaudit.tests.testdata.factories import (
-    create_character,
-    create_character_contract,
-    create_character_contract_item,
-    create_character_wallet_journal_entry,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterContractItemExchangeFactory,
+    CharacterContractItemFactory,
+    CharacterFactory,
+    CharacterOrphanFactory,
+    CharacterWalletJournalEntryFactory,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import create_memberaudit_character
 
 MODULE_PATH = "memberaudit.core.data_exporters"
 
 
-class TestExportTopicToArchive(TestCase):
+class TestExportTopicToArchive(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        cls.character = create_memberaudit_character(1001)
+        cls.character = CharacterFactory()
 
     def test_should_export_contract(self):
         with TemporaryDirectory() as tmpdirname:
             # given
-            contract = create_character_contract(character=self.character)
-            create_character_contract_item(contract=contract)
+            CharacterContractItemExchangeFactory(character=self.character)
+
             # when
             result = export_topic_to_archive(
                 topic="contract", destination_folder=tmpdirname
@@ -61,8 +61,8 @@ class TestExportTopicToArchive(TestCase):
     def test_should_export_contract_item(self):
         with TemporaryDirectory() as tmpdirname:
             # given
-            contract = create_character_contract(character=self.character)
-            create_character_contract_item(contract=contract)
+            CharacterContractItemExchangeFactory(character=self.character)
+
             # when
             result = export_topic_to_archive(
                 topic="contract-item", destination_folder=tmpdirname
@@ -75,7 +75,8 @@ class TestExportTopicToArchive(TestCase):
     def test_should_export_wallet_journal(self):
         with TemporaryDirectory() as tmpdirname:
             # given
-            create_character_wallet_journal_entry(character=self.character)
+            CharacterWalletJournalEntryFactory(character=self.character)
+
             # when
             result = export_topic_to_archive(
                 topic="wallet-journal", destination_folder=tmpdirname
@@ -95,7 +96,7 @@ class TestExportTopicToArchive(TestCase):
             self.assertEqual("", result)
 
 
-class TestZipFile(TestCase):
+class TestZipFile(NoSocketsTestCase):
     def test_should_zip_file_into_archive(self):
         with TemporaryDirectory() as tmpdirname_1, TemporaryDirectory() as tmpdirname_2:
             # given
@@ -123,16 +124,22 @@ class InvalidTopicExporter(NotTopicExporter):
     topic = "invalid_topic"
 
 
-class TestDataExporter(TestCase):
+class TestDataExporter(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        cls.character_1001 = create_memberaudit_character(1001)
-        cls.character_1121 = create_character(
-            EveCharacter.objects.get(character_id=1121)
-        )  # orphaned character
+        cls.character = CharacterFactory(
+            user=UserMainFactory(
+                main_character__character=EveCharacterFactory(
+                    character_name="Bruce Wayne",
+                    corporation=EveCorporationInfoFactory(
+                        corporation_name="Wayne Technologies",
+                        alliance=EveAllianceInfoFactory(alliance_ticker="WYN"),
+                    ),
+                ),
+            )
+        )
+        cls.orphan = CharacterOrphanFactory()
 
     def test_should_create_exporters(self):
         # given
@@ -172,25 +179,27 @@ class TestDataExporter(TestCase):
 
     def test_should_show_count(self):
         # given
-        create_character_wallet_journal_entry(character=self.character_1001)
+        CharacterWalletJournalEntryFactory(character=self.character)
         exporter = DataExporter.create_exporter("wallet-journal")
         # when/then
         self.assertEqual(exporter.count(), 1)
 
     def test_should_have_data(self):
         # given
-        create_character_wallet_journal_entry(character=self.character_1001)
+        CharacterWalletJournalEntryFactory(character=self.character)
         exporter = DataExporter.create_exporter("wallet-journal")
         # when/then
         self.assertTrue(exporter.has_data())
 
     def test_should_create_csv_file_for_contract(self):
         # given
-        create_character_contract(character=self.character_1001, contract_id=42)
-        create_character_contract(character=self.character_1121, contract_id=69)
+        CharacterContractItemExchangeFactory(character=self.character, contract_id=42)
+        CharacterContractItemExchangeFactory(character=self.orphan, contract_id=69)
         exporter = DataExporter.create_exporter("contract")
+
         # when
         data = self._write_to_file(exporter)
+
         # then
         self.assertEqual(len(data), 2)
         obj = data["Bruce Wayne"]
@@ -201,8 +210,12 @@ class TestDataExporter(TestCase):
 
     def test_should_create_csv_file_for_contract_item(self):
         # given
-        contract = create_character_contract(character=self.character_1001)
-        create_character_contract_item(contract=contract, record_id=12)
+        contract = CharacterContractItemExchangeFactory(
+            character=self.character, items=False
+        )
+        CharacterContractItemFactory(
+            contract=contract, record_id=12, quantity=1, eve_type__name="Merlin"
+        )
         exporter = DataExporter.create_exporter("contract-item")
         # when
         data = self._write_to_file(exporter, "record id")
@@ -217,37 +230,40 @@ class TestDataExporter(TestCase):
 
     def test_should_create_csv_file_for_wallet_journal(self):
         # given
-        create_character_wallet_journal_entry(
+        entity_1001 = EveEntityCharacterFactory(id=1001, name="Bruce Wayne")
+        entity_1002 = EveEntityCharacterFactory(id=1002, name="Clark Kent")
+        entity_1101 = EveEntityCharacterFactory(id=1101, name="Lex Luther")
+        CharacterWalletJournalEntryFactory(
             amount=1000000.0,
             balance=20000000.0,
-            character=self.character_1001,
+            character=self.character,
             context_id=1002,
             context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
-            date=dt.datetime(2021, 12, 1, 12, 30, tzinfo=utc),
+            date=dt.datetime(2021, 12, 1, 12, 30, tzinfo=dt.timezone.utc),
             description="test description",
             entry_id=42,
-            first_party_id=1001,
+            first_party=entity_1001,
             ref_type="player_donation",
             reason="test reason",
-            second_party_id=1002,
+            second_party=entity_1002,
             tax=0.05,
-            tax_receiver_id=1101,
+            tax_receiver=entity_1101,
         )
-        create_character_wallet_journal_entry(
+        CharacterWalletJournalEntryFactory(
             amount=1000000.0,
             balance=20000000.0,
-            character=self.character_1121,
+            character=self.orphan,
             context_id=1002,
             context_id_type=CharacterWalletJournalEntry.CONTEXT_ID_TYPE_CHARACTER_ID,
-            date=dt.datetime(2021, 12, 1, 12, 30, tzinfo=utc),
+            date=dt.datetime(2021, 12, 1, 12, 30, tzinfo=dt.timezone.utc),
             description="test description",
             entry_id=69,
             first_party_id=1001,
             ref_type="player_donation",
             reason="test reason",
-            second_party_id=1002,
+            second_party=entity_1002,
             tax=0.05,
-            tax_receiver_id=1101,
+            tax_receiver=entity_1101,
         )
         exporter = DataExporter.create_exporter("wallet-journal")
         # when
@@ -280,20 +296,17 @@ class TestDataExporter(TestCase):
                 return {row[key]: row for row in reader}
 
 
-class TestTopicsAndExportFiles(TestCase):
+class TestTopicsAndExportFiles(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        cls.character = create_memberaudit_character(1001)
+        cls.character = CharacterFactory()
 
     @patch(MODULE_PATH + ".MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE", 60)
     def test_should_return_correct_list(self):
         with TemporaryDirectory() as tmpdirname:
             # given
-            contract = create_character_contract(character=self.character)
-            create_character_contract_item(contract=contract)
+            contract = CharacterContractItemExchangeFactory(character=self.character)
             contract_item_file = Path(tmpdirname) / "memberaudit_contract-item.zip"
             contract_item_file.touch()
             new_ts = (now() - dt.timedelta(minutes=10)).timestamp()
@@ -305,9 +318,11 @@ class TestTopicsAndExportFiles(TestCase):
             os.utime(contract_file, (new_ts, new_ts))
             wrong_file = Path(tmpdirname) / "memberaudit.zip"
             wrong_file.touch()
+
             # when
             result = topics_and_export_files(tmpdirname)
             result_2 = {obj["value"]: obj for obj in result}
+
             # then
             self.assertListEqual(
                 list(result_2.keys()), ["contract", "contract-item", "wallet-journal"]

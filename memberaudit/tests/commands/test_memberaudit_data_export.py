@@ -6,30 +6,18 @@ from django.core.management import call_command
 
 from app_utils.testing import NoSocketsTestCase
 
-from memberaudit.tests.testdata.factories import (
-    create_character_contract,
-    create_character_contract_item,
+from memberaudit.tests.testdata.factories_2 import (
+    CharacterContractItemExchangeFactory,
+    CharacterFactory,
 )
-from memberaudit.tests.testdata.load_entities import load_entities
-from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
-from memberaudit.tests.utils import create_memberaudit_character
-
-DATA_EXPORTERS_PATH = "memberaudit.core.data_exporters"
 
 
 class TestDataExport(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        load_entities()
-        load_eveuniverse()
-        cls.character_1001 = create_memberaudit_character(1001)
-
     def test_should_export_contract_item(self):
         with tempfile.TemporaryDirectory() as tmp_dir_name:
             # given
-            contract = create_character_contract(character=self.character_1001)
-            create_character_contract_item(contract=contract, record_id=12)
+            character = CharacterFactory()
+            CharacterContractItemExchangeFactory(character=character)
             out = StringIO()
             # when
             call_command(
