@@ -30,12 +30,12 @@ classifiers = [
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 dependencies = [
-    "allianceauth-app-utils>=1.31.0",
+    "allianceauth-app-utils>=1.31",
     "allianceauth>=4,<6",
     "django-esi>=8,<10",
     "bleach",
     "dj-datatables-view",
-    "django-eveuniverse>=2.0.0a7",
+    "django-eveuniverse>=2",
     "humanize>=4.7.0",
     "unidecode",
     "tqdm>=4.66",
