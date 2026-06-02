@@ -307,7 +307,7 @@ class TestUpdateCharacterMails(TestCaseWithClearCache):
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
-@override_settings(CELERY_ALWAYS_EAGER=True)
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".Location.objects.structure_update_or_create_esi", spec=True)
 class TestUpdateStructureEsi(NoSocketsTestCase):
     @classmethod
@@ -317,11 +317,11 @@ class TestUpdateStructureEsi(NoSocketsTestCase):
 
     def test_should_complete_normally_when_no_issue(self, _):
         token = TokenFactory2()
-        tasks.update_structure_esi(id=1_000_000_000_001, token_pk=token.pk)
+        tasks.update_structure_esi.delay(id=1_000_000_000_001, token_pk=token.pk)
 
     def test_should_raise_exception_when_token_is_invalid(self, _):
         with self.assertRaises(Token.DoesNotExist):
-            tasks.update_structure_esi(
+            tasks.update_structure_esi.delay(
                 id=1_000_000_000_001, token_pk=generate_invalid_pk(Token)
             )
 
@@ -335,7 +335,7 @@ class TestUpdateStructureEsi(NoSocketsTestCase):
 
 
 @patch("celery.app.task.Context.called_directly", False)  # make retry work with eager
-@override_settings(CELERY_ALWAYS_EAGER=True)
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".MailEntity.objects.update_or_create_esi", spec=True)
 class TestUpdateMailEntityEsi(NoSocketsTestCase):
     @classmethod
@@ -344,7 +344,7 @@ class TestUpdateMailEntityEsi(NoSocketsTestCase):
         cache.clear()
 
     def test_should_complete_normally_when_no_issue(self, _):
-        tasks.update_mail_entity_esi(1001)
+        tasks.update_mail_entity_esi.delay(1001)
 
     def test_should_raise_other_http_errors(self, mock_update_or_create_esi):
         mock_update_or_create_esi.side_effect = make_http_client_error(
@@ -478,6 +478,7 @@ class TestUpdateAllCharacters(NoSocketsTestCase):
         self.assertEqual(kwargs["kwargs"]["character_pk"], character.pk)
 
 
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".EveEntity.objects.update_from_esi_by_id", spec=True)
 class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
     def test_should_not_attempt_to_update_when_no_unresolved_entities(
@@ -486,7 +487,7 @@ class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
         # given
         EveEntityFactory(id=42, name="alpha")
         # when
-        tasks.update_unresolved_eve_entities()
+        tasks.update_unresolved_eve_entities.delay()
         # then
         self.assertFalse(mock_update_from_esi_by_id.called)
 
@@ -494,7 +495,7 @@ class TestUpdateUnresolvedEveEntities(NoSocketsTestCase):
         # given
         EveEntity.objects.create(id=42)
         # when
-        tasks.update_unresolved_eve_entities()
+        tasks.update_unresolved_eve_entities.delay()
         # then
         self.assertTrue(mock_update_from_esi_by_id.called)
         args, _ = mock_update_from_esi_by_id.call_args
@@ -512,8 +513,9 @@ class TestCheckCharacterConsistency(NoSocketsTestCase):
         self.assertTrue(mock_check_character_consistency.called)
 
 
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 class TestUpdateMarketPrices(NoSocketsTestCase):
     @patch(TASKS_PATH + ".EveMarketPrice.objects.update_from_esi", spec=True)
     def test_update_market_prices(self, mock_update_from_esi):
-        tasks.update_market_prices()
+        tasks.update_market_prices.delay()
         self.assertTrue(mock_update_from_esi.called)

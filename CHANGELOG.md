@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [5.0.1] - 2026-06-02
+
+### Changed
+
+- Updated ESI spec to latest version for the same compatibility date
+
+### Fixed
+
+- ESI rate limit decorator not configured correctly
+
 ## [5.0.0] - 2026-05-21
 
 This release adds support for Alliance Auth V5 and contains breaking changes.
