@@ -319,7 +319,7 @@ class TestUpdateCharacterContacts(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_contacts(character.pk, True)
+        tasks.update_character_contacts.delay(character.pk, True)
 
         # then
         status: CharacterUpdateStatus = character.update_status_set.get(
@@ -365,7 +365,9 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
+        tasks.update_character_contracts.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         status: CharacterUpdateStatus = character.update_status_set.get(
@@ -422,7 +424,9 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
+        tasks.update_character_contracts.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertEqual(character.contracts.count(), 1)
@@ -498,7 +502,9 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         # Test would break when it tries to fetch items for contract 1.
 
         # when
-        tasks.update_character_contracts(character_pk=character.pk, force_update=False)
+        tasks.update_character_contracts.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         got = extract(character.contracts, "contract_id")
@@ -506,6 +512,7 @@ class TestUpdateCharacterContracts(TestCaseWithClearCache):
         self.assertSetEqual(got, want)
 
 
+@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
 @patch(TASKS_PATH + ".Character.update_implants")
 class TestUpdateCharacterSection(NoSocketsTestCase):
     def test_should_log_success_and_updated_when_update_succeeded(
@@ -516,7 +523,9 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         character = CharacterFactory()
 
         # when
-        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+        tasks.update_character_implants.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertTrue(mock_update_implants.called)
@@ -538,7 +547,7 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
 
         # when
         with self.assertRaises(RuntimeError):
-            tasks.update_character_implants(
+            tasks.update_character_implants.delay(
                 character_pk=character.pk, force_update=False
             )
 
@@ -569,7 +578,9 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         )
 
         # when
-        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+        tasks.update_character_implants.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertTrue(mock_update_implants.called)
@@ -588,7 +599,9 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         character = CharacterFactory()
 
         # when
-        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+        tasks.update_character_implants.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertTrue(mock_update_implants.called)
@@ -618,7 +631,9 @@ class TestUpdateCharacterSection(NoSocketsTestCase):
         )
 
         # when
-        tasks.update_character_implants(character_pk=character.pk, force_update=False)
+        tasks.update_character_implants.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertTrue(mock_update_implants.called)
