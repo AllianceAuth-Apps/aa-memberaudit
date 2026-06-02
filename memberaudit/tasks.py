@@ -62,10 +62,6 @@ TASK_DEFAULTS_ONCE = {**TASK_DEFAULTS, **{"base": QueueOnce}}
 TASK_DEFAULTS_BIND_ONCE = {**TASK_DEFAULTS, **{"bind": True, "base": QueueOnce}}
 """Default params for tasks that need access to self and run once only."""
 
-TASK_DEFAULTS_ONCE_CHARACTER = {
-    **TASK_DEFAULTS_ONCE,
-    **{"once": {"keys": ["character_pk"], "graceful": True}},
-}
 TASK_DEFAULTS_BIND_ONCE_CHARACTER = {
     **TASK_DEFAULTS_BIND_ONCE,
     **{"once": {"keys": ["character_pk"], "graceful": True}},
@@ -211,9 +207,9 @@ def update_character(
 # Updating sections with simple update logic
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_attributes(character_pk: int, force_update: bool) -> None:
+def update_character_attributes(_self, character_pk: int, force_update: bool) -> None:
     """Update attributes for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -222,9 +218,11 @@ def update_character_attributes(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_character_details(character_pk: int, force_update: bool) -> None:
+def update_character_character_details(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update character_details for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -233,9 +231,11 @@ def update_character_character_details(character_pk: int, force_update: bool) ->
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_corporation_history(character_pk: int, force_update: bool) -> None:
+def update_character_corporation_history(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update corporation_history for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -244,9 +244,9 @@ def update_character_corporation_history(character_pk: int, force_update: bool) 
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
+def update_character_fw_stats(_self, character_pk: int, force_update: bool) -> None:
     """Update fw_stats for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -255,9 +255,9 @@ def update_character_fw_stats(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_implants(character_pk: int, force_update: bool) -> None:
+def update_character_implants(_self, character_pk: int, force_update: bool) -> None:
     """Update implants for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -266,9 +266,9 @@ def update_character_implants(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
+def update_character_jump_clones(_self, character_pk: int, force_update: bool) -> None:
     """Update jump_clones for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -277,9 +277,9 @@ def update_character_jump_clones(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_location(character_pk: int, force_update: bool) -> None:
+def update_character_location(_self, character_pk: int, force_update: bool) -> None:
     """Update location for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -288,9 +288,9 @@ def update_character_location(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_loyalty(character_pk: int, force_update: bool) -> None:
+def update_character_loyalty(_self, character_pk: int, force_update: bool) -> None:
     """Update loyalty for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -299,9 +299,11 @@ def update_character_loyalty(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_mining_ledger(character_pk: int, force_update: bool) -> None:
+def update_character_mining_ledger(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update mining_ledger for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -310,9 +312,11 @@ def update_character_mining_ledger(character_pk: int, force_update: bool) -> Non
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_online_status(character_pk: int, force_update: bool) -> None:
+def update_character_online_status(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update online_status for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -321,9 +325,9 @@ def update_character_online_status(character_pk: int, force_update: bool) -> Non
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_planets(character_pk: int, force_update: bool) -> None:
+def update_character_planets(_self, character_pk: int, force_update: bool) -> None:
     """Update planets for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -332,9 +336,9 @@ def update_character_planets(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_roles(character_pk: int, force_update: bool) -> None:
+def update_character_roles(_self, character_pk: int, force_update: bool) -> None:
     """Update roles for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -343,9 +347,9 @@ def update_character_roles(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_ship(character_pk: int, force_update: bool) -> None:
+def update_character_ship(_self, character_pk: int, force_update: bool) -> None:
     """Update ship for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -354,9 +358,9 @@ def update_character_ship(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
+def update_character_skill_queue(_self, character_pk: int, force_update: bool) -> None:
     """Update skill_queue for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -365,9 +369,9 @@ def update_character_skill_queue(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
+def update_character_skill_sets(_self, character_pk: int, force_update: bool) -> None:
     """Update skill_sets for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -376,9 +380,9 @@ def update_character_skill_sets(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_skills(character_pk: int, force_update: bool) -> None:
+def update_character_skills(_self, character_pk: int, force_update: bool) -> None:
     """Update skills for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -387,9 +391,9 @@ def update_character_skills(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_standings(character_pk: int, force_update: bool) -> None:
+def update_character_standings(_self, character_pk: int, force_update: bool) -> None:
     """Update standings for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -398,9 +402,9 @@ def update_character_standings(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_titles(character_pk: int, force_update: bool) -> None:
+def update_character_titles(_self, character_pk: int, force_update: bool) -> None:
     """Update titles for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -409,9 +413,11 @@ def update_character_titles(character_pk: int, force_update: bool) -> None:
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_wallet_balance(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_balance(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_balance for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -420,9 +426,11 @@ def update_character_wallet_balance(character_pk: int, force_update: bool) -> No
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_wallet_journal(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_journal(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_journal for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -431,9 +439,11 @@ def update_character_wallet_journal(character_pk: int, force_update: bool) -> No
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_wallet_transactions(character_pk: int, force_update: bool) -> None:
+def update_character_wallet_transactions(
+    _self, character_pk: int, force_update: bool
+) -> None:
     """Update wallet_transactions for a character from ESI."""
     _update_character_section(
         character_pk=character_pk,
@@ -469,9 +479,9 @@ def _update_character_section(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @rate_limit_retry_task
-def update_unresolved_eve_entities() -> None:
+def update_unresolved_eve_entities(_self) -> None:
     """Bulk resolved all unresolved EveEntity objects in database.
 
     This task is used by other apps. Do not remove!
@@ -506,10 +516,10 @@ def update_character_assets(self: Task, character_pk: int, force_update: bool) -
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
 def assets_build_list_from_esi(
-    character_pk: int, force_update: bool = False
+    _self, character_pk: int, force_update: bool = False
 ) -> Optional[dict]:
     """Retrieve asset list for a character from ESI and return it
     or return None if asset list is unchanged.
@@ -538,10 +548,10 @@ def assets_build_list_from_esi(
     return asset_list
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
 def assets_preload_objects(
-    asset_list: Optional[list], character_pk: int
+    _self, asset_list: Optional[list], character_pk: int
 ) -> Optional[list]:
     """Preload asset objects for a character from ESI."""
     if asset_list is None:
@@ -762,10 +772,10 @@ def update_character_mails(self: Task, character_pk: int, force_update: bool) ->
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
 def update_character_mailing_lists(
-    character_pk: int, force_update: bool = False
+    _self, character_pk: int, force_update: bool = False
 ) -> None:
     """Update mailing list for a character."""
     character: Character = Character.objects.get_cached(
@@ -778,9 +788,11 @@ def update_character_mailing_lists(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_mail_labels(character_pk: int, force_update: bool = False) -> None:
+def update_character_mail_labels(
+    _self, character_pk: int, force_update: bool = False
+) -> None:
     """Update mail labels for a character."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -877,9 +889,10 @@ def update_character_contacts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
+@rate_limit_retry_task
 def update_character_contact_labels(
-    character_pk: int, force_update: bool = False
+    _self, character_pk: int, force_update: bool = False
 ) -> None:
     """Update contact labels for a character from ESI."""
     character: Character = Character.objects.get_cached(
@@ -892,9 +905,11 @@ def update_character_contact_labels(
     )
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_contacts_2(character_pk: int, force_update: bool = False) -> None:
+def update_character_contacts_2(
+    _self, character_pk: int, force_update: bool = False
+) -> None:
     """Update contacts for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -933,9 +948,11 @@ def update_character_contracts(
     ).delay()
 
 
-@shared_task(**TASK_DEFAULTS_ONCE_CHARACTER)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE_CHARACTER)
 @rate_limit_retry_task
-def update_character_contract_headers(character_pk: int, force_update: bool = False):
+def update_character_contract_headers(
+    _self, character_pk: int, force_update: bool = False
+):
     """Update contract headers for a character from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -983,12 +1000,12 @@ def update_character_contracts_items(self: Task, character_pk: int):
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_ONCE,
+        **TASK_DEFAULTS_BIND_ONCE,
         **{"once": {"keys": ["character_pk", "contract_pk"], "graceful": True}},
     }
 )
 @rate_limit_retry_task
-def update_contract_items_esi(character_pk: int, contract_pk: int):
+def update_contract_items_esi(_self, character_pk: int, contract_pk: int):
     """Update the items of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -1026,12 +1043,12 @@ def update_character_contracts_bids(self: Task, character_pk: int):
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_ONCE,
+        **TASK_DEFAULTS_BIND_ONCE,
         **{"once": {"keys": ["character_pk", "contract_pk"], "graceful": True}},
     }
 )
 @rate_limit_retry_task
-def update_contract_bids_esi(character_pk: int, contract_pk: int):
+def update_contract_bids_esi(_self, character_pk: int, contract_pk: int):
     """Update bids of a character contract from ESI."""
     character: Character = Character.objects.get_cached(
         pk=character_pk, timeout=MEMBERAUDIT_TASKS_OBJECT_CACHE_TIMEOUT
@@ -1043,9 +1060,9 @@ def update_contract_bids_esi(character_pk: int, contract_pk: int):
 # Tasks for other objects
 
 
-@shared_task(**TASK_DEFAULTS_ONCE)
+@shared_task(**TASK_DEFAULTS_BIND_ONCE)
 @rate_limit_retry_task
-def update_market_prices():
+def update_market_prices(_self):
     """Update market prices from ESI."""
     EveMarketPrice.objects.update_from_esi(
         minutes_until_stale=MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT
@@ -1054,7 +1071,7 @@ def update_market_prices():
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_ONCE,
+        **TASK_DEFAULTS_BIND_ONCE,
         **{
             "once": {"keys": ["id"], "graceful": True},
             "max_retries": MAX_RETRIES_STRUCTURES,
@@ -1062,7 +1079,7 @@ def update_market_prices():
     }
 )
 @rate_limit_retry_task
-def update_structure_esi(id: int, token_pk: int):
+def update_structure_esi(_self, id: int, token_pk: int):
     """Update a structure object from ESI.
 
     Will retry when ESI error limit is reached and when ESI is offline.
@@ -1073,7 +1090,7 @@ def update_structure_esi(id: int, token_pk: int):
 
 @shared_task(
     **{
-        **TASK_DEFAULTS_ONCE,
+        **TASK_DEFAULTS_BIND_ONCE,
         **{
             "once": {"keys": ["id"], "graceful": True},
             "max_retries": MAX_RETRIES_MAIL_ENTITIES,
@@ -1081,7 +1098,7 @@ def update_structure_esi(id: int, token_pk: int):
     }
 )
 @rate_limit_retry_task
-def update_mail_entity_esi(id: int, category: Optional[str] = None):
+def update_mail_entity_esi(_self, id: int, category: Optional[str] = None):
     """Update a mail entity object from ESI.
 
     Will retry when ESI error limit is reached and when ESI is offline.

@@ -287,7 +287,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         self.assertSetEqual(
@@ -378,7 +380,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         got = extract(character.assets, "item_id")
@@ -421,7 +425,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         item_2: CharacterAsset = character.assets.get(item_id=item_1.item_id)
@@ -474,7 +480,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         got = extract(character.assets, "item_id")
@@ -511,7 +519,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         )
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=False)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=False
+        )
 
         # then
         status: CharacterUpdateStatus = character.update_status_set.get(
@@ -559,7 +569,7 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         item.save()
 
         # when
-        tasks.update_character_assets(character.pk, force_update=False)
+        tasks.update_character_assets.delay(character.pk, force_update=False)
 
         # then
         item.refresh_from_db()
@@ -611,7 +621,9 @@ class TestUpdateCharacterAssets(TestCaseWithClearCache):
         item_1.save()
 
         # when
-        tasks.update_character_assets(character_pk=character.pk, force_update=True)
+        tasks.update_character_assets.delay(
+            character_pk=character.pk, force_update=True
+        )
 
         # then
         item_2: CharacterAsset = character.assets.get(item_id=item_id)
