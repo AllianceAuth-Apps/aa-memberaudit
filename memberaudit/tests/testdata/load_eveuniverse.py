@@ -2,6 +2,8 @@
 
 import json
 
+from typing_extensions import deprecated
+
 from eveuniverse.tools.testdata import load_testdata_from_dict
 
 from . import eveuniverse_test_data_filename
@@ -17,5 +19,6 @@ def _load_eveuniverse_from_file():
 eveuniverse_testdata = _load_eveuniverse_from_file()
 
 
+@deprecated("No longer needed with new test factories")
 def load_eveuniverse():
     load_testdata_from_dict(eveuniverse_testdata)

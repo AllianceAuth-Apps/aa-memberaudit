@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] - yyyy-mm-dd
 
+## [5.0.2] - 2026-06-26
+
+### Changed
+
+- Restored load_entities() test fixtures and marked them as deprecated
+- Deprecated load_eveuniverse() test fixtures
+
 ## [5.0.1] - 2026-06-02
 
 ### Changed
