@@ -29,7 +29,8 @@ from .testdata.factories import create_character
 logger = logging.getLogger(__name__)
 
 
-def _create_user_from_evecharacter_with_access(
+@deprecated("Replaced by `app_utils.testdata_factories.UserMainFactory`")
+def create_user_from_evecharacter_with_access(
     character_id: int, disconnect_signals: bool = True
 ) -> Tuple[User, CharacterOwnership]:
     """Create user with access from an existing eve character and use it as main."""
@@ -56,7 +57,7 @@ def create_memberaudit_character(
     """Create a memberaudit character from an existing auth character
     incl. user and making it the main.
     """
-    _, character_ownership = _create_user_from_evecharacter_with_access(
+    _, character_ownership = create_user_from_evecharacter_with_access(
         character_id, disconnect_signals=disconnect_signals
     )
     return create_character(eve_character=character_ownership.character, **kwargs)
