@@ -38,7 +38,7 @@ def admin_create_skillset_from_fitting(request):
                 msg = _("Skill Set %s has been created") % obj.name
             else:
                 msg = _("Skill Set %s has been updated") % obj.name
-            messages.info(request, format_html(f"{msg}."))
+            messages.info(request, format_html("%s.", msg))
             return redirect("admin:memberaudit_skillset_changelist")
 
     else:
@@ -73,7 +73,7 @@ def admin_create_skillset_from_skill_plan(request):
                 msg = _("Skill Set %s has been created") % obj.name
             else:
                 msg = _("Skill Set %s has been updated") % obj.name
-            messages.info(request, format_html(f"{msg}."))
+            messages.info(request, format_html("%s.", msg))
             return redirect("admin:memberaudit_skillset_changelist")
     else:
         form = ImportSkillPlanForm()

@@ -1,3 +1,4 @@
+from app_utils.testdata_factories import EveCharacterFactory
 from app_utils.testing import NoSocketsTestCase
 
 from .factories_2 import (
@@ -27,6 +28,31 @@ class TestComplianceGroupFactory(NoSocketsTestCase):
 
 
 class TestCharacterFactory(NoSocketsTestCase):
+    def test_can_create_basic(self):
+        character = CharacterFactory()
+        self.assertTrue(character)
+
+    def test_can_create_for_given_user(self):
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user)
+        self.assertEqual(character.user, user)
+        self.assertEqual(character.eve_character, user.profile.main_character)
+
+    def test_can_create_alt_for_given_user(self):
+        user = UserMainBasicAccessFactory()
+        character = CharacterFactory(user=user, is_main=False)
+        self.assertEqual(character.user, user)
+        self.assertNotEqual(character.eve_character, user.profile.main_character)
+
+    def test_can_create_for_given_user_and_eve_character(self):
+        user = UserMainBasicAccessFactory()
+        eve_character = EveCharacterFactory()
+        character = CharacterFactory(
+            user=user, is_main=False, alt_character=eve_character
+        )
+        self.assertEqual(character.user, user)
+        self.assertEqual(character.eve_character, eve_character)
+
     def test_can_create_multiple_characters_for_user(self):
         user = UserMainBasicAccessFactory()
         character_1 = CharacterFactory(user=user)
