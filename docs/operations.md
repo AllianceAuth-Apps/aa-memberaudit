@@ -6,7 +6,7 @@
 
 1. Member Audit is a plugin for Alliance Auth. If you don't have Alliance Auth running already, please install it first before proceeding. (see the official [AA installation guide](https://allianceauth.readthedocs.io/en/latest/installation/auth/allianceauth/) for details)
 
-2. Member Audit needs the app [django-eveuniverse](https://gitlab.com/ErikKalkoken/django-eveuniverse) to function. Please make sure it is installed, before before continuing.
+2. Member Audit needs the app [django-eveuniverse](https://github.com/AllianceAuth-Apps/django-eveuniverse) to function. Please make sure it is installed, before before continuing.
 
 ### Step 1 - Install app
 
@@ -157,16 +157,16 @@ The exception is the basic role, `basic_access`, that every user needs just to a
 
 Name | Description | Type
 -- | -- | --
-`basic_access`| Can access this app and register and view own characters | Feature
-`share_characters`| Can share his characters. Note that others need the <br>`view_shared_characters` permission to see them.  | Feature
-`finder_access`| Can access character finder features for accessing characters<br>from others | Feature
-`reports_access`| Can access reports features for seeing reports and analytics. | Feature
-`characters_access`| Can access characters owned by others. | Feature
-`exports_access`| Can access data exports.<br>Warning: This permission gives access to all data from all<br>characters and does not require any additional scope permissions. | Feature
-`view_shared_characters`| All characters, which have been marked as shared &<br>can access these characters | Feature & Scope
-`view_same_corporation`| All mains - incl. their alts -  of the same corporations<br>the user's main belongs to | Scope
-`view_same_alliance`| All mains - incl. their alts -  of the same alliances<br>the user's main belongs to | Scope
-`view_everything`| All characters registered with Member Audit | Scope
+`basic_access` | Can access this app and register and view own characters | Feature
+`share_characters` | Can share his characters. Note that others need the <br>`view_shared_characters` permission to see them. | Feature
+`finder_access` | Can access character finder features for accessing characters<br>from others | Feature
+`reports_access` | Can access reports features for seeing reports and analytics. | Feature
+`characters_access` | Can access characters owned by others. | Feature
+`exports_access` | Can access data exports.<br>Warning: This permission gives access to all data from all<br>characters and does not require any additional scope permissions. | Feature
+`view_shared_characters` | All characters, which have been marked as shared &<br>can access these characters | Feature & Scope
+`view_same_corporation` | All mains - incl. their alts -  of the same corporations<br>the user's main belongs to | Scope
+`view_same_alliance` | All mains - incl. their alts -  of the same alliances<br>the user's main belongs to | Scope
+`view_everything` | All characters registered with Member Audit | Scope
 `notified_on_character_removal` | Get a notification when someone drops a character. | Feature
 `view_skill_sets` | Can view skill set for a character. | Scope
 
@@ -184,7 +184,7 @@ Normal user | Can use this app and register and access own characters | `basic_a
 Recruiter | Can access shared characters | `basic_access`<br>`finder_access`<br>`view_shared_characters`
 Corporation Leadership | Can access reports for his corporation members<br>(but can not access the characters) | `basic_access`<br>`reports_access`<br>`view_same_corporation`
 Corp Leadership & Recruiter | Can access shared characters | `basic_access`<br>`finder_access`<br>`view_shared_characters`<br>`reports_access`<br>`view_same_corporation`
-Alliance Auditor | Can search for and access all characters of his alliance  | `basic_access`<br>`finder_access`<br>`characters_access`<br>`view_same_alliance`<br>`notified_on_character_removal`
+Alliance Auditor | Can search for and access all characters of his alliance | `basic_access`<br>`finder_access`<br>`characters_access`<br>`view_same_alliance`<br>`notified_on_character_removal`
 
 ```{note}
 Naturally, superusers will have access to everything, without requiring permissions to be assigned.

@@ -1,6 +1,11 @@
+# This file expects an .env file to exist that defines MANAGE_PY_PATH
+# For example MANAGE_PY_PATH=/home/allianceserver/venv/myauth/manage.py
+
+-include .env
+export
+
 appname = aa-memberaudit
 package = memberaudit
-myauth_path = ../myauth/manage.py
 
 help:
 	@echo "Makefile for $(appname)"
@@ -42,24 +47,10 @@ compilemessages:
 		-l zh_Hans
 
 coverage:
-#	coverage run --concurrency=multiprocessing $(myauth_path) test $(package).tests --keepdb --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --timing --parallel && coverage combine && coverage html && coverage report -m
- 	coverage run $(myauth_path) test $(package).tests -v 2 --keepdb --failfast --timing && coverage html && coverage report -m
+	coverage run $(MANAGE_PY_PATH) test $(package) --keepdb --failfast && coverage html && coverage report -m
 
-coverage_single:
-	coverage run $(myauth_path) test $(package).tests --keepdb --exclude-tag=breaks_with_aa4 --exclude-tag=breaks_with_py311 --exclude-tag=breaks_with_older_mariadb --timing && coverage html && coverage report -m
-
-test:
-	# runs a full test incl. re-creating of the test DB
-	python $(myauth_path) test $(package).tests --failfast --timing --parallel -v 2
-
-check_complexity:
-	flake8 $(package) --max-complexity=10
-
-flake8:
-	flake8 $(package) --count
+pylint:
+	pylint --load-plugins pylint_django $(package)
 
 graph_models:
-	python $(myauth_path) graph_models $(package) --arrow-shape normal -o $(appname)_models.png
-
-create_testdata:
-	python $(myauth_path) test $(package).tests.testdata.create_eveuniverse --keepdb -v 2
+	python $(MANAGE_PY_PATH) graph_models $(package) --arrow-shape normal -o $(appname)_models.png
