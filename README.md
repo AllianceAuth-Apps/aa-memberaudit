@@ -70,11 +70,14 @@ Member Audit adds the following features to Auth:
 - Data can be exported for processing it with third party apps like Google Sheets (currently wallet journal only)
 - Language support for Chinese :cn:, English :us:, German :de:, Russian :ru: and Ukrainian 🇺🇦
 
+> [!TIP]
+> If you want to try out Member Audit you can login to our [test server](https://auth.kalkoken.net/dashboard/). You account will be listed as guest and only let you use basic features. If you want access to advanced feature like character finder please contact us on Discord.
+
 A few noteworthy community apps that are build on Member Audit:
 
-- [aa-ma-securegroups](https://apps.allianceauth.org/apps/detail/aa-ma-securegroups): Secure Groups integration with Member Audit
-- [Inactivity](https://apps.allianceauth.org/apps/detail/aa-inactivity): Activity monitoring app
-- [Mail Relay](https://apps.allianceauth.org/apps/detail/aa-mailrelay): An app for relaying Eve mails to Discord
+- [aa-memberaudit-securegroups](https://github.com/AllianceAuth-Apps/aa-memberaudit-securegroups): Secure Groups integration with Member Audit
+- [Inactivity](https://github.com/AllianceAuth-Apps/aa-inactivity): Activity monitoring app
+- [Mail Relay](https://github.com/AllianceAuth-Apps/aa-mailrelay): An app for relaying Eve mails to Discord
 
 For a full list of community apps that use Member Audit please check out this web site: [Alliance Auth Apps](https://apps.allianceauth.org/apps/detail/aa-memberaudit)
 
