@@ -57,7 +57,7 @@ logger = get_extension_logger(__name__)
 ICON_SIZE_64 = 64
 CHARACTER_VIEWER_DEFAULT_TAB = "mails"
 
-ICON_FAILED = "fas fa-times boolean-icon-false"
+ICON_FAILED = "fas fa-times boolean-icon-false text-danger"
 ICON_PARTIAL = "fas fa-check text-warning"
 ICON_FULL = "fas fa-check-double text-success"
 ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
