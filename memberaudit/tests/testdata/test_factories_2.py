@@ -5,6 +5,8 @@ from .factories_2 import (
     CharacterFactory,
     ComplianceGroupFactory,
     GroupFactory,
+    SkillSetFactory,
+    SkillSetGroupFactory,
     StateFactory,
     UserMainBasicAccessFactory,
 )
@@ -58,3 +60,16 @@ class TestCharacterFactory(NoSocketsTestCase):
         character_1 = CharacterFactory(user=user)
         character_2 = CharacterFactory(user=user, is_main=False)
         self.assertNotEqual(character_1.eve_character, character_2.eve_character)
+
+
+class TestSkillSetFactory(NoSocketsTestCase):
+    def test_can_create(self):
+        sg = SkillSetGroupFactory()
+        ss = SkillSetFactory(groups=[sg])
+        self.assertTrue(ss)
+
+
+class TestSkillSetGroupFactory(NoSocketsTestCase):
+    def test_can_create(self):
+        sg = SkillSetGroupFactory()
+        self.assertTrue(sg)

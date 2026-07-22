@@ -8,11 +8,11 @@ from memberaudit.tests.testdata.factories import (
     create_skill,
     create_skill_plan,
 )
-from memberaudit.tests.testdata.factories_2 import SkillSetGroupFactory
+from memberaudit.tests.testdata.factories_2 import SkillSetFactory, SkillSetGroupFactory
 from memberaudit.tests.testdata.load_eveuniverse import load_eveuniverse
 
 
-class TestSkillSetManager(NoSocketsTestCase):
+class TestSkillSetManager_UpdateOrCreateFromFitting(NoSocketsTestCase):
     @classmethod
     def setUpClass(cls):
         super().setUpClass()
@@ -57,6 +57,14 @@ class TestSkillSetManager(NoSocketsTestCase):
         # then
         self.assertTrue(created)
         self.assertIn(skill_set, skill_set_group.skill_sets.all())
+
+
+class TestSkillSetManager_UpdateOrCreateFromSkillPlan(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        load_eveuniverse()
+        cls.fitting = create_fitting(name="My fitting")
 
     def test_should_create_new_skill_set_from_skill_plan(self):
         # given
@@ -110,3 +118,31 @@ class TestSkillSetManager(NoSocketsTestCase):
         # then
         self.assertTrue(created)
         self.assertIn(skill_set, skill_set_group.skill_sets.all())
+
+
+class TestSkillSetManagerCompileGroupsMap(NoSocketsTestCase):
+    def test_should_return_compiled_map(self):
+        # given
+        group_1 = SkillSetGroupFactory()
+        group_2 = SkillSetGroupFactory()
+        ss_1 = SkillSetFactory(groups=[group_1, group_2])
+        ss_2 = SkillSetFactory(groups=[group_1])
+        ss_3 = SkillSetFactory()
+
+        # when
+        got: dict = SkillSet.objects.compile_groups_map()
+
+        # then
+        want = {
+            0: {"group": None, "skill_sets": [ss_3]},
+            group_1.pk: {"group": group_1, "skill_sets": [ss_1, ss_2]},
+            group_2.pk: {"group": group_2, "skill_sets": [ss_1]},
+        }
+        self.assertCountEqual(got.keys(), want.keys())
+        self.assertCountEqual(got[0]["skill_sets"], want[0]["skill_sets"])
+        self.assertCountEqual(
+            got[group_2.pk]["skill_sets"], want[group_2.pk]["skill_sets"]
+        )
+        self.assertCountEqual(
+            got[group_1.pk]["skill_sets"], want[group_1.pk]["skill_sets"]
+        )

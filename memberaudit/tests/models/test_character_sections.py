@@ -174,12 +174,11 @@ class TestCharacterSkillQueueEntry(NoSocketsTestCase):
             ),
         ]
         for i, tc in enumerate(cases, 1):
-            with self.subTest("is active", num=i):
-                sqe = CharacterSkillqueueEntryFactory(
-                    start_date=tc.start_date, finish_date=tc.finish_date
-                )
-                got = sqe.is_active()
-                self.assertIs(tc.want, got)
+            sqe = CharacterSkillqueueEntryFactory(
+                start_date=tc.start_date, finish_date=tc.finish_date
+            )
+            got = sqe.is_active()
+            self.assertIs(tc.want, got, msg=f"SubTest-{i}")
 
     def test_can_calculate_completion(self):
         class Case(NamedTuple):
@@ -246,20 +245,19 @@ class TestCharacterSkillQueueEntry(NoSocketsTestCase):
             ),
         ]
         for i, tc in enumerate(cases, 1):
-            with self.subTest("completion percent", num=i):
-                sqe = CharacterSkillqueueEntryFactory(
-                    start_date=tc.start_date,
-                    finish_date=tc.finish_date,
-                    level_start_sp=tc.level_start_sp,
-                    level_end_sp=tc.level_end_sp,
-                    training_start_sp=tc.training_start_sp,
-                )
-                if tc.exception:
-                    with self.assertRaises(tc.exception):
-                        sqe.completion_percent()
-                else:
-                    got = sqe.completion_percent()
-                    self.assertAlmostEqual(tc.want, got, delta=0.01)
+            sqe = CharacterSkillqueueEntryFactory(
+                start_date=tc.start_date,
+                finish_date=tc.finish_date,
+                level_start_sp=tc.level_start_sp,
+                level_end_sp=tc.level_end_sp,
+                training_start_sp=tc.training_start_sp,
+            )
+            if tc.exception:
+                with self.assertRaises(tc.exception, msg=f"SubTest-{i}"):
+                    sqe.completion_percent()
+            else:
+                got = sqe.completion_percent()
+                self.assertAlmostEqual(tc.want, got, delta=0.01, msg=f"SubTest-{i}")
 
     def test_can_calculate_total_duration(self):
         class Case(NamedTuple):
@@ -287,16 +285,17 @@ class TestCharacterSkillQueueEntry(NoSocketsTestCase):
             ),
         ]
         for i, tc in enumerate(cases, 1):
-            with self.subTest("total duration", num=i):
-                sqe = CharacterSkillqueueEntryFactory(
-                    start_date=tc.start_date,
-                    finish_date=tc.finish_date,
+            sqe = CharacterSkillqueueEntryFactory(
+                start_date=tc.start_date,
+                finish_date=tc.finish_date,
+            )
+            got = sqe.total_duration()
+            if tc.want is None:
+                self.assertIsNone(got, msg=f"SubTest-{i}")
+            else:
+                self.assertAlmostEqual(
+                    tc.want, got, delta=dt.timedelta(seconds=5), msg=f"SubTest-{i}"
                 )
-                got = sqe.total_duration()
-                if tc.want is None:
-                    self.assertIsNone(got)
-                else:
-                    self.assertAlmostEqual(tc.want, got, delta=dt.timedelta(seconds=5))
 
     def test_can_calculate_remaining_duration(self):
         class Case(NamedTuple):
@@ -332,19 +331,20 @@ class TestCharacterSkillQueueEntry(NoSocketsTestCase):
             ),
         ]
         for i, tc in enumerate(cases, 1):
-            with self.subTest("total duration", num=i):
-                sqe = CharacterSkillqueueEntryFactory(
-                    start_date=tc.start_date,
-                    finish_date=tc.finish_date,
-                    level_start_sp=tc.level_start_sp,
-                    level_end_sp=tc.level_end_sp,
-                    training_start_sp=tc.training_start_sp,
+            sqe = CharacterSkillqueueEntryFactory(
+                start_date=tc.start_date,
+                finish_date=tc.finish_date,
+                level_start_sp=tc.level_start_sp,
+                level_end_sp=tc.level_end_sp,
+                training_start_sp=tc.training_start_sp,
+            )
+            got = sqe.remaining_duration()
+            if tc.want is None:
+                self.assertIsNone(got)
+            else:
+                self.assertAlmostEqual(
+                    tc.want, got, delta=dt.timedelta(seconds=5), msg=f"SubTest-{i}"
                 )
-                got = sqe.remaining_duration()
-                if tc.want is None:
-                    self.assertIsNone(got)
-                else:
-                    self.assertAlmostEqual(tc.want, got, delta=dt.timedelta(seconds=5))
 
 
 class TestCharacterStanding(NoSocketsTestCase):

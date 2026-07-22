@@ -405,7 +405,7 @@ def character_skill_sets_data(
     """Render data view for character skill sets."""
 
     def _create_row(skill_check):
-        def _skill_set_name_html(skill_set):
+        def _skill_set_name_html(skill_set: SkillSet):
             url = (
                 skill_set.ship_type.icon_url(
                     DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
@@ -511,9 +511,9 @@ def character_skill_sets_data(
     )
     skill_checks = {obj.skill_set_id: obj for obj in skill_checks_qs}
     data = []
-    for group_map in groups_map.values():
-        group = group_map["group"]
-        for skill_set in group_map["skill_sets"]:
+    for gm in groups_map.values():
+        group = gm["group"]
+        for skill_set in gm["skill_sets"]:
             try:
                 skill_check = skill_checks[skill_set.id]
             except KeyError:
@@ -521,6 +521,7 @@ def character_skill_sets_data(
             else:
                 row = _create_row(skill_check)
                 data.append(row)
+
     data = sorted(data, key=lambda k: (k["group"].lower(), k["skill_set_name"].lower()))
     return JsonResponse({"data": data})
 

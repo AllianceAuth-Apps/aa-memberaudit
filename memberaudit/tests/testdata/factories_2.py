@@ -413,6 +413,13 @@ class SkillSetFactory(
     name = factory.Sequence(lambda n: f"Skill Set #{1 + n}")
     ship_type = None
 
+    @factory.post_generation
+    def groups(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.groups.add(*extracted)
+
 
 class SkillSetGroupFactory(
     factory.django.DjangoModelFactory, metaclass=BaseMetaFactory[SkillSetGroup]
@@ -424,13 +431,6 @@ class SkillSetGroupFactory(
     is_doctrine = False
     is_active = True
     name = factory.Sequence(lambda n: f"Skill Group #{1 + n}")
-
-    @factory.post_generation
-    def groups(self, create, extracted, **kwargs):
-        if not create or not extracted:
-            return
-
-        self.groups.add(*extracted)
 
 
 class SkillSetSkillFactory(

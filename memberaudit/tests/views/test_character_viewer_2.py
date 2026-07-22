@@ -445,25 +445,22 @@ class TestSkillSetsData(NoSocketsTestCase):
         doctrine_2 = SkillSetGroupFactory(name="Bravo", is_doctrine=True)
 
         # can fly ship 1
-        ship_1 = SkillSetFactory(name="Ship 1")
+        ship_1 = SkillSetFactory(name="Ship 1", groups=[doctrine_1, doctrine_2])
         SkillSetSkillFactory(
             skill_set=ship_1,
             eve_type=self.amarr_carrier_skill_type,
             required_level=3,
             recommended_level=5,
         )
-        doctrine_1.skill_sets.add(ship_1)
-        doctrine_2.skill_sets.add(ship_1)
 
         # can not fly ship 2
-        ship_2 = SkillSetFactory(name="Ship 2")
+        ship_2 = SkillSetFactory(name="Ship 2", groups=[doctrine_1])
         SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.amarr_carrier_skill_type, required_level=3
         )
         SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.caldari_carrier_skill_type, required_level=3
         )
-        doctrine_1.skill_sets.add(ship_2)
 
         # can fly ship 3 (No SkillSetGroup)
         ship_3 = SkillSetFactory(name="Ship 3")
