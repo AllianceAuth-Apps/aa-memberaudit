@@ -22,15 +22,16 @@ from memberaudit.helpers import (
     data_retention_cutoff,
     eve_entity_ids_from_objs,
 )
-from memberaudit.managers._common import GenericUpdateComplexObjMixin
+from memberaudit.managers._common import (
+    GenericUpdateComplexObjMixin,
+    GenericUpdateSimpleObjMixin,
+)
 from memberaudit.providers import esi
 from memberaudit.utils import (
     get_or_create_esi_or_none,
     get_or_create_or_none,
     get_or_none,
 )
-
-from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterSkillqueueEntry

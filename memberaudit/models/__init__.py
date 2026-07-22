@@ -1,6 +1,6 @@
 # flake8: noqa
 
-from .character_sections_1 import (
+from memberaudit.models.character_sections_1 import (
     CharacterAsset,
     CharacterAttributes,
     CharacterCloneInfo,
@@ -10,7 +10,7 @@ from .character_sections_1 import (
     CharacterContractBid,
     CharacterContractItem,
 )
-from .character_sections_2 import (
+from memberaudit.models.character_sections_2 import (
     CharacterCorporationHistory,
     CharacterDetails,
     CharacterFwStats,
@@ -23,7 +23,7 @@ from .character_sections_2 import (
     CharacterMailLabel,
     CharacterMailUnreadCount,
 )
-from .character_sections_3 import (
+from memberaudit.models.character_sections_3 import (
     CharacterMiningLedgerEntry,
     CharacterOnlineStatus,
     CharacterPlanet,
@@ -39,12 +39,12 @@ from .character_sections_3 import (
     CharacterWalletJournalEntry,
     CharacterWalletTransaction,
 )
-from .characters import (
+from memberaudit.models.characters import (
     Character,
     CharacterUpdateStatus,
     enabled_sections_by_stale_minutes,
 )
-from .general import (
+from memberaudit.models.general import (
     ComplianceGroupDesignation,
     EveShipType,
     EveSkillType,

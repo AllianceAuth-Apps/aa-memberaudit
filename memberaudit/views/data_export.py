@@ -12,8 +12,7 @@ from memberaudit import tasks
 from memberaudit.app_settings import MEMBERAUDIT_DATA_EXPORT_MIN_UPDATE_AGE
 from memberaudit.core import data_exporters
 from memberaudit.models import Character
-
-from ._common import add_common_context
+from memberaudit.views._common import add_common_context
 
 logger = get_extension_logger(__name__)
 

@@ -66,8 +66,7 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-
-from .constants import (
+from memberaudit.tests.testdata.constants import (
     EveCategoryId,
     EveFactionId,
     EveSolarSystemId,

@@ -13,10 +13,9 @@ from allianceauth.services.hooks import get_extension_logger
 from memberaudit import app_settings
 from memberaudit.constants import IS_TESTING
 from memberaudit.helpers import character_section_models
+from memberaudit.management.commands import get_input
 from memberaudit.management.commands._helpers import Table
 from memberaudit.models import Character, CharacterUpdateStatus, characters
-
-from . import get_input
 
 logger = get_extension_logger(__name__)
 

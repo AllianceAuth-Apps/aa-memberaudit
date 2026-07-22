@@ -49,8 +49,7 @@ from memberaudit.models import (
     SkillSet,
     SkillSetSkill,
 )
-
-from ._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
+from memberaudit.views._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
 
 logger = get_extension_logger(__name__)
 

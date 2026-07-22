@@ -785,9 +785,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Return generated asset item record from current ship and location
         or None it can not be generated.
         """
-        from .character_sections_2 import CharacterLocation
-        from .character_sections_3 import CharacterShip
-        from .general import Location
+        from memberaudit.models.character_sections_2 import CharacterLocation
+        from memberaudit.models.character_sections_3 import CharacterShip
+        from memberaudit.models.general import Location
 
         try:
             ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(

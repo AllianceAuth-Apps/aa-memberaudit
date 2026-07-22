@@ -21,11 +21,14 @@ from memberaudit.managers.character_sections_1 import (
     CharacterContractItemManager,
     CharacterContractManager,
 )
-
-from ._helpers import AddGenericReprMixin
-from .characters import Character
-from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
-from .general import Location
+from memberaudit.models._helpers import AddGenericReprMixin
+from memberaudit.models.characters import Character
+from memberaudit.models.constants import (
+    CURRENCY_MAX_DECIMALS,
+    CURRENCY_MAX_DIGITS,
+    NAMES_MAX_LENGTH,
+)
+from memberaudit.models.general import Location
 
 logger = get_extension_logger(__name__)
 

@@ -25,9 +25,8 @@ from memberaudit.managers.general import (
     MailEntityManager,
     SkillSetManager,
 )
-
-from ._helpers import AddGenericReprMixin
-from .constants import NAMES_MAX_LENGTH
+from memberaudit.models._helpers import AddGenericReprMixin
+from memberaudit.models.constants import NAMES_MAX_LENGTH
 
 logger = get_extension_logger(__name__)
 

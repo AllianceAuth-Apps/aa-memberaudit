@@ -22,6 +22,7 @@ from memberaudit.helpers import (
     eve_entity_ids_from_objs,
     model_to_dict_safely,
 )
+from memberaudit.managers._common import GenericUpdateSimpleObjMixin
 from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import (
@@ -29,8 +30,6 @@ from memberaudit.utils import (
     get_or_create_or_none,
     get_or_none,
 )
-
-from ._common import GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterAsset, CharacterContract

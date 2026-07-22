@@ -1,5 +1,6 @@
 import datetime as dt
 from collections import defaultdict
+from http import HTTPStatus
 
 from bs4 import BeautifulSoup
 
@@ -141,7 +142,7 @@ class TestCharacterJumpClones(NoSocketsTestCase):
         response = character_jump_clones_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_dict_2(response)
         self.assertEqual(len(data), 2)
 
@@ -186,7 +187,7 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
         response = character_mining_ledger_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["quantity"], entry.quantity)
@@ -212,7 +213,7 @@ class TestCharacterPlanetData(NoSocketsTestCase):
         response = character_planets_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["num_pins"], entry.num_pins)
@@ -240,7 +241,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # when
         response = character_roles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         result_map = defaultdict(dict)
         for obj in data:
@@ -258,7 +259,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # when
         response = character_roles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(data, [])
 
@@ -306,7 +307,7 @@ class TestMailData(NoSocketsTestCase):
             request, self.character.pk, self.label_1.label_id
         )
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual({x["mail_id"] for x in data}, {self.mail_1.mail_id})
         row = data[0]
@@ -328,7 +329,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail_headers_by_label_data(request, self.character.pk, 0)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual(
             {x["mail_id"] for x in data},
@@ -355,7 +356,7 @@ class TestMailData(NoSocketsTestCase):
             request, self.character.pk, self.mailing_list_5.id
         )
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual(
             {x["mail_id"] for x in data}, {self.mail_1.mail_id, self.mail_4.mail_id}
@@ -375,7 +376,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail(request, self.character.pk, self.mail_1.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_character_mail_data_normal_special_chars(self):
         # given
@@ -387,7 +388,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail(request, self.character.pk, mail.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_character_mail_data_error(self):
         invalid_mail_pk = generate_invalid_pk(CharacterMail)
@@ -423,6 +424,7 @@ class TestSkillSetsData(NoSocketsTestCase):
         )
 
     def test_skill_sets_data(self):
+        # given
         self.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.view_skill_sets", self.user
         )
@@ -474,8 +476,12 @@ class TestSkillSetsData(NoSocketsTestCase):
             reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
         )
         request.user = self.user
+
+        # when
         response = character_skill_sets_data(request, self.character.pk)
-        self.assertEqual(response.status_code, 200)
+
+        # then
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 4)
 
@@ -530,10 +536,12 @@ class TestSkillSetsData(NoSocketsTestCase):
             reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
         )
         request.user = self.user
+
         # when
         response = character_skill_sets_data(request, self.character.pk)
+
         # then
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
 
 class TestSkillSetsDetails(NoSocketsTestCase):
@@ -606,10 +614,12 @@ class TestSkillSetsDetails(NoSocketsTestCase):
             )
         )
         request.user = self.user
+
         # when
         response = character_skill_set_details(request, self.character.pk, skill_set.pk)
+
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         text = response_text(response)
         self.assertIn(skill_set.name, text)
         self.assertIn(amarr_carrier.name, text)
@@ -637,7 +647,7 @@ class TestSkillSetsDetails(NoSocketsTestCase):
         # when
         response = character_skill_sets_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
 
 class TestSkills(NoSocketsTestCase):
@@ -669,7 +679,7 @@ class TestSkills(NoSocketsTestCase):
         response = character_skills_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]
@@ -740,7 +750,7 @@ class TestSkillqueue(NoSocketsTestCase):
         response = character_skillqueue_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 3)
 
@@ -775,7 +785,7 @@ class TestSkillqueue(NoSocketsTestCase):
         )
         request.user = self.user
         response = character_skillqueue_data(request, self.character.pk)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 0)
 
@@ -803,7 +813,7 @@ class TestStandings(NoSocketsTestCase):
         response = character_standings_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_dict_2(response)
         obj = data[2901]
         self.assertEqual("NPC corporation", obj["name"]["sort"])
@@ -830,7 +840,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         # when
         response = character_titles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         names = [obj["name"] for obj in data]
         self.assertListEqual(names, ["Alpha", "Bravo"])
@@ -844,7 +854,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         # when
         response = character_titles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(data, [])
 
@@ -881,7 +891,7 @@ class TestWalletJournal(NoSocketsTestCase):
         # when
         response = character_wallet_journal_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]
@@ -942,7 +952,7 @@ class TestWalletTransactions(NoSocketsTestCase):
         response = character_wallet_transactions_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]

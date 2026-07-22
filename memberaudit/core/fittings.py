@@ -5,7 +5,11 @@ from typing import List, Optional, Set, Union
 
 from eveuniverse.models import EveType
 
-from .skills import Skill, compress_skills, required_skills_from_eve_types
+from memberaudit.core.skills import (
+    Skill,
+    compress_skills,
+    required_skills_from_eve_types,
+)
 
 
 @dataclass(frozen=True)

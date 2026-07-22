@@ -28,8 +28,7 @@ from memberaudit.models import (
     SkillSetGroup,
     SkillSetSkill,
 )
-
-from ._common import UNGROUPED_SKILL_SET, add_common_context
+from memberaudit.views._common import UNGROUPED_SKILL_SET, add_common_context
 
 logger = get_extension_logger(__name__)
 

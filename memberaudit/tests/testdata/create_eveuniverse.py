@@ -5,8 +5,7 @@ from eveuniverse.models import EveUniverseEntityModel
 from eveuniverse.tools.testdata import ModelSpec, create_testdata
 
 from memberaudit.constants import EveCategoryId
-
-from . import eveuniverse_test_data_filename
+from memberaudit.tests.testdata import eveuniverse_test_data_filename
 
 
 class CreateEveUniverseTestData(TestCase):

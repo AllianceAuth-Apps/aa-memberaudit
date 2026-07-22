@@ -1,7 +1,7 @@
 from app_utils.testdata_factories import EveCharacterFactory
 from app_utils.testing import NoSocketsTestCase
 
-from .factories_2 import (
+from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
     ComplianceGroupFactory,
     GroupFactory,

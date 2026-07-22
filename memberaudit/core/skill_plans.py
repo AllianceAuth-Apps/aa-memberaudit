@@ -5,7 +5,7 @@ from typing import List, Tuple
 
 from eveuniverse.models import EveType
 
-from .skills import Skill, compress_skills
+from memberaudit.core.skills import Skill, compress_skills
 
 
 class SkillPlanError(Exception):
