@@ -17,6 +17,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 )
 
 from allianceauth.tests.auth_utils import AuthUtils
+from app_utils.testdata_factories import UserMainFactory
 from app_utils.testing import (
     NoSocketsTestCase,
     generate_invalid_pk,
@@ -549,31 +550,34 @@ class TestSkillSetsDetails(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserMainBasicAccessFactory()
-        cls.character = CharacterFactory(user=cls.user)
 
     def test_should_show_details(self):
         # given
+        user = UserMainFactory(
+            permissions=["memberaudit.basic_access", "memberaudit.view_skill_sets"]
+        )
+        character = CharacterFactory(user=user)
+
         amarr_carrier = SpaceshipCommandSkillTypeFactory(name="Amarr Carrier")
         caldari_carrier = SpaceshipCommandSkillTypeFactory(name="Caldari Carrier")
         gallente_carrier = SpaceshipCommandSkillTypeFactory(name="Gallente Carrier")
         minmatar_carrier = SpaceshipCommandSkillTypeFactory(name="Minmatar Carrier")
         CharacterSkillFactory(
-            character=self.character,
+            character=character,
             eve_type=amarr_carrier,
             active_skill_level=4,
             skillpoints_in_skill=10,
             trained_skill_level=4,
         )
         CharacterSkillFactory(
-            character=self.character,
+            character=character,
             eve_type=caldari_carrier,
             active_skill_level=2,
             skillpoints_in_skill=10,
             trained_skill_level=2,
         )
         CharacterSkillFactory(
-            character=self.character,
+            character=character,
             eve_type=gallente_carrier,
             active_skill_level=4,
             skillpoints_in_skill=10,
@@ -604,19 +608,17 @@ class TestSkillSetsDetails(NoSocketsTestCase):
             required_level=None,
             recommended_level=None,
         )
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_skill_sets", self.user
-        )
+
         request = self.factory.get(
             reverse(
                 "memberaudit:character_skill_set_details",
-                args=[self.character.pk, skill_set.pk],
+                args=[character.pk, skill_set.pk],
             )
         )
-        request.user = self.user
+        request.user = user
 
         # when
-        response = character_skill_set_details(request, self.character.pk, skill_set.pk)
+        response = character_skill_set_details(request, character.pk, skill_set.pk)
 
         # then
         self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -635,17 +637,20 @@ class TestSkillSetsDetails(NoSocketsTestCase):
 
     def test_need_permission_to_see_data(self):
         # given
+        user = UserMainFactory(permissions=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
         skill_set = SkillSetFactory()
         request = self.factory.get(
             reverse(
                 "memberaudit:character_skill_set_details",
-                args=[self.character.pk, skill_set.pk],
+                args=[character.pk, skill_set.pk],
             )
         )
+        request.user = user
 
-        request.user = self.user
         # when
-        response = character_skill_sets_data(request, self.character.pk)
+        response = character_skill_sets_data(request, character.pk)
+
         # then
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
 

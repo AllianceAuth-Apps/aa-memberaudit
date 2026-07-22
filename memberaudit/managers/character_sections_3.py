@@ -568,15 +568,12 @@ class CharacterSkillSetCheckManager(models.Manager):
             for obj in character.skills.values("eve_type_id", "active_skill_level")
         }
         self.filter(character=character).delete()
-        skill_sets_qs = SkillSet.objects.prefetch_related(
-            "skills", "skills__eve_type"
-        ).all()
-        skill_sets_count = skill_sets_qs.count()
-        if skill_sets_count == 0:
+        skill_sets_qs = SkillSet.objects.prefetch_related("skills", "skills__eve_type")
+        if not skill_sets_qs.exists():
             logger.info("%s: No skill sets defined", character)
             return UpdateSectionResult(is_changed=None, is_updated=True)
 
-        logger.info("%s: Checking %s skill sets", character, skill_sets_count)
+        logger.info("%s: Checking %s skill sets", character, skill_sets_qs.count())
         skill_set_checks = [
             self.model(character=character, skill_set=skill_set)
             for skill_set in skill_sets_qs

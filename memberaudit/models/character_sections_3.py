@@ -540,13 +540,6 @@ class CharacterSkillSetCheck(AddGenericReprMixin, models.Model):
     def __str__(self) -> str:
         return f"{self.character}-{self.skill_set}"
 
-    @property
-    def can_fly(self) -> bool:
-        """Return True if character has all required skills for this skill set,
-        else False.
-        """
-        return not self.failed_required_skills.exists()
-
 
 class CharacterStanding(AddGenericReprMixin, models.Model):
     """Standing of a character with an NPC entity in Eve Online."""
