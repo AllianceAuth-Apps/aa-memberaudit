@@ -115,7 +115,6 @@
     }
 
     $(document).ready(function () {
-        /* show last selected tab or default */
         let tabId = "{{show_tab}}"
         if (tabId != "") {
             setCookie(COOKIE_LAST_TAB_ID, tabId, 1)
@@ -124,7 +123,13 @@
             tabId = getCookie(COOKIE_LAST_TAB_ID)
             if (tabId == "") tabId = "mail"
         }
-        $('button[data-bs-target="#' + tabId + '"]').tab("show")
+        /* show last selected tab or default */
+        const tabBtn = $('button[data-bs-target="#' + tabId + '"]')
+        tabBtn.tab("show");
+        /* close potential drop down menu */
+        const dropdown = tabBtn.closest('.dropdown');
+        dropdown.find('.dropdown-menu, [data-bs-toggle="dropdown"]').removeClass('show');
+        dropdown.find('[data-bs-toggle="dropdown"]').attr('aria-expanded', 'false');
 
         /* remember last selected tab */
         $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
