@@ -33,7 +33,7 @@ In addition character based reports gives leadership another valuable tool for m
 Member Audit adds the following features to Auth:
 
 - Users can see an overview of all their characters with key information like their current location and wallet balance
-- Users can get full access to their characters to monitor them without having to open the Eve client (similar to the classic Eve ap "EveMon").
+- Users can get full access to their characters to monitor them without having to open the Eve client (similar to the classic Eve app "EveMon").
 - Applicants can temporarily share their characters with recruiters for vetting
 - Leadership can get full access to characters of their members for auditing (e.g. to check suspicious members)
 - Full access to characters currently includes the following information:
