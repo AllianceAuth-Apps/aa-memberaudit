@@ -30,11 +30,10 @@ from memberaudit.managers.character_sections_2 import (
     CharacterMailLabelManager,
     CharacterMailManager,
 )
-
-from ._helpers import AddGenericReprMixin
-from .characters import Character
-from .constants import NAMES_MAX_LENGTH
-from .general import Location
+from memberaudit.models._helpers import AddGenericReprMixin
+from memberaudit.models.characters import Character
+from memberaudit.models.constants import NAMES_MAX_LENGTH
+from memberaudit.models.general import Location
 
 logger = get_extension_logger(__name__)
 

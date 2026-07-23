@@ -6,7 +6,7 @@ from typing_extensions import deprecated
 
 from eveuniverse.tools.testdata import load_testdata_from_dict
 
-from . import eveuniverse_test_data_filename
+from memberaudit.tests.testdata import eveuniverse_test_data_filename
 
 
 def _load_eveuniverse_from_file():

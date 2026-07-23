@@ -30,6 +30,10 @@ from memberaudit.app_settings import (
 from memberaudit.core.xml_converter import eve_xml_to_html
 from memberaudit.decorators import fetch_token_for_character
 from memberaudit.helpers import UpdateSectionResult, data_retention_cutoff
+from memberaudit.managers._common import (
+    GenericUpdateComplexObjMixin,
+    GenericUpdateSimpleObjMixin,
+)
 from memberaudit.models._helpers import store_character_data_to_disk_when_enabled
 from memberaudit.providers import esi
 from memberaudit.utils import (
@@ -37,8 +41,6 @@ from memberaudit.utils import (
     get_or_create_or_none,
     get_or_none,
 )
-
-from ._common import GenericUpdateComplexObjMixin, GenericUpdateSimpleObjMixin
 
 if TYPE_CHECKING:
     from memberaudit.models import Character, CharacterMail

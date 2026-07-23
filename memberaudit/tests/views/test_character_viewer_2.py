@@ -1,7 +1,7 @@
 import datetime as dt
 from collections import defaultdict
-
-from bs4 import BeautifulSoup
+from http import HTTPStatus
+from typing import NamedTuple
 
 from django.test import RequestFactory
 from django.urls import reverse
@@ -16,12 +16,8 @@ from eveuniverse.tests.testdata.factories_2 import (
 )
 
 from allianceauth.tests.auth_utils import AuthUtils
-from app_utils.testing import (
-    NoSocketsTestCase,
-    generate_invalid_pk,
-    multi_assert_in,
-    response_text,
-)
+from app_utils.testdata_factories import UserMainFactory
+from app_utils.testing import NoSocketsTestCase, generate_invalid_pk, multi_assert_in
 
 from memberaudit.models import (
     CharacterMail,
@@ -40,6 +36,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterRoleFactory,
     CharacterSkillFactory,
     CharacterSkillqueueEntryFactory,
+    CharacterSkillSetCheck,
     CharacterStandingFactory,
     CharacterTitleFactory,
     CharacterWalletJournalEntryFactory,
@@ -57,6 +54,8 @@ from memberaudit.tests.testdata.factories_2 import (
 )
 from memberaudit.tests.utils import json_response_to_dict_2, json_response_to_python_2
 from memberaudit.views.character_viewer_2 import (
+    SkillSetMatchLevel,
+    _compile_skill_set_details_row,
     character_jump_clones_data,
     character_mail,
     character_mail_headers_by_label_data,
@@ -64,7 +63,6 @@ from memberaudit.views.character_viewer_2 import (
     character_mining_ledger_data,
     character_planets_data,
     character_roles_data,
-    character_skill_set_details,
     character_skill_sets_data,
     character_skillqueue_data,
     character_skills_data,
@@ -141,7 +139,7 @@ class TestCharacterJumpClones(NoSocketsTestCase):
         response = character_jump_clones_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_dict_2(response)
         self.assertEqual(len(data), 2)
 
@@ -186,7 +184,7 @@ class TestCharacterMiningLedgerData(NoSocketsTestCase):
         response = character_mining_ledger_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["quantity"], entry.quantity)
@@ -212,7 +210,7 @@ class TestCharacterPlanetData(NoSocketsTestCase):
         response = character_planets_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         obj = data[0]
         self.assertEqual(obj["num_pins"], entry.num_pins)
@@ -240,7 +238,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # when
         response = character_roles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         result_map = defaultdict(dict)
         for obj in data:
@@ -258,7 +256,7 @@ class TestCharacterRolesData(NoSocketsTestCase):
         # when
         response = character_roles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(data, [])
 
@@ -306,7 +304,7 @@ class TestMailData(NoSocketsTestCase):
             request, self.character.pk, self.label_1.label_id
         )
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual({x["mail_id"] for x in data}, {self.mail_1.mail_id})
         row = data[0]
@@ -328,7 +326,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail_headers_by_label_data(request, self.character.pk, 0)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual(
             {x["mail_id"] for x in data},
@@ -355,7 +353,7 @@ class TestMailData(NoSocketsTestCase):
             request, self.character.pk, self.mailing_list_5.id
         )
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertSetEqual(
             {x["mail_id"] for x in data}, {self.mail_1.mail_id, self.mail_4.mail_id}
@@ -375,7 +373,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail(request, self.character.pk, self.mail_1.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_character_mail_data_normal_special_chars(self):
         # given
@@ -387,7 +385,7 @@ class TestMailData(NoSocketsTestCase):
         # when
         response = character_mail(request, self.character.pk, mail.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
 
     def test_character_mail_data_error(self):
         invalid_mail_pk = generate_invalid_pk(CharacterMail)
@@ -423,6 +421,7 @@ class TestSkillSetsData(NoSocketsTestCase):
         )
 
     def test_skill_sets_data(self):
+        # given
         self.user = AuthUtils.add_permission_to_user_by_name(
             "memberaudit.view_skill_sets", self.user
         )
@@ -445,25 +444,22 @@ class TestSkillSetsData(NoSocketsTestCase):
         doctrine_2 = SkillSetGroupFactory(name="Bravo", is_doctrine=True)
 
         # can fly ship 1
-        ship_1 = SkillSetFactory(name="Ship 1")
+        ship_1 = SkillSetFactory(name="Ship 1", groups=[doctrine_1, doctrine_2])
         SkillSetSkillFactory(
             skill_set=ship_1,
             eve_type=self.amarr_carrier_skill_type,
             required_level=3,
             recommended_level=5,
         )
-        doctrine_1.skill_sets.add(ship_1)
-        doctrine_2.skill_sets.add(ship_1)
 
         # can not fly ship 2
-        ship_2 = SkillSetFactory(name="Ship 2")
+        ship_2 = SkillSetFactory(name="Ship 2", groups=[doctrine_1])
         SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.amarr_carrier_skill_type, required_level=3
         )
         SkillSetSkillFactory(
             skill_set=ship_2, eve_type=self.caldari_carrier_skill_type, required_level=3
         )
-        doctrine_1.skill_sets.add(ship_2)
 
         # can fly ship 3 (No SkillSetGroup)
         ship_3 = SkillSetFactory(name="Ship 3")
@@ -477,8 +473,12 @@ class TestSkillSetsData(NoSocketsTestCase):
             reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
         )
         request.user = self.user
+
+        # when
         response = character_skill_sets_data(request, self.character.pk)
-        self.assertEqual(response.status_code, 200)
+
+        # then
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 4)
 
@@ -533,114 +533,151 @@ class TestSkillSetsData(NoSocketsTestCase):
             reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
         )
         request.user = self.user
+
         # when
         response = character_skill_sets_data(request, self.character.pk)
+
         # then
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
 
 
 class TestSkillSetsDetails(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.factory = RequestFactory()
-        cls.user = UserMainBasicAccessFactory()
-        cls.character = CharacterFactory(user=cls.user)
-
     def test_should_show_details(self):
         # given
-        amarr_carrier = SpaceshipCommandSkillTypeFactory(name="Amarr Carrier")
-        caldari_carrier = SpaceshipCommandSkillTypeFactory(name="Caldari Carrier")
-        gallente_carrier = SpaceshipCommandSkillTypeFactory(name="Gallente Carrier")
-        minmatar_carrier = SpaceshipCommandSkillTypeFactory(name="Minmatar Carrier")
+        user = UserMainFactory(
+            permissions=["memberaudit.basic_access", "memberaudit.view_skill_sets"]
+        )
+        character = CharacterFactory(user=user)
+
+        skill_1_type = SpaceshipCommandSkillTypeFactory(name="Alpha")
+        skill_2_type = SpaceshipCommandSkillTypeFactory(name="Bravo")
         CharacterSkillFactory(
-            character=self.character,
-            eve_type=amarr_carrier,
+            character=character,
+            eve_type=skill_1_type,
             active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
         )
         CharacterSkillFactory(
-            character=self.character,
-            eve_type=caldari_carrier,
+            character=character,
+            eve_type=skill_2_type,
             active_skill_level=2,
-            skillpoints_in_skill=10,
-            trained_skill_level=2,
-        )
-        CharacterSkillFactory(
-            character=self.character,
-            eve_type=gallente_carrier,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
         )
         skill_set = SkillSetFactory()
         SkillSetSkillFactory(
             skill_set=skill_set,
-            eve_type=amarr_carrier,
+            eve_type=skill_1_type,
             required_level=3,
             recommended_level=5,
         )
         SkillSetSkillFactory(
             skill_set=skill_set,
-            eve_type=caldari_carrier,
-            required_level=None,
-            recommended_level=3,
-        )
-        SkillSetSkillFactory(
-            skill_set=skill_set,
-            eve_type=gallente_carrier,
+            eve_type=skill_2_type,
             required_level=3,
             recommended_level=None,
         )
-        SkillSetSkillFactory(
-            skill_set=skill_set,
-            eve_type=minmatar_carrier,
-            required_level=None,
-            recommended_level=None,
-        )
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_skill_sets", self.user
-        )
-        request = self.factory.get(
+
+        character.update_skill_sets()
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
             reverse(
                 "memberaudit:character_skill_set_details",
-                args=[self.character.pk, skill_set.pk],
+                args=[character.pk, skill_set.pk],
             )
         )
-        request.user = self.user
-        # when
-        response = character_skill_set_details(request, self.character.pk, skill_set.pk)
+
         # then
-        self.assertEqual(response.status_code, 200)
-        text = response_text(response)
-        self.assertIn(skill_set.name, text)
-        self.assertIn(amarr_carrier.name, text)
-        self.assertIn(caldari_carrier.name, text)
-        self.assertIn(gallente_carrier.name, text)
-        self.assertIn(minmatar_carrier.name, text)
-        soup = BeautifulSoup(text, features="html.parser")
-        missing_skills_str = soup.find(id="div-missing-skills").get_text()
-        self.assertIn("Amarr Carrier V", missing_skills_str)
-        self.assertIn("Caldari Carrier III", missing_skills_str)
-        self.assertIn("Minmatar Carrier I", missing_skills_str)
-        self.assertNotIn("Gallente Carrier", missing_skills_str)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
+        self.assertEqual(skill_set.name, response.context["name"])
+        self.assertContains(response, skill_1_type.name)
+        self.assertContains(response, skill_2_type.name)
+        self.assertIn("Bravo", response.context["missing_skills_str"])
+        self.assertNotIn("Alpha", response.context["missing_skills_str"])
+        self.assertFalse(response.context["met_all_required"])
 
     def test_need_permission_to_see_data(self):
         # given
+        user = UserMainFactory(permissions=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
         skill_set = SkillSetFactory()
-        request = self.factory.get(
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
             reverse(
                 "memberaudit:character_skill_set_details",
-                args=[self.character.pk, skill_set.pk],
+                args=[character.pk, skill_set.pk],
             )
         )
 
-        request.user = self.user
-        # when
-        response = character_skill_sets_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.status_code, HTTPStatus.FOUND)
+
+
+class TestCompileSkillSetDetailsRow(NoSocketsTestCase):
+    def test_should_return_correct_result(self):
+        # given
+        skill_type = SpaceshipCommandSkillTypeFactory()
+
+        class Case(NamedTuple):
+            name: str
+            required: int
+            recommended: int
+            active: int
+            result: SkillSetMatchLevel
+
+        cases = [
+            Case("has recommended", 3, 5, 5, SkillSetMatchLevel.FULL),
+            Case("has required", 3, 5, 3, SkillSetMatchLevel.PARTIAL),
+            Case("below required", 3, 5, 2, SkillSetMatchLevel.NONE),
+            Case("skill not trained", 3, 5, 0, SkillSetMatchLevel.NONE),
+            Case("no required", None, 5, 1, SkillSetMatchLevel.PARTIAL),
+            Case(
+                "no required and skill not trained",
+                None,
+                5,
+                0,
+                SkillSetMatchLevel.PARTIAL,
+            ),
+        ]
+
+        for tc in cases:
+            skill_set = SkillSetFactory()
+            skill = SkillSetSkillFactory(
+                skill_set=skill_set,
+                eve_type=skill_type,
+                required_level=tc.required,
+                recommended_level=tc.recommended,
+            )
+            character = CharacterFactory()
+            if tc.active:
+                character_skill = CharacterSkillFactory(
+                    character=character,
+                    eve_type=skill_type,
+                    active_skill_level=tc.active,
+                )
+            else:
+                character_skill = None
+
+            character.update_skill_sets()
+            check: CharacterSkillSetCheck = character.skill_set_checks.first()
+            failed_recommended = set(check.failed_recommended_skills.all())
+            failed_required = set(check.failed_required_skills.all())
+
+            # when
+            _, result = _compile_skill_set_details_row(
+                character_skill=character_skill,
+                skill=skill,
+                has_check=True,
+                failed_recommended=failed_recommended,
+                failed_required=failed_required,
+            )
+
+            # then
+            self.assertEqual(result, tc.result, msg=tc.name)
+
+            character.delete()
+            skill_set.delete()
 
 
 class TestSkills(NoSocketsTestCase):
@@ -672,7 +709,7 @@ class TestSkills(NoSocketsTestCase):
         response = character_skills_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]
@@ -743,7 +780,7 @@ class TestSkillqueue(NoSocketsTestCase):
         response = character_skillqueue_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 3)
 
@@ -778,7 +815,7 @@ class TestSkillqueue(NoSocketsTestCase):
         )
         request.user = self.user
         response = character_skillqueue_data(request, self.character.pk)
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 0)
 
@@ -806,7 +843,7 @@ class TestStandings(NoSocketsTestCase):
         response = character_standings_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_dict_2(response)
         obj = data[2901]
         self.assertEqual("NPC corporation", obj["name"]["sort"])
@@ -833,7 +870,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         # when
         response = character_titles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         names = [obj["name"] for obj in data]
         self.assertListEqual(names, ["Alpha", "Bravo"])
@@ -847,7 +884,7 @@ class TestCharacterTitlesData(NoSocketsTestCase):
         # when
         response = character_titles_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(data, [])
 
@@ -884,7 +921,7 @@ class TestWalletJournal(NoSocketsTestCase):
         # when
         response = character_wallet_journal_data(request, self.character.pk)
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]
@@ -945,7 +982,7 @@ class TestWalletTransactions(NoSocketsTestCase):
         response = character_wallet_transactions_data(request, self.character.pk)
 
         # then
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, HTTPStatus.OK)
         data = json_response_to_python_2(response)
         self.assertEqual(len(data), 1)
         row = data[0]

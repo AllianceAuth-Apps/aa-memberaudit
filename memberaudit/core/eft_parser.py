@@ -11,8 +11,7 @@ from eveuniverse.models import EveEntity, EveType
 from allianceauth.services.hooks import get_extension_logger
 
 from memberaudit.constants import EveCategoryId, EveDogmaEffectId, EveGroupId
-
-from .fittings import Fitting, Item, Module
+from memberaudit.core.fittings import Fitting, Item, Module
 
 logger = get_extension_logger(__name__)
 

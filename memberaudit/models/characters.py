@@ -3,17 +3,20 @@
 # pylint: disable = too-many-lines,too-many-positional-arguments
 
 
+from __future__ import annotations
+
 import datetime as dt
 import hashlib
 import json
 from dataclasses import dataclass
 from http import HTTPStatus
-from typing import Any, Callable, Dict, List, Optional, Set
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Set
 
 from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import models
+from django.db.models import Prefetch
 from django.utils.functional import cached_property
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
@@ -47,6 +50,9 @@ from memberaudit.models._helpers import (
     AddGenericReprMixin,
     store_character_data_to_disk_when_enabled,
 )
+
+if TYPE_CHECKING:
+    from memberaudit.models import CharacterSkillSetCheck
 
 logger = get_extension_logger(__name__)
 
@@ -785,9 +791,9 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
         """Return generated asset item record from current ship and location
         or None it can not be generated.
         """
-        from .character_sections_2 import CharacterLocation
-        from .character_sections_3 import CharacterShip
-        from .general import Location
+        from memberaudit.models.character_sections_2 import CharacterLocation
+        from memberaudit.models.character_sections_3 import CharacterShip
+        from memberaudit.models.general import Location
 
         try:
             ship: CharacterShip = CharacterShip.objects.select_related("eve_type").get(
@@ -831,6 +837,31 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     def clear_cache(self) -> None:
         """Remove this character from cache."""
         Character.objects.clear_cache(pk=self.pk)
+
+    def skill_set_checks_2(self) -> models.QuerySet[CharacterSkillSetCheck]:
+        """Return skill checks as optimized query with prefetched skill set skills."""
+        from memberaudit.models import SkillSetSkill
+
+        checks: models.QuerySet[CharacterSkillSetCheck] = self.skill_set_checks
+        checks_plus = (
+            checks.select_related("skill_set", "skill_set__ship_type")
+            .prefetch_related(
+                Prefetch(
+                    "failed_required_skills",
+                    queryset=SkillSetSkill.objects.select_related("eve_type"),
+                    to_attr="failed_required_skills_prefetched",
+                )
+            )
+            .prefetch_related(
+                Prefetch(
+                    "failed_recommended_skills",
+                    queryset=SkillSetSkill.objects.select_related("eve_type"),
+                    to_attr="failed_recommended_skills_prefetched",
+                )
+            )
+            .all()
+        )
+        return checks_plus
 
     @staticmethod
     def esi_scopes() -> List[str]:

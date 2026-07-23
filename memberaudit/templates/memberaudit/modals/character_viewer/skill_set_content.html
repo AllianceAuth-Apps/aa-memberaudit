@@ -54,28 +54,26 @@
                         <td class="text-center">{{ skill.required }}</td>
                         <td class="text-center">{{ skill.recommended }}</td>
                         <td class="text-center">{{ skill.current }}</td>
-                        <td class="{{ skill.result_icon }}"></td>
+                        <td><span class="{{ skill.result_icon }}"></span></td>
                     </tr>
                 {% endfor %}
 
             </tbody>
         </table>
-        <div id="div-missing-skills" class="hidden">{{ missing_skills_str }}</div>
+
         {% if missing_skills_str %}
-            <button type="button" id="btn-copy-missing-skills" class="btn btn-secondary pull-right" data-text="{{ missing_skills_str }}">
-                {% translate 'Copy missing skills to clipboard' %}
-            </button>
+            <p>
+                <button type="button" id="btn-copy-missing-skills" class="btn btn-secondary pull-right" data-text="{{ missing_skills_str }}">
+                    {% translate 'Copy missing skills to clipboard' %}
+                </button>
+            </p>
         {% endif %}
         <div>
-            <p class="text-muted">{% translate 'Legend:' %}</p>
-            <p class="text-muted"><span class="{{ icon_failed }}"></span>&nbsp;
-                {% translate 'Below minimum requirements' %}
-            </p>
-            <p class="text-muted"><span class="{{ icon_partial }}"></span>&nbsp;
-                {% translate 'Above required, but below recommended level' %}
-            </p>
-            <p class="text-muted"><span class="{{ icon_full }}"></span>&nbsp;
-                {% translate 'At/Above recommended level' %}
+            <h5 class="text-muted">{% translate 'Legend' %}</h5>
+            <p class="text-muted">
+                <span class="{{ icon_failed }}"></span>&nbsp;{% translate 'Below minimum requirements' %}<br>
+                <span class="{{ icon_partial }}"></span>&nbsp;{% translate 'Above required, but below recommended level' %}<br>
+                <span class="{{ icon_full }}"></span>&nbsp;{% translate 'At/Above recommended level' %}<br>
             </p>
         </div>
     </div>

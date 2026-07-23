@@ -10,12 +10,13 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
-from eveuniverse.core import dotlan, evewho
+from eveuniverse.core import dotlan, eveimageserver, evewho
 from eveuniverse.models import EveEntity, EveSolarSystem, EveType
 
 from allianceauth.services.hooks import get_extension_logger
 from app_utils.django import users_with_permission
 
+from memberaudit.constants import SKILL_SET_DEFAULT_ICON_TYPE_ID
 from memberaudit.helpers import arabic_number_to_roman
 from memberaudit.managers.general import (
     ComplianceGroupDesignationManager,
@@ -25,9 +26,8 @@ from memberaudit.managers.general import (
     MailEntityManager,
     SkillSetManager,
 )
-
-from ._helpers import AddGenericReprMixin
-from .constants import NAMES_MAX_LENGTH
+from memberaudit.models._helpers import AddGenericReprMixin
+from memberaudit.models.constants import NAMES_MAX_LENGTH
 
 logger = get_extension_logger(__name__)
 
@@ -414,6 +414,15 @@ class SkillSet(AddGenericReprMixin, models.Model):
         ]
         SkillSetSkill.objects.bulk_create(cloned_skills)
         return new_instance
+
+    def icon_url(self, size: int) -> str:
+        """Return icon URL for a skill set."""
+        try:
+            return self.ship_type.icon_url(size, variant=EveType.IconVariant.REGULAR)
+        except AttributeError:
+            return eveimageserver.type_icon_url(
+                SKILL_SET_DEFAULT_ICON_TYPE_ID, size=size
+            )
 
 
 class SkillSetSkill(AddGenericReprMixin, models.Model):

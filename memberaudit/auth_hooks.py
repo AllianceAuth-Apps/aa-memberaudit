@@ -3,11 +3,10 @@
 from allianceauth import hooks
 from allianceauth.services.hooks import MenuItemHook, UrlHook
 
+from memberaudit import urls
+from memberaudit.app_settings import MEMBERAUDIT_APP_NAME
+from memberaudit.models import Character
 from memberaudit.utils import get_unidecoded_slug
-
-from . import urls
-from .app_settings import MEMBERAUDIT_APP_NAME
-from .models import Character
 
 
 class MemberauditMenuItem(MenuItemHook):

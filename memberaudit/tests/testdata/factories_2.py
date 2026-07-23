@@ -408,10 +408,17 @@ class SkillSetFactory(
     class Meta:
         model = SkillSet
 
-    description = factory.Faker("paragraph")
+    description = factory.Faker("sentence")
     is_visible = True
     name = factory.Sequence(lambda n: f"Skill Set #{1 + n}")
     ship_type = None
+
+    @factory.post_generation
+    def groups(self, create, extracted, **kwargs):
+        if not create or not extracted:
+            return
+
+        self.groups.add(*extracted)
 
 
 class SkillSetGroupFactory(
@@ -424,13 +431,6 @@ class SkillSetGroupFactory(
     is_doctrine = False
     is_active = True
     name = factory.Sequence(lambda n: f"Skill Group #{1 + n}")
-
-    @factory.post_generation
-    def groups(self, create, extracted, **kwargs):
-        if not create or not extracted:
-            return
-
-        self.groups.add(*extracted)
 
 
 class SkillSetSkillFactory(
@@ -912,8 +912,8 @@ class CharacterSkillFactory(
 
     character = factory.SubFactory(CharacterFactory)
     eve_type = factory.SubFactory(NavigationSkillTypeFactory)
-    active_skill_level = factory.LazyAttribute(lambda o: o.trained_skill_level)
-    trained_skill_level = factory.fuzzy.FuzzyInteger(0, 5)
+    active_skill_level = factory.fuzzy.FuzzyInteger(0, 5)
+    trained_skill_level = factory.LazyAttribute(lambda o: o.active_skill_level)
 
     @factory.lazy_attribute
     def skillpoints_in_skill(self):

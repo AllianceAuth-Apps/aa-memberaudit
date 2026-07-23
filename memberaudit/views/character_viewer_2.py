@@ -2,20 +2,19 @@
 
 # pylint: disable=unused-argument
 
+import enum
 from collections import defaultdict
-from typing import Optional
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import humanize
 
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import ObjectDoesNotExist
-from django.db.models import Prefetch
 from django.http import HttpResponse, HttpResponseNotFound, JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
-from eveuniverse.core import eveimageserver
 from eveuniverse.models import EveType
 
 from allianceauth.services.hooks import get_extension_logger
@@ -32,7 +31,6 @@ from memberaudit.constants import (
     DEFAULT_ICON_SIZE,
     MAIL_LABEL_ID_ALL_MAILS,
     MY_DATETIME_FORMAT,
-    SKILL_SET_DEFAULT_ICON_TYPE_ID,
     EveSkillTypeId,
 )
 from memberaudit.core.standings import Standing
@@ -45,22 +43,35 @@ from memberaudit.models import (
     CharacterRole,
     CharacterSkill,
     CharacterSkillqueueEntry,
+    CharacterSkillSetCheck,
     CharacterStanding,
     SkillSet,
+    SkillSetGroup,
     SkillSetSkill,
 )
-
-from ._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
+from memberaudit.views._common import UNGROUPED_SKILL_SET, eve_solar_system_to_html
 
 logger = get_extension_logger(__name__)
 
 ICON_SIZE_64 = 64
 CHARACTER_VIEWER_DEFAULT_TAB = "mails"
 
-ICON_FAILED = "fas fa-times boolean-icon-false"
+ICON_FAILED = "fas fa-times boolean-icon-false text-danger"
 ICON_PARTIAL = "fas fa-check text-warning"
 ICON_FULL = "fas fa-check-double text-success"
 ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
+
+
+class SkillSetMatchLevel(enum.Enum):
+    """A level of matching a skill set."""
+
+    FULL = enum.auto()
+    PARTIAL = enum.auto()
+    NONE = enum.auto()
+
+    def has_required(self) -> bool:
+        """Report whether it matches at least required."""
+        return self is not self.NONE
 
 
 @login_required
@@ -404,125 +415,104 @@ def character_skill_sets_data(
 ) -> JsonResponse:
     """Render data view for character skill sets."""
 
-    def _create_row(skill_check):
-        def _skill_set_name_html(skill_set):
-            url = (
-                skill_set.ship_type.icon_url(
-                    DEFAULT_ICON_SIZE, variant=EveType.IconVariant.REGULAR
-                )
-                if skill_set.ship_type
-                else eveimageserver.type_icon_url(
-                    SKILL_SET_DEFAULT_ICON_TYPE_ID, size=DEFAULT_ICON_SIZE
-                )
-            )
-            ship_icon = f'<img width="24" heigh="24" src="{url}"/>'
-            return ship_icon + "&nbsp;&nbsp;" + skill_set.name
-
-        def _group_name(group):
-            if group:
-                return (
-                    group.name_plus if group.is_active else group.name + " [Not active]"
-                )
-            return UNGROUPED_SKILL_SET
-
-        def _compile_failed_skills(skill_set_skills, level_name) -> Optional[list]:
-            skills2 = sorted(
-                [
-                    {
-                        "name": obj.eve_type.name,
-                        "required_level": obj.required_level,
-                        "recommended_level": obj.recommended_level,
-                    }
-                    for obj in skill_set_skills
-                ],
-                key=lambda k: k["name"].lower(),
-            )
-            return [
-                bootstrap_label_html(
-                    format_html(
-                        "{}&nbsp;{}",
-                        obj["name"],
-                        arabic_number_to_roman(obj[level_name]),
-                    ),
-                    "default",
-                )
-                for obj in skills2
-            ]
-
-        def _format_failed_skills(skills) -> str:
-            return " ".join(skills) if skills else "-"
-
-        failed_required_skills = list(skill_check.failed_required_skills_prefetched)
-        has_required = not bool(failed_required_skills)
-        failed_required_skills_str = _format_failed_skills(
-            _compile_failed_skills(failed_required_skills, "required_level")
-        )
-        failed_recommended_skills = list(
-            skill_check.failed_recommended_skills_prefetched
-        )
-        has_recommended = not bool(failed_recommended_skills)
-        failed_recommended_skills_str = _format_failed_skills(
-            _compile_failed_skills(failed_recommended_skills, "recommended_level")
-        )
-        is_doctrine = group.is_doctrine if group else False
-        ajax_children_url = reverse(
-            "memberaudit:character_skill_set_details",
-            args=[character.pk, skill_check.skill_set_id],
-        )
-        actions_html = (
-            '<button type="button" class="btn btn-primary" '
-            'data-bs-toggle="modal" data-bs-target="#modalCharacterSkillSetDetails" '
-            f"data-ajax_skill_set_detail={ajax_children_url}>"
-            '<i class="fas fa-search"></i></button>'
-        )
-        return {
-            "id": skill_check.id,
-            "group": _group_name(group),
-            "skill_set": _skill_set_name_html(skill_check.skill_set),
-            "skill_set_name": skill_set.name,
-            "is_doctrine_str": yesno_str(is_doctrine),
-            "failed_required_skills": failed_required_skills_str,
-            "has_required": has_required,
-            "has_required_str": yesno_str(has_required),
-            "failed_recommended_skills": failed_recommended_skills_str,
-            "has_recommended": has_recommended,
-            "has_recommended_str": yesno_str(has_recommended),
-            "action": actions_html,
-        }
-
     groups_map = SkillSet.objects.compile_groups_map()
-    skill_checks_qs = (
-        character.skill_set_checks.select_related("skill_set", "skill_set__ship_type")
-        .prefetch_related(
-            Prefetch(
-                "failed_required_skills",
-                queryset=SkillSetSkill.objects.select_related("eve_type"),
-                to_attr="failed_required_skills_prefetched",
-            )
-        )
-        .prefetch_related(
-            Prefetch(
-                "failed_recommended_skills",
-                queryset=SkillSetSkill.objects.select_related("eve_type"),
-                to_attr="failed_recommended_skills_prefetched",
-            )
-        )
-        .all()
-    )
+    skill_checks_qs = character.skill_set_checks_2()
     skill_checks = {obj.skill_set_id: obj for obj in skill_checks_qs}
     data = []
-    for group_map in groups_map.values():
-        group = group_map["group"]
-        for skill_set in group_map["skill_sets"]:
+    for gm in groups_map.values():
+        group = gm["group"]
+        for skill_set in gm["skill_sets"]:
             try:
                 skill_check = skill_checks[skill_set.id]
             except KeyError:
                 continue
-            else:
-                row = _create_row(skill_check)
-                data.append(row)
+
+            row = _create_skill_set_data_row(character, group, skill_set, skill_check)
+            data.append(row)
+
     data = sorted(data, key=lambda k: (k["group"].lower(), k["skill_set_name"].lower()))
     return JsonResponse({"data": data})
+
+
+def _create_skill_set_data_row(
+    character: Character,
+    group: SkillSetGroup,
+    skill_set: SkillSet,
+    skill_check: CharacterSkillSetCheck,
+):
+    # pylint: disable=too-many-locals
+
+    def _skill_set_name_html(skill_set: SkillSet):
+        url = skill_set.icon_url(ICON_SIZE_64)
+        ship_icon = f'<img width="24" heigh="24" src="{url}"/>'
+        return ship_icon + "&nbsp;&nbsp;" + skill_set.name
+
+    def _group_name(group: SkillSetGroup):
+        if not group:
+            return UNGROUPED_SKILL_SET
+        return group.name_plus if group.is_active else group.name + " [Not active]"
+
+    def _compile_failed_skills(
+        skill_set_skills: List[SkillSetSkill], level_name: str
+    ) -> List[str]:
+        skills = []
+        for obj in skill_set_skills:
+            row = {
+                "name": obj.eve_type.name,
+                "required_level": obj.required_level,
+                "recommended_level": obj.recommended_level,
+            }
+            skills.append(row)
+
+        skills.sort(key=lambda k: k["name"].lower())
+        rows = []
+        for obj in skills:
+            text = format_html(
+                "{}&nbsp;{}", obj["name"], arabic_number_to_roman(obj[level_name])
+            )
+            rows.append(bootstrap_label_html(text, "default"))
+        return rows
+
+    def _format_failed_skills(skills: List[str]) -> str:
+        return " ".join(skills) if skills else "-"
+
+    failed_required_skills = list(skill_check.failed_required_skills_prefetched)
+    failed_required_skills_str = _format_failed_skills(
+        _compile_failed_skills(failed_required_skills, "required_level")
+    )
+    has_required = not bool(failed_required_skills)
+
+    failed_recommended_skills = list(skill_check.failed_recommended_skills_prefetched)
+    failed_recommended_skills_str = _format_failed_skills(
+        _compile_failed_skills(failed_recommended_skills, "recommended_level")
+    )
+    has_recommended = not bool(failed_recommended_skills)
+
+    is_doctrine = group.is_doctrine if group else False
+    ajax_children_url = reverse(
+        "memberaudit:character_skill_set_details",
+        args=[character.pk, skill_check.skill_set_id],
+    )
+    actions_html = (
+        '<button type="button" class="btn btn-primary" '
+        'data-bs-toggle="modal" data-bs-target="#modalCharacterSkillSetDetails" '
+        f"data-ajax_skill_set_detail={ajax_children_url}>"
+        '<i class="fas fa-search"></i></button>'
+    )
+    return {
+        "id": skill_check.pk,
+        "group": _group_name(group),
+        "skill_set": _skill_set_name_html(skill_check.skill_set),
+        "skill_set_name": skill_set.name,
+        "is_doctrine_str": yesno_str(is_doctrine),
+        "failed_required_skills": failed_required_skills_str,
+        "has_required": has_required,
+        "has_required_str": yesno_str(has_required),
+        "failed_recommended_skills": failed_recommended_skills_str,
+        "has_recommended": has_recommended,
+        "has_recommended_str": yesno_str(has_recommended),
+        "action": actions_html,
+    }
 
 
 @login_required
@@ -533,79 +523,15 @@ def character_skill_set_details(
 ) -> HttpResponse:
     """Render view for character skill set details."""
 
-    def _compile_row(character_skills, missing_skills, skill_id, skill):
-        character_skill = character_skills.get(skill_id)
-        recommended_level_str = "-"
-        required_level_str = "-"
-        current_str = "-"
-        result_icon = ICON_FAILED
-        met_required = True
-
-        if character_skill:
-            current_str = arabic_number_to_roman(character_skill.active_skill_level)
-
-        if skill.recommended_level:
-            recommended_level_str = arabic_number_to_roman(skill.recommended_level)
-
-        if skill.required_level:
-            required_level_str = arabic_number_to_roman(skill.required_level)
-
-        if not character_skill:
-            result_icon = ICON_FAILED
-            met_required = False
-        else:
-            if (
-                skill.required_level
-                and not skill.recommended_level
-                and character_skill.active_skill_level >= skill.required_level
-            ):
-                result_icon = ICON_FULL
-            elif (
-                skill.recommended_level
-                and character_skill.active_skill_level >= skill.recommended_level
-            ):
-                result_icon = ICON_FULL
-            elif (
-                skill.required_level
-                and character_skill.active_skill_level >= skill.required_level
-            ):
-                result_icon = ICON_PARTIAL
-            else:
-                met_required = False
-
-        if not character_skill or (
-            character_skill and character_skill.active_skill_level < skill.maximum_level
-        ):
-            missing_skills.append(skill.maximum_skill_str)
-
-        return {
-            "name": skill.eve_type.name,
-            "required": required_level_str,
-            "recommended": recommended_level_str,
-            "current": current_str,
-            "result_icon": result_icon,
-            "met_required": met_required,
-        }
-
     skill_set = get_object_or_404(SkillSet, pk=skill_set_pk)
-    skill_set_skills = _calc_skill_set_skills(skill_set_pk)
-    character_skills = _calc_character_skills(character, skill_set_skills)
-    out_data = []
-    missing_skills = []
-    for skill_id, skill in skill_set_skills.items():
-        out_data.append(_compile_row(character_skills, missing_skills, skill_id, skill))
-
-    met_all_required = True
-    for data in out_data:
-        if not data["met_required"]:
-            met_all_required = False
-            break
-
+    skills, missing_skills, met_all_required = _calc_skill_set_details_skills(
+        character, skill_set
+    )
     context = {
         "name": skill_set.name,
         "description": skill_set.description,
-        "ship_url": _calc_url_for_skill_set(skill_set),
-        "skills": sorted(out_data, key=lambda k: (k["name"].lower())),
+        "ship_url": skill_set.icon_url(ICON_SIZE_64),
+        "skills": skills,
         "met_all_required": met_all_required,
         "icon_failed": ICON_FAILED,
         "icon_partial": ICON_PARTIAL,
@@ -621,32 +547,129 @@ def character_skill_set_details(
     )
 
 
-def _calc_url_for_skill_set(skill_set):
-    url = (
-        skill_set.ship_type.icon_url(ICON_SIZE_64, variant=EveType.IconVariant.REGULAR)
-        if skill_set.ship_type
-        else eveimageserver.type_icon_url(
-            SKILL_SET_DEFAULT_ICON_TYPE_ID, size=ICON_SIZE_64
+def _calc_skill_set_details_skills(
+    character: Character, skill_set: SkillSet
+) -> Tuple[Dict[str, Any], List[str], bool]:
+    # pylint: disable=too-many-locals
+    try:
+        check: CharacterSkillSetCheck = character.skill_set_checks.get(
+            skill_set=skill_set
         )
+        failed_required_skills = set(check.failed_required_skills.all())
+        failed_recommended_skills = set(check.failed_recommended_skills.all())
+        has_check = True
+
+    except CharacterSkillSetCheck.DoesNotExist:
+        has_check = False
+        failed_required_skills = set()
+        failed_recommended_skills = set()
+
+    skill_set_skills = {
+        obj.eve_type.id: obj
+        for obj in SkillSetSkill.objects.select_related("eve_type").filter(
+            skill_set=skill_set
+        )
+    }
+
+    character_skills: Dict[int, Optional[CharacterSkill]] = {
+        obj.eve_type.id: obj
+        for obj in character.skills.select_related("eve_type").filter(
+            eve_type_id__in=skill_set_skills.keys()
+        )
+    }
+
+    skills: List[Dict[str, Any]] = []
+    missing_skills: List[str] = []
+    met_all_required = True
+    for skill_id, skill in skill_set_skills.items():
+        character_skill = character_skills.get(skill_id)
+        row, result = _compile_skill_set_details_row(
+            character_skill,
+            skill,
+            has_check,
+            failed_required_skills,
+            failed_recommended_skills,
+        )
+        skills.append(row)
+        if not result.has_required():
+            missing_skills.append(skill.maximum_skill_str)
+            met_all_required = False
+
+    skills.sort(key=lambda k: (k["name"].lower()))
+
+    return skills, missing_skills, met_all_required
+
+
+def _compile_skill_set_details_row(
+    character_skill: CharacterSkill,
+    skill: SkillSetSkill,
+    has_check: bool,
+    failed_required: Set[SkillSetSkill],
+    failed_recommended: Set[SkillSetSkill],
+):
+
+    if has_check:
+        result = _calc_skill_set_details_row_result(
+            skill, failed_required, failed_recommended
+        )
+    else:
+        result = SkillSetMatchLevel.NONE
+
+    match result:
+        case SkillSetMatchLevel.FULL:
+            result_icon = ICON_FULL
+        case SkillSetMatchLevel.PARTIAL:
+            result_icon = ICON_PARTIAL
+        case _:
+            result_icon = ICON_FAILED
+
+    recommended_level_str = (
+        arabic_number_to_roman(skill.recommended_level)
+        if skill.recommended_level
+        else "-"
+    )
+    required_level_str = (
+        arabic_number_to_roman(skill.required_level) if skill.required_level else "-"
+    )
+    current_str = (
+        arabic_number_to_roman(character_skill.active_skill_level)
+        if character_skill
+        else "-"
     )
 
-    return url
+    row = {
+        "name": skill.eve_type.name,
+        "required": required_level_str,
+        "recommended": recommended_level_str,
+        "current": current_str,
+        "result_icon": result_icon,
+    }
+    return row, result
 
 
-def _calc_skill_set_skills(skill_set_pk):
-    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
-        skill_set_id=skill_set_pk
-    )
-    skill_set_skills = {obj.eve_type_id: obj for obj in skill_set_skills_qs}
-    return skill_set_skills
+def _calc_skill_set_details_row_result(
+    skill: SkillSetSkill,
+    failed_required: Set[SkillSetSkill],
+    failed_recommended: Set[SkillSetSkill],
+) -> SkillSetMatchLevel:
+    if skill.required_level and skill.recommended_level:
+        if skill not in failed_required and skill not in failed_recommended:
+            return SkillSetMatchLevel.FULL
+        if skill not in failed_required:
+            return SkillSetMatchLevel.PARTIAL
+        return SkillSetMatchLevel.NONE
 
+    if skill.required_level and not skill.recommended_level:
+        if skill not in failed_required:
+            return SkillSetMatchLevel.FULL
+        return SkillSetMatchLevel.NONE
 
-def _calc_character_skills(character, skill_set_skills):
-    character_skills_qs = character.skills.select_related("eve_type").filter(
-        eve_type_id__in=skill_set_skills.keys()
-    )
-    character_skills = {obj.eve_type_id: obj for obj in character_skills_qs}
-    return character_skills
+    if not skill.required_level and skill.recommended_level:
+        if skill not in failed_recommended:
+            return SkillSetMatchLevel.FULL
+        return SkillSetMatchLevel.PARTIAL
+
+    return SkillSetMatchLevel.FULL
 
 
 @login_required

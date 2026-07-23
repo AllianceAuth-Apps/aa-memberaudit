@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from eveuniverse.tests.testdata.factories_2 import EveTypeFactory
 
 from app_utils.testdata_factories import (
     EveAllianceInfoFactory,
@@ -8,6 +9,7 @@ from app_utils.testdata_factories import (
 )
 from app_utils.testing import NoSocketsTestCase, add_character_to_user
 
+from memberaudit.constants import SKILL_SET_DEFAULT_ICON_TYPE_ID
 from memberaudit.models import (
     ComplianceGroupDesignation,
     EveShipType,
@@ -316,7 +318,7 @@ class TestComplianceGroupDesignation(NoSocketsTestCase):
         self.assertTrue(group.authgroup.internal)
 
 
-class TestSkillSet(NoSocketsTestCase):
+class TestSkillSet_Clone(NoSocketsTestCase):
     def test_should_clone_a_skill_set(self):
         # given
         user = UserMainBasicAccessFactory()
@@ -343,6 +345,31 @@ class TestSkillSet(NoSocketsTestCase):
         self.assertEqual(skill_2.eve_type, skill_1.eve_type)
         self.assertEqual(skill_2.required_level, skill_1.required_level)
         self.assertEqual(skill_2.recommended_level, skill_1.recommended_level)
+
+
+class TestSkillSet_IconUrl(NoSocketsTestCase):
+    def test_should_return_default_icon_when_no_ship_type(self):
+        # given
+        ss = SkillSetFactory(ship_type=None)
+
+        # when
+        got = ss.icon_url(64)
+
+        # then
+        want = f"https://images.evetech.net/types/{SKILL_SET_DEFAULT_ICON_TYPE_ID}/icon?size=64"
+        self.assertEqual(got, want)
+
+    def test_should_return_ship_type_icon_when_defined(self):
+        # given
+        et = EveTypeFactory()
+        ss = SkillSetFactory(ship_type=et)
+
+        # when
+        got = ss.icon_url(64)
+
+        # then
+        want = f"https://images.evetech.net/types/{et.id}/icon?size=64"
+        self.assertEqual(got, want)
 
 
 class TestPermissions(NoSocketsTestCase):

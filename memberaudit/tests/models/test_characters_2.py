@@ -12,10 +12,15 @@ from memberaudit.helpers import UpdateSectionResult
 from memberaudit.models import Character, CharacterUpdateStatus
 from memberaudit.tests.testdata.factories_2 import (
     CharacterFactory,
+    CharacterSkillFactory,
     CharacterUpdateStatusFactory,
+    SkillSetFactory,
+    SkillSetGroupFactory,
+    SkillSetSkillFactory,
+    SpaceshipCommandSkillTypeFactory,
     UserMainBasicAccessFactory,
 )
-from memberaudit.tests.utils import make_http_server_error
+from memberaudit.tests.utils import extract, make_http_server_error
 
 MODULE_PATH = "memberaudit.models.characters"
 
@@ -586,3 +591,76 @@ class TestCharacter_IsUpdateNeeded(NoSocketsTestCase):
         )
         # when/then
         self.assertFalse(status.is_update_needed())
+
+
+class TestCharacter_SkillSetChecks_2(NoSocketsTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.amarr_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
+            name="Amarr Carrier"
+        )
+        cls.caldari_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
+            name="Caldari Carrier"
+        )
+        cls.gallente_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
+            name="Gallente Carrier"
+        )
+        cls.minmatar_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
+            name="Minmatar Carrier"
+        )
+
+    def test_should_return_all(self):
+        # given
+        character = CharacterFactory()
+        CharacterSkillFactory(
+            character=character,
+            eve_type=self.amarr_carrier_skill_type,
+            active_skill_level=4,
+            skillpoints_in_skill=10,
+            trained_skill_level=4,
+        )
+        CharacterSkillFactory(
+            character=character,
+            eve_type=self.caldari_carrier_skill_type,
+            active_skill_level=2,
+            skillpoints_in_skill=10,
+            trained_skill_level=5,
+        )
+
+        doctrine_1 = SkillSetGroupFactory(name="Alpha")
+        doctrine_2 = SkillSetGroupFactory(name="Bravo", is_doctrine=True)
+
+        # can fly ship 1
+        ship_1 = SkillSetFactory(name="Ship 1", groups=[doctrine_1, doctrine_2])
+        SkillSetSkillFactory(
+            skill_set=ship_1,
+            eve_type=self.amarr_carrier_skill_type,
+            required_level=3,
+            recommended_level=5,
+        )
+
+        # can not fly ship 2
+        ship_2 = SkillSetFactory(name="Ship 2", groups=[doctrine_1])
+        SkillSetSkillFactory(
+            skill_set=ship_2, eve_type=self.amarr_carrier_skill_type, required_level=3
+        )
+        SkillSetSkillFactory(
+            skill_set=ship_2, eve_type=self.caldari_carrier_skill_type, required_level=3
+        )
+
+        # can fly ship 3 (No SkillSetGroup)
+        ship_3 = SkillSetFactory(name="Ship 3")
+        SkillSetSkillFactory(
+            skill_set=ship_3, eve_type=self.amarr_carrier_skill_type, required_level=1
+        )
+
+        character.update_skill_sets()
+
+        # given
+        got = character.skill_set_checks_2()
+
+        # then
+        self.assertEqual(
+            extract(got, "skill_set__pk"), {ship_1.pk, ship_2.pk, ship_3.pk}
+        )

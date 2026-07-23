@@ -28,11 +28,14 @@ from memberaudit.managers.character_sections_3 import (
     CharacterWalletJournalEntryManager,
     CharacterWalletTransactionManager,
 )
-
-from ._helpers import AddGenericReprMixin
-from .characters import Character
-from .constants import CURRENCY_MAX_DECIMALS, CURRENCY_MAX_DIGITS, NAMES_MAX_LENGTH
-from .general import Location
+from memberaudit.models._helpers import AddGenericReprMixin
+from memberaudit.models.characters import Character
+from memberaudit.models.constants import (
+    CURRENCY_MAX_DECIMALS,
+    CURRENCY_MAX_DIGITS,
+    NAMES_MAX_LENGTH,
+)
+from memberaudit.models.general import Location
 
 logger = get_extension_logger(__name__)
 
@@ -536,13 +539,6 @@ class CharacterSkillSetCheck(AddGenericReprMixin, models.Model):
 
     def __str__(self) -> str:
         return f"{self.character}-{self.skill_set}"
-
-    @property
-    def can_fly(self) -> bool:
-        """Return True if character has all required skills for this skill set,
-        else False.
-        """
-        return not self.failed_required_skills.exists()
 
 
 class CharacterStanding(AddGenericReprMixin, models.Model):

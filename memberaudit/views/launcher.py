@@ -35,8 +35,7 @@ from memberaudit.models import (
     CharacterWalletJournalEntry,
     ComplianceGroupDesignation,
 )
-
-from ._common import add_common_context
+from memberaudit.views._common import add_common_context
 
 logger = get_extension_logger(__name__)
 

@@ -26,7 +26,7 @@ def fetch_character_if_allowed(*args_select_related):
     - 403 if user has no access
     - 404 if character does not exist
     """
-    from .models import Character
+    from memberaudit.models import Character
 
     def decorator(view_func):
         @wraps(view_func)

@@ -23,8 +23,7 @@ from app_utils.allianceauth import get_redis_client
 from app_utils.testing import NoSocketsTestCase, add_character_to_user, response_text
 
 from memberaudit.models import Character
-
-from .testdata.factories import create_character
+from memberaudit.tests.testdata.factories import create_character
 
 logger = logging.getLogger(__name__)
 
