@@ -441,8 +441,8 @@ class SkillSetSkillFactory(
 
     skill_set = factory.SubFactory(SkillSetFactory)
     eve_type = factory.SubFactory(NavigationSkillTypeFactory)
-    required_level = 1
-    recommended_level = 1
+    required_level = 3
+    recommended_level = None
 
 
 # Character

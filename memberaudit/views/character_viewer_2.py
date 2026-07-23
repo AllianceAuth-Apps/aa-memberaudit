@@ -415,7 +415,7 @@ def character_skill_sets_data(
 ) -> JsonResponse:
     """Render data view for character skill sets."""
 
-    groups_map = SkillSet.objects.compile_groups_map()
+    groups_map = SkillSet.objects.filter(is_visible=True).compile_groups_map()
     skill_checks_qs = character.skill_set_checks_2()
     skill_checks = {obj.skill_set_id: obj for obj in skill_checks_qs}
     data = []
