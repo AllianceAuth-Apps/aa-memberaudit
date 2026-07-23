@@ -1,8 +1,7 @@
 import datetime as dt
 from collections import defaultdict
 from http import HTTPStatus
-
-from bs4 import BeautifulSoup
+from typing import NamedTuple
 
 from django.test import RequestFactory
 from django.urls import reverse
@@ -18,12 +17,7 @@ from eveuniverse.tests.testdata.factories_2 import (
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testdata_factories import UserMainFactory
-from app_utils.testing import (
-    NoSocketsTestCase,
-    generate_invalid_pk,
-    multi_assert_in,
-    response_text,
-)
+from app_utils.testing import NoSocketsTestCase, generate_invalid_pk, multi_assert_in
 
 from memberaudit.models import (
     CharacterMail,
@@ -42,6 +36,7 @@ from memberaudit.tests.testdata.factories_2 import (
     CharacterRoleFactory,
     CharacterSkillFactory,
     CharacterSkillqueueEntryFactory,
+    CharacterSkillSetCheck,
     CharacterStandingFactory,
     CharacterTitleFactory,
     CharacterWalletJournalEntryFactory,
@@ -59,6 +54,8 @@ from memberaudit.tests.testdata.factories_2 import (
 )
 from memberaudit.tests.utils import json_response_to_dict_2, json_response_to_python_2
 from memberaudit.views.character_viewer_2 import (
+    SkillSetMatchLevel,
+    _compile_skill_set_details_row,
     character_jump_clones_data,
     character_mail,
     character_mail_headers_by_label_data,
@@ -66,7 +63,6 @@ from memberaudit.views.character_viewer_2 import (
     character_mining_ledger_data,
     character_planets_data,
     character_roles_data,
-    character_skill_set_details,
     character_skill_sets_data,
     character_skillqueue_data,
     character_skills_data,
@@ -546,11 +542,6 @@ class TestSkillSetsData(NoSocketsTestCase):
 
 
 class TestSkillSetsDetails(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.factory = RequestFactory()
-
     def test_should_show_details(self):
         # given
         user = UserMainFactory(
@@ -558,101 +549,135 @@ class TestSkillSetsDetails(NoSocketsTestCase):
         )
         character = CharacterFactory(user=user)
 
-        amarr_carrier = SpaceshipCommandSkillTypeFactory(name="Amarr Carrier")
-        caldari_carrier = SpaceshipCommandSkillTypeFactory(name="Caldari Carrier")
-        gallente_carrier = SpaceshipCommandSkillTypeFactory(name="Gallente Carrier")
-        minmatar_carrier = SpaceshipCommandSkillTypeFactory(name="Minmatar Carrier")
+        skill_1_type = SpaceshipCommandSkillTypeFactory(name="Alpha")
+        skill_2_type = SpaceshipCommandSkillTypeFactory(name="Bravo")
         CharacterSkillFactory(
             character=character,
-            eve_type=amarr_carrier,
+            eve_type=skill_1_type,
             active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
         )
         CharacterSkillFactory(
             character=character,
-            eve_type=caldari_carrier,
+            eve_type=skill_2_type,
             active_skill_level=2,
-            skillpoints_in_skill=10,
-            trained_skill_level=2,
-        )
-        CharacterSkillFactory(
-            character=character,
-            eve_type=gallente_carrier,
-            active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
         )
         skill_set = SkillSetFactory()
         SkillSetSkillFactory(
             skill_set=skill_set,
-            eve_type=amarr_carrier,
+            eve_type=skill_1_type,
             required_level=3,
             recommended_level=5,
         )
         SkillSetSkillFactory(
             skill_set=skill_set,
-            eve_type=caldari_carrier,
-            required_level=None,
-            recommended_level=3,
-        )
-        SkillSetSkillFactory(
-            skill_set=skill_set,
-            eve_type=gallente_carrier,
+            eve_type=skill_2_type,
             required_level=3,
             recommended_level=None,
         )
-        SkillSetSkillFactory(
-            skill_set=skill_set,
-            eve_type=minmatar_carrier,
-            required_level=None,
-            recommended_level=None,
-        )
 
-        request = self.factory.get(
+        character.update_skill_sets()
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
             reverse(
                 "memberaudit:character_skill_set_details",
                 args=[character.pk, skill_set.pk],
             )
         )
-        request.user = user
-
-        # when
-        response = character_skill_set_details(request, character.pk, skill_set.pk)
 
         # then
         self.assertEqual(response.status_code, HTTPStatus.OK)
-        text = response_text(response)
-        self.assertIn(skill_set.name, text)
-        self.assertIn(amarr_carrier.name, text)
-        self.assertIn(caldari_carrier.name, text)
-        self.assertIn(gallente_carrier.name, text)
-        self.assertIn(minmatar_carrier.name, text)
-        soup = BeautifulSoup(text, features="html.parser")
-        missing_skills_str = soup.find(id="div-missing-skills").get_text()
-        self.assertIn("Amarr Carrier V", missing_skills_str)
-        self.assertIn("Caldari Carrier III", missing_skills_str)
-        self.assertIn("Minmatar Carrier I", missing_skills_str)
-        self.assertNotIn("Gallente Carrier", missing_skills_str)
+        self.assertEqual(skill_set.name, response.context["name"])
+        self.assertIn(skill_1_type.name, response.text)
+        self.assertIn(skill_2_type.name, response.text)
+        self.assertIn("Bravo", response.context["missing_skills_str"])
+        self.assertNotIn("Alpha", response.context["missing_skills_str"])
+        self.assertFalse(response.context["met_all_required"])
 
     def test_need_permission_to_see_data(self):
         # given
         user = UserMainFactory(permissions=["memberaudit.basic_access"])
         character = CharacterFactory(user=user)
         skill_set = SkillSetFactory()
-        request = self.factory.get(
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
             reverse(
                 "memberaudit:character_skill_set_details",
                 args=[character.pk, skill_set.pk],
             )
         )
-        request.user = user
-
-        # when
-        response = character_skill_sets_data(request, character.pk)
 
         # then
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
+
+
+class TestCompileSkillSetDetailsRow(NoSocketsTestCase):
+    def test_should_return_correct_result(self):
+        # given
+        skill_type = SpaceshipCommandSkillTypeFactory()
+
+        class Case(NamedTuple):
+            name: str
+            required: int
+            recommended: int
+            active: int
+            result: SkillSetMatchLevel
+
+        cases = [
+            Case("has recommended", 3, 5, 5, SkillSetMatchLevel.FULL),
+            Case("has required", 3, 5, 3, SkillSetMatchLevel.PARTIAL),
+            Case("below required", 3, 5, 2, SkillSetMatchLevel.NONE),
+            Case("skill not trained", 3, 5, 0, SkillSetMatchLevel.NONE),
+            Case("no required", None, 5, 1, SkillSetMatchLevel.PARTIAL),
+            Case(
+                "no required and skill not trained",
+                None,
+                5,
+                0,
+                SkillSetMatchLevel.PARTIAL,
+            ),
+        ]
+
+        for tc in cases:
+            skill_set = SkillSetFactory()
+            skill = SkillSetSkillFactory(
+                skill_set=skill_set,
+                eve_type=skill_type,
+                required_level=tc.required,
+                recommended_level=tc.recommended,
+            )
+            character = CharacterFactory()
+            if tc.active:
+                character_skill = CharacterSkillFactory(
+                    character=character,
+                    eve_type=skill_type,
+                    active_skill_level=tc.active,
+                )
+            else:
+                character_skill = None
+
+            character.update_skill_sets()
+            check: CharacterSkillSetCheck = character.skill_set_checks.first()
+            failed_recommended = set(check.failed_recommended_skills.all())
+            failed_required = set(check.failed_required_skills.all())
+
+            # when
+            _, result = _compile_skill_set_details_row(
+                character_skill=character_skill,
+                skill=skill,
+                has_check=True,
+                failed_recommended=failed_recommended,
+                failed_required=failed_required,
+            )
+
+            # then
+            self.assertEqual(result, tc.result, msg=tc.name)
+
+            character.delete()
+            skill_set.delete()
 
 
 class TestSkills(NoSocketsTestCase):

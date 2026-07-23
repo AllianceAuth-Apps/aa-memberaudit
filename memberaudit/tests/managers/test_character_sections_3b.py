@@ -108,13 +108,11 @@ class TestCharacter_UpdateSkillSets_Single(NoSocketsTestCase):
             Case("has required", 3, 5, 3, False, True),
             Case("below required", 3, 5, 2, True, True),
             Case("skill not trained", 3, 5, 0, True, True),
-            Case("required is zero", 0, 5, 1, False, True),
-            Case(
-                "required is not defined and skill not trained", None, 5, 0, False, True
-            ),
+            Case("no required", None, 5, 1, False, True),
+            Case("no required and skill not trained", None, 5, 0, False, True),
         ]
 
-        for i, tc in enumerate(cases, 1):
+        for tc in cases:
             # given
             skill_set = SkillSetFactory()
             SkillSetSkillFactory(

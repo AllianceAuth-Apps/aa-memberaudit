@@ -2,8 +2,9 @@
 
 # pylint: disable=unused-argument
 
+import enum
 from collections import defaultdict
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import humanize
 
@@ -59,6 +60,18 @@ ICON_FAILED = "fas fa-times boolean-icon-false text-danger"
 ICON_PARTIAL = "fas fa-check text-warning"
 ICON_FULL = "fas fa-check-double text-success"
 ICON_MET_ALL_REQUIRED = "fas fa-check text-success"
+
+
+class SkillSetMatchLevel(enum.Enum):
+    """A level of matching a skill set."""
+
+    FULL = enum.auto()
+    PARTIAL = enum.auto()
+    NONE = enum.auto()
+
+    def has_required(self) -> bool:
+        """Report whether it matches at least required."""
+        return self is not self.NONE
 
 
 @login_required
@@ -537,93 +550,126 @@ def character_skill_set_details(
 def _calc_skill_set_details_skills(
     character: Character, skill_set: SkillSet
 ) -> Tuple[Dict[str, Any], List[str], bool]:
-    skill_set_skills_qs = SkillSetSkill.objects.select_related("eve_type").filter(
-        skill_set=skill_set
-    )
-    skill_set_skills = {obj.eve_type.id: obj for obj in skill_set_skills_qs}
+    # pylint: disable=too-many-locals
+    try:
+        check: CharacterSkillSetCheck = character.skill_set_checks.get(
+            skill_set=skill_set
+        )
+        failed_required_skills = set(check.failed_required_skills.all())
+        failed_recommended_skills = set(check.failed_recommended_skills.all())
+        has_check = True
 
-    character_skills_qs: Iterator[CharacterSkill] = character.skills.select_related(
-        "eve_type"
-    ).filter(eve_type_id__in=skill_set_skills.keys())
-    character_skills = {obj.eve_type.id: obj for obj in character_skills_qs}
+    except CharacterSkillSetCheck.DoesNotExist:
+        has_check = False
+        failed_required_skills = set()
+        failed_recommended_skills = set()
 
-    skills: Dict[str, Any] = []
+    skill_set_skills = {
+        obj.eve_type.id: obj
+        for obj in SkillSetSkill.objects.select_related("eve_type").filter(
+            skill_set=skill_set
+        )
+    }
+
+    character_skills: Dict[int, Optional[CharacterSkill]] = {
+        obj.eve_type.id: obj
+        for obj in character.skills.select_related("eve_type").filter(
+            eve_type_id__in=skill_set_skills.keys()
+        )
+    }
+
+    skills: List[Dict[str, Any]] = []
     missing_skills: List[str] = []
+    met_all_required = True
     for skill_id, skill in skill_set_skills.items():
-        row = _compile_skill_set_details_row(
-            character_skills, missing_skills, skill_id, skill
+        character_skill = character_skills.get(skill_id)
+        row, result = _compile_skill_set_details_row(
+            character_skill,
+            skill,
+            has_check,
+            failed_required_skills,
+            failed_recommended_skills,
         )
         skills.append(row)
+        if not result.has_required():
+            missing_skills.append(skill.maximum_skill_str)
+            met_all_required = False
 
     skills.sort(key=lambda k: (k["name"].lower()))
-
-    met_all_required = True
-    for data in skills:
-        if not data["met_required"]:
-            met_all_required = False
-            break
 
     return skills, missing_skills, met_all_required
 
 
 def _compile_skill_set_details_row(
-    character_skills: Dict[int, CharacterSkill],
-    missing_skills: List[str],
-    skill_id: int,
+    character_skill: CharacterSkill,
     skill: SkillSetSkill,
+    has_check: bool,
+    failed_required: Set[SkillSetSkill],
+    failed_recommended: Set[SkillSetSkill],
 ):
-    character_skill = character_skills.get(skill_id)
-    recommended_level_str = "-"
-    required_level_str = "-"
-    current_str = "-"
-    result_icon = ICON_FAILED
-    met_required = True
 
-    if character_skill:
-        current_str = arabic_number_to_roman(character_skill.active_skill_level)
-
-    if skill.recommended_level:
-        recommended_level_str = arabic_number_to_roman(skill.recommended_level)
-
-    if skill.required_level:
-        required_level_str = arabic_number_to_roman(skill.required_level)
-
-    if not character_skill:
-        result_icon = ICON_FAILED
-        met_required = False
+    if has_check:
+        result = _calc_skill_set_details_row_result(
+            skill, failed_required, failed_recommended
+        )
     else:
-        if (
-            skill.required_level
-            and not skill.recommended_level
-            and character_skill.active_skill_level >= skill.required_level
-        ):
+        result = SkillSetMatchLevel.NONE
+
+    match result:
+        case SkillSetMatchLevel.FULL:
             result_icon = ICON_FULL
-        elif (
-            skill.recommended_level
-            and character_skill.active_skill_level >= skill.recommended_level
-        ):
-            result_icon = ICON_FULL
-        elif (
-            skill.required_level
-            and character_skill.active_skill_level >= skill.required_level
-        ):
+        case SkillSetMatchLevel.PARTIAL:
             result_icon = ICON_PARTIAL
-        else:
-            met_required = False
+        case _:
+            result_icon = ICON_FAILED
 
-    if not character_skill or (
-        character_skill and character_skill.active_skill_level < skill.maximum_level
-    ):
-        missing_skills.append(skill.maximum_skill_str)
+    recommended_level_str = (
+        arabic_number_to_roman(skill.recommended_level)
+        if skill.recommended_level
+        else "-"
+    )
+    required_level_str = (
+        arabic_number_to_roman(skill.required_level) if skill.required_level else "-"
+    )
+    current_str = (
+        arabic_number_to_roman(character_skill.active_skill_level)
+        if character_skill
+        else "-"
+    )
 
-    return {
+    row = {
         "name": skill.eve_type.name,
         "required": required_level_str,
         "recommended": recommended_level_str,
         "current": current_str,
         "result_icon": result_icon,
-        "met_required": met_required,
     }
+    return row, result
+
+
+def _calc_skill_set_details_row_result(
+    skill: SkillSetSkill,
+    failed_required: Set[SkillSetSkill],
+    failed_recommended: Set[SkillSetSkill],
+) -> SkillSetMatchLevel:
+    if skill.required_level and skill.recommended_level:
+        if skill not in failed_required and skill not in failed_recommended:
+            return SkillSetMatchLevel.FULL
+        if skill not in failed_required:
+            return SkillSetMatchLevel.PARTIAL
+        return SkillSetMatchLevel.NONE
+
+    if skill.required_level and not skill.recommended_level:
+        if skill not in failed_required:
+            return SkillSetMatchLevel.FULL
+        return SkillSetMatchLevel.NONE
+
+    if not skill.required_level and skill.recommended_level:
+        if skill not in failed_recommended:
+            return SkillSetMatchLevel.FULL
+        return SkillSetMatchLevel.PARTIAL
+
+    return SkillSetMatchLevel.FULL
 
 
 @login_required
