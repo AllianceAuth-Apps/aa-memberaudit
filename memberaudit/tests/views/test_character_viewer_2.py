@@ -461,6 +461,9 @@ class TestSkillSetsData(NoSocketsTestCase):
             skill_set=ship_3, eve_type=self.amarr_carrier_skill_type, required_level=1
         )
 
+        # should not show invisible skill sets
+        SkillSetFactory(name="Ship 4", is_visible=False)
+
         character.update_skill_sets()
 
         request = self.factory.get(

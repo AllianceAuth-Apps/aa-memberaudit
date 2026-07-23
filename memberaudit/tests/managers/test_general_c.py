@@ -120,7 +120,7 @@ class TestSkillSetManager_UpdateOrCreateFromSkillPlan(NoSocketsTestCase):
         self.assertIn(skill_set, skill_set_group.skill_sets.all())
 
 
-class TestSkillSetManagerCompileGroupsMap(NoSocketsTestCase):
+class TestSkillSetQuerySet_CompileGroupsMap(NoSocketsTestCase):
     def test_should_return_compiled_map(self):
         # given
         group_1 = SkillSetGroupFactory()
