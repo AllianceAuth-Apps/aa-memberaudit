@@ -589,8 +589,8 @@ class TestSkillSetsDetails(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, HTTPStatus.OK)
         self.assertEqual(skill_set.name, response.context["name"])
-        self.assertIn(skill_1_type.name, response.text)
-        self.assertIn(skill_2_type.name, response.text)
+        self.assertContains(response, skill_1_type.name)
+        self.assertContains(response, skill_2_type.name)
         self.assertIn("Bravo", response.context["missing_skills_str"])
         self.assertNotIn("Alpha", response.context["missing_skills_str"])
         self.assertFalse(response.context["met_all_required"])

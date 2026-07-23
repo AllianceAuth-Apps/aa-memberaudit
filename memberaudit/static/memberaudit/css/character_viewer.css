@@ -129,9 +129,9 @@
         white-space: nowrap;
     }
 
-    #tab_skill_sets tbody td:nth-child(1) {
+    /* #tab_skill_sets tbody td:nth-child(1) {
         white-space: nowrap;
-    }
+    } */
 
     /* Contracts Modal */
     #tab_contract_items_requested tbody td:nth-child(5) {
