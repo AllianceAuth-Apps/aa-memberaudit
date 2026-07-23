@@ -15,7 +15,6 @@ from eveuniverse.tests.testdata.factories_2 import (
     ShipTypeFactory,
 )
 
-from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testdata_factories import UserMainFactory
 from app_utils.testing import NoSocketsTestCase, generate_invalid_pk, multi_assert_in
 
@@ -405,8 +404,6 @@ class TestSkillSetsData(NoSocketsTestCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.factory = RequestFactory()
-        cls.user = UserMainBasicAccessFactory()
-        cls.character = CharacterFactory(user=cls.user)
         cls.amarr_carrier_skill_type = SpaceshipCommandSkillTypeFactory(
             name="Amarr Carrier"
         )
@@ -422,22 +419,19 @@ class TestSkillSetsData(NoSocketsTestCase):
 
     def test_skill_sets_data(self):
         # given
-        self.user = AuthUtils.add_permission_to_user_by_name(
-            "memberaudit.view_skill_sets", self.user
+        user = UserMainFactory(
+            permissions=["memberaudit.basic_access", "memberaudit.view_skill_sets"]
         )
+        character = CharacterFactory(user=user)
         CharacterSkillFactory(
-            character=self.character,
+            character=character,
             eve_type=self.amarr_carrier_skill_type,
             active_skill_level=4,
-            skillpoints_in_skill=10,
-            trained_skill_level=4,
         )
         CharacterSkillFactory(
-            character=self.character,
+            character=character,
             eve_type=self.caldari_carrier_skill_type,
             active_skill_level=2,
-            skillpoints_in_skill=10,
-            trained_skill_level=5,
         )
 
         doctrine_1 = SkillSetGroupFactory(name="Alpha")
@@ -467,15 +461,15 @@ class TestSkillSetsData(NoSocketsTestCase):
             skill_set=ship_3, eve_type=self.amarr_carrier_skill_type, required_level=1
         )
 
-        self.character.update_skill_sets()
+        character.update_skill_sets()
 
         request = self.factory.get(
-            reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
+            reverse("memberaudit:character_skill_sets_data", args=[character.pk])
         )
-        request.user = self.user
+        request.user = user
 
         # when
-        response = character_skill_sets_data(request, self.character.pk)
+        response = character_skill_sets_data(request, character.pk)
 
         # then
         self.assertEqual(response.status_code, HTTPStatus.OK)
@@ -489,7 +483,7 @@ class TestSkillSetsData(NoSocketsTestCase):
         self.assertEqual(row["failed_required_skills"], "-")
         url = reverse(
             "memberaudit:character_skill_set_details",
-            args=[self.character.pk, ship_3.id],
+            args=[character.pk, ship_3.id],
         )
         self.assertIn(url, row["action"])
 
@@ -501,7 +495,7 @@ class TestSkillSetsData(NoSocketsTestCase):
         self.assertIn("Amarr Carrier&nbsp;V", row["failed_recommended_skills"])
         url = reverse(
             "memberaudit:character_skill_set_details",
-            args=[self.character.pk, ship_1.id],
+            args=[character.pk, ship_1.id],
         )
         self.assertIn(url, row["action"])
 
@@ -512,7 +506,7 @@ class TestSkillSetsData(NoSocketsTestCase):
         self.assertIn("Caldari Carrier&nbsp;III", row["failed_required_skills"])
         url = reverse(
             "memberaudit:character_skill_set_details",
-            args=[self.character.pk, ship_2.id],
+            args=[character.pk, ship_2.id],
         )
         self.assertIn(url, row["action"])
 
@@ -523,19 +517,22 @@ class TestSkillSetsData(NoSocketsTestCase):
         self.assertEqual(row["failed_required_skills"], "-")
         url = reverse(
             "memberaudit:character_skill_set_details",
-            args=[self.character.pk, ship_1.id],
+            args=[character.pk, ship_1.id],
         )
         self.assertIn(url, row["action"])
 
     def test_need_permission_to_see_data(self):
         # given
+        user = UserMainFactory(permissions=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
+
         request = self.factory.get(
-            reverse("memberaudit:character_skill_sets_data", args=[self.character.pk])
+            reverse("memberaudit:character_skill_sets_data", args=[character.pk])
         )
-        request.user = self.user
+        request.user = user
 
         # when
-        response = character_skill_sets_data(request, self.character.pk)
+        response = character_skill_sets_data(request, character.pk)
 
         # then
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
