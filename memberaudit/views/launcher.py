@@ -253,21 +253,16 @@ def remove_character(request, character_pk: int) -> HttpResponse:
 
 @login_required
 @permission_required(["memberaudit.basic_access", "memberaudit.share_characters"])
-def share_character(request, character_pk: int) -> HttpResponse:
+def share_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render share character view."""
-    try:
-        character = Character.objects.select_related(
-            "eve_character__character_ownership__user", "eve_character"
-        ).get(pk=character_pk)
-    except Character.DoesNotExist:
-        return HttpResponseNotFound(f"Character with pk {character_pk} not found")
-    if character.user and character.user == request.user:
-        character.is_shared = True
-        character.save()
-    else:
+    character = get_object_or_404(Character, pk=character_pk)
+    if not character.user or character.user != request.user:
         return HttpResponseForbidden(
-            f"No permission to remove Character with pk {character_pk}"
+            f"Forbidden to share Character with pk {character_pk}"
         )
+
+    character.is_shared = True
+    character.save()
     return redirect("memberaudit:launcher")
 
 
