@@ -2,6 +2,7 @@
 
 # pylint: disable=redefined-builtin, too-many-lines
 
+import datetime as dt
 import inspect
 from typing import Callable, Iterable, List, Optional
 
@@ -9,6 +10,7 @@ from celery import Task, chain, shared_task
 
 from django.apps import apps
 from django.contrib.auth.models import Group, User
+from django.utils.timezone import now
 from esi.decorators import rate_limit_retry_task
 from esi.models import Token
 from eveuniverse.constants import POST_UNIVERSE_NAMES_MAX_ITEMS
@@ -22,6 +24,7 @@ from memberaudit import __title__, utils
 from memberaudit.app_settings import (
     MEMBERAUDIT_BULK_METHODS_BATCH_SIZE,
     MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT,
+    MEMBERAUDIT_SHARING_TIMEOUT,
     MEMBERAUDIT_TASKS_LOW_PRIORITY,
     MEMBERAUDIT_TASKS_MAX_ASSETS_PER_PASS,
     MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
@@ -73,9 +76,16 @@ def run_regular_updates() -> None:
     """Run regular updates for Member Audit."""
     update_market_prices.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
     update_all_characters.apply_async(priority=MEMBERAUDIT_TASKS_LOW_PRIORITY)
+
     if ComplianceGroupDesignation.objects.exists():
         update_compliance_groups_for_all.apply_async(
             priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )
+
+    if MEMBERAUDIT_SHARING_TIMEOUT > 0:
+        unshare_expired_characters.apply_async(
+            priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY,
+            args=[MEMBERAUDIT_SHARING_TIMEOUT],
         )
 
 
@@ -1222,3 +1232,35 @@ def clear_users_from_group(group_pk: int):
     """Clear all users from given group."""
     group = Group.objects.get(pk=group_pk)
     utils.clear_users_from_group(group)
+
+
+@shared_task(**TASK_DEFAULTS_ONCE)
+def unshare_expired_characters(timeout: int) -> 0:
+    """Unshare character which timeout has expired
+    and return how many character were unshared.
+
+    Timeout is given in minutes.
+    """
+    if timeout <= 0:
+        return 0
+
+    deadline = now() - dt.timedelta(minutes=timeout)
+    expired_characters = Character.objects.filter(
+        is_shared=True, shared_at__isnull=False, shared_at__lt=deadline
+    )
+    if not expired_characters.exists():
+        return 0
+
+    expired_character_pks = list(
+        expired_characters.order_by("pk").values_list("pk", flat=True)
+    )
+
+    expired_characters.update(is_shared=False, shared_at=None)
+
+    count = len(expired_character_pks)
+    logger.info(
+        "Disabled sharing for %d characters with expired timeout: %s",
+        count,
+        expired_character_pks,
+    )
+    return count

@@ -71,6 +71,7 @@ TASK_NAMES: frozenset[str] = frozenset(
 )
 
 
+@patch(TASKS_PATH + ".unshare_expired_characters", spec=True)
 @patch(TASKS_PATH + ".update_compliance_groups_for_all", spec=True)
 @patch(TASKS_PATH + ".update_all_characters", spec=True)
 @patch(TASKS_PATH + ".update_market_prices", spec=True)
@@ -80,6 +81,7 @@ class TestRegularUpdates(NoSocketsTestCase):
         mock_update_market_prices,
         mock_update_all_characters,
         mock_update_compliance_groups_for_all,
+        mock_unshare_expired_characters,
     ):
         # when
         tasks.run_regular_updates()
@@ -89,11 +91,12 @@ class TestRegularUpdates(NoSocketsTestCase):
         self.assertTrue(mock_update_all_characters.apply_async.called)
         self.assertFalse(mock_update_compliance_groups_for_all.apply_async.called)
 
-    def test_should_run_update_for_all_incl_compliance_groups(
+    def test_should_also_update_complice_groups_when_defined(
         self,
         mock_update_market_prices,
         mock_update_all_characters,
         mock_update_compliance_groups_for_all,
+        mock_unshare_expired_characters,
     ):
         # given
         ComplianceGroupFactory()
@@ -105,6 +108,46 @@ class TestRegularUpdates(NoSocketsTestCase):
         self.assertTrue(mock_update_market_prices.apply_async.called)
         self.assertTrue(mock_update_all_characters.apply_async.called)
         self.assertTrue(mock_update_compliance_groups_for_all.apply_async.called)
+
+    def test_should_run_unsharing_of_expired_character_when_timeout_is_defined(
+        self,
+        mock_update_market_prices,
+        mock_update_all_characters,
+        mock_update_compliance_groups_for_all,
+        mock_unshare_expired_characters,
+    ):
+        # given
+        timeout = 3
+
+        with patch(TASKS_PATH + ".MEMBERAUDIT_SHARING_TIMEOUT", timeout):
+            # when
+            tasks.run_regular_updates()
+
+        # then
+        self.assertTrue(mock_update_market_prices.apply_async.called)
+        self.assertTrue(mock_update_all_characters.apply_async.called)
+        self.assertTrue(mock_unshare_expired_characters.apply_async.called)
+        _, kwargs = mock_unshare_expired_characters.apply_async.call_args
+        self.assertEqual(kwargs["args"][0], timeout)
+
+    def test_should_not_run_unsharing_of_expired_character_when_timeout_not_defined(
+        self,
+        mock_update_market_prices,
+        mock_update_all_characters,
+        mock_update_compliance_groups_for_all,
+        mock_unshare_expired_characters,
+    ):
+        # given
+        timeout = 0
+
+        with patch(TASKS_PATH + ".MEMBERAUDIT_SHARING_TIMEOUT", timeout):
+            # when
+            tasks.run_regular_updates()
+
+        # then
+        self.assertTrue(mock_update_market_prices.apply_async.called)
+        self.assertTrue(mock_update_all_characters.apply_async.called)
+        self.assertFalse(mock_unshare_expired_characters.apply_async.called)
 
 
 @patch(TASKS_PATH + ".esi_status.unavailable_sections", lambda: set())

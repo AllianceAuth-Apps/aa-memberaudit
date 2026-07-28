@@ -16,6 +16,7 @@ from django.http import (
 )
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
+from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
 from esi.decorators import token_required
 
@@ -256,33 +257,28 @@ def remove_character(request, character_pk: int) -> HttpResponse:
 def share_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render share character view."""
     character = get_object_or_404(Character, pk=character_pk)
+
     if not character.user or character.user != request.user:
-        return HttpResponseForbidden(
-            f"Forbidden to share Character with pk {character_pk}"
-        )
+        return HttpResponseForbidden("Forbidden to share character not owned by you.")
 
     character.is_shared = True
+    character.shared_at = now()
     character.save()
     return redirect("memberaudit:launcher")
 
 
 @login_required
 @permission_required("memberaudit.basic_access")
-def unshare_character(request, character_pk: int) -> HttpResponse:
+def unshare_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render unshare character view."""
-    try:
-        character = Character.objects.select_related(
-            "eve_character__character_ownership__user", "eve_character"
-        ).get(pk=character_pk)
-    except Character.DoesNotExist:
-        return HttpResponseNotFound(f"Character with pk {character_pk} not found")
-    if character.user and character.user == request.user:
-        character.is_shared = False
-        character.save()
-    else:
-        return HttpResponseForbidden(
-            f"No permission to remove Character with pk {character_pk}"
-        )
+    character = get_object_or_404(Character, pk=character_pk)
+
+    if not character.user or character.user != request.user:
+        return HttpResponseForbidden("Forbidden to unshare character not owned by you.")
+
+    character.is_shared = False
+    character.shared_at = None
+    character.save()
     return redirect("memberaudit:launcher")
 
 

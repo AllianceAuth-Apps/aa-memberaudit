@@ -35,7 +35,6 @@ from memberaudit.views.launcher import (
     launcher,
     player_count_data,
     remove_character,
-    unshare_character,
 )
 
 MODULE_PATH = "memberaudit.views.launcher"
@@ -251,6 +250,7 @@ class TestShareCharacter(NoSocketsTestCase):
         self.assertRedirects(response, reverse("memberaudit:launcher"))
         character.refresh_from_db()
         self.assertTrue(character.is_shared)
+        self.assertTrue(character.shared_at)
 
     def test_user_can_not_share_his_character_when_not_has_permission(self):
         # given
@@ -269,7 +269,9 @@ class TestShareCharacter(NoSocketsTestCase):
         character.refresh_from_db()
         self.assertFalse(character.is_shared)
 
-    def test_should_raise_permission_error_when_character_not_owned_by_user(self):
+    def test_should_raise_permission_error_when_user_tries_to_share_foreign_character(
+        self,
+    ):
         # given
         user = UserMainFactory(
             permissions__=["memberaudit.basic_access", "memberaudit.share_characters"]
@@ -305,45 +307,71 @@ class TestShareCharacter(NoSocketsTestCase):
 
 
 class TestUnshareCharacter(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.factory = RequestFactory()
+    def test_user_can_unshare_his_character(self):
+        # given
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user, is_shared=True, shared_at=now())
+        self.client.force_login(user)
 
-    def test_normal(self):
-        user = UserMainBasicAccessFactory()
-        character = CharacterFactory(user=user, is_shared=True)
-        request = self.factory.get(
+        # when
+        response = self.client.get(
             reverse("memberaudit:unshare_character", args=[character.pk])
         )
-        request.user = user
-        response = unshare_character(request, character.pk)
+
+        # then
+        self.assertRedirects(response, reverse("memberaudit:launcher"))
+        character.refresh_from_db()
+        self.assertFalse(character.is_shared)
+        self.assertIsNone(character.shared_at)
+
+    def test_user_can_unshare_own_character_when_no_permission(self):
+        # given
+        user = UserMainFactory()
+        character = CharacterFactory(user=user, is_shared=True)
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
+            reverse("memberaudit:unshare_character", args=[character.pk])
+        )
+
+        # then
         self.assertEqual(response.status_code, HTTPStatus.FOUND)
-        self.assertEqual(response.url, reverse("memberaudit:launcher"))
-        self.assertFalse(Character.objects.get(pk=character.pk).is_shared)
+        self.assertIn(reverse("login"), response.url)
+        character.refresh_from_db()
+        self.assertTrue(character.is_shared)
 
-    def test_no_permission(self):
-        user = UserMainBasicAccessFactory()
-        character = CharacterFactory(is_shared=True)
-        request = self.factory.get(
+    def test_should_raise_permission_error_when_user_tries_to_unshare_foreign_character(
+        self,
+    ):
+        # given
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory()
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
             reverse("memberaudit:unshare_character", args=[character.pk])
         )
-        request.user = user
-        response = unshare_character(request, character.pk)
-        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
-        self.assertTrue(Character.objects.get(pk=character.pk).is_shared)
 
-    def test_not_found(self):
-        user = UserMainBasicAccessFactory()
-        character = CharacterFactory(user=user, is_shared=True)
+        # then
+        self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
+        character.refresh_from_db()
+        self.assertFalse(character.is_shared)
+
+    def test_should_raise_404_when_character_not_found(self):
+        # given
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        self.client.force_login(user)
         invalid_character_pk = generate_invalid_pk(Character)
-        request = self.factory.get(
+
+        # when
+        response = self.client.get(
             reverse("memberaudit:unshare_character", args=[invalid_character_pk])
         )
-        request.user = user
-        response = unshare_character(request, invalid_character_pk)
+
+        # then
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertTrue(Character.objects.get(pk=character.pk).is_shared)
 
 
 class TestDashboardPanel(NoSocketsTestCase):
