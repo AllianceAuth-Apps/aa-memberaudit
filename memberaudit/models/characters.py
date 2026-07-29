@@ -209,15 +209,20 @@ class Character(models.Model):  # pylint: disable=too-many-public-methods
     is_shared = models.BooleanField(
         default=False,
         verbose_name=_("is shared"),
-        help_text="Shared characters can be viewed by recruiters",
+        help_text=_("Shared characters can be viewed by recruiters"),
     )
     is_disabled = models.BooleanField(
         default=False,
         verbose_name=_("is disabled"),
-        help_text="Disabled characters are no longer updated from ESI.",
+        help_text=_("Disabled characters are no longer updated from ESI."),
     )
     mailing_lists = models.ManyToManyField(
         "MailEntity", related_name="characters", verbose_name=_("mailing lists")
+    )
+    shared_at = models.DateTimeField(
+        default=None,
+        null=True,
+        help_text=_("Time when this character was last shared."),
     )
     token_error_notified_at = models.DateTimeField(
         default=None,

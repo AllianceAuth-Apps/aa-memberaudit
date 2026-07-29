@@ -47,6 +47,18 @@ But only once per character until the character is re-registered or this notific
 is reset manually by admins.
 """
 
+MEMBERAUDIT_SHARING_TIMEOUT = clean_setting(
+    "MEMBERAUDIT_SHARING_TIMEOUT", default_value=0, min_value=0
+)
+"""Timeout in minutes for sharing a character.
+
+When set a shared character will automatically be un-shared when the timeout runs out.
+
+Note that timeouts will be checked when the regular update task runs.
+So depending on how often that task runs the unsharing of characters
+may be slightly delayed.
+"""
+
 MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT = clean_setting(
     "MEMBERAUDIT_SECTION_STALE_MINUTES_GLOBAL_DEFAULT", 240
 )
