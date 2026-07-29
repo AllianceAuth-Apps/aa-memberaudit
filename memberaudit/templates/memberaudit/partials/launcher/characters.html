@@ -1,7 +1,5 @@
 {% load i18n %}
 {% load evelinks %}
-{% load memberaudit %}
-
 
 <div class="card">
     <div class="card-header">
@@ -23,7 +21,11 @@
                         </div>
 
                         <div class="card-footer">
-                            <a class="btn btn-primary btn-sm" href="{% url 'memberaudit:add_character' %}">{% translate 'Register' %}</a>
+                            <a
+                                class="btn btn-primary btn-sm"
+                                href="{% url 'memberaudit:add_character' %}"
+                                title="{% translate 'Register a character' %}",
+                            >{% translate 'Register' %}</a>
                         </div>
                     </div>
                 </li>
@@ -31,74 +33,7 @@
                 {% if has_registered_characters %}
                     <!-- Registered Characters -->
                     {% for auth_character in auth_characters|dictsort:"character_name" %}
-                        <li class="cards_item">
-                            <div class="card bg-secondary">
-                                <div class="card-header">
-                                    {% include 'memberaudit/partials/character_name.html' with total_update_status=auth_character.total_update_status %}
-                                </div>
-
-                                <div class="card-body card__content">
-                                    <p>
-                                        <a href="{% url 'memberaudit:character_viewer' auth_character.character.pk %}">
-                                            <span class="aa-memberaudit-launcher-character-image">
-                                                <img src="{{ auth_character.character_id|character_portrait_url:256 }}" alt="{{ auth_character.character_name }}">
-
-                                                {% if auth_character.alliance_id %}
-                                                    <span class="aa-memberaudit-alliance-logo">
-                                                        <img class="" src="{{ auth_character.alliance_id|alliance_logo_url:64 }}" title="{{ auth_character.alliance_name }}">
-                                                    </span>
-                                                {% endif %}
-
-                                                <span class="aa-memberaudit-corporation-logo">
-                                                    <img class="" src="{{ auth_character.corporation_id|corporation_logo_url:64 }}" title="{{ auth_character.corporation_name }}">
-                                                </span>
-                                            </span>
-                                        </a>
-                                    </p>
-
-                                    <div class="text-center">
-                                        {% include 'memberaudit/partials/solar_system.html' with character=auth_character.character only %}<br>
-                                        {% if auth_character.character.wallet_balance %}
-                                            {% natural_number auth_character.character.wallet_balance.total %} ISK<br>
-                                        {% else %}
-                                            <span class="text-muted">{% translate "(no data yet)" %}</span>
-                                        {% endif %}
-
-                                    </div>
-                                </div>
-
-                                <div class="card-footer">
-                                    <a class="btn btn-success btn-sm" href="{% url 'memberaudit:character_viewer' auth_character.character.pk %}"
-                                        role="button" title="{% translate 'View this character.' %}">
-                                        <i class="fas fa-sign-in-alt"></i>
-                                    </a>
-
-                                    {% if perms.memberaudit.share_characters %}
-                                        {% if auth_character.character.is_shared %}
-                                            <a class="btn btn-primary btn-sm" href="{% url 'memberaudit:unshare_character' auth_character.character.pk %}"
-                                                role="button" title="{% translate 'Disable access to this character for recruiters.' %}">
-                                                <i class="far fa-eye-slash"></i>
-                                            </a>
-                                        {% else %}
-                                            {% blocktranslate asvar confirm_share_message %}Are you sure you want to allow others to see this character?{% endblocktranslate %}
-                                            <a class="btn btn-warning btn-sm" href="{% url 'memberaudit:share_character' auth_character.character.pk %}"
-                                                role="button"
-                                                onclick="return confirm('{{ confirm_share_message }}')"
-                                                title="{% translate 'Allow others to see this character.' %}">
-                                                <i class="far fa-eye"></i>
-                                            </a>
-                                        {% endif %}
-                                    {% endif %}
-
-                                    {% blocktranslate asvar confirm_remove_message %}Are you sure you want to remove this character?{% endblocktranslate %}
-                                    <a class="btn btn-danger btn-sm" href="{% url 'memberaudit:remove_character' auth_character.character.pk %}"
-                                        role="button" title="{% translate 'Remove this character.' %}"
-                                        onclick="return confirm('{{ confirm_remove_message }}')">
-                                        <i class="far fa-trash-alt"></i>
-                                    </a>
-                                </div>
-                            </div>
-                        </li>
+                        {% include 'memberaudit/partials/launcher/character_card.html' %}
                     {% endfor %}
                 {% endif %}
             </ul>
@@ -107,7 +42,7 @@
         {% if characters_need_token_refresh|length > 0 %}
             <p class="text-warning">
                 <strong>
-                <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-exclamation-triangle"></i>
                 {% translate 'Please re-register characters with issues:' %}&nbsp;&nbsp;</strong>
                 {{ characters_need_token_refresh|join:", " }}
             </p>
@@ -116,7 +51,7 @@
         {% if unregistered_chars|length > 0 %}
             <p class="text-warning">
                 <strong>
-                <i class="fas fa-exclamation-triangle"></i>
+                    <i class="fas fa-exclamation-triangle"></i>
                 {% translate 'Please register unregistered characters:' %}&nbsp;&nbsp;</strong>
                 {{ unregistered_chars|join:", " }}
             </p>

@@ -1,0 +1,120 @@
+{% load i18n %}
+{% load evelinks %}
+{% load memberaudit %}
+
+<li class="cards_item">
+    <div class="card bg-secondary">
+
+        {% if auth_character.character.is_shared %}
+            <div
+                class="position-absolute top-0 start-0 end-0 border-top border-4 border-warning"
+            >
+            </div>
+        {% endif %}
+
+        <div class="card-header">
+            {% include 'memberaudit/partials/character_name.html' with total_update_status=auth_character.total_update_status %}
+        </div>
+
+        <div class="card-body card__content">
+            <p>
+                <a
+                    href="{% url 'memberaudit:character_viewer' auth_character.character.pk %}"
+                >
+                    <span class="aa-memberaudit-launcher-character-image">
+                        <img
+                            src="{{ auth_character.character_id|character_portrait_url:256 }}"
+                            alt="{{ auth_character.character_name }}"
+                        >
+
+                        {% if auth_character.alliance_id %}
+                            <span class="aa-memberaudit-alliance-logo">
+                                <img
+                                    src="{{ auth_character.alliance_id|alliance_logo_url:64 }}"
+                                    title="{{ auth_character.alliance_name }}"
+                                    alt="{{ auth_character.alliance_name }}"
+                                >
+                            </span>
+                        {% endif %}
+
+                        <span class="aa-memberaudit-corporation-logo">
+                            <img
+                                src="{{ auth_character.corporation_id|corporation_logo_url:64 }}"
+                                title="{{ auth_character.corporation_name }}"
+                                alt="{{ auth_character.corporation_name }}"
+                            >
+                        </span>
+                    </span>
+                </a>
+            </p>
+
+            <div class="text-center">
+                {% include 'memberaudit/partials/solar_system.html' with character=auth_character.character only %}
+                <br>
+                {% if auth_character.character.wallet_balance %}
+                    {% natural_number auth_character.character.wallet_balance.total %} ISK<br>
+                {% else %}
+                    <span class="text-muted">{% translate "(no data yet)" %}</span>
+                {% endif %}
+
+            </div>
+        </div>
+
+        <div class="card-footer">
+            <a
+                class="btn btn-primary btn-sm"
+                href="{% url 'memberaudit:character_viewer' auth_character.character.pk %}"
+                role="button"
+                title="{% translate 'View this character' %}"
+            >
+                <i class="fas fa-sign-in-alt"></i>
+            </a>
+
+            {% if perms.memberaudit.share_characters %}
+                {% if auth_character.character.is_shared %}
+                    <form
+                        action="{% url 'memberaudit:unshare_character' auth_character.character.pk %}"
+                        method="post"
+                        class="d-inline"
+                    >
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="btn btn-secondary btn-sm"
+                            title="{% translate 'Un-share this character' %}"
+                        >
+                            <i class="far fa-eye-slash"></i>
+                        </button>
+                    </form>
+                {% else %}
+                    <form
+                        action="{% url 'memberaudit:share_character' auth_character.character.pk %}"
+                        method="post"
+                        class="d-inline"
+                    >
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="btn btn-warning btn-sm"
+                            title="{% translate 'Share this character' %}"
+                        >
+                            <i class="far fa-eye"></i>
+                        </button>
+                    </form>
+                {% endif %}
+            {% endif %}
+
+            <button
+                type="button"
+                class="btn btn-danger btn-sm"
+                data-bs-toggle="modal"
+                data-bs-target="#removeCharacterModal"
+                data-id="{{ auth_character.character.pk }}"
+                data-name="{{ auth_character.character_name }}"
+                title="{% translate 'Remove this character' %}"
+            >
+                <i class="far fa-trash-alt"></i>
+            </button>
+        </div>
+    </div>
+</li>
