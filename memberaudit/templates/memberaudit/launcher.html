@@ -6,6 +6,8 @@
 {% include 'memberaudit/partials/launcher/dashboard.html' %}
 {% include 'memberaudit/partials/launcher/characters.html' %}
 
+{% include 'memberaudit/modals/launcher/remove_character.html' %}
+
 {% endblock details %}
 
 {% block extra_javascript %}
@@ -13,6 +15,28 @@
     type="application/javascript"
     src="{% static 'memberaudit/js/dashboard.js' %}"
 ></script>
+
+<script type="application/javascript">
+    $(document).ready(function () {
+        // Update remove character modal dynamically
+        const deleteModal = document.getElementById('removeCharacterModal');
+        const deleteForm = document.getElementById('removeCharacterForm');
+        const characterNameSpan = document.getElementById('characterName');
+        const baseUrl = deleteForm.action;
+
+        deleteModal.addEventListener('show.bs.modal', (event) => {
+            const triggerButton = event.relatedTarget;
+            const characterPk = triggerButton.getAttribute('data-id');
+            const characterName = triggerButton.getAttribute('data-name');
+
+            // Replace the placeholder '0' with the real character primary key
+            // Matches '/0/' or '/0' at the end of the URL path
+            deleteForm.action = baseUrl.replace(/\/0(\/|$)/, `/${characterPk}$1`);
+            characterNameSpan.textContent = characterName;
+        });
+    })
+</script>
+
 {% endblock %}
 
 {% block extra_css %}

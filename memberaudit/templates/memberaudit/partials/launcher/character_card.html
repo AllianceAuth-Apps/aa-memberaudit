@@ -86,16 +86,17 @@
                 {% endif %}
             {% endif %}
 
-            {% blocktranslate asvar confirm_remove_message %}Are you sure you want to remove this character?{% endblocktranslate %}
-            <a
+            <button
+                type="button"
                 class="btn btn-danger btn-sm"
-                href="{% url 'memberaudit:remove_character' auth_character.character.pk %}"
-                role="button"
+                data-bs-toggle="modal"
+                data-bs-target="#removeCharacterModal"
+                data-id="{{ auth_character.character.pk }}"
+                data-name="{{ auth_character.character_name }}"
                 title="{% translate 'Remove this character.' %}"
-                onclick="return confirm('{{ confirm_remove_message }}')"
             >
                 <i class="far fa-trash-alt"></i>
-            </a>
+            </button>
         </div>
     </div>
 </li>
