@@ -3,19 +3,34 @@
 
 {% block details %}
 
-    {% include 'memberaudit/partials/launcher/dashboard.html' %}
-    {% include 'memberaudit/partials/launcher/characters.html' %}
+{% include 'memberaudit/partials/launcher/dashboard.html' %}
+{% include 'memberaudit/partials/launcher/characters.html' %}
 
 {% endblock details %}
 
 {% block extra_javascript %}
-    <script type="application/javascript" src="{% static 'memberaudit/js/dashboard.js' %}"></script>
+<script
+    type="application/javascript"
+    src="{% static 'memberaudit/js/dashboard.js' %}"
+></script>
 {% endblock %}
 
 {% block extra_css %}
-    <link rel="stylesheet" href="{% static 'memberaudit/css/global.css' %}" type="text/css">
-    <link rel="stylesheet" href="{% static 'memberaudit/css/memberaudit.css' %}" type="text/css">
-    <link rel="stylesheet" href="{% static 'memberaudit/css/launcher.css' %}" type="text/css">
+<link
+    rel="stylesheet"
+    href="{% static 'memberaudit/css/global.css' %}"
+    type="text/css"
+>
+<link
+    rel="stylesheet"
+    href="{% static 'memberaudit/css/memberaudit.css' %}"
+    type="text/css"
+>
+<link
+    rel="stylesheet"
+    href="{% static 'memberaudit/css/launcher.css' %}"
+    type="text/css"
+>
 {% endblock %}
 
 {% block extra_script %}
