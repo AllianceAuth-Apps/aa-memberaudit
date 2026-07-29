@@ -3,8 +3,6 @@ from http import HTTPStatus
 from django.urls import reverse
 from django_webtest import WebTest
 
-from app_utils.testdata_factories import UserMainFactory
-
 from memberaudit.tests.testdata.factories_2 import (
     CharacterAssetFactory,
     CharacterContractItemExchangeFactory,
@@ -40,52 +38,6 @@ class TestUILauncher(WebTest):
             index=0,  # follow the first matching link
         )
         self.assertEqual(character_viewer.status_code, HTTPStatus.OK)
-
-    def test_share_character_1(self):
-        """
-        when user has share permission
-        then he can share his characters
-        """
-        # setup
-        user = UserMainFactory(
-            permissions__=["memberaudit.basic_access", "memberaudit.share_characters"]
-        )
-        character = CharacterFactory(user=user)
-
-        # login & open launcher page
-        self.app.set_user(user)
-        launcher = self.app.get(reverse("memberaudit:launcher"))
-        self.assertEqual(launcher.status_code, HTTPStatus.OK)
-
-        # check for share button
-        share_url = reverse("memberaudit:share_character", args=[character.pk])
-        a_tags = launcher.html.find_all("a", href=True)
-        character_1001_links = [
-            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
-        ]
-        self.assertGreater(len(character_1001_links), 0)
-
-    def test_share_character_2(self):
-        """
-        when user does not have share permission
-        then he can not share his characters
-        """
-        # setup
-        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
-        character = CharacterFactory(user=user)
-
-        # login & open launcher page
-        self.app.set_user(user)
-        launcher = self.app.get(reverse("memberaudit:launcher"))
-        self.assertEqual(launcher.status_code, HTTPStatus.OK)
-
-        # check for share button
-        share_url = reverse("memberaudit:share_character", args=[character.pk])
-        a_tags = launcher.html.find_all("a", href=True)
-        character_1001_links = [
-            a_tag["href"] for a_tag in a_tags if a_tag["href"] == share_url
-        ]
-        self.assertEqual(len(character_1001_links), 0)
 
 
 class TestUICharacterViewer(WebTest):

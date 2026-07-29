@@ -131,7 +131,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[character.pk])
         )
 
@@ -150,7 +150,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[character.pk])
         )
 
@@ -175,7 +175,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[character.pk])
         )
 
@@ -200,7 +200,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[character.pk])
         )
 
@@ -232,7 +232,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[character.pk])
         )
 
@@ -250,7 +250,7 @@ class TestRemoveCharacter_(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:remove_character", args=[invalid_character_pk])
         )
 

@@ -12,6 +12,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
 from django.utils.timezone import now
 from django.utils.translation import gettext_lazy as _
+from django.views.decorators.http import require_http_methods
 from esi.decorators import token_required
 
 from allianceauth.eveonline.models import EveCharacter
@@ -206,6 +207,7 @@ def add_character(request, token) -> HttpResponse:
 
 @login_required
 @permission_required("memberaudit.basic_access")
+@require_http_methods(["POST"])
 def remove_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render remove character view."""
     character = get_object_or_404(Character, pk=character_pk)
