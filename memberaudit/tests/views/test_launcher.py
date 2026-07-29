@@ -269,7 +269,7 @@ class TestShareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:share_character", args=[character.pk])
         )
 
@@ -286,7 +286,7 @@ class TestShareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:share_character", args=[character.pk])
         )
 
@@ -307,7 +307,7 @@ class TestShareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:share_character", args=[character.pk])
         )
 
@@ -325,7 +325,7 @@ class TestShareCharacter(NoSocketsTestCase):
         invalid_character_pk = generate_invalid_pk(Character)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:share_character", args=[invalid_character_pk])
         )
 
@@ -341,7 +341,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:unshare_character", args=[character.pk])
         )
 
@@ -358,7 +358,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:unshare_character", args=[character.pk])
         )
 
@@ -377,7 +377,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         self.client.force_login(user)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:unshare_character", args=[character.pk])
         )
 
@@ -393,7 +393,7 @@ class TestUnshareCharacter(NoSocketsTestCase):
         invalid_character_pk = generate_invalid_pk(Character)
 
         # when
-        response = self.client.get(
+        response = self.client.post(
             reverse("memberaudit:unshare_character", args=[invalid_character_pk])
         )
 

@@ -6,7 +6,10 @@
     <div class="card bg-secondary">
 
         {% if auth_character.character.is_shared %}
-            <div class="position-absolute top-0 start-0 end-0 border-top border-4 border-warning"></div>
+            <div
+                class="position-absolute top-0 start-0 end-0 border-top border-4 border-warning"
+            >
+            </div>
         {% endif %}
 
         <div class="card-header">
@@ -69,23 +72,35 @@
 
             {% if perms.memberaudit.share_characters %}
                 {% if auth_character.character.is_shared %}
-                    <a
-                        class="btn btn-secondary btn-sm"
-                        href="{% url 'memberaudit:unshare_character' auth_character.character.pk %}"
-                        role="button"
-                        title="{% translate 'Un-share this character' %}"
+                    <form
+                        action="{% url 'memberaudit:unshare_character' auth_character.character.pk %}"
+                        method="post"
+                        class="d-inline"
                     >
-                        <i class="far fa-eye-slash"></i>
-                    </a>
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="btn btn-secondary btn-sm"
+                            title="{% translate 'Un-share this character' %}"
+                        >
+                            <i class="far fa-eye-slash"></i>
+                        </button>
+                    </form>
                 {% else %}
-                    <a
-                        class="btn btn-warning btn-sm"
-                        href="{% url 'memberaudit:share_character' auth_character.character.pk %}"
-                        role="button"
-                        title="{% translate 'Share this character with others' %}"
+                    <form
+                        action="{% url 'memberaudit:share_character' auth_character.character.pk %}"
+                        method="post"
+                        class="d-inline"
                     >
-                        <i class="far fa-eye"></i>
-                    </a>
+                        {% csrf_token %}
+                        <button
+                            type="submit"
+                            class="btn btn-warning btn-sm"
+                            title="{% translate 'Share this character' %}"
+                        >
+                            <i class="far fa-eye"></i>
+                        </button>
+                    </form>
                 {% endif %}
             {% endif %}
 

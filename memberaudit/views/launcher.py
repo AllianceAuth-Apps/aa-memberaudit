@@ -245,6 +245,7 @@ def remove_character(request: HttpRequest, character_pk: int) -> HttpResponse:
 
 @login_required
 @permission_required(["memberaudit.basic_access", "memberaudit.share_characters"])
+@require_http_methods(["POST"])
 def share_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render share character view."""
     character = get_object_or_404(Character, pk=character_pk)
@@ -260,6 +261,7 @@ def share_character(request: HttpRequest, character_pk: int) -> HttpResponse:
 
 @login_required
 @permission_required("memberaudit.basic_access")
+@require_http_methods(["POST"])
 def unshare_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render unshare character view."""
     character = get_object_or_404(Character, pk=character_pk)
