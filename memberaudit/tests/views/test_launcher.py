@@ -8,7 +8,6 @@ from django.urls import reverse
 from django.utils.timezone import now
 from eveuniverse.tests.testdata.factories_2 import EveMarketPriceFactory, EveTypeFactory
 
-from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testdata_factories import (
     EveCharacterFactory,
     UserFactory,
@@ -34,7 +33,6 @@ from memberaudit.views.launcher import (
     index,
     launcher,
     player_count_data,
-    remove_character,
 )
 
 MODULE_PATH = "memberaudit.views.launcher"
@@ -123,73 +121,98 @@ class TestAddCharacter(NoSocketsTestCase):
 
 @patch(MODULE_PATH + ".messages")
 @patch(MODULE_PATH + ".tasks")
-@override_settings(CELERY_ALWAYS_EAGER=True, CELERY_EAGER_PROPAGATES_EXCEPTIONS=True)
-class TestRemoveCharacter(NoSocketsTestCase):
-    @classmethod
-    def setUpClass(cls):
-        super().setUpClass()
-        cls.factory = RequestFactory()
-        ComplianceGroupFactory()
-
-    def _remove_character(self, user, character_pk):
-        request = self.factory.get(
-            reverse("memberaudit:remove_character", args=[character_pk])
-        )
-        request.user = user
-        return remove_character(request, character_pk)
-
-    def test_should_remove_character_without_notification(
+class TestRemoveCharacter_(NoSocketsTestCase):
+    def test_should_remove_own_character_and_notify_user(
         self, mock_tasks, mock_messages
     ):
         # given
-        user = UserMainBasicAccessFactory()
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
         character = CharacterFactory(user=user)
-        auditor_character = CharacterFactory()
-        auditor = auditor_character.eve_character.character_ownership.user
-        AuthUtils.add_permissions_to_user_by_name(
-            (
-                "memberaudit.notified_on_character_removal",
-                "memberaudit.view_same_corporation",
-            ),
-            auditor,
-        )
+        self.client.force_login(user)
+
         # when
-        response = self._remove_character(user, character.pk)
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[character.pk])
+        )
+
         # then
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
-        self.assertEqual(response.url, reverse("memberaudit:launcher"))
+        self.assertRedirects(response, reverse("memberaudit:launcher"))
+        self.assertFalse(Character.objects.filter(pk=character.pk).exists())
+        self.assertTrue(mock_messages.success.called)
+
+    def test_should_remove_own_character_and_update_compliance_groups(
+        self, mock_tasks, mock_messages
+    ):
+        # given
+        ComplianceGroupFactory()
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[character.pk])
+        )
+
+        # then
+        self.assertRedirects(response, reverse("memberaudit:launcher"))
         self.assertFalse(Character.objects.filter(pk=character.pk).exists())
         self.assertTrue(mock_tasks.update_compliance_groups_for_user.apply_async.called)
-        self.assertTrue(mock_messages.success.called)
+
+    def test_should_remove_own_character_and_not_notify_auditors(
+        self, mock_tasks, mock_messages
+    ):
+        # given
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
+        auditor = UserMainFactory(
+            permissions__=[
+                "memberaudit.basic_access",
+                "memberaudit.notified_on_character_removal",
+                "memberaudit.view_same_corporation",
+            ]
+        )
+        self.client.force_login(user)
+
+        # when
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[character.pk])
+        )
+
+        # then
+        self.assertRedirects(response, reverse("memberaudit:launcher"))
+        self.assertFalse(Character.objects.filter(pk=character.pk).exists())
         self.assertEqual(auditor.notification_set.count(), 0)
 
-    def test_should_remove_character_with_notification(self, mock_tasks, mock_messages):
+    def test_should_remove_own_character_and_notify_auditors(
+        self, mock_tasks, mock_messages
+    ):
         # given
-        user_1 = UserMainFactory(permissions__=["memberaudit.basic_access"])
-        character = CharacterFactory(user=user_1)
-        user_2 = UserMainFactory(
+        user = UserMainFactory(permissions__=["memberaudit.basic_access"])
+        character = CharacterFactory(user=user)
+        auditor = UserMainFactory(
             permissions__=[
                 "memberaudit.basic_access",
                 "memberaudit.notified_on_character_removal",
                 "memberaudit.view_everything",
             ]
         )
-        auditor_character = CharacterFactory(user=user_2)
-        auditor = auditor_character.eve_character.character_ownership.user
+        self.client.force_login(user)
+
         # when
-        response = self._remove_character(user_1, character.pk)
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[character.pk])
+        )
+
         # then
-        self.assertEqual(response.status_code, HTTPStatus.FOUND)
-        self.assertEqual(response.url, reverse("memberaudit:launcher"))
+        self.assertRedirects(response, reverse("memberaudit:launcher"))
         self.assertFalse(Character.objects.filter(pk=character.pk).exists())
-        self.assertTrue(mock_tasks.update_compliance_groups_for_user.apply_async.called)
-        self.assertTrue(mock_messages.success.called)
 
         expected_removal_notification_title = (
             "Member Audit: Character has been removed!"
         )
         expected_removal_notification_message = (
-            f"{user_1.username} has removed character {character.name}"
+            f"{user.username} has removed character {character.name}"
         )
         latest_auditor_notification = auditor.notification_set.order_by("-pk")[0]
         self.assertEqual(
@@ -206,14 +229,16 @@ class TestRemoveCharacter(NoSocketsTestCase):
         # given
         user = UserMainBasicAccessFactory()
         character = CharacterFactory()
+        self.client.force_login(user)
+
         # when
-        response = self._remove_character(user, character.pk)
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[character.pk])
+        )
+
         # then
         self.assertEqual(response.status_code, HTTPStatus.FORBIDDEN)
         self.assertTrue(Character.objects.filter(pk=character.pk).exists())
-        self.assertFalse(
-            mock_tasks.update_compliance_groups_for_user.apply_async.called
-        )
         self.assertFalse(mock_messages.success.called)
 
     def test_should_respond_with_not_found_for_invalid_characters(
@@ -222,13 +247,15 @@ class TestRemoveCharacter(NoSocketsTestCase):
         # given
         user = UserMainBasicAccessFactory()
         invalid_character_pk = generate_invalid_pk(Character)
+        self.client.force_login(user)
+
         # when
-        response = self._remove_character(user, invalid_character_pk)
+        response = self.client.get(
+            reverse("memberaudit:remove_character", args=[invalid_character_pk])
+        )
+
         # then
         self.assertEqual(response.status_code, HTTPStatus.NOT_FOUND)
-        self.assertFalse(
-            mock_tasks.update_compliance_groups_for_user.apply_async.called
-        )
         self.assertFalse(mock_messages.success.called)
 
 

@@ -7,13 +7,7 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.models import Permission
 from django.db import transaction
 from django.db.models import Sum
-from django.http import (
-    HttpRequest,
-    HttpResponse,
-    HttpResponseForbidden,
-    HttpResponseNotFound,
-    JsonResponse,
-)
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -212,43 +206,38 @@ def add_character(request, token) -> HttpResponse:
 
 @login_required
 @permission_required("memberaudit.basic_access")
-def remove_character(request, character_pk: int) -> HttpResponse:
+def remove_character(request: HttpRequest, character_pk: int) -> HttpResponse:
     """Render remove character view."""
-    try:
-        character = Character.objects.select_related(
-            "eve_character__character_ownership__user", "eve_character"
-        ).get(pk=character_pk)
-    except Character.DoesNotExist:
-        return HttpResponseNotFound(f"Character with pk {character_pk} not found")
-    if character.user and character.user == request.user:
-        character_name = character.eve_character.character_name
-
-        # Notify that character has been dropped
-        permission_to_notify = Permission.objects.select_related("content_type").get(
-            content_type__app_label=Character._meta.app_label,
-            codename="notified_on_character_removal",
-        )
-        title = _("%s: Character has been removed!") % __title__
-        message = _("%(user)s has removed character %(character)s") % {
-            "user": request.user,
-            "character": character_name,
-        }
-        for to_notify in users_with_permission(permission_to_notify):
-            if character.user_has_scope(to_notify):
-                notify(user=to_notify, title=title, message=message, level="INFO")
-
-        character.delete()
-        messages.success(
-            request, _("Removed character %s as requested.") % character_name
-        )
-        if ComplianceGroupDesignation.objects.exists():
-            tasks.update_compliance_groups_for_user.apply_async(
-                args=[request.user.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
-            )
-    else:
+    character = get_object_or_404(Character, pk=character_pk)
+    if not character.user or character.user != request.user:
         return HttpResponseForbidden(
-            f"No permission to remove Character with pk {character_pk}"
+            f"No permission to remove character with pk {character_pk}"
         )
+
+    character_name = character.eve_character.character_name
+
+    # Notify that character has been dropped
+    permission_to_notify = Permission.objects.select_related("content_type").get(
+        content_type__app_label=Character._meta.app_label,
+        codename="notified_on_character_removal",
+    )
+    title = _("%s: Character has been removed!") % __title__
+    message = _("%(user)s has removed character %(character)s") % {
+        "user": request.user,
+        "character": character_name,
+    }
+    for to_notify in users_with_permission(permission_to_notify):
+        if character.user_has_scope(to_notify):
+            notify(user=to_notify, title=title, message=message, level="INFO")
+
+    character.delete()
+    messages.success(request, _("Removed character %s as requested.") % character_name)
+
+    if ComplianceGroupDesignation.objects.exists():
+        tasks.update_compliance_groups_for_user.apply_async(
+            args=[request.user.pk], priority=MEMBERAUDIT_TASKS_NORMAL_PRIORITY
+        )
+
     return redirect("memberaudit:launcher")
 
 
