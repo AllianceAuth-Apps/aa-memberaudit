@@ -4,6 +4,11 @@
 
 <li class="cards_item">
     <div class="card bg-secondary">
+
+        {% if auth_character.character.is_shared %}
+            <div class="position-absolute top-0 start-0 end-0 border-top border-4 border-warning"></div>
+        {% endif %}
+
         <div class="card-header">
             {% include 'memberaudit/partials/character_name.html' with total_update_status=auth_character.total_update_status %}
         </div>
@@ -54,10 +59,10 @@
 
         <div class="card-footer">
             <a
-                class="btn btn-success btn-sm"
+                class="btn btn-primary btn-sm"
                 href="{% url 'memberaudit:character_viewer' auth_character.character.pk %}"
                 role="button"
-                title="{% translate 'View this character.' %}"
+                title="{% translate 'View this character' %}"
             >
                 <i class="fas fa-sign-in-alt"></i>
             </a>
@@ -65,21 +70,19 @@
             {% if perms.memberaudit.share_characters %}
                 {% if auth_character.character.is_shared %}
                     <a
-                        class="btn btn-primary btn-sm"
+                        class="btn btn-secondary btn-sm"
                         href="{% url 'memberaudit:unshare_character' auth_character.character.pk %}"
                         role="button"
-                        title="{% translate 'Disable access to this character for recruiters.' %}"
+                        title="{% translate 'Un-share this character' %}"
                     >
                         <i class="far fa-eye-slash"></i>
                     </a>
                 {% else %}
-                    {% blocktranslate asvar confirm_share_message %}Are you sure you want to allow others to see this character?{% endblocktranslate %}
                     <a
                         class="btn btn-warning btn-sm"
                         href="{% url 'memberaudit:share_character' auth_character.character.pk %}"
                         role="button"
-                        onclick="return confirm('{{ confirm_share_message }}')"
-                        title="{% translate 'Allow others to see this character.' %}"
+                        title="{% translate 'Share this character with others' %}"
                     >
                         <i class="far fa-eye"></i>
                     </a>
@@ -93,7 +96,7 @@
                 data-bs-target="#removeCharacterModal"
                 data-id="{{ auth_character.character.pk }}"
                 data-name="{{ auth_character.character_name }}"
-                title="{% translate 'Remove this character.' %}"
+                title="{% translate 'Remove this character' %}"
             >
                 <i class="far fa-trash-alt"></i>
             </button>
