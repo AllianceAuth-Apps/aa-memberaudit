@@ -6,10 +6,11 @@ build-backend = "flit_core.buildapi"
 name = "aa-memberaudit"
 dynamic = ["version", "description"]
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE*"]
 requires-python = ">=3.10"
 authors = [
-    { name = "Erik Kalkoken", email = "kalkoken87@gmail.com" },
+    { name = "Erik Kalkoken", email = "erik.kalkoken@gmail.com" },
     { name = "Peter Pfeufer", email = "develop@ppfeufer.de" },
     { name = "Rebecca Murphy", email = "rebecca@rcmurphy.me" },
 ]
