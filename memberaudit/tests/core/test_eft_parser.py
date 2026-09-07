@@ -100,6 +100,20 @@ class TestEftParser(NoSocketsTestCase):
         with self.assertRaises(MissingTitleError):
             create_fitting_from_eft(fitting_text)
 
+    def test_should_treat_whitespace_only_line_as_section_separator(self):
+        # given
+        lines = create_fitting_text("fitting_tristan.txt").splitlines()
+        blank_index = lines.index("")
+        lines[blank_index] = "   "
+        fitting_text = "\n".join(lines)
+        # when
+        fitting, errors = create_fitting_from_eft(fitting_text)
+        # then
+        self.assertListEqual(errors, [])
+        self.assertEqual(
+            fitting.low_slots[0].module_type.name, "Nanofiber Internal Structure II"
+        )
+
     def test_should_parse_title_with_comma_in_fitting_name(self):
         # given
         fitting_text = create_fitting_text("fitting_tristan.txt").replace(

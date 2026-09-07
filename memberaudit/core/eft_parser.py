@@ -516,7 +516,7 @@ def _lines_to_text_sections(lines: List[str]) -> List[List[str]]:
     text_sections = []
     section_lines = []
     for line in lines[1:]:
-        if line:
+        if line.strip():
             section_lines.append(line)
         else:
             if section_lines:
