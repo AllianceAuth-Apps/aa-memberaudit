@@ -47,13 +47,13 @@ class SkillPlan:
         for line in [obj.strip() for obj in text.splitlines()]:
             if not line:  # ignore empty lines
                 continue
-            words = line.split(" ")
+            words = line.split()
             skill_level_text = words.pop()
             try:
                 skill_level = int(skill_level_text)
             except ValueError:
                 skill_level = roman_letter_map.get(skill_level_text)
-            if not skill_level:
+            if skill_level is None:
                 issues.append(f"Could not identify skill level. Ignored line: {line}")
                 continue
             if skill_level < 1 or skill_level > 5:
@@ -66,5 +66,5 @@ class SkillPlan:
                 continue
             skills.append(Skill(eve_type=eve_type, level=skill_level))
         if not skills:
-            raise NoSkillsIdentified()
+            raise NoSkillsIdentified(issues)
         return cls(name=str(name), skills=compress_skills(skills)), issues

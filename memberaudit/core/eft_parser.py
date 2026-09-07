@@ -253,7 +253,9 @@ class _EftItem:
     @property
     def is_slot(self) -> bool:
         """Return True if this item is a slot, else False."""
-        return self.quantity is None
+        if self.slot_type is not _EftSlotType.NONE:
+            return True
+        return not self.is_empty and self.quantity is None
 
     def is_booster(self) -> bool:
         """Return True if this item is a booster, else False."""
@@ -405,31 +407,43 @@ class _EftSection:
         """Return True if this any item has slots."""
         return any((item.is_slot for item in self.items))
 
+    def _matched_categories(self) -> Set["_EftSection.Category"]:
+        """Return all categories that at least one item in this section matches."""
+        predicates = [
+            (_EftItem.is_booster, self.Category.BOOSTERS),
+            (_EftItem.is_cyber_implant, self.Category.IMPLANTS),
+            (_EftItem.is_low_slot, self.Category.LOW_SLOTS),
+            (_EftItem.is_med_slot, self.Category.MEDIUM_SLOTS),
+            (_EftItem.is_high_slot, self.Category.HIGH_SLOTS),
+            (_EftItem.is_rig_slot, self.Category.RIG_SLOTS),
+            (_EftItem.is_subsystem, self.Category.SUBSYSTEM_SLOTS),
+            (_EftItem.is_drone, self.Category.DRONES_BAY),
+            (_EftItem.is_fighter, self.Category.FIGHTER_BAY),
+        ]
+        return {
+            category
+            for predicate, category in predicates
+            if any(predicate(item) for item in self.items)
+        }
+
     def guess_category(self) -> Optional["_EftSection.Category"]:
         """Try to guess the category of this section based on it's items.
-        Returns ``None`` if the guess fails.
+
+        Returns ``None`` if the guess fails or the items indicate more than
+        one category, e.g. when two sections were merged due to a missing
+        blank line.
         """
-        if self.is_slots:
-            if any((item.is_booster() for item in self.items)):
-                return self.Category.BOOSTERS
-            if any((item.is_cyber_implant() for item in self.items)):
-                return self.Category.IMPLANTS
-            if any((item.is_low_slot() for item in self.items)):
-                return self.Category.LOW_SLOTS
-            if any((item.is_med_slot() for item in self.items)):
-                return self.Category.MEDIUM_SLOTS
-            if any((item.is_high_slot() for item in self.items)):
-                return self.Category.HIGH_SLOTS
-            if any((item.is_rig_slot() for item in self.items)):
-                return self.Category.RIG_SLOTS
-            if any((item.is_subsystem() for item in self.items)):
-                return self.Category.SUBSYSTEM_SLOTS
-        else:
-            if any((item.is_drone() for item in self.items)):
-                return self.Category.DRONES_BAY
-            if any((item.is_fighter() for item in self.items)):
-                return self.Category.FIGHTER_BAY
+        matched_categories = self._matched_categories()
+        if len(matched_categories) == 1:
+            return matched_categories.pop()
         return None
+
+    def is_ambiguous(self) -> bool:
+        """Return True if this section's items match more than one category.
+
+        This indicates that two sections were merged due to a missing blank line.
+        """
+        return len(self._matched_categories()) > 1
 
     def to_modules(self) -> List[Module]:
         """Convert eft items into fitting modules.
@@ -448,9 +462,14 @@ class _EftSection:
         return objs
 
     def to_items(self) -> List[Item]:
-        """Convert eft items into fitting items."""
+        """Convert eft items into fitting items.
+
+        Items with an unresolved type are dropped.
+        """
         objs = []
         for item in self.items:
+            if item.is_empty:
+                continue
             params: Dict[str, Any] = {"item_type": item.item_type}
             if item.quantity:
                 params["quantity"] = item.quantity
@@ -504,7 +523,7 @@ def _lines_to_text_sections(lines: List[str]) -> List[List[str]]:
     text_sections = []
     section_lines = []
     for line in lines[1:]:
-        if line:
+        if line.strip():
             section_lines.append(line)
         else:
             if section_lines:
@@ -519,9 +538,9 @@ def _parse_title(lines: List[str]) -> Tuple[str, str]:
     """Try to parse title from lines."""
     if not lines:
         raise MissingSectionsError("Text is empty")
-    line = lines[0]
-    if line.startswith("[") and "," in line:
-        ship_type_name, fitting_name = line[1:-1].split(",")
+    line = lines[0].strip()
+    if line.startswith("[") and line.endswith("]") and "," in line:
+        ship_type_name, fitting_name = line[1:-1].split(",", 1)
         return ship_type_name.strip(), fitting_name.strip()
     raise MissingTitleError("Title not found")
 
@@ -542,12 +561,15 @@ def _try_to_identify_sections(sections: List[_EftSection]) -> List[_EftSection]:
         category = section.guess_category()
         if category:
             section.category = category
-    # last unknown section must be the cargo bay
+    # last unknown section must be the cargo bay, unless its items are
+    # ambiguous (e.g. two sections merged due to a missing blank line), in
+    # which case it is safely dropped instead of being misfiled as cargo
     if sections:
         last_section = sections[len(sections) - 1]
         if (
             last_section.category == _EftSection.Category.UNKNOWN
             and not last_section.is_slots
+            and not last_section.is_ambiguous()
         ):
             last_section.category = _EftSection.Category.CARGO_BAY
     return sections

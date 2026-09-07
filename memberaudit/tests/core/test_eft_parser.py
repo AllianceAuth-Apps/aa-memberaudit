@@ -93,6 +93,68 @@ class TestEftParser(NoSocketsTestCase):
         with self.assertRaises(MissingTitleError):
             create_fitting_from_eft(fitting_text)
 
+    def test_should_raise_error_when_title_is_missing_closing_bracket(self):
+        # given
+        fitting_text = "[Tristan, PVP Fit"
+        # when
+        with self.assertRaises(MissingTitleError):
+            create_fitting_from_eft(fitting_text)
+
+    def test_should_treat_whitespace_only_line_as_section_separator(self):
+        # given
+        lines = create_fitting_text("fitting_tristan.txt").splitlines()
+        blank_index = lines.index("")
+        lines[blank_index] = "   "
+        fitting_text = "\n".join(lines)
+        # when
+        fitting, errors = create_fitting_from_eft(fitting_text)
+        # then
+        self.assertListEqual(errors, [])
+        self.assertEqual(
+            fitting.low_slots[0].module_type.name, "Nanofiber Internal Structure II"
+        )
+
+    def test_should_drop_ambiguous_last_section_instead_of_treating_it_as_cargo_bay(
+        self,
+    ):
+        # given: last section merges the drone bay with a fighter due to a
+        # missing blank line, making it ambiguous rather than genuinely
+        # unidentified
+        fitting_text = create_fitting_text("fitting_tristan.txt").replace(
+            "Acolyte II x5\nWarrior II x3",
+            "Acolyte II x5\nWarrior II x3\nFirbolg I x9",
+        )
+        # when
+        fitting, _ = create_fitting_from_eft(fitting_text)
+        # then: ambiguous items are dropped, not misfiled into the cargo bay
+        self.assertListEqual(fitting.drone_bay, [])
+        self.assertListEqual(fitting.fighter_bay, [])
+        self.assertListEqual(fitting.cargo_bay, [])
+
+    def test_should_parse_title_with_comma_in_fitting_name(self):
+        # given
+        fitting_text = create_fitting_text("fitting_tristan.txt").replace(
+            "[Tristan, Tristan - Standard Kite (cap stable)]",
+            "[Tristan, Solo PVP, v2]",
+        )
+        # when
+        fitting, _ = create_fitting_from_eft(fitting_text)
+        # then
+        self.assertEqual(fitting.name, "Solo PVP, v2")
+        self.assertEqual(fitting.ship_type.name, "Tristan")
+
+    def test_should_parse_title_with_trailing_whitespace(self):
+        # given
+        fitting_text = create_fitting_text("fitting_tristan.txt").replace(
+            "[Tristan, Tristan - Standard Kite (cap stable)]",
+            "[Tristan, Tristan - Standard Kite (cap stable)]  ",
+        )
+        # when
+        fitting, _ = create_fitting_from_eft(fitting_text)
+        # then
+        self.assertEqual(fitting.name, "Tristan - Standard Kite (cap stable)")
+        self.assertEqual(fitting.ship_type.name, "Tristan")
+
     def test_should_raise_error_when_text_is_empty(self):
         # when
         with self.assertRaises(MissingSectionsError):
@@ -120,6 +182,10 @@ class TestEftParser(NoSocketsTestCase):
         self.assertEqual(
             fitting.low_slots[0].module_type.name, "Nanofiber Internal Structure II"
         )
+        self.assertEqual(fitting.drone_bay[0].item_type.name, "Acolyte II")
+        self.assertEqual(fitting.drone_bay[0].quantity, 5)
+        self.assertEqual(fitting.drone_bay[1].item_type.name, "Warrior II")
+        self.assertEqual(fitting.drone_bay[1].quantity, 3)
 
     def test_should_handle_eve_format_with_missing_high_slots(self):
         # given
@@ -654,6 +720,34 @@ class TestEftSection(NoSocketsTestCase):
         # when/then
         self.assertEqual(section.guess_category(), _EftSection.Category.RIG_SLOTS)
 
+    def test_should_not_classify_mixed_slot_section_as_single_category(self):
+        # given: a low slot module and a medium slot module in the same section,
+        # e.g. from a missing blank line merging two slot blocks
+        section = _EftSection(
+            [
+                _EftItem(
+                    item_type=EveType.objects.get(name="Drone Damage Amplifier II")
+                ),
+                _EftItem(item_type=EveType.objects.get(name="Warp Disruptor II")),
+            ]
+        )
+        # when/then
+        self.assertIsNone(section.guess_category())
+
+    def test_should_not_classify_mixed_slot_and_drone_section_as_single_category(self):
+        # given: a low slot module and a drone in the same section, e.g. from a
+        # missing blank line merging a slot block with the drone bay
+        section = _EftSection(
+            [
+                _EftItem(
+                    item_type=EveType.objects.get(name="Drone Damage Amplifier II")
+                ),
+                _EftItem(item_type=EveType.objects.get(name="Acolyte II"), quantity=5),
+            ]
+        )
+        # when/then
+        self.assertIsNone(section.guess_category())
+
     def test_should_be_slots(self):
         # given
         section = _EftSection(
@@ -665,6 +759,20 @@ class TestEftSection(NoSocketsTestCase):
         )
         # when/then
         self.assertTrue(section.is_slots)
+
+    def test_should_exclude_unresolved_items_from_items(self):
+        # given
+        section = _EftSection(
+            [
+                _EftItem(item_type=EveType.objects.get(name="Acolyte II"), quantity=5),
+                _EftItem(item_type=None, quantity=None),
+            ]
+        )
+        # when
+        items = section.to_items()
+        # then
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].item_type.name, "Acolyte II")
 
 
 class TestCreateFittingFromEft(NoSocketsTestCase):

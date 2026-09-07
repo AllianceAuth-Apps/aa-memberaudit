@@ -8,6 +8,12 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 from django.utils.html import format_html
 from django.utils.translation import gettext_lazy as _
+from esi.exceptions import (
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+    HTTPClientError,
+    HTTPServerError,
+)
 
 from allianceauth import NAME as site_header
 from allianceauth.services.hooks import get_extension_logger
@@ -31,15 +37,32 @@ def admin_create_skillset_from_fitting(request):
                 params["skill_set_group"] = form.cleaned_data["skill_set_group"]
             if form.cleaned_data["skill_set_name"]:
                 params["skill_set_name"] = form.cleaned_data["skill_set_name"]
-            obj, created = SkillSet.objects.update_or_create_from_fitting(**params)
-            logger.info("Skill Set created from fitting with name: %s", fitting.name)
-            tasks.update_characters_skill_checks.delay(force_update=True)
-            if created:
-                msg = _("Skill Set %s has been created") % obj.name
+            try:
+                obj, created = SkillSet.objects.update_or_create_from_fitting(**params)
+            except (
+                HTTPClientError,
+                HTTPServerError,
+                ESIErrorLimitException,
+                ESIBucketLimitException,
+            ):
+                messages.error(
+                    request,
+                    _(
+                        "Eve Online servers could not be reached to resolve "
+                        "one or more required skills. Please try again shortly."
+                    ),
+                )
             else:
-                msg = _("Skill Set %s has been updated") % obj.name
-            messages.info(request, format_html("%s.", msg))
-            return redirect("admin:memberaudit_skillset_changelist")
+                logger.info(
+                    "Skill Set created from fitting with name: %s", fitting.name
+                )
+                tasks.update_characters_skill_checks.delay(force_update=True)
+                if created:
+                    msg = _("Skill Set %s has been created") % obj.name
+                else:
+                    msg = _("Skill Set %s has been updated") % obj.name
+                messages.info(request, format_html("%s.", msg))
+                return redirect("admin:memberaudit_skillset_changelist")
 
     else:
         form = ImportFittingForm()

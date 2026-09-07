@@ -2,6 +2,12 @@
 
 from django import forms
 from django.core.exceptions import ValidationError
+from esi.exceptions import (
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+    HTTPClientError,
+    HTTPServerError,
+)
 
 from memberaudit.core.eft_parser import EftParserError, create_fitting_from_eft
 from memberaudit.core.skill_plans import SkillPlan, SkillPlanError
@@ -46,6 +52,20 @@ class ImportFittingForm(forms.Form):
                 {
                     "fitting_text": (
                         "This fitting does not appear to be a valid EFT format."
+                    )
+                }
+            ) from None
+        except (
+            HTTPClientError,
+            HTTPServerError,
+            ESIErrorLimitException,
+            ESIBucketLimitException,
+        ):
+            raise ValidationError(
+                {
+                    "fitting_text": (
+                        "Eve Online servers could not be reached to resolve "
+                        "one or more items. Please try again shortly."
                     )
                 }
             ) from None
