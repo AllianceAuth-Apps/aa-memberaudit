@@ -253,7 +253,9 @@ class _EftItem:
     @property
     def is_slot(self) -> bool:
         """Return True if this item is a slot, else False."""
-        return self.quantity is None
+        if self.slot_type is not _EftSlotType.NONE:
+            return True
+        return not self.is_empty and self.quantity is None
 
     def is_booster(self) -> bool:
         """Return True if this item is a booster, else False."""

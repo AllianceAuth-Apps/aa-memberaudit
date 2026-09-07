@@ -120,6 +120,10 @@ class TestEftParser(NoSocketsTestCase):
         self.assertEqual(
             fitting.low_slots[0].module_type.name, "Nanofiber Internal Structure II"
         )
+        self.assertEqual(fitting.drone_bay[0].item_type.name, "Acolyte II")
+        self.assertEqual(fitting.drone_bay[0].quantity, 5)
+        self.assertEqual(fitting.drone_bay[1].item_type.name, "Warrior II")
+        self.assertEqual(fitting.drone_bay[1].quantity, 3)
 
     def test_should_handle_eve_format_with_missing_high_slots(self):
         # given
