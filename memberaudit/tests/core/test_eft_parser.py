@@ -658,6 +658,20 @@ class TestEftSection(NoSocketsTestCase):
         # when/then
         self.assertEqual(section.guess_category(), _EftSection.Category.RIG_SLOTS)
 
+    def test_should_not_classify_mixed_slot_section_as_single_category(self):
+        # given: a low slot module and a medium slot module in the same section,
+        # e.g. from a missing blank line merging two slot blocks
+        section = _EftSection(
+            [
+                _EftItem(
+                    item_type=EveType.objects.get(name="Drone Damage Amplifier II")
+                ),
+                _EftItem(item_type=EveType.objects.get(name="Warp Disruptor II")),
+            ]
+        )
+        # when/then
+        self.assertIsNone(section.guess_category())
+
     def test_should_be_slots(self):
         # given
         section = _EftSection(
@@ -669,6 +683,20 @@ class TestEftSection(NoSocketsTestCase):
         )
         # when/then
         self.assertTrue(section.is_slots)
+
+    def test_should_exclude_unresolved_items_from_items(self):
+        # given
+        section = _EftSection(
+            [
+                _EftItem(item_type=EveType.objects.get(name="Acolyte II"), quantity=5),
+                _EftItem(item_type=None, quantity=None),
+            ]
+        )
+        # when
+        items = section.to_items()
+        # then
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0].item_type.name, "Acolyte II")
 
 
 class TestCreateFittingFromEft(NoSocketsTestCase):

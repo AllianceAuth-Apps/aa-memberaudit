@@ -409,28 +409,33 @@ class _EftSection:
 
     def guess_category(self) -> Optional["_EftSection.Category"]:
         """Try to guess the category of this section based on it's items.
-        Returns ``None`` if the guess fails.
+
+        Returns ``None`` if the guess fails or the items indicate more than
+        one category, e.g. when two sections were merged due to a missing
+        blank line.
         """
         if self.is_slots:
-            if any((item.is_booster() for item in self.items)):
-                return self.Category.BOOSTERS
-            if any((item.is_cyber_implant() for item in self.items)):
-                return self.Category.IMPLANTS
-            if any((item.is_low_slot() for item in self.items)):
-                return self.Category.LOW_SLOTS
-            if any((item.is_med_slot() for item in self.items)):
-                return self.Category.MEDIUM_SLOTS
-            if any((item.is_high_slot() for item in self.items)):
-                return self.Category.HIGH_SLOTS
-            if any((item.is_rig_slot() for item in self.items)):
-                return self.Category.RIG_SLOTS
-            if any((item.is_subsystem() for item in self.items)):
-                return self.Category.SUBSYSTEM_SLOTS
+            predicates = [
+                (_EftItem.is_booster, self.Category.BOOSTERS),
+                (_EftItem.is_cyber_implant, self.Category.IMPLANTS),
+                (_EftItem.is_low_slot, self.Category.LOW_SLOTS),
+                (_EftItem.is_med_slot, self.Category.MEDIUM_SLOTS),
+                (_EftItem.is_high_slot, self.Category.HIGH_SLOTS),
+                (_EftItem.is_rig_slot, self.Category.RIG_SLOTS),
+                (_EftItem.is_subsystem, self.Category.SUBSYSTEM_SLOTS),
+            ]
         else:
-            if any((item.is_drone() for item in self.items)):
-                return self.Category.DRONES_BAY
-            if any((item.is_fighter() for item in self.items)):
-                return self.Category.FIGHTER_BAY
+            predicates = [
+                (_EftItem.is_drone, self.Category.DRONES_BAY),
+                (_EftItem.is_fighter, self.Category.FIGHTER_BAY),
+            ]
+        matched_categories = {
+            category
+            for predicate, category in predicates
+            if any(predicate(item) for item in self.items)
+        }
+        if len(matched_categories) == 1:
+            return matched_categories.pop()
         return None
 
     def to_modules(self) -> List[Module]:
@@ -450,9 +455,14 @@ class _EftSection:
         return objs
 
     def to_items(self) -> List[Item]:
-        """Convert eft items into fitting items."""
+        """Convert eft items into fitting items.
+
+        Items with an unresolved type are dropped.
+        """
         objs = []
         for item in self.items:
+            if item.is_empty:
+                continue
             params: Dict[str, Any] = {"item_type": item.item_type}
             if item.quantity:
                 params["quantity"] = item.quantity
