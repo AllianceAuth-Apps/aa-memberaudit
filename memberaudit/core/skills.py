@@ -74,7 +74,8 @@ def _identify_skills_from_eve_types(
     return _create_skills_from_attributes(all_attributes_map)
 
 
-def _reload_eve_types_without_dogmas(eve_types: Iterable[EveType]) -> Iterable[EveType]:
+def _reload_eve_types_without_dogmas(eve_types: Iterable[EveType]) -> List[EveType]:
+    eve_types = list(eve_types)
     for eve_type in eve_types:
         if not eve_type.enabled_sections.dogmas:
             eve_type, _ = EveType.objects.update_or_create_esi(
