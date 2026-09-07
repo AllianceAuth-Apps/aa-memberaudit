@@ -7,6 +7,7 @@ from time import sleep
 from typing import Any, Dict, List, Optional, Set
 
 import requests
+from redis.exceptions import LockError
 from requests.exceptions import RequestException
 
 from django.conf import settings
@@ -25,6 +26,8 @@ _ESI_STATUS_JSON_URL = "https://esi.evetech.net/meta/status"
 _COMPATIBILITY_DATE = "2025-12-16"
 _MAX_RETRIES = 3
 _REQUEST_TIMEOUT = (5, 30)
+_LOCK_TIMEOUT = 150  # auto-expiry, so a dead holder can't block forever
+_LOCK_BLOCKING_TIMEOUT = 100  # < _LOCK_TIMEOUT, so waiters give up first
 
 
 @dataclasses.dataclass
@@ -129,18 +132,26 @@ _REQUIRED_ENDPOINTS_FOR_SECTIONS = {
 
 def unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
     """Returns a set of all sections which endpoints are currently
-    reported as "red" by ESI. Returns None if there was a failure.
+    reported as "Down" by ESI. Returns None if there was a failure.
 
     An empty set means that all sections are available.
 
     Results are cached.
     """
-    with cache.lock("memberaudit-esi-status-lock"):
-        return cache.get_or_set(
-            _CACHE_KEY,
-            _fetch_unavailable_sections,
-            timeout=_CACHE_TIMEOUT,
-        )
+    try:
+        with cache.lock(
+            "memberaudit-esi-status-lock",
+            timeout=_LOCK_TIMEOUT,
+            blocking_timeout=_LOCK_BLOCKING_TIMEOUT,
+        ):
+            return cache.get_or_set(
+                _CACHE_KEY,
+                _fetch_unavailable_sections,
+                timeout=_CACHE_TIMEOUT,
+            )
+    except LockError:
+        logger.warning("Failed to acquire ESI status lock in time.")
+        return None
 
 
 def _fetch_unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
@@ -152,7 +163,7 @@ def _fetch_unavailable_sections() -> Optional[Set[Character.UpdateSection]]:
     return sections
 
 
-def _fetch_status() -> Optional[List[Dict[str, Any]]]:
+def _fetch_status() -> Optional[Dict[str, Any]]:
     try:
         r = _get_esi_status()
         r.raise_for_status()

@@ -50,7 +50,7 @@ class CacheFake2(CacheFake):
         return v
 
     @contextmanager
-    def lock(self, key):
+    def lock(self, key, timeout=None, blocking_timeout=None):
         yield None
 
 
