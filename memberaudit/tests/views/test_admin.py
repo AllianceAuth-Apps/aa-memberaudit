@@ -5,6 +5,7 @@ from django.contrib.auth.models import User
 from django.test import RequestFactory
 from django.urls import reverse
 from django.utils.timezone import now
+from esi.exceptions import ESIBucketLimitException
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testing import NoSocketsTestCase
@@ -112,6 +113,27 @@ class TestCreateSkillSetFromFitting(NoSocketsTestCase):
         self.assertTrue(mock_tasks.update_characters_skill_checks.delay.called)
         skill_set = SkillSet.objects.first()
         self.assertIn(skill_set, skill_set_group.skill_sets.all())
+
+    def test_should_show_error_message_when_esi_is_unavailable(
+        self, mock_tasks, mock_messages
+    ):
+        # given
+        request = self.factory.post(
+            reverse("memberaudit:admin_create_skillset_from_fitting"),
+            data={"fitting_text": self.fitting_text},
+        )
+        request.user = self.superuser
+        # when
+        with patch(
+            VIEWS_PATH + ".SkillSet.objects.update_or_create_from_fitting"
+        ) as mock:
+            mock.side_effect = ESIBucketLimitException(bucket=None, reset=1.0)
+            response = admin.admin_create_skillset_from_fitting(request)
+        # then
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(mock_messages.error.called)
+        self.assertFalse(mock_tasks.update_characters_skill_checks.delay.called)
+        self.assertEqual(SkillSet.objects.count(), 0)
 
     def test_should_create_new_skillset_with_custom_name(
         self, mock_tasks, mock_messages
