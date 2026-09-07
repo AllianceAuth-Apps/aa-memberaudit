@@ -533,7 +533,7 @@ def _parse_title(lines: List[str]) -> Tuple[str, str]:
         raise MissingSectionsError("Text is empty")
     line = lines[0]
     if line.startswith("[") and "," in line:
-        ship_type_name, fitting_name = line[1:-1].split(",")
+        ship_type_name, fitting_name = line[1:-1].split(",", 1)
         return ship_type_name.strip(), fitting_name.strip()
     raise MissingTitleError("Title not found")
 

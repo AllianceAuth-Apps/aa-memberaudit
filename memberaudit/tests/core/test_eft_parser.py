@@ -93,6 +93,18 @@ class TestEftParser(NoSocketsTestCase):
         with self.assertRaises(MissingTitleError):
             create_fitting_from_eft(fitting_text)
 
+    def test_should_parse_title_with_comma_in_fitting_name(self):
+        # given
+        fitting_text = create_fitting_text("fitting_tristan.txt").replace(
+            "[Tristan, Tristan - Standard Kite (cap stable)]",
+            "[Tristan, Solo PVP, v2]",
+        )
+        # when
+        fitting, _ = create_fitting_from_eft(fitting_text)
+        # then
+        self.assertEqual(fitting.name, "Solo PVP, v2")
+        self.assertEqual(fitting.ship_type.name, "Tristan")
+
     def test_should_raise_error_when_text_is_empty(self):
         # when
         with self.assertRaises(MissingSectionsError):
