@@ -114,6 +114,23 @@ class TestEftParser(NoSocketsTestCase):
             fitting.low_slots[0].module_type.name, "Nanofiber Internal Structure II"
         )
 
+    def test_should_drop_ambiguous_last_section_instead_of_treating_it_as_cargo_bay(
+        self,
+    ):
+        # given: last section merges the drone bay with a fighter due to a
+        # missing blank line, making it ambiguous rather than genuinely
+        # unidentified
+        fitting_text = create_fitting_text("fitting_tristan.txt").replace(
+            "Acolyte II x5\nWarrior II x3",
+            "Acolyte II x5\nWarrior II x3\nFirbolg I x9",
+        )
+        # when
+        fitting, _ = create_fitting_from_eft(fitting_text)
+        # then: ambiguous items are dropped, not misfiled into the cargo bay
+        self.assertListEqual(fitting.drone_bay, [])
+        self.assertListEqual(fitting.fighter_bay, [])
+        self.assertListEqual(fitting.cargo_bay, [])
+
     def test_should_parse_title_with_comma_in_fitting_name(self):
         # given
         fitting_text = create_fitting_text("fitting_tristan.txt").replace(

@@ -407,13 +407,8 @@ class _EftSection:
         """Return True if this any item has slots."""
         return any((item.is_slot for item in self.items))
 
-    def guess_category(self) -> Optional["_EftSection.Category"]:
-        """Try to guess the category of this section based on it's items.
-
-        Returns ``None`` if the guess fails or the items indicate more than
-        one category, e.g. when two sections were merged due to a missing
-        blank line.
-        """
+    def _matched_categories(self) -> Set["_EftSection.Category"]:
+        """Return all categories that at least one item in this section matches."""
         predicates = [
             (_EftItem.is_booster, self.Category.BOOSTERS),
             (_EftItem.is_cyber_implant, self.Category.IMPLANTS),
@@ -425,14 +420,30 @@ class _EftSection:
             (_EftItem.is_drone, self.Category.DRONES_BAY),
             (_EftItem.is_fighter, self.Category.FIGHTER_BAY),
         ]
-        matched_categories = {
+        return {
             category
             for predicate, category in predicates
             if any(predicate(item) for item in self.items)
         }
+
+    def guess_category(self) -> Optional["_EftSection.Category"]:
+        """Try to guess the category of this section based on it's items.
+
+        Returns ``None`` if the guess fails or the items indicate more than
+        one category, e.g. when two sections were merged due to a missing
+        blank line.
+        """
+        matched_categories = self._matched_categories()
         if len(matched_categories) == 1:
             return matched_categories.pop()
         return None
+
+    def is_ambiguous(self) -> bool:
+        """Return True if this section's items match more than one category.
+
+        This indicates that two sections were merged due to a missing blank line.
+        """
+        return len(self._matched_categories()) > 1
 
     def to_modules(self) -> List[Module]:
         """Convert eft items into fitting modules.
@@ -550,12 +561,15 @@ def _try_to_identify_sections(sections: List[_EftSection]) -> List[_EftSection]:
         category = section.guess_category()
         if category:
             section.category = category
-    # last unknown section must be the cargo bay
+    # last unknown section must be the cargo bay, unless its items are
+    # ambiguous (e.g. two sections merged due to a missing blank line), in
+    # which case it is safely dropped instead of being misfiled as cargo
     if sections:
         last_section = sections[len(sections) - 1]
         if (
             last_section.category == _EftSection.Category.UNKNOWN
             and not last_section.is_slots
+            and not last_section.is_ambiguous()
         ):
             last_section.category = _EftSection.Category.CARGO_BAY
     return sections
