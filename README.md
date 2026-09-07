@@ -22,9 +22,9 @@ An Alliance Auth app that provides full access to Eve characters and related rep
 
 ## Overview
 
-Member Audit is an Alliance Auth app that provides full access to Eve characters and related reports.
+Member Audit gives Alliance Auth full visibility into a corporation's or alliance's Eve characters.
 
-Users can monitor their characters, recruiters can vet the characters of applicants and leadership can audit the characters of their members to ensure compliance and find spies.
+Users can monitor their characters, recruiters can vet the characters of applicants, and leadership can audit the characters of their members to ensure compliance and find spies.
 
 In addition character based reports gives leadership another valuable tool for managing their respective organization.
 
@@ -42,7 +42,7 @@ Member Audit adds the following features to Auth:
   - Contacts
   - Contracts
   - Corporation history
-  - Corporation roles (NEW)
+  - Corporation roles
   - Faction Warfare statistics
   - Implants
   - Jump clones
@@ -54,7 +54,7 @@ Member Audit adds the following features to Auth:
   - Skills
   - Wallet (journal and transactions)
 
-- Leadership can define Skill Sets, which are a way of defining skills needed to perform a specific activity or fly a doctrine ship. They allow recruiters and leadership to see at a glance what a character can do (e.g. which doctrine ships he/she can fly)
+- Leadership can define Skill Sets, which are a way of defining skills needed to perform a specific activity or fly a doctrine ship. They allow recruiters and leadership to see at a glance what a character can do (e.g. which doctrine ships they can fly)
 - Skill Sets can be generated from imported fittings
 - Leadership can see reports and analytics about their members. Those currently include:
   - Compliance: if users have added all their characters
@@ -63,15 +63,15 @@ Member Audit adds the following features to Auth:
 - Admins can use the flexible permission system to grant access levels for different roles (e.g. corp leadership may only have access to reports about their own corp members)
 - Admins can customize and configure Member Audit to fit their needs. e.g. change the app's name and define how often which type of data is updated from the Eve server
 
-- Ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](https://aa-memberaudit.readthedocs.io/en/stable/user.html#compliance-groups))
-- Get notifications when a user removes a character that they had previously registered.
+- Admins can ensure that only users who have registered all their characters have access to services (see also [Compliance Groups](https://aa-memberaudit.readthedocs.io/en/stable/user.html#compliance-groups))
+- Admins get notified when a user removes a character that they had previously registered.
 - Designed to work efficiently with large number of characters
 - Data retention policy allows managing storage capacity needs
 - Data can be exported for processing it with third party apps like Google Sheets (currently wallet journal only)
-- Language support for Chinese :cn:, English :us:, German :de:, Russian :ru: and Ukrainian 🇺🇦
+- Language support for Chinese 🇨🇳, English 🇺🇸, German 🇩🇪, Russian 🇷🇺 and Ukrainian 🇺🇦
 
 > [!TIP]
-> If you want to try out Member Audit you can login to our [test server](https://auth.kalkoken.net/dashboard/). You account will be listed as guest and only let you use basic features. If you want access to advanced feature like character finder please contact us on Discord.
+> If you want to try out Member Audit you can login to our [test server](https://auth.kalkoken.net/dashboard/). Your account will be listed as guest and only let you use basic features. If you want access to advanced features like character finder please contact us on Discord.
 
 A few noteworthy community apps that are build on Member Audit:
 
