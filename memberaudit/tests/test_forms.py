@@ -1,6 +1,7 @@
 from http import HTTPStatus
 from unittest.mock import patch
 
+from esi.exceptions import ESIBucketLimitException
 from eveuniverse.models import EveType
 
 from app_utils.testing import NoSocketsTestCase
@@ -50,6 +51,15 @@ class TestImportFittingForm(NoSocketsTestCase):
         # given
         with patch("memberaudit.forms.create_fitting_from_eft") as mock:
             mock.side_effect = make_http_server_error(HTTPStatus.SERVICE_UNAVAILABLE)
+            form = forms.ImportFittingForm(data={"fitting_text": self.fitting_text})
+            # when
+            self.assertFalse(form.is_valid())
+            self.assertIn("fitting_text", form.errors.keys())
+
+    def test_should_raise_error_when_esi_bucket_limit_is_reached(self):
+        # given
+        with patch("memberaudit.forms.create_fitting_from_eft") as mock:
+            mock.side_effect = ESIBucketLimitException(bucket=None, reset=1.0)
             form = forms.ImportFittingForm(data={"fitting_text": self.fitting_text})
             # when
             self.assertFalse(form.is_valid())

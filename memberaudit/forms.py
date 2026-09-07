@@ -2,7 +2,12 @@
 
 from django import forms
 from django.core.exceptions import ValidationError
-from esi.exceptions import ESIErrorLimitException, HTTPClientError, HTTPServerError
+from esi.exceptions import (
+    ESIBucketLimitException,
+    ESIErrorLimitException,
+    HTTPClientError,
+    HTTPServerError,
+)
 
 from memberaudit.core.eft_parser import EftParserError, create_fitting_from_eft
 from memberaudit.core.skill_plans import SkillPlan, SkillPlanError
@@ -50,7 +55,12 @@ class ImportFittingForm(forms.Form):
                     )
                 }
             ) from None
-        except (HTTPClientError, HTTPServerError, ESIErrorLimitException):
+        except (
+            HTTPClientError,
+            HTTPServerError,
+            ESIErrorLimitException,
+            ESIBucketLimitException,
+        ):
             raise ValidationError(
                 {
                     "fitting_text": (
