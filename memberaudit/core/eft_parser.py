@@ -414,21 +414,17 @@ class _EftSection:
         one category, e.g. when two sections were merged due to a missing
         blank line.
         """
-        if self.is_slots:
-            predicates = [
-                (_EftItem.is_booster, self.Category.BOOSTERS),
-                (_EftItem.is_cyber_implant, self.Category.IMPLANTS),
-                (_EftItem.is_low_slot, self.Category.LOW_SLOTS),
-                (_EftItem.is_med_slot, self.Category.MEDIUM_SLOTS),
-                (_EftItem.is_high_slot, self.Category.HIGH_SLOTS),
-                (_EftItem.is_rig_slot, self.Category.RIG_SLOTS),
-                (_EftItem.is_subsystem, self.Category.SUBSYSTEM_SLOTS),
-            ]
-        else:
-            predicates = [
-                (_EftItem.is_drone, self.Category.DRONES_BAY),
-                (_EftItem.is_fighter, self.Category.FIGHTER_BAY),
-            ]
+        predicates = [
+            (_EftItem.is_booster, self.Category.BOOSTERS),
+            (_EftItem.is_cyber_implant, self.Category.IMPLANTS),
+            (_EftItem.is_low_slot, self.Category.LOW_SLOTS),
+            (_EftItem.is_med_slot, self.Category.MEDIUM_SLOTS),
+            (_EftItem.is_high_slot, self.Category.HIGH_SLOTS),
+            (_EftItem.is_rig_slot, self.Category.RIG_SLOTS),
+            (_EftItem.is_subsystem, self.Category.SUBSYSTEM_SLOTS),
+            (_EftItem.is_drone, self.Category.DRONES_BAY),
+            (_EftItem.is_fighter, self.Category.FIGHTER_BAY),
+        ]
         matched_categories = {
             category
             for predicate, category in predicates

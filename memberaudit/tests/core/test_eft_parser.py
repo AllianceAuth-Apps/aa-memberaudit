@@ -705,6 +705,20 @@ class TestEftSection(NoSocketsTestCase):
         # when/then
         self.assertIsNone(section.guess_category())
 
+    def test_should_not_classify_mixed_slot_and_drone_section_as_single_category(self):
+        # given: a low slot module and a drone in the same section, e.g. from a
+        # missing blank line merging a slot block with the drone bay
+        section = _EftSection(
+            [
+                _EftItem(
+                    item_type=EveType.objects.get(name="Drone Damage Amplifier II")
+                ),
+                _EftItem(item_type=EveType.objects.get(name="Acolyte II"), quantity=5),
+            ]
+        )
+        # when/then
+        self.assertIsNone(section.guess_category())
+
     def test_should_be_slots(self):
         # given
         section = _EftSection(
