@@ -36,6 +36,16 @@ Mind Reading 3
 
 text_7 = """Amarr Cruiser III"""
 
+text_8 = """
+Caldari Core Systems  5
+Caldari Strategic Cruiser 3
+"""
+
+text_9 = """
+Learning 0
+Caldari Strategic Cruiser 3
+"""
+
 
 class TestSkillPlan(NoSocketsTestCase):
     @classmethod
@@ -119,6 +129,45 @@ class TestSkillPlan(NoSocketsTestCase):
         # when
         with self.assertRaises(NoSkillsIdentified):
             SkillPlan.create_from_plain_text("dummy", text_6)
+
+    def test_should_raise_exception_with_issues_when_no_skills_identified(self):
+        # when
+        with self.assertRaises(NoSkillsIdentified) as cm:
+            SkillPlan.create_from_plain_text("dummy", text_6)
+
+        # then
+        issues = cm.exception.args[0]
+        self.assertIn("Mind Reading", issues[0])
+
+    def test_should_tolerate_extra_spaces_between_skill_name_and_level(self):
+        # when
+        result, issues = SkillPlan.create_from_plain_text("dummy", text_8)
+
+        # then
+        self.assertFalse(issues)
+        expected = SkillPlan(
+            "dummy",
+            [
+                Skill(self.caldari_core_systems, 5),
+                Skill(self.caldari_strategic_cruiser, 3),
+            ],
+        )
+        self.assertEqual(result, expected)
+
+    def test_should_report_issue_for_skill_level_zero(self):
+        # when
+        result, issues = SkillPlan.create_from_plain_text("dummy", text_9)
+
+        # then
+        self.assertIn("Invalid skill level", issues[0])
+        self.assertIn("Learning 0", issues[0])
+        expected = SkillPlan(
+            "dummy",
+            [
+                Skill(self.caldari_strategic_cruiser, 3),
+            ],
+        )
+        self.assertEqual(result, expected)
 
     def test_should_create_skill_plan_with_double_skills(self):
         """Test related to a bug, where creating the skill plan failed,
