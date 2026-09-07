@@ -93,6 +93,13 @@ class TestEftParser(NoSocketsTestCase):
         with self.assertRaises(MissingTitleError):
             create_fitting_from_eft(fitting_text)
 
+    def test_should_raise_error_when_title_is_missing_closing_bracket(self):
+        # given
+        fitting_text = "[Tristan, PVP Fit"
+        # when
+        with self.assertRaises(MissingTitleError):
+            create_fitting_from_eft(fitting_text)
+
     def test_should_parse_title_with_comma_in_fitting_name(self):
         # given
         fitting_text = create_fitting_text("fitting_tristan.txt").replace(
