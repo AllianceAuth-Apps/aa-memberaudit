@@ -120,12 +120,14 @@ def update_all_characters(
 
     Character.objects.disable_characters_with_no_owner()
 
-    characters_to_update = list(
-        Character.objects.filter(
-            is_disabled=False,  # enabled for updates
-            eve_character__character_ownership__isnull=False,  # not an orphan
-        ).values_list("pk", flat=True)
+    characters_qs = Character.objects.filter(
+        is_disabled=False,  # enabled for updates
+        eve_character__character_ownership__isnull=False,  # not an orphan
     )
+    if not ignore_stale:
+        characters_qs = characters_qs.needs_update()
+
+    characters_to_update = list(characters_qs.values_list("pk", flat=True))
     if not characters_to_update:
         logger.info("No enabled characters found for update.")
         return
