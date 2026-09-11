@@ -1,4 +1,7 @@
+import datetime as dt
 from unittest.mock import patch
+
+from django.utils.timezone import now
 
 from allianceauth.tests.auth_utils import AuthUtils
 from app_utils.testdata_factories import (
@@ -860,6 +863,93 @@ class TestCharacterManager_DisableCharactersWithNoOwner(NoSocketsTestCase):
         orphan_disabled.refresh_from_db()
         self.assertTrue(orphan_disabled.is_disabled)
         self.assertFalse(character.is_disabled)
+
+
+@patch(MODELS_PATH + ".MEMBERAUDIT_FEATURE_ROLES_ENABLED", False)
+class TestCharacterManager_NeedsUpdate(NoSocketsTestCase):
+    def test_should_include_character_with_no_update_status_at_all(self):
+        # given
+        character = CharacterFactory()
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertIn(character, got)
+
+    def test_should_include_character_with_missing_section(self):
+        # given
+        character = CharacterFactory()
+        sections = list(Character.UpdateSection.enabled_sections())
+        for section in sections[:-1]:
+            CharacterUpdateStatusFactory(character=character, section=section)
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertIn(character, got)
+
+    def test_should_exclude_character_with_all_sections_fresh(self):
+        # given
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(character=character, section=section)
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertNotIn(character, got)
+
+    def test_should_include_character_with_stale_section(self):
+        # given
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(character=character, section=section)
+        stale_section = next(iter(Character.UpdateSection.enabled_sections()))
+        status = character.update_status_for_section(stale_section)
+        status.run_finished_at = now() - dt.timedelta(days=30)
+        status.save()
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertIn(character, got)
+
+    def test_should_include_character_with_failed_section(self):
+        # given
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(character=character, section=section)
+        failed_section = next(iter(Character.UpdateSection.enabled_sections()))
+        status = character.update_status_for_section(failed_section)
+        status.is_success = False
+        status.save()
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertIn(character, got)
+
+    def test_should_exclude_character_whose_only_stale_section_has_token_error(self):
+        # given
+        character = CharacterFactory()
+        for section in Character.UpdateSection.enabled_sections():
+            CharacterUpdateStatusFactory(character=character, section=section)
+        stale_section = next(iter(Character.UpdateSection.enabled_sections()))
+        status = character.update_status_for_section(stale_section)
+        status.run_finished_at = now() - dt.timedelta(days=30)
+        status.has_token_error = True
+        status.save()
+
+        # when
+        got = Character.objects.needs_update()
+
+        # then
+        self.assertNotIn(character, got)
 
 
 class TestCharacterUpdateStatusManager_FilterEnabledSections(NoSocketsTestCase):

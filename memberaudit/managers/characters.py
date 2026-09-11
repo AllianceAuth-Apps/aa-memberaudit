@@ -2,9 +2,12 @@
 
 # pylint: disable=missing-class-docstring
 
+import datetime as dt
+
 from django.contrib.auth.models import Permission, User
 from django.db import models
 from django.db.models import Case, Count, Q, Value, When
+from django.utils.timezone import now
 
 from allianceauth.authentication.models import CharacterOwnership
 from allianceauth.services.hooks import get_extension_logger
@@ -86,6 +89,44 @@ class CharacterQuerySet(models.QuerySet):
             )
         )
         return qs
+
+    def needs_update(self) -> models.QuerySet:
+        """Filter characters that have at least one enabled section which is
+        stale, has never completed successfully, or has no update status yet.
+
+        Sections with a token error are excluded, since those are not
+        retried until the token error is resolved.
+        """
+        from memberaudit.models import Character
+
+        enabled_sections = list(Character.UpdateSection.enabled_sections())
+        stale_minutes = Character.UpdateSection.time_until_section_updates_are_stale()
+
+        now_ = now()
+        section_is_due = Q()
+        for section in enabled_sections:
+            deadline = now_ - dt.timedelta(minutes=stale_minutes[section])
+            section_is_due |= Q(
+                update_status_set__section=section,
+                update_status_set__has_token_error=False,
+            ) & (
+                Q(update_status_set__is_success__isnull=True)
+                | Q(update_status_set__is_success=False)
+                | Q(update_status_set__run_finished_at__isnull=True)
+                | Q(update_status_set__run_finished_at__lte=deadline)
+            )
+
+        return (
+            self.annotate(
+                num_sections_total=Count(
+                    "update_status_set",
+                    filter=Q(update_status_set__section__in=enabled_sections),
+                    distinct=True,
+                )
+            )
+            .filter(Q(num_sections_total__lt=len(enabled_sections)) | section_is_due)
+            .distinct()
+        )
 
     def disable_characters_with_no_owner(self) -> int:
         """Disable characters which have no owner. Return count of disabled characters."""
