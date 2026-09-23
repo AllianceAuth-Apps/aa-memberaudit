@@ -325,8 +325,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "_main",
         "_state",
         "_organization",
-        "_created_at",
         "_enabled",
+        "_shared",
+        "_created_at",
         "_last_update_at",
         "_update_status",
         "_missing_sections",
@@ -338,6 +339,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     list_filter = (
         CharacterUpdateStatusListFilter,
         "is_disabled",
+        "is_shared",
         CharacterStateListFilter,
         "created_at",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
@@ -355,6 +357,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "eve_character__character_ownership__user__profile__main_character__corporation_name",
         "eve_character__character_ownership__user__profile__main_character__alliance_name",
     ]
+    readonly_fields = ("created_at", "_last_update_at")
     exclude = ("mailing_lists",)
 
     actions = [
@@ -366,6 +369,7 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         "update_online_status",
         "enable_characters",
         "disable_characters",
+        "unshare_characters",
     ]
     inlines = (CharacterUpdateStatusAdminInline,)
 
@@ -410,6 +414,10 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
     @admin.display(ordering="is_disabled", boolean=True, description=_("enabled"))
     def _enabled(self, obj: Character) -> bool:
         return not obj.is_disabled
+
+    @admin.display(ordering="is_shared", boolean=True, description=_("shared"))
+    def _shared(self, obj: Character) -> bool:
+        return obj.is_shared
 
     @admin.display(
         ordering="eve_character__character_ownership__user__profile__main_character",
@@ -456,9 +464,9 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
 
     @admin.display(ordering="created_at", description=_("created"))
     def _created_at(self, obj: Character):
-        return obj.created_at
+        return naturaltime(obj.created_at) if obj.created_at else "-"
 
-    @admin.display(ordering="last_update_at", description=_("last update run"))
+    @admin.display(ordering="last_update_at", description=_("updated"))
     def _last_update_at(self, obj: Character):
         return naturaltime(obj.last_update_at) if obj.last_update_at else "-"
 
@@ -501,6 +509,12 @@ class CharacterAdmin(AddDeleteObjects, admin.ModelAdmin):
         pks = list(queryset.values_list("pk", flat=True))
         queryset.filter(pk__in=pks).update(is_disabled=True)
         self.message_user(request, _("Disabled %d characters.") % len(pks))
+
+    @admin.action(description=_("Unshare selected characters"))
+    def unshare_characters(self, request, queryset):
+        pks = list(queryset.values_list("pk", flat=True))
+        queryset.filter(pk__in=pks).update(is_shared=False)
+        self.message_user(request, _("Unshared %d characters.") % len(pks))
 
     def has_add_permission(self, request):
         return False

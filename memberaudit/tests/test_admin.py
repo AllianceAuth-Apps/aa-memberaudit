@@ -256,6 +256,28 @@ class TestCharacterAdmin(NoSocketsTestCase):
         self.assertEqual(mock_task_update_character.apply_async.call_count, 1)
         self.assertTrue(mock_message_user.called)
 
+    def test_column_shared(self):
+        # given
+        character = CharacterFactory(is_shared=True)
+
+        # when/then
+        self.assertTrue(self.modeladmin._shared(character))
+
+    @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
+    def test_should_unshare_characters(self, mock_message_user):
+        # given
+        character = CharacterFactory(is_shared=True)
+        request = MockRequest(user=self.user)
+        queryset = self.modeladmin.get_queryset(request).filter(pk=character.pk)
+
+        # when
+        self.modeladmin.unshare_characters(request, queryset)
+
+        # then
+        character.refresh_from_db()
+        self.assertFalse(character.is_shared)
+        self.assertTrue(mock_message_user.called)
+
 
 @patch(ADMIN_PATH + ".CharacterAdmin.message_user")
 @patch(ADMIN_PATH + ".tasks.delete_objects")
@@ -497,3 +519,24 @@ class TestCharacterAdminUi(NoSocketsTestCase):
         # then
         self.assertEqual(response.status_code, 200)
         self.assertIn("Bruce Wayne", response.content.decode("utf-8"))
+
+    def test_should_filter_shared_characters(self):
+        # given
+        self.client.force_login(self.user)
+        user_1 = UserMainFactory(
+            main_character__character=EveCharacterFactory(character_name="Clark Kent")
+        )
+        CharacterFactory(user=user_1, is_shared=True)
+        user_2 = UserMainFactory(
+            main_character__character=EveCharacterFactory(character_name="Peter Parker")
+        )
+        CharacterFactory(user=user_2, is_shared=False)
+
+        # when
+        response = self.client.get("/admin/memberaudit/character/?is_shared__exact=1")
+
+        # then
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode("utf-8")
+        self.assertIn("Clark Kent", content)
+        self.assertNotIn("Peter Parker", content)
