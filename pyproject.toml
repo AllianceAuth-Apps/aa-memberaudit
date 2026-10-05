@@ -32,17 +32,17 @@ classifiers = [
 dependencies = [
     "allianceauth-app-utils>=1.33.2",
     "allianceauth>=4,<6",
-    "django-esi>=8,<10",
+    "django-esi>=8,<11",
     "bleach",
     "dj-datatables-view",
-    "django-eveuniverse>=2",
+    "django-eveuniverse>=2.2",
     "humanize>=4.7.0",
     "unidecode",
     "tqdm>=4.66",
     "typing_extensions"
 ]
 [project.optional-dependencies]
-test = ["coverage", "factory_boy", "django-webtest", "pook"]
+test = ["coverage", "factory_boy", "django-webtest", "pookx"]
 
 [project.urls]
 Homepage = "https://github.com/AllianceAuth-Apps/aa-memberaudit"
